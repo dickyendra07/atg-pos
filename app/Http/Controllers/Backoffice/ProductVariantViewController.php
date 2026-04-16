@@ -65,8 +65,7 @@ class ProductVariantViewController extends Controller
             'product_id' => 'required|exists:products,id',
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:255|unique:product_variants,code',
-            'price_dine_in' => 'required|numeric|min:0',
-            'price_delivery' => 'required|numeric|min:0',
+            'price' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
         ]);
 
@@ -74,9 +73,9 @@ class ProductVariantViewController extends Controller
             'product_id' => $validated['product_id'],
             'name' => $validated['name'],
             'code' => $validated['code'],
-            'price' => $validated['price_dine_in'],
-            'price_dine_in' => $validated['price_dine_in'],
-            'price_delivery' => $validated['price_delivery'],
+            'price' => $validated['price'],
+            'price_dine_in' => $validated['price'],
+            'price_delivery' => $validated['price'],
             'is_active' => $validated['is_active'],
         ]);
 
@@ -109,8 +108,7 @@ class ProductVariantViewController extends Controller
             'product_id' => 'required|exists:products,id',
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:255|unique:product_variants,code,' . $variant->id,
-            'price_dine_in' => 'required|numeric|min:0',
-            'price_delivery' => 'required|numeric|min:0',
+            'price' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
         ]);
 
@@ -118,9 +116,9 @@ class ProductVariantViewController extends Controller
             'product_id' => $validated['product_id'],
             'name' => $validated['name'],
             'code' => $validated['code'],
-            'price' => $validated['price_dine_in'],
-            'price_dine_in' => $validated['price_dine_in'],
-            'price_delivery' => $validated['price_delivery'],
+            'price' => $validated['price'],
+            'price_dine_in' => $validated['price'],
+            'price_delivery' => $validated['price'],
             'is_active' => $validated['is_active'],
         ]);
 

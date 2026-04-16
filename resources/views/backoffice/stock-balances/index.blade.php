@@ -300,7 +300,7 @@
 
         .action-grid {
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 18px;
             margin-bottom: 24px;
         }
@@ -597,7 +597,7 @@
                     <div class="hero-kicker">Inventory Control</div>
                     <h1 class="hero-title">Control stock actions and read stock summary in one place.</h1>
                     <p class="hero-subtitle">
-                        Halaman ini adalah pusat kontrol stok seluruh lokasi. Pakai area ini untuk penerimaan barang dari luar, adjustment stok, import opening stock, opname gudang, produksi setengah jadi, dan membaca summary stok model operasional.
+                        Halaman ini adalah pusat kontrol stok seluruh lokasi. Pakai area ini untuk penerimaan barang dari luar, adjustment stok, import opening stock, dan membaca summary stok model operasional.
                     </p>
                 </div>
 
@@ -608,7 +608,6 @@
                         <div class="session-line"><span class="label">Barang antar lokasi:</span>Transfer Barang</div>
                         <div class="session-line"><span class="label">Selisih stok:</span>Adjustment</div>
                         <div class="session-line"><span class="label">Opname formal:</span>Warehouse saja</div>
-                        <div class="session-line"><span class="label">Produksi:</span>Raw jadi semi-finished</div>
                     </div>
                 </div>
             </div>
@@ -635,7 +634,7 @@
                 <div class="stat-card violet">
                     <div class="stat-label">Need Action</div>
                     <div class="stat-value">{{ $summary['need_action'] ?? 0 }}</div>
-                    <div class="stat-desc">Stok yang perlu dipantau untuk restock, transfer, adjustment, atau produksi ulang.</div>
+                    <div class="stat-desc">Stok yang perlu dipantau untuk restock, transfer, atau adjustment.</div>
                 </div>
 
                 <div class="stat-card red">
@@ -686,17 +685,6 @@
                         </div>
                         <div class="action-title">Opname Gudang</div>
                         <div class="action-desc">Stock opname formal khusus warehouse, bukan untuk outlet.</div>
-                    </div>
-                    <div class="action-link">Open action</div>
-                </a>
-
-                <a href="{{ route('backoffice.productions.create') }}" class="action-card">
-                    <div>
-                        <div class="action-icon icon-orange">
-                            <svg viewBox="0 0 24 24"><path d="M6 20h12"></path><path d="M8 20V9l4-5 4 5v11"></path><path d="M9 13h6"></path></svg>
-                        </div>
-                        <div class="action-title">Produksi</div>
-                        <div class="action-desc">Jalankan produksi raw menjadi semi-finished dan update stok otomatis di lokasi aktif.</div>
                     </div>
                     <div class="action-link">Open action</div>
                 </a>
@@ -896,7 +884,7 @@
                     <div class="panel-head">
                         <h2 class="panel-title">Rule Reminder</h2>
                         <p class="panel-subtitle">
-                            Gunakan rule ini supaya user dan client tidak bingung membedakan inventory action dengan transfer internal dan produksi.
+                            Gunakan rule ini supaya user dan client tidak bingung membedakan inventory action dengan transfer internal.
                         </p>
                     </div>
 
@@ -926,13 +914,6 @@
                             <div class="note-title">Opname Gudang</div>
                             <div class="note-desc">
                                 Dipakai untuk <span class="note-highlight">stock opname formal khusus warehouse</span>. Outlet tidak perlu opname formal, cukup gunakan adjustment jika ada selisih stok.
-                            </div>
-                        </div>
-
-                        <div class="note-card">
-                            <div class="note-title">Produksi</div>
-                            <div class="note-desc">
-                                Dipakai saat <span class="note-highlight">bahan mentah diproses menjadi bahan setengah jadi</span>. Sistem akan membuat movement <span class="note-highlight">production_out</span> dan <span class="note-highlight">production_in</span>.
                             </div>
                         </div>
                     </div>

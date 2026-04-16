@@ -23,6 +23,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
         .top-actions {
@@ -61,7 +63,7 @@
         .btn-warning {
             background: #1d4ed8;
             color: white;
-            padding: 6px 10px;
+            padding: 8px 12px;
             border-radius: 8px;
             font-size: 12px;
         }
@@ -199,6 +201,18 @@
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        @media (max-width: 768px) {
+            .wrap {
+                margin: 24px auto;
+                padding: 0 14px;
+            }
+
+            .title {
+                font-size: 24px;
+            }
         }
     </style>
 </head>
@@ -269,7 +283,8 @@
                                                 $ingredientType = $item->ingredient?->ingredient_type;
                                                 $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
                                             @endphp
-                                            <div class="recipe-item-row" style="margin-bottom:6px;">
+
+                                            <div class="recipe-item-row">
                                                 <span class="item-pill">
                                                     {{ $item->ingredient->name ?? '-' }}
                                                     - {{ number_format((float) $item->qty, 2, ',', '.') }}
@@ -294,7 +309,7 @@
                                         @endif
                                     </td>
                                     <td class="action-cell">
-                                        <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn-warning">Kelola Recipe</a>
+                                        <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn-warning">Edit</a>
                                     </td>
                                 </tr>
                             @endforeach

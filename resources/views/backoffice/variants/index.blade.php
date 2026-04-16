@@ -204,7 +204,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1500px;
+            min-width: 1400px;
             background: white;
         }
 
@@ -346,7 +346,7 @@
             <div class="title-block">
                 <div class="title">Back Office - Variants</div>
                 <div class="subtitle">
-                    Kelola variant produk dan siapkan harga <strong>dine in</strong> serta <strong>delivery</strong> dari satu tempat. Kalau harga masih sama, cukup isi nilainya sama dulu agar operasional tetap aman.
+                    Kelola variant produk dan siapkan harga <strong>dine in</strong> serta <strong>delivery</strong> dalam satu halaman tanpa kolom harga lama yang dobel.
                 </div>
             </div>
 
@@ -401,7 +401,6 @@
                                 <th>Product</th>
                                 <th>Variant</th>
                                 <th>Code</th>
-                                <th>Price Lama</th>
                                 <th>Price Dine In</th>
                                 <th>Price Delivery</th>
                                 <th>Status</th>
@@ -418,7 +417,6 @@
                                     <td>
                                         <span class="code-pill">{{ $variant->code ?? '-' }}</span>
                                     </td>
-                                    <td class="money">Rp{{ number_format((float) ($variant->price ?? 0), 0, ',', '.') }}</td>
                                     <td class="money">Rp{{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}</td>
                                     <td class="money">Rp{{ number_format((float) ($variant->price_delivery ?? $variant->price ?? 0), 0, ',', '.') }}</td>
                                     <td>
@@ -451,7 +449,7 @@
             @endif
 
             <div class="note">
-                Halaman variants sekarang sudah disiapkan untuk kebutuhan client terkait <strong>harga dine in</strong> dan <strong>delivery</strong>. Kalau migration harga baru belum dijalankan, create/edit akan error karena kolom baru belum ada di database.
+                Revisi variant: sekarang yang ditampilkan hanya <strong>harga dine in</strong> dan <strong>harga delivery</strong>, tanpa kolom harga lama.
             </div>
         </div>
     </div>
