@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt - {{ $transaction->transaction_number }}</title>
+    <title>Receipt - {{ $displayReceiptNumber ?? ($transaction->transaction_number ?? '-') }}</title>
     <style>
         body {
             margin: 0;
@@ -223,6 +223,21 @@
 
         $status = strtolower((string) ($transaction->status ?? 'completed'));
         $isVoid = $status === 'void';
+
+        $displayReceiptNumber = 'ATG-0001';
+
+        if (! empty($transaction->transaction_number)) {
+            $parts = explode('-', $transaction->transaction_number);
+            $lastPart = end($parts);
+
+            if (is_numeric($lastPart)) {
+                $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
+            }
+        }
+
+        $displayAmountPaid = in_array(strtolower((string) $transaction->payment_method), ['qris', 'transfer'], true)
+            ? (float) $transaction->grand_total
+            : (float) $transaction->amount_paid;
     @endphp
 
     <div class="page">
@@ -242,8 +257,8 @@
 
             <div class="meta">
                 <div class="meta-row">
-                    <div class="meta-label">No. Transaksi</div>
-                    <div class="meta-value">{{ $transaction->transaction_number }}</div>
+                    <div class="meta-label">No. Struk</div>
+                    <div class="meta-value">{{ $displayReceiptNumber }}</div>
                 </div>
 
                 <div class="meta-row">
@@ -331,11 +346,6 @@
                 </div>
 
                 <div class="total-row">
-                    <div class="total-label">Discount</div>
-                    <div class="total-value">Rp{{ number_format((float) $transaction->discount_amount, 0, ',', '.') }}</div>
-                </div>
-
-                <div class="total-row">
                     <div class="total-label">Tax</div>
                     <div class="total-value">Rp{{ number_format((float) $transaction->tax_amount, 0, ',', '.') }}</div>
                 </div>
@@ -347,7 +357,7 @@
 
                 <div class="total-row">
                     <div class="total-label">Amount Paid</div>
-                    <div class="total-value">Rp{{ number_format((float) $transaction->amount_paid, 0, ',', '.') }}</div>
+                    <div class="total-value">Rp{{ number_format((float) $displayAmountPaid, 0, ',', '.') }}</div>
                 </div>
 
                 <div class="total-row">
@@ -357,8 +367,7 @@
             </div>
 
             <div class="footer">
-                Terima kasih sudah berbelanja.<br>
-                Receipt dasar ini sudah siap dipakai untuk print sederhana.
+                Terima kasih sudah berbelanja.
             </div>
         </div>
     </div>
