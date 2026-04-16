@@ -23,6 +23,14 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .top-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
         }
 
         .title {
@@ -42,8 +50,17 @@
             cursor: pointer;
         }
 
-        .btn-success { background: #166534; }
-        .btn-secondary { background: #6b7280; }
+        .btn-success {
+            background: #166534;
+        }
+
+        .btn-secondary {
+            background: #6b7280;
+        }
+
+        .btn-primary {
+            background: #1d4ed8;
+        }
 
         .card {
             background: white;
@@ -68,7 +85,7 @@
 
         .filter-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto auto;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr auto auto auto;
             gap: 12px;
             align-items: end;
         }
@@ -123,12 +140,30 @@
             font-weight: bold;
         }
 
-        .badge-green { background: #e8fff1; color: #17663a; }
-        .badge-yellow { background: #fff7ed; color: #9a3412; }
-        .badge-blue { background: #eff6ff; color: #1d4ed8; }
+        .badge-green {
+            background: #e8fff1;
+            color: #17663a;
+        }
 
-        .qty-in { font-weight: bold; color: #166534; }
-        .qty-out { font-weight: bold; color: #b91c1c; }
+        .badge-yellow {
+            background: #fff7ed;
+            color: #9a3412;
+        }
+
+        .badge-blue {
+            background: #eff6ff;
+            color: #1d4ed8;
+        }
+
+        .qty-in {
+            font-weight: bold;
+            color: #166534;
+        }
+
+        .qty-out {
+            font-weight: bold;
+            color: #b91c1c;
+        }
 
         .note {
             margin-top: 20px;
@@ -149,7 +184,9 @@
         }
 
         @media (max-width: 1200px) {
-            .filter-grid { grid-template-columns: 1fr; }
+            .filter-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -157,7 +194,16 @@
 <div class="wrap">
     <div class="topbar">
         <div class="title">Back Office - Stock Movements</div>
-        <a href="{{ route('backoffice.index') }}" class="btn">Kembali</a>
+
+        <div class="top-actions">
+            <a
+                href="{{ route('backoffice.stock-movements.export.csv', request()->query()) }}"
+                class="btn btn-primary"
+            >
+                Export CSV
+            </a>
+            <a href="{{ route('backoffice.index') }}" class="btn">Kembali</a>
+        </div>
     </div>
 
     <div class="card">
@@ -194,6 +240,10 @@
                         <option value="stock_adjustment" @selected(($filters['movement_type'] ?? '') === 'stock_adjustment')>stock_adjustment</option>
                         <option value="sales_usage" @selected(($filters['movement_type'] ?? '') === 'sales_usage')>sales_usage</option>
                         <option value="sales_usage_warning" @selected(($filters['movement_type'] ?? '') === 'sales_usage_warning')>sales_usage_warning</option>
+                        <option value="transfer_cancel_return" @selected(($filters['movement_type'] ?? '') === 'transfer_cancel_return')>transfer_cancel_return</option>
+                        <option value="transfer_cancel_out" @selected(($filters['movement_type'] ?? '') === 'transfer_cancel_out')>transfer_cancel_out</option>
+                        <option value="transfer_out_reactivated" @selected(($filters['movement_type'] ?? '') === 'transfer_out_reactivated')>transfer_out_reactivated</option>
+                        <option value="transfer_in_reactivated" @selected(($filters['movement_type'] ?? '') === 'transfer_in_reactivated')>transfer_in_reactivated</option>
                     </select>
                 </div>
 
@@ -214,6 +264,7 @@
 
                 <button type="submit" class="btn btn-success">Apply Filter</button>
                 <a href="{{ route('backoffice.stock-movements.index') }}" class="btn btn-secondary">Reset</a>
+                <a href="{{ route('backoffice.stock-movements.export.csv', request()->query()) }}" class="btn btn-primary">Export CSV</a>
             </div>
         </form>
 
@@ -236,14 +287,14 @@
                     <tbody>
                     @foreach($stockMovements as $movement)
                         <tr>
-                            <td>{{ $movement->created_at }}</td>
+                            <td>{{ $movement->created_at?->format('Y-m-d H:i:s') }}</td>
                             <td>{{ $movement->ingredient->name ?? '-' }}</td>
-                            <td>{{ ucfirst($movement->location_type) }}</td>
+                            <td>{{ ucfirst($movement->location_type ?? '-') }}</td>
                             <td>{{ $movement->location_id }}</td>
                             <td>
-                                @if(in_array($movement->movement_type, ['stock_in', 'opening_balance', 'transfer_in', 'production_in']))
+                                @if(in_array($movement->movement_type, ['stock_in', 'opening_balance', 'transfer_in', 'production_in', 'transfer_cancel_return', 'transfer_in_reactivated']))
                                     <span class="badge badge-green">{{ $movement->movement_type }}</span>
-                                @elseif(in_array($movement->movement_type, ['transfer_out', 'production_out']))
+                                @elseif(in_array($movement->movement_type, ['transfer_out', 'production_out', 'transfer_cancel_out', 'transfer_out_reactivated']))
                                     <span class="badge badge-blue">{{ $movement->movement_type }}</span>
                                 @else
                                     <span class="badge badge-yellow">{{ $movement->movement_type }}</span>
@@ -265,7 +316,7 @@
         @endif
 
         <div class="note">
-            Batch 3 aktif: movement type produksi sekarang ikut terbaca di stock movements.
+            Stock movements sekarang sudah bisa di-export ke CSV sesuai filter aktif, jadi lebih gampang dipakai untuk audit dan pengecekan histori stok.
         </div>
     </div>
 </div>

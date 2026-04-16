@@ -7,10 +7,11 @@ use App\Models\Ingredient;
 use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StockMovementViewController extends Controller
 {
-    public function __invoke(Request $request)
+    protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role', 'outlet']);
 
@@ -25,8 +26,11 @@ class StockMovementViewController extends Controller
             abort(403, 'Role kamu tidak punya akses ke halaman Stock Movements.');
         }
 
-        $ingredients = Ingredient::orderBy('name')->get();
+        return $user;
+    }
 
+    protected function buildFilteredQuery(Request $request)
+    {
         $query = StockMovement::with(['ingredient'])
             ->orderByDesc('id');
 
@@ -47,7 +51,7 @@ class StockMovementViewController extends Controller
         }
 
         if ($request->filled('search')) {
-            $search = $request->search;
+            $search = trim($request->search);
 
             $query->where(function ($q) use ($search) {
                 $q->where('note', 'like', '%' . $search . '%')
@@ -55,7 +59,16 @@ class StockMovementViewController extends Controller
             });
         }
 
-        $stockMovements = $query->get();
+        return $query;
+    }
+
+    public function __invoke(Request $request)
+    {
+        $user = $this->authorizeAccess();
+
+        $ingredients = Ingredient::orderBy('name')->get();
+
+        $stockMovements = $this->buildFilteredQuery($request)->get();
 
         return view('backoffice.stock-movements.index', [
             'user' => $user,
@@ -69,5 +82,55 @@ class StockMovementViewController extends Controller
                 'search' => $request->search,
             ],
         ]);
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $this->authorizeAccess();
+
+        $filename = 'stock_movements_export_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        $stockMovements = $this->buildFilteredQuery($request)->get();
+
+        return response()->stream(function () use ($stockMovements) {
+            $handle = fopen('php://output', 'w');
+
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($handle, [
+                'date',
+                'ingredient_name',
+                'location_type',
+                'location_id',
+                'movement_type',
+                'qty_in',
+                'qty_out',
+                'reference_type',
+                'reference_id',
+                'note',
+            ]);
+
+            foreach ($stockMovements as $movement) {
+                fputcsv($handle, [
+                    $movement->created_at?->format('Y-m-d H:i:s'),
+                    $movement->ingredient->name ?? '',
+                    $movement->location_type,
+                    $movement->location_id,
+                    $movement->movement_type,
+                    (float) $movement->qty_in,
+                    (float) $movement->qty_out,
+                    $movement->reference_type,
+                    $movement->reference_id,
+                    $movement->note,
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
     }
 }
