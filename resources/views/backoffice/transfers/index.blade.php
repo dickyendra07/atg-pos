@@ -35,6 +35,7 @@
         .actions {
             display: flex;
             gap: 10px;
+            flex-wrap: wrap;
         }
 
         .btn {
@@ -66,6 +67,7 @@
         .btn-danger { background: #b91c1c; }
         .btn-info { background: #1d4ed8; }
         .btn-secondary { background: #475569; }
+        .btn-export { background: #2563eb; }
 
         .btn-small {
             min-height: 34px;
@@ -356,6 +358,7 @@
             <div class="title">Back Office - Transfers</div>
 
             <div class="actions">
+                <a href="{{ route('backoffice.transfers.export.csv', request()->query()) }}" class="btn btn-export">Export CSV</a>
                 <a href="{{ route('backoffice.transfers.create') }}" class="btn btn-primary">Buat Transfer</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Kembali</a>
             </div>

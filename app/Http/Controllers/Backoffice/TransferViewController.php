@@ -13,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransferViewController extends Controller
 {
@@ -287,6 +288,93 @@ class TransferViewController extends Controller
         ]);
     }
 
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $this->authorizeAccess();
+
+        $query = StockTransfer::with(['ingredient.category', 'transferredBy'])
+            ->latest();
+
+        if ($request->filled('from_location_type')) {
+            $query->where('from_location_type', $request->from_location_type);
+        }
+
+        if ($request->filled('to_location_type')) {
+            $query->where('to_location_type', $request->to_location_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $transfers = $query->get()->map(function ($transfer) {
+            $transfer->from_location_name = $this->getLocationName(
+                (string) $transfer->from_location_type,
+                (int) $transfer->from_location_id
+            );
+
+            $transfer->to_location_name = $this->getLocationName(
+                (string) $transfer->to_location_type,
+                (int) $transfer->to_location_id
+            );
+
+            return $transfer;
+        });
+
+        $filename = 'transfers_export_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        return response()->stream(function () use ($transfers) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'transfer_number',
+                'created_at',
+                'from_location_type',
+                'from_location_name',
+                'to_location_type',
+                'to_location_name',
+                'ingredient_category',
+                'ingredient_name',
+                'qty',
+                'status',
+                'sender_name',
+                'receiver_name',
+                'sent_at',
+                'received_at',
+                'input_by',
+                'note',
+            ]);
+
+            foreach ($transfers as $transfer) {
+                fputcsv($handle, [
+                    $transfer->transfer_number ?? '',
+                    $transfer->created_at?->format('Y-m-d H:i:s') ?? '',
+                    $transfer->from_location_type ?? '',
+                    $transfer->from_location_name ?? '',
+                    $transfer->to_location_type ?? '',
+                    $transfer->to_location_name ?? '',
+                    $transfer->ingredient->category->name ?? '',
+                    $transfer->ingredient->name ?? '',
+                    (float) $transfer->qty,
+                    $transfer->status ?? '',
+                    $transfer->sender_name ?? '',
+                    $transfer->receiver_name ?? '',
+                    $transfer->sent_at?->format('Y-m-d H:i:s') ?? '',
+                    $transfer->received_at?->format('Y-m-d H:i:s') ?? '',
+                    $transfer->transferredBy->name ?? '',
+                    $transfer->note ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
+    }
+
     public function create(Request $request)
     {
         $user = $this->authorizeAccess();
@@ -470,8 +558,6 @@ class TransferViewController extends Controller
                 : now();
 
             foreach ($items as $item) {
-                $ingredient = Ingredient::find($item['ingredient_id']);
-
                 $lockedSourceStock = StockBalance::where('location_type', $from['type'])
                     ->where('location_id', $from['id'])
                     ->where('ingredient_id', $item['ingredient_id'])

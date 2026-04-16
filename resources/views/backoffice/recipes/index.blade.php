@@ -60,6 +60,11 @@
             color: white;
         }
 
+        .btn-info {
+            background: #1d4ed8;
+            color: white;
+        }
+
         .btn-warning {
             background: #1d4ed8;
             color: white;
@@ -222,6 +227,7 @@
             <div class="title">Back Office - Recipes</div>
 
             <div class="top-actions">
+                <a href="{{ route('backoffice.recipes.export.csv') }}" class="btn btn-info">Export CSV</a>
                 <a href="{{ route('backoffice.recipes.import') }}" class="btn btn-primary">Import CSV</a>
                 <a href="{{ route('backoffice.recipes.create') }}" class="btn btn-success">Tambah Recipe</a>
                 <a href="{{ route('backoffice.index') }}" class="btn">Kembali</a>
@@ -323,7 +329,7 @@
             @endif
 
             <div class="note">
-                Batch 4 aktif: recipe jual sekarang sudah siap dibaca sebagai hybrid recipe, jadi bisa campur bahan mentah dan bahan setengah jadi dalam satu recipe.
+                Recipe sekarang sudah punya Import dan Export CSV supaya lebih gampang buat backup, review, dan cek susunan item recipe.
             </div>
         </div>
     </div>

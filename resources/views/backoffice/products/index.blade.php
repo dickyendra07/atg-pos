@@ -23,11 +23,14 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
         .top-actions {
             display: flex;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .title {
@@ -49,6 +52,16 @@
 
         .btn-success {
             background: #166534;
+            color: white;
+        }
+
+        .btn-primary {
+            background: #e86a3a;
+            color: white;
+        }
+
+        .btn-info {
+            background: #1d4ed8;
             color: white;
         }
 
@@ -98,6 +111,17 @@
             padding: 14px 16px;
             border-radius: 12px;
             font-weight: bold;
+        }
+
+        .error-list {
+            margin-top: 10px;
+            padding-left: 18px;
+            font-weight: normal;
+        }
+
+        .error-list li {
+            margin-bottom: 6px;
+            line-height: 1.5;
         }
 
         .table-wrap {
@@ -187,6 +211,8 @@
             <div class="title">Back Office - Products</div>
 
             <div class="top-actions">
+                <a href="{{ route('backoffice.products.export.csv') }}" class="btn btn-info">Export CSV</a>
+                <a href="{{ route('backoffice.products.import') }}" class="btn btn-primary">Import CSV</a>
                 <a href="{{ route('backoffice.products.create') }}" class="btn btn-success">Tambah Product</a>
                 <a href="{{ route('backoffice.index') }}" class="btn">Kembali</a>
             </div>
@@ -201,6 +227,17 @@
         @if(session('error'))
             <div class="error">
                 {{ session('error') }}
+            </div>
+        @endif
+
+        @if(session('import_errors') && count(session('import_errors')) > 0)
+            <div class="error">
+                Detail baris yang dilewati:
+                <ul class="error-list">
+                    @foreach(session('import_errors') as $importError)
+                        <li>{{ $importError }}</li>
+                    @endforeach
+                </ul>
             </div>
         @endif
 
@@ -271,7 +308,7 @@
             @endif
 
             <div class="note">
-                CRUD Products 1C aktif: sekarang back office sudah bisa hapus product, dengan pengaman kalau product masih punya variants.
+                Products sekarang sudah punya Export & Import CSV supaya setup data awal dan update massal lebih cepat.
             </div>
         </div>
     </div>
