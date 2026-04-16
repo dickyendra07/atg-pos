@@ -157,6 +157,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/backoffice/stock-balances/opname', [StockBalanceViewController::class, 'createOpname'])->name('backoffice.stock-balances.opname.create');
     Route::post('/backoffice/stock-balances/opname', [StockBalanceViewController::class, 'storeOpname'])->name('backoffice.stock-balances.opname.store');
 
+    Route::get('/backoffice/stock-movements/export/csv', [StockMovementViewController::class, 'exportCsv'])->name('backoffice.stock-movements.export.csv');
     Route::get('/backoffice/stock-movements', StockMovementViewController::class)->name('backoffice.stock-movements.index');
 
     Route::get('/backoffice/shifts', [CashierShiftViewController::class, 'index'])->name('backoffice.shifts.index');
