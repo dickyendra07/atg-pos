@@ -1,161 +1,280 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Recipes - Back Office ATG POS</title>
+@extends('backoffice.layouts.app')
+
+@php
+    $pageTitle = 'Recipes - Back Office ATG POS';
+@endphp
+
+@section('content')
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
-            color: #222;
+        .recipes-shell {
+            display: grid;
+            gap: 22px;
         }
 
-        .wrap {
-            max-width: 1400px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        .topbar {
+        .recipes-topbar {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
+            align-items: flex-start;
             gap: 16px;
             flex-wrap: wrap;
         }
 
-        .top-actions {
+        .recipes-title-block {
             display: flex;
-            gap: 12px;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .recipes-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid #f1e3da;
+            color: #c9552a;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        .recipes-title {
+            margin: 0;
+            font-size: 38px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: #111827;
+        }
+
+        .recipes-subtitle {
+            margin: 0;
+            max-width: 800px;
+            color: #6b7280;
+            font-size: 15px;
+            line-height: 1.9;
+        }
+
+        .recipes-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
-        .title {
-            font-size: 28px;
-            font-weight: bold;
-        }
-
         .btn {
-            text-decoration: none;
-            background: #111827;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: bold;
-            display: inline-block;
             border: 0;
             cursor: pointer;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 14px;
+            color: white;
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(15,23,42,0.10);
+            transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
-        .btn-success {
-            background: #166534;
-            color: white;
+        .btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.96;
         }
 
-        .btn-primary {
-            background: #e86a3a;
-            color: white;
+        .btn-dark {
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
         }
 
-        .btn-info {
-            background: #1d4ed8;
-            color: white;
+        .btn-green {
+            background: linear-gradient(135deg, #166534 0%, #1f7a44 100%);
         }
 
-        .btn-warning {
-            background: #1d4ed8;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
+        .btn-blue {
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+        }
+
+        .btn-orange {
+            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
+        }
+
+        .alert {
+            border-radius: 18px;
+            padding: 16px 18px;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.7;
+        }
+
+        .alert-success {
+            background: #e8fff1;
+            color: #17663a;
+            border: 1px solid #ccefd8;
+        }
+
+        .alert-error {
+            background: #fff1f1;
+            color: #b42318;
+            border: 1px solid #fecaca;
         }
 
         .card {
-            background: white;
-            border-radius: 18px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.06);
-            padding: 24px;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+            border-radius: 30px;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
         }
 
-        .info {
-            margin-bottom: 18px;
+        .card-head {
+            padding: 24px 24px 0;
+        }
+
+        .info-box {
             background: #f8fafc;
-            border-radius: 12px;
-            padding: 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 16px 18px;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #374151;
         }
 
-        .success {
-            margin-bottom: 18px;
-            background: #e8fff1;
-            color: #17663a;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
+        .summary-grid {
+            padding: 20px 24px 0;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
         }
 
-        .error {
-            margin-bottom: 18px;
-            background: #ffe8e8;
-            color: #9b1c1c;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
+        .summary-card {
+            border-radius: 22px;
+            padding: 20px;
+            border: 1px solid #e8edf4;
+            background: rgba(255,255,255,0.92);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+            min-height: 140px;
         }
 
-        .error-list {
-            margin-top: 10px;
-            padding-left: 18px;
-            font-weight: normal;
+        .summary-card.orange {
+            background: linear-gradient(180deg, #fff9f6 0%, #ffffff 100%);
+            border-color: #f4ddd0;
         }
 
-        .error-list li {
-            margin-bottom: 6px;
-            line-height: 1.5;
+        .summary-card.green {
+            background: linear-gradient(180deg, #f5fcf7 0%, #ffffff 100%);
+            border-color: #d8f0de;
+        }
+
+        .summary-card.blue {
+            background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+            border-color: #dbe7ff;
+        }
+
+        .summary-card.violet {
+            background: linear-gradient(180deg, #f8f7ff 0%, #ffffff 100%);
+            border-color: #e3deff;
+        }
+
+        .summary-label {
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+
+        .summary-value {
+            font-size: 36px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 12px;
+        }
+
+        .summary-card.orange .summary-value { color: #c9552a; }
+        .summary-card.green .summary-value { color: #166534; }
+        .summary-card.blue .summary-value { color: #1d4ed8; }
+        .summary-card.violet .summary-value { color: #5b4bd1; }
+
+        .summary-desc {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.7;
         }
 
         .table-wrap {
+            padding: 24px;
             overflow-x: auto;
-            margin-top: 20px;
         }
 
         table {
             width: 100%;
-            border-collapse: collapse;
             min-width: 1280px;
+            border-collapse: collapse;
+            background: white;
+            border: 1px solid #e8edf4;
+            border-radius: 22px;
+            overflow: hidden;
         }
 
-        th, td {
+        thead th {
             text-align: left;
-            padding: 14px 12px;
-            border-bottom: 1px solid #e5e7eb;
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 16px 14px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e8edf4;
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 16px 14px;
+            border-bottom: 1px solid #edf1f6;
             vertical-align: top;
+            font-size: 14px;
+            color: #111827;
         }
 
-        th {
-            background: #f9fafb;
-            font-size: 13px;
-            color: #555;
+        tbody tr:last-child td {
+            border-bottom: 0;
         }
 
-        .badge {
-            display: inline-block;
-            padding: 6px 10px;
+        .recipe-name {
+            font-weight: 800;
+            color: #111827;
+            font-size: 15px;
+        }
+
+        .item-pill {
+            display: inline-flex;
+            align-items: center;
+            background: #f8fafc;
+            color: #374151;
+            padding: 7px 10px;
             border-radius: 999px;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 800;
+            margin: 2px 6px 2px 0;
+            border: 1px solid #e5e7eb;
         }
 
-        .badge-active {
-            background: #e8fff1;
-            color: #17663a;
-        }
-
-        .badge-inactive {
-            background: #ffe8e8;
-            color: #9b1c1c;
+        .type-badge,
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 800;
+            white-space: nowrap;
+            margin: 2px 6px 2px 0;
         }
 
         .badge-raw {
@@ -168,86 +287,125 @@
             color: #3730a3;
         }
 
-        .item-pill {
-            display: inline-block;
-            background: #f8fafc;
-            color: #374151;
-            padding: 6px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: bold;
-            margin: 2px 6px 2px 0;
-            border: 1px solid #e5e7eb;
-        }
-
-        .note {
-            margin-top: 20px;
+        .status-active {
             background: #e8fff1;
             color: #17663a;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
+        }
+
+        .status-inactive {
+            background: #fff1f1;
+            color: #b42318;
+        }
+
+        .btn-small {
+            min-height: 34px;
+            padding: 8px 12px;
+            font-size: 12px;
+            border-radius: 10px;
+            box-shadow: none;
+            background: #2563eb;
+            color: white;
+        }
+
+        .error-list {
+            margin: 10px 0 0 18px;
+            padding: 0;
+            font-weight: 600;
+        }
+
+        .error-list li {
+            margin-bottom: 6px;
+            line-height: 1.5;
         }
 
         .empty {
-            padding: 16px;
+            margin: 24px;
+            padding: 18px;
             background: #fff7ed;
             color: #9a3412;
-            border-radius: 12px;
-            margin-top: 16px;
-            font-weight: bold;
+            border-radius: 16px;
+            font-weight: 700;
+            border: 1px solid #fed7aa;
         }
 
-        .action-cell {
-            white-space: nowrap;
+        .note {
+            margin: 0 24px 24px;
+            background: #eef2ff;
+            color: #3730a3;
+            padding: 16px 18px;
+            border-radius: 16px;
+            font-weight: 700;
+            border: 1px solid #dbe3ff;
+            line-height: 1.7;
         }
 
-        .recipe-item-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 6px;
+        @media (max-width: 1280px) {
+            .summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
         }
 
-        @media (max-width: 768px) {
-            .wrap {
-                margin: 24px auto;
-                padding: 0 14px;
+        @media (max-width: 780px) {
+            .recipes-topbar {
+                flex-direction: column;
+                align-items: flex-start;
             }
 
-            .title {
-                font-size: 24px;
+            .recipes-title {
+                font-size: 32px;
+            }
+
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .table-wrap,
+            .card-head,
+            .summary-grid {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .note,
+            .empty {
+                margin-left: 18px;
+                margin-right: 18px;
             }
         }
     </style>
-</head>
-<body>
-    <div class="wrap">
-        <div class="topbar">
-            <div class="title">Back Office - Recipes</div>
 
-            <div class="top-actions">
-                <a href="{{ route('backoffice.recipes.export.csv') }}" class="btn btn-info">Export CSV</a>
-                <a href="{{ route('backoffice.recipes.import') }}" class="btn btn-primary">Import CSV</a>
-                <a href="{{ route('backoffice.recipes.create') }}" class="btn btn-success">Tambah Recipe</a>
-                <a href="{{ route('backoffice.index') }}" class="btn">Kembali</a>
+    <div class="recipes-shell">
+        <div class="recipes-topbar">
+            <div class="recipes-title-block">
+                <div class="recipes-kicker">Recipes Workspace</div>
+                <h1 class="recipes-title">Back Office - Recipes</h1>
+                <p class="recipes-subtitle">
+                    Kelola recipe produk jual, susunan ingredient, import dan export CSV, serta cek bahan mentah dan bahan setengah jadi dalam satu tampilan yang konsisten dengan sidebar back office.
+                </p>
+            </div>
+
+            <div class="recipes-actions">
+                <a href="{{ route('backoffice.recipes.export.csv') }}" class="btn btn-blue">Export CSV</a>
+                <a href="{{ route('backoffice.recipes.import') }}" class="btn btn-orange">Import CSV</a>
+                <a href="{{ route('backoffice.recipes.create') }}" class="btn btn-green">Tambah Recipe</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
         @if(session('success'))
-            <div class="success">
+            <div class="alert alert-success">
                 {{ session('success') }}
             </div>
         @endif
 
         @if(session('error'))
-            <div class="error">
+            <div class="alert alert-error">
                 {{ session('error') }}
             </div>
         @endif
 
         @if(session('import_errors') && count(session('import_errors')) > 0)
-            <div class="error">
+            <div class="alert alert-error">
                 Detail baris yang dilewati:
                 <ul class="error-list">
                     @foreach(session('import_errors') as $importError)
@@ -258,10 +416,38 @@
         @endif
 
         <div class="card">
-            <div class="info">
-                <strong>User:</strong> {{ $user->name }}<br>
-                <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+            <div class="card-head">
+                <div class="info-box">
+                    <strong>User:</strong> {{ $user->name }}<br>
+                    <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
+                    <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                </div>
+            </div>
+
+            <div class="summary-grid">
+                <div class="summary-card orange">
+                    <div class="summary-label">Total Recipes</div>
+                    <div class="summary-value">{{ $recipes->count() }}</div>
+                    <div class="summary-desc">Jumlah seluruh recipe produk jual yang tersimpan di sistem.</div>
+                </div>
+
+                <div class="summary-card green">
+                    <div class="summary-label">Active Recipes</div>
+                    <div class="summary-value">{{ $recipes->where('is_active', true)->count() }}</div>
+                    <div class="summary-desc">Recipe aktif yang siap dipakai untuk deduction dan operasional.</div>
+                </div>
+
+                <div class="summary-card blue">
+                    <div class="summary-label">Total Recipe Items</div>
+                    <div class="summary-value">{{ $recipes->sum(fn($recipe) => $recipe->items->count()) }}</div>
+                    <div class="summary-desc">Jumlah seluruh item ingredient yang dipakai di semua recipe.</div>
+                </div>
+
+                <div class="summary-card violet">
+                    <div class="summary-label">Semi Finished Used</div>
+                    <div class="summary-value">{{ $recipes->flatMap->items->filter(fn($item) => $item->ingredient?->ingredient_type === \App\Models\Ingredient::TYPE_SEMI_FINISHED)->count() }}</div>
+                    <div class="summary-desc">Jumlah item recipe yang sudah memakai bahan setengah jadi.</div>
+                </div>
             </div>
 
             @if($recipes->count())
@@ -280,7 +466,9 @@
                         <tbody>
                             @foreach($recipes as $recipe)
                                 <tr>
-                                    <td><strong>{{ $recipe->name }}</strong></td>
+                                    <td>
+                                        <div class="recipe-name">{{ $recipe->name }}</div>
+                                    </td>
                                     <td>{{ $recipe->variant->product->name ?? '-' }}</td>
                                     <td>{{ $recipe->variant->name ?? '-' }}</td>
                                     <td>
@@ -290,7 +478,7 @@
                                                 $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
                                             @endphp
 
-                                            <div class="recipe-item-row">
+                                            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
                                                 <span class="item-pill">
                                                     {{ $item->ingredient->name ?? '-' }}
                                                     - {{ number_format((float) $item->qty, 2, ',', '.') }}
@@ -298,9 +486,9 @@
                                                 </span>
 
                                                 @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
-                                                    <span class="badge badge-semi">{{ $ingredientTypeLabel }}</span>
+                                                    <span class="type-badge badge-semi">{{ $ingredientTypeLabel }}</span>
                                                 @else
-                                                    <span class="badge badge-raw">{{ $ingredientTypeLabel }}</span>
+                                                    <span class="type-badge badge-raw">{{ $ingredientTypeLabel }}</span>
                                                 @endif
                                             </div>
                                         @empty
@@ -309,13 +497,13 @@
                                     </td>
                                     <td>
                                         @if($recipe->is_active)
-                                            <span class="badge badge-active">Active</span>
+                                            <span class="status-badge status-active">Active</span>
                                         @else
-                                            <span class="badge badge-inactive">Inactive</span>
+                                            <span class="status-badge status-inactive">Inactive</span>
                                         @endif
                                     </td>
-                                    <td class="action-cell">
-                                        <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn-warning">Edit</a>
+                                    <td>
+                                        <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small">Edit</a>
                                     </td>
                                 </tr>
                             @endforeach
@@ -329,9 +517,8 @@
             @endif
 
             <div class="note">
-                Recipe sekarang sudah punya Import dan Export CSV supaya lebih gampang buat backup, review, dan cek susunan item recipe.
+                Recipe sekarang sudah punya Import dan Export CSV supaya lebih gampang buat backup, review, dan cek susunan item recipe, sekaligus tetap konsisten dengan layout sidebar back office.
             </div>
         </div>
     </div>
-</body>
-</html>
+@endsection
