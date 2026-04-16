@@ -1,93 +1,83 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Variants - Back Office ATG POS</title>
+@extends('backoffice.layouts.app')
+
+@php
+    $pageTitle = 'Variants - Back Office ATG POS';
+@endphp
+
+@section('content')
     <style>
-        :root {
-            --bg: #f4f6fb;
-            --text: #111827;
-            --muted: #6b7280;
-            --border: #e5e7eb;
-            --navy: #111827;
-            --green: #166534;
-            --green-soft: #eefaf1;
-            --orange: #e86a3a;
-            --orange-soft: #fff5ef;
-            --blue: #2563eb;
-            --blue-soft: #eef4ff;
-            --red: #dc2626;
-            --red-soft: #fff1f1;
-            --surface: #ffffff;
-            --shadow: 0 12px 30px rgba(0,0,0,0.06);
+        .variants-shell {
+            display: grid;
+            gap: 22px;
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-        }
-
-        .wrap {
-            max-width: 1500px;
-            margin: 36px auto;
-            padding: 0 20px 40px;
-        }
-
-        .topbar {
+        .variants-topbar {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
             gap: 16px;
-            margin-bottom: 24px;
             flex-wrap: wrap;
         }
 
-        .title-block {
+        .variants-title-block {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 8px;
         }
 
-        .title {
-            font-size: 34px;
+        .variants-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid #e8ddff;
+            color: #5b4bd1;
+            font-size: 12px;
             font-weight: 800;
-            color: var(--text);
-            letter-spacing: -0.02em;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            width: fit-content;
         }
 
-        .subtitle {
-            font-size: 14px;
-            color: var(--muted);
-            line-height: 1.7;
-            max-width: 760px;
+        .variants-title {
+            margin: 0;
+            font-size: 38px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: #111827;
         }
 
-        .top-actions {
+        .variants-subtitle {
+            margin: 0;
+            max-width: 780px;
+            color: #6b7280;
+            font-size: 15px;
+            line-height: 1.9;
+        }
+
+        .variants-actions {
             display: flex;
+            align-items: center;
             gap: 10px;
             flex-wrap: wrap;
         }
 
         .btn {
-            text-decoration: none;
             border: 0;
             cursor: pointer;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 14px;
             color: white;
-            padding: 11px 16px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 42px;
+            box-shadow: 0 10px 20px rgba(15,23,42,0.10);
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
@@ -97,39 +87,27 @@
         }
 
         .btn-dark {
-            background: var(--navy);
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
         }
 
         .btn-green {
-            background: var(--green);
+            background: linear-gradient(135deg, #166534 0%, #1f7a44 100%);
         }
 
         .btn-blue {
-            background: var(--blue);
-        }
-
-        .btn-red {
-            background: var(--red);
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
         }
 
         .btn-orange {
-            background: var(--orange);
-        }
-
-        .card {
-            background: var(--surface);
-            border-radius: 22px;
-            box-shadow: var(--shadow);
-            padding: 24px;
+            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
         }
 
         .alert {
-            margin-bottom: 18px;
-            padding: 14px 16px;
-            border-radius: 14px;
+            border-radius: 18px;
+            padding: 16px 18px;
             font-size: 14px;
             font-weight: 700;
-            line-height: 1.6;
+            line-height: 1.7;
         }
 
         .alert-success {
@@ -144,106 +122,139 @@
             border: 1px solid #fecaca;
         }
 
-        .error-list {
-            margin-top: 10px;
-            padding-left: 18px;
-            font-weight: normal;
+        .card {
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+            border-radius: 30px;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
         }
 
-        .error-list li {
-            margin-bottom: 6px;
-            line-height: 1.5;
+        .card-head {
+            padding: 24px 24px 0;
+        }
+
+        .info-box {
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 16px 18px;
+            font-size: 14px;
+            line-height: 1.8;
+            color: #374151;
         }
 
         .summary-grid {
+            padding: 20px 24px 0;
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;
-            margin-bottom: 20px;
         }
 
         .summary-card {
-            border-radius: 18px;
-            padding: 18px;
-            border: 1px solid transparent;
+            border-radius: 22px;
+            padding: 20px;
+            border: 1px solid #e8edf4;
+            background: rgba(255,255,255,0.92);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+            min-height: 140px;
         }
 
-        .summary-orange {
-            background: var(--orange-soft);
-            border-color: #f8dbc9;
+        .summary-card.orange {
+            background: linear-gradient(180deg, #fff9f6 0%, #ffffff 100%);
+            border-color: #f4ddd0;
         }
 
-        .summary-green {
-            background: #f3fff7;
-            border-color: #d5efdf;
+        .summary-card.green {
+            background: linear-gradient(180deg, #f5fcf7 0%, #ffffff 100%);
+            border-color: #d8f0de;
         }
 
-        .summary-blue {
-            background: var(--blue-soft);
-            border-color: #dbe5ff;
+        .summary-card.blue {
+            background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+            border-color: #dbe7ff;
         }
 
-        .summary-dark {
-            background: #f8fafc;
-            border-color: #e5e7eb;
+        .summary-card.violet {
+            background: linear-gradient(180deg, #f8f7ff 0%, #ffffff 100%);
+            border-color: #e3deff;
         }
 
         .summary-label {
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: var(--muted);
-            margin-bottom: 10px;
+            letter-spacing: 0.08em;
+            color: #6b7280;
+            margin-bottom: 16px;
         }
 
         .summary-value {
-            font-size: 30px;
+            font-size: 36px;
             font-weight: 800;
             line-height: 1;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
+
+        .summary-card.orange .summary-value { color: #c9552a; }
+        .summary-card.green .summary-value { color: #166534; }
+        .summary-card.blue .summary-value { color: #1d4ed8; }
+        .summary-card.violet .summary-value { color: #5b4bd1; }
 
         .summary-desc {
             font-size: 13px;
-            line-height: 1.6;
-            color: var(--muted);
+            color: #6b7280;
+            line-height: 1.7;
         }
 
         .table-wrap {
+            padding: 24px;
             overflow-x: auto;
-            border: 1px solid var(--border);
-            border-radius: 18px;
-            margin-top: 6px;
         }
 
         table {
             width: 100%;
+            min-width: 1380px;
             border-collapse: collapse;
-            min-width: 1400px;
             background: white;
+            border: 1px solid #e8edf4;
+            border-radius: 22px;
+            overflow: hidden;
         }
 
-        th, td {
+        thead th {
             text-align: left;
-            padding: 15px 14px;
-            border-bottom: 1px solid var(--border);
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 16px 14px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e8edf4;
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 16px 14px;
+            border-bottom: 1px solid #edf1f6;
             vertical-align: top;
             font-size: 14px;
+            color: #111827;
         }
 
-        th {
-            background: #f9fafb;
-            font-size: 12px;
-            color: var(--muted);
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
+        tbody tr:last-child td {
+            border-bottom: 0;
         }
 
         .variant-name {
             font-weight: 800;
-            color: var(--text);
+            color: #111827;
+            font-size: 15px;
+        }
+
+        .product-line {
+            font-weight: 700;
+            color: #111827;
         }
 
         .code-pill {
@@ -257,19 +268,20 @@
             font-weight: 800;
         }
 
-        .money {
+        .price-text {
             font-weight: 800;
-            color: var(--blue);
+            color: #1d4ed8;
             white-space: nowrap;
         }
 
-        .status-pill {
+        .status-badge {
             display: inline-flex;
             align-items: center;
-            padding: 7px 11px;
+            padding: 8px 12px;
             border-radius: 999px;
             font-size: 12px;
             font-weight: 800;
+            white-space: nowrap;
         }
 
         .status-active {
@@ -286,7 +298,7 @@
             display: flex;
             gap: 8px;
             flex-wrap: wrap;
-            min-width: 160px;
+            min-width: 150px;
         }
 
         .btn-small {
@@ -294,6 +306,17 @@
             padding: 8px 12px;
             font-size: 12px;
             border-radius: 10px;
+            box-shadow: none;
+        }
+
+        .btn-small-blue {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-small-red {
+            background: #dc2626;
+            color: white;
         }
 
         .inline-form {
@@ -302,118 +325,131 @@
         }
 
         .empty {
-            padding: 16px;
+            margin: 24px;
+            padding: 18px;
             background: #fff7ed;
             color: #9a3412;
-            border-radius: 12px;
-            margin-top: 16px;
+            border-radius: 16px;
             font-weight: 700;
             border: 1px solid #fed7aa;
         }
 
         .note {
-            margin-top: 20px;
-            background: #eef2ff;
-            color: #3730a3;
-            padding: 14px 16px;
-            border-radius: 12px;
+            margin: 0 24px 24px;
+            background: #f4f3ff;
+            color: #4338ca;
+            padding: 16px 18px;
+            border-radius: 16px;
             font-weight: 700;
-            border: 1px solid #dbe3ff;
+            border: 1px solid #ddd6fe;
             line-height: 1.7;
         }
 
-        @media (max-width: 1100px) {
+        @media (max-width: 1280px) {
             .summary-grid {
                 grid-template-columns: 1fr 1fr;
             }
         }
 
-        @media (max-width: 760px) {
-            .topbar {
+        @media (max-width: 780px) {
+            .variants-topbar {
                 flex-direction: column;
-                align-items: stretch;
+                align-items: flex-start;
             }
 
-            .top-actions {
-                flex-wrap: wrap;
+            .variants-title {
+                font-size: 32px;
             }
 
             .summary-grid {
                 grid-template-columns: 1fr;
             }
 
-            .title {
-                font-size: 28px;
+            .table-wrap,
+            .card-head,
+            .summary-grid {
+                padding-left: 18px;
+                padding-right: 18px;
             }
 
-            .wrap {
-                padding: 0 14px 28px;
-            }
-
-            .card {
-                padding: 18px;
+            .note,
+            .empty {
+                margin-left: 18px;
+                margin-right: 18px;
             }
         }
     </style>
-</head>
-<body>
-    <div class="wrap">
-        <div class="topbar">
-            <div class="title-block">
-                <div class="title">Back Office - Variants</div>
-                <div class="subtitle">
-                    Kelola variant produk dan siapkan harga <strong>dine in</strong> serta <strong>delivery</strong> dalam satu halaman tanpa kolom harga lama yang dobel.
-                </div>
+
+    <div class="variants-shell">
+        <div class="variants-topbar">
+            <div class="variants-title-block">
+                <div class="variants-kicker">Variants Workspace</div>
+                <h1 class="variants-title">Back Office - Variants</h1>
+                <p class="variants-subtitle">
+                    Kelola variant product, harga dine in dan delivery, status aktif, serta akses import dan export CSV dalam tampilan yang konsisten dengan sidebar back office.
+                </p>
             </div>
 
-            <div class="top-actions">
+            <div class="variants-actions">
                 <a href="{{ route('backoffice.variants.export.csv') }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.variants.import') }}" class="btn btn-orange">Import CSV</a>
                 <a href="{{ route('backoffice.variants.create') }}" class="btn btn-green">Tambah Variant</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Kembali</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        <div class="card">
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
 
-            @if(session('error'))
-                <div class="alert alert-error">{{ session('error') }}</div>
-            @endif
+        @if(session('error'))
+            <div class="alert alert-error">
+                {{ session('error') }}
+            </div>
+        @endif
 
-            @if(session('import_errors') && count(session('import_errors')) > 0)
-                <div class="alert alert-error">
-                    Detail baris yang dilewati:
-                    <ul class="error-list">
-                        @foreach(session('import_errors') as $importError)
-                            <li>{{ $importError }}</li>
-                        @endforeach
-                    </ul>
+        @if(session('import_errors') && count(session('import_errors')) > 0)
+            <div class="alert alert-error">
+                Detail baris yang dilewati:
+                <div style="margin-top:10px; font-weight:600;">
+                    @foreach(session('import_errors') as $importError)
+                        <div style="margin-bottom:6px;">• {{ $importError }}</div>
+                    @endforeach
                 </div>
-            @endif
+            </div>
+        @endif
+
+        <div class="card">
+            <div class="card-head">
+                <div class="info-box">
+                    <strong>User:</strong> {{ $user->name }}<br>
+                    <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
+                    <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                </div>
+            </div>
 
             <div class="summary-grid">
-                <div class="summary-card summary-orange">
+                <div class="summary-card orange">
                     <div class="summary-label">Total Variants</div>
                     <div class="summary-value">{{ $variants->count() }}</div>
                     <div class="summary-desc">Jumlah seluruh variant yang terdaftar di sistem.</div>
                 </div>
 
-                <div class="summary-card summary-green">
+                <div class="summary-card green">
                     <div class="summary-label">Active Variants</div>
                     <div class="summary-value">{{ $variants->where('is_active', true)->count() }}</div>
-                    <div class="summary-desc">Variant aktif yang siap dijual di cashier.</div>
+                    <div class="summary-desc">Variant aktif yang siap dipakai di cashier dan operasional.</div>
                 </div>
 
-                <div class="summary-card summary-blue">
+                <div class="summary-card blue">
                     <div class="summary-label">Delivery Ready</div>
                     <div class="summary-value">{{ $variants->filter(fn($v) => !is_null($v->price_delivery))->count() }}</div>
                     <div class="summary-desc">Variant yang sudah punya harga delivery.</div>
                 </div>
 
-                <div class="summary-card summary-dark">
+                <div class="summary-card violet">
                     <div class="summary-label">Dine In Ready</div>
                     <div class="summary-value">{{ $variants->filter(fn($v) => !is_null($v->price_dine_in))->count() }}</div>
                     <div class="summary-desc">Variant yang sudah punya harga dine in.</div>
@@ -441,28 +477,36 @@
                                 <tr>
                                     <td>{{ $variant->product->brand->name ?? '-' }}</td>
                                     <td>{{ $variant->product->category->name ?? '-' }}</td>
-                                    <td>{{ $variant->product->name ?? '-' }}</td>
-                                    <td class="variant-name">{{ $variant->name ?? '-' }}</td>
+                                    <td>
+                                        <div class="product-line">{{ $variant->product->name ?? '-' }}</div>
+                                    </td>
+                                    <td>
+                                        <div class="variant-name">{{ $variant->name ?? '-' }}</div>
+                                    </td>
                                     <td>
                                         <span class="code-pill">{{ $variant->code ?? '-' }}</span>
                                     </td>
-                                    <td class="money">Rp{{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}</td>
-                                    <td class="money">Rp{{ number_format((float) ($variant->price_delivery ?? $variant->price ?? 0), 0, ',', '.') }}</td>
+                                    <td class="price-text">
+                                        Rp{{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}
+                                    </td>
+                                    <td class="price-text">
+                                        Rp{{ number_format((float) ($variant->price_delivery ?? $variant->price ?? 0), 0, ',', '.') }}
+                                    </td>
                                     <td>
                                         @if($variant->is_active)
-                                            <span class="status-pill status-active">Active</span>
+                                            <span class="status-badge status-active">Active</span>
                                         @else
-                                            <span class="status-pill status-inactive">Inactive</span>
+                                            <span class="status-badge status-inactive">Inactive</span>
                                         @endif
                                     </td>
                                     <td>
                                         <div class="action-stack">
-                                            <a href="{{ route('backoffice.variants.edit', $variant->id) }}" class="btn btn-blue btn-small">Edit</a>
+                                            <a href="{{ route('backoffice.variants.edit', $variant->id) }}" class="btn btn-small btn-small-blue">Edit</a>
 
                                             <form method="POST" action="{{ route('backoffice.variants.destroy', $variant->id) }}" class="inline-form" onsubmit="return confirm('Yakin hapus variant ini?');">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-red btn-small">Hapus</button>
+                                                <button type="submit" class="btn btn-small btn-small-red">Hapus</button>
                                             </form>
                                         </div>
                                     </td>
@@ -478,9 +522,8 @@
             @endif
 
             <div class="note">
-                Variants sekarang sudah punya Export & Import CSV. Tampilan tetap fokus ke <strong>harga dine in</strong> dan <strong>harga delivery</strong>.
+                Variants sekarang sudah terhubung dengan sidebar back office dan tetap mempertahankan fitur penting seperti import CSV, export CSV, harga dine in, harga delivery, edit, dan hapus dengan pengaman data operasional.
             </div>
         </div>
     </div>
-</body>
-</html>
+@endsection

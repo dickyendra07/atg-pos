@@ -1,160 +1,137 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ingredients - Back Office ATG POS</title>
+@extends('backoffice.layouts.app')
+
+@php
+    $pageTitle = 'Ingredients - Back Office ATG POS';
+@endphp
+
+@section('content')
     <style>
-        :root {
-            --bg: #f3f6fb;
-            --surface: #ffffff;
-            --surface-soft: #f8fafc;
-            --text: #111827;
-            --muted: #6b7280;
-            --border: #e5e7eb;
-            --brand: #e86a3a;
-            --brand-dark: #c9552a;
-            --green: #166534;
-            --green-soft: #e8fff1;
-            --blue: #2563eb;
-            --blue-soft: #eff6ff;
-            --red: #dc2626;
-            --red-soft: #ffe8e8;
-            --shadow: 0 18px 38px rgba(15, 23, 42, 0.08);
-            --navy: #0f172a;
-            --navy-soft: #eef2ff;
-            --orange-soft: #fff7ed;
-            --orange-text: #c2410c;
-            --orange-border: #fed7aa;
+        .ingredients-shell {
+            display: grid;
+            gap: 22px;
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: linear-gradient(180deg, #f7f9fc 0%, #eef3f8 100%);
-            color: var(--text);
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 24px;
-        }
-
-        .shell {
-            max-width: 1440px;
-            margin: 0 auto;
-            background: rgba(255,255,255,0.62);
-            border: 1px solid rgba(255,255,255,0.9);
-            border-radius: 30px;
-            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
-            backdrop-filter: blur(10px);
-            overflow: hidden;
-        }
-
-        .topbar {
+        .ingredients-topbar {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 18px;
-            padding: 28px 28px 0;
+            gap: 16px;
+            flex-wrap: wrap;
         }
 
-        .title-wrap {
-            max-width: 760px;
-        }
-
-        .title {
-            margin: 0;
-            font-size: 30px;
-            font-weight: 800;
-            color: #111827;
-            letter-spacing: -0.03em;
-        }
-
-        .subtitle {
-            margin-top: 10px;
-            color: var(--muted);
-            font-size: 14px;
-            line-height: 1.8;
-        }
-
-        .actions {
+        .ingredients-title-block {
             display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .ingredients-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid #d8f0de;
+            color: #166534;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        .ingredients-title {
+            margin: 0;
+            font-size: 38px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: #111827;
+        }
+
+        .ingredients-subtitle {
+            margin: 0;
+            max-width: 780px;
+            color: #6b7280;
+            font-size: 15px;
+            line-height: 1.9;
+        }
+
+        .ingredients-actions {
+            display: flex;
+            align-items: center;
             gap: 10px;
             flex-wrap: wrap;
         }
 
         .btn {
-            text-decoration: none;
             border: 0;
             cursor: pointer;
-            color: white;
-            padding: 11px 16px;
+            min-height: 42px;
+            padding: 0 16px;
             border-radius: 14px;
+            color: white;
+            font-size: 13px;
             font-weight: 800;
-            font-size: 14px;
+            text-decoration: none;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 44px;
-            box-shadow: 0 10px 22px rgba(15,23,42,0.10);
+            box-shadow: 0 10px 20px rgba(15,23,42,0.10);
             transition: transform 0.15s ease, opacity 0.15s ease;
         }
 
         .btn:hover {
             transform: translateY(-1px);
-            opacity: 0.97;
-        }
-
-        .btn-import {
-            background: linear-gradient(135deg, #166534 0%, #1f7a44 100%);
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
+            opacity: 0.96;
         }
 
         .btn-dark {
             background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
         }
 
-        .content {
-            padding: 22px 28px 30px;
+        .btn-green {
+            background: linear-gradient(135deg, #166534 0%, #1f7a44 100%);
+        }
+
+        .btn-orange {
+            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
         }
 
         .alert {
-            margin-bottom: 18px;
-            border-radius: 16px;
-            padding: 15px 18px;
+            border-radius: 18px;
+            padding: 16px 18px;
             font-size: 14px;
+            font-weight: 700;
             line-height: 1.7;
-            border: 1px solid transparent;
         }
 
         .alert-success {
             background: #e8fff1;
             color: #17663a;
-            border-color: #ccefd8;
-            font-weight: 700;
+            border: 1px solid #ccefd8;
         }
 
         .alert-error {
-            background: #ffe8e8;
-            color: #9b1c1c;
-            border-color: #fecaca;
-            font-weight: 700;
+            background: #fff1f1;
+            color: #b42318;
+            border: 1px solid #fecaca;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+            border-radius: 30px;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
         }
 
         .hero-card {
-            background: linear-gradient(135deg, #ffffff 0%, #fff9f5 70%, #fff1ea 100%);
-            border: 1px solid #f0e1d8;
+            margin: 24px 24px 0;
+            background: linear-gradient(135deg, #ffffff 0%, #f7fcf8 65%, #eefaf1 100%);
+            border: 1px solid #d8f0de;
             border-radius: 28px;
             padding: 24px;
-            margin-bottom: 22px;
             position: relative;
             overflow: hidden;
         }
@@ -167,7 +144,7 @@
             width: 180px;
             height: 180px;
             border-radius: 999px;
-            background: radial-gradient(circle, rgba(232,106,58,0.14) 0%, rgba(232,106,58,0.03) 65%, rgba(232,106,58,0) 80%);
+            background: radial-gradient(circle, rgba(22,101,52,0.12) 0%, rgba(22,101,52,0.03) 65%, rgba(22,101,52,0) 80%);
             pointer-events: none;
         }
 
@@ -177,8 +154,8 @@
             padding: 8px 12px;
             border-radius: 999px;
             background: rgba(255,255,255,0.84);
-            border: 1px solid #f2dfd4;
-            color: var(--brand-dark);
+            border: 1px solid #d8f0de;
+            color: #166534;
             font-size: 12px;
             font-weight: 800;
             letter-spacing: 0.06em;
@@ -196,11 +173,12 @@
             letter-spacing: -0.03em;
             position: relative;
             z-index: 1;
+            color: #111827;
         }
 
         .hero-text {
             margin: 0;
-            color: var(--muted);
+            color: #6b7280;
             font-size: 14px;
             line-height: 1.8;
             max-width: 760px;
@@ -209,12 +187,12 @@
         }
 
         .filter-card {
+            margin: 20px 24px 0;
             background: rgba(255,255,255,0.94);
             border: 1px solid #e8edf4;
             border-radius: 22px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
             padding: 18px;
-            margin-bottom: 22px;
         }
 
         .filter-form {
@@ -247,15 +225,16 @@
         }
 
         .field select:focus {
-            border-color: rgba(232,106,58,0.75);
-            box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
+            border-color: rgba(22,101,52,0.65);
+            box-shadow: 0 0 0 4px rgba(22,101,52,0.10);
         }
 
         .table-card {
+            margin: 20px 24px 24px;
             background: rgba(255,255,255,0.94);
             border: 1px solid #e8edf4;
             border-radius: 26px;
-            box-shadow: var(--shadow);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
             overflow: hidden;
         }
 
@@ -273,7 +252,7 @@
 
         .table-subtitle {
             margin: 0 0 18px;
-            color: var(--muted);
+            color: #6b7280;
             font-size: 14px;
             line-height: 1.8;
         }
@@ -287,7 +266,7 @@
             width: 100%;
             min-width: 1120px;
             border-collapse: collapse;
-            background: var(--surface);
+            background: white;
             border: 1px solid #e8edf4;
             border-radius: 18px;
             overflow: hidden;
@@ -324,8 +303,7 @@
         }
 
         .category-text,
-        .unit-text,
-        .muted-text {
+        .unit-text {
             color: #4b5563;
         }
 
@@ -346,7 +324,7 @@
         }
 
         .status-active {
-            background: var(--green-soft);
+            background: #e8fff1;
             color: #17663a;
         }
 
@@ -356,14 +334,14 @@
         }
 
         .type-raw {
-            background: var(--navy-soft);
-            color: var(--navy);
+            background: #eef2ff;
+            color: #0f172a;
         }
 
         .type-semi {
-            background: var(--orange-soft);
-            color: var(--orange-text);
-            border: 1px solid var(--orange-border);
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
         }
 
         .action-row {
@@ -385,6 +363,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            box-shadow: none;
         }
 
         .btn-edit {
@@ -421,177 +400,173 @@
         }
 
         @media (max-width: 900px) {
-            .topbar {
+            .ingredients-topbar {
                 flex-direction: column;
                 align-items: flex-start;
-            }
-
-            .actions {
-                width: 100%;
             }
 
             .filter-form {
                 grid-template-columns: 1fr;
             }
 
-            .page {
-                padding: 14px;
+            .ingredients-title {
+                font-size: 32px;
             }
+        }
 
-            .topbar,
-            .content {
-                padding-left: 18px;
-                padding-right: 18px;
-            }
-
+        @media (max-width: 780px) {
             .hero-heading {
                 font-size: 28px;
             }
+
+            .hero-card,
+            .filter-card,
+            .table-card {
+                margin-left: 18px;
+                margin-right: 18px;
+            }
         }
     </style>
-</head>
-<body>
-    <div class="page">
-        <div class="shell">
-            <div class="topbar">
-                <div class="title-wrap">
-                    <h1 class="title">Back Office · Ingredients</h1>
-                    <div class="subtitle">
-                        Kelola seluruh bahan baku operasional dalam satu halaman yang lebih rapi, bersih, dan mudah dicek sebelum dipakai ke inventory, recipe, dan transfer.
-                    </div>
-                </div>
 
-                <div class="actions">
-                    <a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-import">Import CSV</a>
-                    <a href="{{ route('backoffice.ingredients.create') }}" class="btn btn-primary">Tambah Ingredient</a>
-                    <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Kembali</a>
-                </div>
+    <div class="ingredients-shell">
+        <div class="ingredients-topbar">
+            <div class="ingredients-title-block">
+                <div class="ingredients-kicker">Ingredients Workspace</div>
+                <h1 class="ingredients-title">Back Office - Ingredients</h1>
+                <p class="ingredients-subtitle">
+                    Kelola seluruh bahan baku operasional dalam satu halaman yang lebih rapi, bersih, dan mudah dicek sebelum dipakai ke inventory, recipe, dan transfer.
+                </p>
             </div>
 
-            <div class="content">
-                @if(session('success'))
-                    <div class="alert alert-success">
-                        {{ session('success') }}
-                    </div>
-                @endif
+            <div class="ingredients-actions">
+                <a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-green">Import CSV</a>
+                <a href="{{ route('backoffice.ingredients.create') }}" class="btn btn-orange">Tambah Ingredient</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+            </div>
+        </div>
 
-                @if(session('error'))
-                    <div class="alert alert-error">
-                        {{ session('error') }}
-                    </div>
-                @endif
+        @if(session('success'))
+            <div class="alert alert-success">
+                {{ session('success') }}
+            </div>
+        @endif
 
-                @if(session('import_errors') && count(session('import_errors')))
-                    <div class="alert alert-error">
-                        <div style="margin-bottom:8px;">Detail baris yang dilewati:</div>
-                        <ul style="margin:0 0 0 18px; padding:0;">
-                            @foreach(session('import_errors') as $error)
-                                <li style="margin-bottom:6px;">{{ $error }}</li>
+        @if(session('error'))
+            <div class="alert alert-error">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        @if(session('import_errors') && count(session('import_errors')))
+            <div class="alert alert-error">
+                <div style="margin-bottom:8px;">Detail baris yang dilewati:</div>
+                <ul style="margin:0 0 0 18px; padding:0;">
+                    @foreach(session('import_errors') as $error)
+                        <li style="margin-bottom:6px;">{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </div>
+        @endif
+
+        <div class="card">
+            <div class="hero-card">
+                <div class="hero-kicker">Ingredients Master</div>
+                <h2 class="hero-heading">Raw material list yang siap dipakai ke seluruh flow operasional.</h2>
+                <p class="hero-text">
+                    Semua bahan yang ada di halaman ini bisa dipakai untuk stock in, adjustment, transfer, recipe, dan summary inventory. Sekarang ingredient juga sudah bisa dibedakan antara bahan mentah dan bahan setengah jadi.
+                </p>
+            </div>
+
+            <div class="filter-card">
+                <form method="GET" action="{{ route('backoffice.ingredients.index') }}" class="filter-form">
+                    <div class="field">
+                        <label>Tipe Bahan</label>
+                        <select name="ingredient_type">
+                            <option value="">Semua tipe bahan</option>
+                            @foreach($ingredientTypeOptions as $typeValue => $typeLabel)
+                                <option value="{{ $typeValue }}" @selected($selectedIngredientType === $typeValue)>
+                                    {{ $typeLabel }}
+                                </option>
                             @endforeach
-                        </ul>
+                        </select>
                     </div>
-                @endif
 
-                <div class="hero-card">
-                    <div class="hero-kicker">Ingredients Master</div>
-                    <h2 class="hero-heading">Raw material list yang siap dipakai ke seluruh flow operasional.</h2>
-                    <p class="hero-text">
-                        Semua bahan yang ada di halaman ini bisa dipakai untuk stock in, adjustment, transfer, recipe, dan summary inventory. Sekarang ingredient juga sudah bisa dibedakan antara bahan mentah dan bahan setengah jadi.
+                    <button type="submit" class="btn btn-orange">Apply Filter</button>
+                    <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Reset</a>
+                </form>
+            </div>
+
+            <div class="table-card">
+                <div class="table-head">
+                    <h2 class="table-title">All Ingredients</h2>
+                    <p class="table-subtitle">
+                        Lihat kategori, tipe bahan, unit, minimum stock, harga dasar, dan status aktif setiap ingredient dalam satu tabel yang lebih enak dibaca.
                     </p>
                 </div>
 
-                <div class="filter-card">
-                    <form method="GET" action="{{ route('backoffice.ingredients.index') }}" class="filter-form">
-                        <div class="field">
-                            <label>Tipe Bahan</label>
-                            <select name="ingredient_type">
-                                <option value="">Semua tipe bahan</option>
-                                @foreach($ingredientTypeOptions as $typeValue => $typeLabel)
-                                    <option value="{{ $typeValue }}" @selected($selectedIngredientType === $typeValue)>
-                                        {{ $typeLabel }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-
-                        <button type="submit" class="btn btn-primary">Apply Filter</button>
-                        <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Reset</a>
-                    </form>
-                </div>
-
-                <div class="table-card">
-                    <div class="table-head">
-                        <h2 class="table-title">All Ingredients</h2>
-                        <p class="table-subtitle">
-                            Lihat kategori, tipe bahan, unit, minimum stock, harga dasar, dan status aktif setiap ingredient dalam satu tabel yang lebih enak dibaca.
-                        </p>
-                    </div>
-
-                    @if($ingredients->count())
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
+                @if($ingredients->count())
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Category</th>
+                                    <th>Name</th>
+                                    <th>Type</th>
+                                    <th>Unit</th>
+                                    <th>Minimum Stock</th>
+                                    <th>Cost per Unit</th>
+                                    <th>Status</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($ingredients as $ingredient)
                                     <tr>
-                                        <th>Category</th>
-                                        <th>Name</th>
-                                        <th>Type</th>
-                                        <th>Unit</th>
-                                        <th>Minimum Stock</th>
-                                        <th>Cost per Unit</th>
-                                        <th>Status</th>
-                                        <th>Action</th>
+                                        <td class="category-text">{{ $ingredient->category->name ?? '-' }}</td>
+                                        <td class="ingredient-name">{{ $ingredient->name }}</td>
+                                        <td>
+                                            @if($ingredient->ingredient_type === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
+                                                <span class="type-badge type-semi">Setengah Jadi</span>
+                                            @else
+                                                <span class="type-badge type-raw">Mentah</span>
+                                            @endif
+                                        </td>
+                                        <td class="unit-text">{{ $ingredient->unit }}</td>
+                                        <td class="number-text">{{ number_format((float) $ingredient->minimum_stock, 0, ',', '.') }}</td>
+                                        <td class="number-text">{{ number_format((float) $ingredient->cost_per_unit, 0, ',', '.') }}</td>
+                                        <td>
+                                            @if($ingredient->is_active)
+                                                <span class="status-badge status-active">Active</span>
+                                            @else
+                                                <span class="status-badge status-inactive">Inactive</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            <div class="action-row">
+                                                <a href="{{ route('backoffice.ingredients.edit', $ingredient) }}" class="btn-small btn-edit">Edit</a>
+
+                                                <form method="POST" action="{{ route('backoffice.ingredients.destroy', $ingredient) }}" class="delete-form" onsubmit="return confirm('Yakin hapus ingredient ini?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn-small btn-delete">Hapus</button>
+                                                </form>
+                                            </div>
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($ingredients as $ingredient)
-                                        <tr>
-                                            <td class="category-text">{{ $ingredient->category->name ?? '-' }}</td>
-                                            <td class="ingredient-name">{{ $ingredient->name }}</td>
-                                            <td>
-                                                @if($ingredient->ingredient_type === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
-                                                    <span class="type-badge type-semi">Setengah Jadi</span>
-                                                @else
-                                                    <span class="type-badge type-raw">Mentah</span>
-                                                @endif
-                                            </td>
-                                            <td class="unit-text">{{ $ingredient->unit }}</td>
-                                            <td class="number-text">{{ number_format((float) $ingredient->minimum_stock, 0, ',', '.') }}</td>
-                                            <td class="number-text">{{ number_format((float) $ingredient->cost_per_unit, 0, ',', '.') }}</td>
-                                            <td>
-                                                @if($ingredient->is_active)
-                                                    <span class="status-badge status-active">Active</span>
-                                                @else
-                                                    <span class="status-badge status-inactive">Inactive</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <div class="action-row">
-                                                    <a href="{{ route('backoffice.ingredients.edit', $ingredient) }}" class="btn-small btn-edit">Edit</a>
-
-                                                    <form method="POST" action="{{ route('backoffice.ingredients.destroy', $ingredient) }}" class="delete-form" onsubmit="return confirm('Yakin hapus ingredient ini?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn-small btn-delete">Hapus</button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
-                    @else
-                        <div class="empty">
-                            Belum ada ingredient tersimpan.
-                        </div>
-                    @endif
-
-                    <div class="note">
-                        Batch 1 aktif: ingredient sekarang sudah dibedakan antara bahan mentah dan bahan setengah jadi sebagai fondasi sebelum masuk flow produksi internal.
+                                @endforeach
+                            </tbody>
+                        </table>
                     </div>
+                @else
+                    <div class="empty">
+                        Belum ada ingredient tersimpan.
+                    </div>
+                @endif
+
+                <div class="note">
+                    Batch 1 aktif: ingredient sekarang sudah dibedakan antara bahan mentah dan bahan setengah jadi sebagai fondasi sebelum masuk flow produksi internal.
                 </div>
             </div>
         </div>
     </div>
-</body>
-</html>
+@endsection
