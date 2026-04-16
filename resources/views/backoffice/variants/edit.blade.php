@@ -191,7 +191,7 @@
             </form>
 
             <div class="note">
-                Sekarang kamu bisa bedakan harga <strong>dine in</strong> dan <strong>delivery</strong> per variant. Kalau client belum pakai selisih harga, cukup samakan nilainya.
+                Edit variant tetap memakai 2 harga: <strong>dine in</strong> dan <strong>delivery</strong>. Yang dibenerin hanya tampilan list supaya tidak ada harga lama.
             </div>
         </div>
     </div>

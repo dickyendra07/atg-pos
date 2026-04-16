@@ -190,7 +190,7 @@
             </form>
 
             <div class="note">
-                Variant sekarang sudah siap untuk 2 harga: <strong>dine in</strong> dan <strong>delivery</strong>. Kalau belum ada perbedaan harga, isi saja sama dulu supaya operasional tetap aman.
+                Variant tetap memakai 2 harga: <strong>dine in</strong> dan <strong>delivery</strong>. Jadi yang dibenerin hanya tampilan list supaya tidak ada harga lama yang dobel.
             </div>
         </div>
     </div>

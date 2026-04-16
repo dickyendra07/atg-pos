@@ -79,6 +79,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/backoffice/warehouses/{warehouse}/transfer-to-outlet', [WarehouseTransferViewController::class, 'create'])->name('backoffice.warehouse-transfers.create');
     Route::post('/backoffice/warehouses/{warehouse}/transfer-to-outlet', [WarehouseTransferViewController::class, 'store'])->name('backoffice.warehouse-transfers.store');
 
+    Route::get('/backoffice/transfers/export/csv', [TransferViewController::class, 'exportCsv'])->name('backoffice.transfers.export.csv');
     Route::get('/backoffice/transfers', [TransferViewController::class, 'index'])->name('backoffice.transfers.index');
     Route::get('/backoffice/transfers/create', [TransferViewController::class, 'create'])->name('backoffice.transfers.create');
     Route::get('/backoffice/transfers/available-ingredients', [TransferViewController::class, 'availableIngredients'])->name('backoffice.transfers.available-ingredients');
@@ -87,6 +88,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/backoffice/transfers/{transfer}/mark-cancelled', [TransferViewController::class, 'markCancelled'])->name('backoffice.transfers.mark-cancelled');
     Route::post('/backoffice/transfers/{transfer}/mark-in-transit', [TransferViewController::class, 'markInTransit'])->name('backoffice.transfers.mark-in-transit');
 
+    Route::get('/backoffice/products/import', [ProductViewController::class, 'importForm'])->name('backoffice.products.import');
+    Route::get('/backoffice/products/import/template', [ProductViewController::class, 'downloadTemplate'])->name('backoffice.products.import.template');
+    Route::post('/backoffice/products/import', [ProductViewController::class, 'importStore'])->name('backoffice.products.import.store');
+    Route::get('/backoffice/products/export/csv', [ProductViewController::class, 'exportCsv'])->name('backoffice.products.export.csv');
     Route::get('/backoffice/products', [ProductViewController::class, 'index'])->name('backoffice.products.index');
     Route::get('/backoffice/products/create', [ProductViewController::class, 'create'])->name('backoffice.products.create');
     Route::post('/backoffice/products', [ProductViewController::class, 'store'])->name('backoffice.products.store');
@@ -94,6 +99,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/backoffice/products/{product}', [ProductViewController::class, 'update'])->name('backoffice.products.update');
     Route::delete('/backoffice/products/{product}', [ProductViewController::class, 'destroy'])->name('backoffice.products.destroy');
 
+    Route::get('/backoffice/variants/import', [ProductVariantViewController::class, 'importForm'])->name('backoffice.variants.import');
+    Route::get('/backoffice/variants/import/template', [ProductVariantViewController::class, 'downloadTemplate'])->name('backoffice.variants.import.template');
+    Route::post('/backoffice/variants/import', [ProductVariantViewController::class, 'importStore'])->name('backoffice.variants.import.store');
+    Route::get('/backoffice/variants/export/csv', [ProductVariantViewController::class, 'exportCsv'])->name('backoffice.variants.export.csv');
     Route::get('/backoffice/variants', [ProductVariantViewController::class, 'index'])->name('backoffice.variants.index');
     Route::get('/backoffice/variants/create', [ProductVariantViewController::class, 'create'])->name('backoffice.variants.create');
     Route::post('/backoffice/variants', [ProductVariantViewController::class, 'store'])->name('backoffice.variants.store');
@@ -114,6 +123,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/backoffice/recipes/import', [RecipeViewController::class, 'importForm'])->name('backoffice.recipes.import');
     Route::get('/backoffice/recipes/import/template', [RecipeViewController::class, 'downloadTemplate'])->name('backoffice.recipes.import.template');
     Route::post('/backoffice/recipes/import', [RecipeViewController::class, 'importStore'])->name('backoffice.recipes.import.store');
+    Route::get('/backoffice/recipes/export/csv', [RecipeViewController::class, 'exportCsv'])->name('backoffice.recipes.export.csv');
     Route::get('/backoffice/recipes', [RecipeViewController::class, 'index'])->name('backoffice.recipes.index');
     Route::get('/backoffice/recipes/create', [RecipeViewController::class, 'create'])->name('backoffice.recipes.create');
     Route::post('/backoffice/recipes', [RecipeViewController::class, 'store'])->name('backoffice.recipes.store');

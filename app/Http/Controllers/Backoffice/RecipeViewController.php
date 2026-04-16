@@ -228,6 +228,77 @@ class RecipeViewController extends Controller
         }, 200, $headers);
     }
 
+    public function exportCsv(): StreamedResponse
+    {
+        $this->authorizeAccess();
+
+        $filename = 'recipes_export_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        return response()->stream(function () {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'recipe_name',
+                'product_name',
+                'variant_name',
+                'variant_code',
+                'ingredient_name',
+                'ingredient_category',
+                'ingredient_type',
+                'qty',
+                'unit',
+                'is_active',
+            ]);
+
+            Recipe::with([
+                'variant.product',
+                'items.ingredient.category',
+            ])
+                ->orderBy('name')
+                ->chunk(200, function ($recipes) use ($handle) {
+                    foreach ($recipes as $recipe) {
+                        if ($recipe->items->count() === 0) {
+                            fputcsv($handle, [
+                                $recipe->name,
+                                $recipe->variant->product->name ?? '',
+                                $recipe->variant->name ?? '',
+                                $recipe->variant->code ?? '',
+                                '',
+                                '',
+                                '',
+                                '',
+                                '',
+                                $recipe->is_active ? '1' : '0',
+                            ]);
+                            continue;
+                        }
+
+                        foreach ($recipe->items as $item) {
+                            fputcsv($handle, [
+                                $recipe->name,
+                                $recipe->variant->product->name ?? '',
+                                $recipe->variant->name ?? '',
+                                $recipe->variant->code ?? '',
+                                $item->ingredient->name ?? '',
+                                $item->ingredient->category->name ?? '',
+                                $item->ingredient?->ingredientTypeLabel() ?? '',
+                                (float) $item->qty,
+                                $item->unit ?? $item->ingredient->unit ?? '',
+                                $recipe->is_active ? '1' : '0',
+                            ]);
+                        }
+                    }
+                });
+
+            fclose($handle);
+        }, 200, $headers);
+    }
+
     public function importStore(Request $request)
     {
         $this->authorizeAccess();

@@ -13,7 +13,7 @@
         }
 
         .wrap {
-            max-width: 1200px;
+            max-width: 1320px;
             margin: 40px auto;
             padding: 0 20px;
         }
@@ -23,6 +23,7 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 24px;
+            gap: 16px;
         }
 
         .title {
@@ -112,6 +113,7 @@
             display: flex;
             gap: 12px;
             margin-top: 8px;
+            flex-wrap: wrap;
         }
 
         .section-title {
@@ -122,13 +124,13 @@
 
         .table-wrap {
             overflow-x: auto;
-            margin-top: 16px;
+            margin-top: 12px;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 900px;
+            min-width: 760px;
         }
 
         th, td {
@@ -155,7 +157,14 @@
 
         .grid-2 {
             display: grid;
-            grid-template-columns: 1.2fr 1fr;
+            grid-template-columns: 1.05fr 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .right-stack {
+            display: flex;
+            flex-direction: column;
             gap: 20px;
         }
 
@@ -181,9 +190,33 @@
             color: #3730a3;
         }
 
+        .empty-state {
+            padding: 16px;
+            background: #fff7ed;
+            color: #9a3412;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
         @media (max-width: 980px) {
             .grid-2 {
                 grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .wrap {
+                margin: 24px auto;
+                padding: 0 14px;
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .title {
+                font-size: 24px;
             }
         }
     </style>
@@ -191,7 +224,7 @@
 <body>
     <div class="wrap">
         <div class="topbar">
-            <div class="title">Kelola Recipe</div>
+            <div class="title">Edit Recipe</div>
             <a href="{{ route('backoffice.recipes.index') }}" class="btn">Kembali</a>
         </div>
 
@@ -263,97 +296,99 @@
                 </form>
             </div>
 
-            <div class="card">
-                <div class="section-title">Tambah Bahan Recipe</div>
+            <div class="right-stack">
+                <div class="card">
+                    <div class="section-title">Daftar Recipe Items</div>
 
-                <form method="POST" action="{{ route('backoffice.recipes.items.store', $recipe->id) }}">
-                    @csrf
+                    @if($recipe->items->count())
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Ingredient</th>
+                                        <th>Category</th>
+                                        <th>Type</th>
+                                        <th>Unit</th>
+                                        <th>Qty</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($recipe->items as $item)
+                                        @php
+                                            $ingredientType = $item->ingredient?->ingredient_type;
+                                            $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
+                                        @endphp
+                                        <tr>
+                                            <td>{{ $item->ingredient->name ?? '-' }}</td>
+                                            <td>{{ $item->ingredient->category->name ?? '-' }}</td>
+                                            <td>
+                                                @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
+                                                    <span class="badge badge-semi">{{ $ingredientTypeLabel }}</span>
+                                                @else
+                                                    <span class="badge badge-raw">{{ $ingredientTypeLabel }}</span>
+                                                @endif
+                                            </td>
+                                            <td>{{ $item->unit ?? $item->ingredient->unit ?? '-' }}</td>
+                                            <td>{{ number_format((float) $item->qty, 2, ',', '.') }}</td>
+                                            <td>
+                                                <form method="POST" action="{{ route('backoffice.recipes.items.destroy', [$recipe->id, $item->id]) }}" class="inline-form" onsubmit="return confirm('Yakin mau hapus recipe item ini?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn-danger">Hapus</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    @else
+                        <div class="empty-state">
+                            Recipe ini belum punya bahan sama sekali.
+                        </div>
+                    @endif
 
-                    <div class="field">
-                        <label>Ingredient</label>
-                        <select name="ingredient_id" required>
-                            <option value="">Pilih ingredient</option>
-                            @foreach($ingredients as $ingredient)
-                                <option value="{{ $ingredient->id }}">
-                                    {{ $ingredient->name }}
-                                    - {{ $ingredient->unit }}
-                                    - {{ $ingredient->category->name ?? '-' }}
-                                    - [{{ strtoupper($ingredient->ingredientTypeLabel()) }}]
-                                </option>
-                            @endforeach
-                        </select>
+                    <div class="note">
+                        Daftar recipe items sekarang diletakkan di kanan atas supaya lebih cepat dicek sebelum tambah bahan baru.
                     </div>
+                </div>
 
-                    <div class="field">
-                        <label>Qty</label>
-                        <input type="number" name="qty" min="0.01" step="0.01" required>
+                <div class="card">
+                    <div class="section-title">Tambah Bahan Recipe</div>
+
+                    <form method="POST" action="{{ route('backoffice.recipes.items.store', $recipe->id) }}">
+                        @csrf
+
+                        <div class="field">
+                            <label>Ingredient</label>
+                            <select name="ingredient_id" required>
+                                <option value="">Pilih ingredient</option>
+                                @foreach($ingredients as $ingredient)
+                                    <option value="{{ $ingredient->id }}">
+                                        {{ $ingredient->name }}
+                                        - {{ $ingredient->unit }}
+                                        - {{ $ingredient->category->name ?? '-' }}
+                                        - [{{ strtoupper($ingredient->ingredientTypeLabel()) }}]
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="field">
+                            <label>Qty</label>
+                            <input type="number" name="qty" min="0.01" step="0.01" required>
+                        </div>
+
+                        <div class="actions">
+                            <button type="submit" class="btn btn-success">Tambah Recipe Item</button>
+                        </div>
+                    </form>
+
+                    <div class="note">
+                        Batch 4 aktif: 1 recipe sekarang aman untuk campur bahan mentah dan bahan setengah jadi sekaligus.
                     </div>
-
-                    <div class="actions">
-                        <button type="submit" class="btn btn-success">Tambah Recipe Item</button>
-                    </div>
-                </form>
-
-                <div class="note">
-                    Batch 4 aktif: 1 recipe sekarang aman untuk campur bahan mentah dan bahan setengah jadi sekaligus.
                 </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="section-title">Daftar Recipe Items</div>
-
-            @if($recipe->items->count())
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Ingredient</th>
-                                <th>Category</th>
-                                <th>Type</th>
-                                <th>Unit</th>
-                                <th>Qty</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($recipe->items as $item)
-                                @php
-                                    $ingredientType = $item->ingredient?->ingredient_type;
-                                    $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
-                                @endphp
-                                <tr>
-                                    <td>{{ $item->ingredient->name ?? '-' }}</td>
-                                    <td>{{ $item->ingredient->category->name ?? '-' }}</td>
-                                    <td>
-                                        @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
-                                            <span class="badge badge-semi">{{ $ingredientTypeLabel }}</span>
-                                        @else
-                                            <span class="badge badge-raw">{{ $ingredientTypeLabel }}</span>
-                                        @endif
-                                    </td>
-                                    <td>{{ $item->unit ?? $item->ingredient->unit ?? '-' }}</td>
-                                    <td>{{ number_format((float) $item->qty, 2, ',', '.') }}</td>
-                                    <td>
-                                        <form method="POST" action="{{ route('backoffice.recipes.items.destroy', [$recipe->id, $item->id]) }}" class="inline-form" onsubmit="return confirm('Yakin mau hapus recipe item ini?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn-danger">Hapus</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <div class="error-box" style="margin-bottom:0;">
-                    Recipe ini belum punya bahan sama sekali.
-                </div>
-            @endif
-
-            <div class="note">
-                Sekarang recipe item sudah lebih jelas: kamu bisa lihat mana bahan mentah dan mana bahan setengah jadi sebelum dipakai ke cashier checkout.
             </div>
         </div>
     </div>

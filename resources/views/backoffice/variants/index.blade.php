@@ -46,6 +46,7 @@
             align-items: flex-start;
             gap: 16px;
             margin-bottom: 24px;
+            flex-wrap: wrap;
         }
 
         .title-block {
@@ -111,6 +112,10 @@
             background: var(--red);
         }
 
+        .btn-orange {
+            background: var(--orange);
+        }
+
         .card {
             background: var(--surface);
             border-radius: 22px;
@@ -137,6 +142,17 @@
             background: #fff1f1;
             color: #b42318;
             border: 1px solid #fecaca;
+        }
+
+        .error-list {
+            margin-top: 10px;
+            padding-left: 18px;
+            font-weight: normal;
+        }
+
+        .error-list li {
+            margin-bottom: 6px;
+            line-height: 1.5;
         }
 
         .summary-grid {
@@ -204,7 +220,7 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 1500px;
+            min-width: 1400px;
             background: white;
         }
 
@@ -346,11 +362,13 @@
             <div class="title-block">
                 <div class="title">Back Office - Variants</div>
                 <div class="subtitle">
-                    Kelola variant produk dan siapkan harga <strong>dine in</strong> serta <strong>delivery</strong> dari satu tempat. Kalau harga masih sama, cukup isi nilainya sama dulu agar operasional tetap aman.
+                    Kelola variant produk dan siapkan harga <strong>dine in</strong> serta <strong>delivery</strong> dalam satu halaman tanpa kolom harga lama yang dobel.
                 </div>
             </div>
 
             <div class="top-actions">
+                <a href="{{ route('backoffice.variants.export.csv') }}" class="btn btn-blue">Export CSV</a>
+                <a href="{{ route('backoffice.variants.import') }}" class="btn btn-orange">Import CSV</a>
                 <a href="{{ route('backoffice.variants.create') }}" class="btn btn-green">Tambah Variant</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Kembali</a>
             </div>
@@ -363,6 +381,17 @@
 
             @if(session('error'))
                 <div class="alert alert-error">{{ session('error') }}</div>
+            @endif
+
+            @if(session('import_errors') && count(session('import_errors')) > 0)
+                <div class="alert alert-error">
+                    Detail baris yang dilewati:
+                    <ul class="error-list">
+                        @foreach(session('import_errors') as $importError)
+                            <li>{{ $importError }}</li>
+                        @endforeach
+                    </ul>
+                </div>
             @endif
 
             <div class="summary-grid">
@@ -401,7 +430,6 @@
                                 <th>Product</th>
                                 <th>Variant</th>
                                 <th>Code</th>
-                                <th>Price Lama</th>
                                 <th>Price Dine In</th>
                                 <th>Price Delivery</th>
                                 <th>Status</th>
@@ -418,7 +446,6 @@
                                     <td>
                                         <span class="code-pill">{{ $variant->code ?? '-' }}</span>
                                     </td>
-                                    <td class="money">Rp{{ number_format((float) ($variant->price ?? 0), 0, ',', '.') }}</td>
                                     <td class="money">Rp{{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}</td>
                                     <td class="money">Rp{{ number_format((float) ($variant->price_delivery ?? $variant->price ?? 0), 0, ',', '.') }}</td>
                                     <td>
@@ -451,7 +478,7 @@
             @endif
 
             <div class="note">
-                Halaman variants sekarang sudah disiapkan untuk kebutuhan client terkait <strong>harga dine in</strong> dan <strong>delivery</strong>. Kalau migration harga baru belum dijalankan, create/edit akan error karena kolom baru belum ada di database.
+                Variants sekarang sudah punya Export & Import CSV. Tampilan tetap fokus ke <strong>harga dine in</strong> dan <strong>harga delivery</strong>.
             </div>
         </div>
     </div>
