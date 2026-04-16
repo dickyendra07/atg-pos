@@ -148,6 +148,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/backoffice/stock-balances/import', [StockBalanceViewController::class, 'importForm'])->name('backoffice.stock-balances.import');
     Route::get('/backoffice/stock-balances/import/template', [StockBalanceViewController::class, 'downloadTemplate'])->name('backoffice.stock-balances.import.template');
     Route::post('/backoffice/stock-balances/import', [StockBalanceViewController::class, 'importStore'])->name('backoffice.stock-balances.import.store');
+    Route::get('/backoffice/stock-balances/export/csv', [StockBalanceViewController::class, 'exportCsv'])->name('backoffice.stock-balances.export.csv');
     Route::get('/backoffice/stock-balances', [StockBalanceViewController::class, 'index'])->name('backoffice.stock-balances.index');
     Route::get('/backoffice/stock-balances/create', [StockBalanceViewController::class, 'create'])->name('backoffice.stock-balances.create');
     Route::post('/backoffice/stock-balances', [StockBalanceViewController::class, 'store'])->name('backoffice.stock-balances.store');

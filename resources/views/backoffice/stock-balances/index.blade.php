@@ -147,6 +147,7 @@
 
         .btn:hover { transform: translateY(-1px); opacity: 0.96; }
         .btn-dark { background: linear-gradient(135deg, #111827 0%, #1f2937 100%); }
+        .btn-blue { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
 
         .content { padding: 14px 28px 28px; }
 
@@ -300,7 +301,7 @@
 
         .action-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 18px;
             margin-bottom: 24px;
         }
@@ -411,7 +412,7 @@
         .filter-form {
             padding: 22px 24px 22px;
             display: grid;
-            grid-template-columns: 1.3fr 1fr 1fr 1fr auto;
+            grid-template-columns: 1.3fr 1fr 1fr 1fr auto auto;
             gap: 14px;
             align-items: end;
         }
@@ -587,6 +588,7 @@
                 <div class="mini-info">
                     {{ $user->name ?? 'Owner ATG POS' }} • {{ $user->role->name ?? '-' }}
                 </div>
+                <a href="{{ route('backoffice.stock-balances.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Back Office</a>
             </div>
         </div>

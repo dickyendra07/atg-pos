@@ -33,14 +33,8 @@ class StockBalanceViewController extends Controller
         return $user;
     }
 
-    public function index(Request $request)
+    protected function applyStockFilters(Request $request)
     {
-        $user = $this->authorizeAccess();
-
-        $ingredients = Ingredient::with('category')
-            ->orderBy('name')
-            ->get();
-
         $baseQuery = StockBalance::with(['ingredient.category', 'warehouse', 'outlet'])
             ->orderByDesc('id');
 
@@ -88,6 +82,48 @@ class StockBalanceViewController extends Controller
                 return true;
             })->values();
         }
+
+        return $stockBalances;
+    }
+
+    protected function getLocationLabel(StockBalance $stock): string
+    {
+        if (($stock->location_type ?? null) === 'warehouse') {
+            return $stock->warehouse->name ?? ('Warehouse ID ' . ($stock->location_id ?? '-'));
+        }
+
+        if (($stock->location_type ?? null) === 'outlet') {
+            return $stock->outlet->name ?? ('Outlet ID ' . ($stock->location_id ?? '-'));
+        }
+
+        return '-';
+    }
+
+    protected function getStockStatusLabel(StockBalance $stock): string
+    {
+        $qty = (float) ($stock->qty_on_hand ?? 0);
+        $minimum = (float) ($stock->ingredient->minimum_stock ?? 0);
+
+        if ($qty <= 0) {
+            return 'Out of Stock';
+        }
+
+        if ($qty <= $minimum) {
+            return 'Low Stock';
+        }
+
+        return 'Safe';
+    }
+
+    public function index(Request $request)
+    {
+        $user = $this->authorizeAccess();
+
+        $ingredients = Ingredient::with('category')
+            ->orderBy('name')
+            ->get();
+
+        $stockBalances = $this->applyStockFilters($request);
 
         $distinctLocations = $stockBalances
             ->map(function ($stock) {
@@ -227,6 +263,50 @@ class StockBalanceViewController extends Controller
             'summary' => $summary,
             'stockSummaryRows' => $stockSummaryRows,
         ]);
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $this->authorizeAccess();
+
+        $stocks = $this->applyStockFilters($request);
+
+        $filename = 'stock_balances_export_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        return response()->stream(function () use ($stocks) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, [
+                'category_name',
+                'ingredient_name',
+                'unit',
+                'minimum_stock',
+                'location_type',
+                'location_name',
+                'qty_on_hand',
+                'status',
+            ]);
+
+            foreach ($stocks as $stock) {
+                fputcsv($handle, [
+                    $stock->ingredient->category->name ?? '-',
+                    $stock->ingredient->name ?? '-',
+                    $stock->ingredient->unit ?? '-',
+                    (float) ($stock->ingredient->minimum_stock ?? 0),
+                    $stock->location_type ?? '-',
+                    $this->getLocationLabel($stock),
+                    (float) ($stock->qty_on_hand ?? 0),
+                    $this->getStockStatusLabel($stock),
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
     }
 
     public function create()
