@@ -20,7 +20,7 @@ class CashierShiftController extends Controller
             'kasir',
         ];
 
-        if (! in_array($user->role?->code, $allowedRoles)) {
+        if (! in_array($user->role?->code, $allowedRoles, true)) {
             abort(403, 'Role kamu tidak punya akses ke Shift Cashier.');
         }
 
@@ -46,6 +46,8 @@ class CashierShiftController extends Controller
                 'cash_sales' => 0,
                 'qris_sales' => 0,
                 'transfer_sales' => 0,
+                'debit_sales' => 0,
+                'credit_sales' => 0,
                 'void_transactions' => 0,
                 'expected_cash' => 0,
                 'difference' => 0,
@@ -72,6 +74,14 @@ class CashierShiftController extends Controller
             ->where('payment_method', 'transfer')
             ->sum('grand_total');
 
+        $debitSales = (float) $completedTransactions
+            ->where('payment_method', 'debit')
+            ->sum('grand_total');
+
+        $creditSales = (float) $completedTransactions
+            ->where('payment_method', 'credit')
+            ->sum('grand_total');
+
         $expectedCash = (float) ($shift->opening_cash ?? 0) + $cashSales;
         $closingCashActual = $shift->closing_cash_actual !== null
             ? (float) $shift->closing_cash_actual
@@ -83,6 +93,8 @@ class CashierShiftController extends Controller
             'cash_sales' => $cashSales,
             'qris_sales' => $qrisSales,
             'transfer_sales' => $transferSales,
+            'debit_sales' => $debitSales,
+            'credit_sales' => $creditSales,
             'void_transactions' => $voidTransactions->count(),
             'expected_cash' => $expectedCash,
             'difference' => $closingCashActual !== null ? ($closingCashActual - $expectedCash) : 0,
@@ -188,6 +200,8 @@ class CashierShiftController extends Controller
                     'cash_sales' => 0,
                     'qris_sales' => 0,
                     'transfer_sales' => 0,
+                    'debit_sales' => 0,
+                    'credit_sales' => 0,
                     'void_transactions' => 0,
                     'expected_cash' => 0,
                     'difference' => 0,

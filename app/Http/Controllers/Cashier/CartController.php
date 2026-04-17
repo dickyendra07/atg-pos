@@ -25,7 +25,7 @@ class CartController extends Controller
             'kasir',
         ];
 
-        if (! in_array($user->role?->code, $allowedRoles)) {
+        if (! in_array($user->role?->code, $allowedRoles, true)) {
             abort(403, 'Role kamu tidak punya akses ke Cashier.');
         }
 
@@ -75,7 +75,7 @@ class CartController extends Controller
     {
         $type = strtolower((string) $orderType);
 
-        if (! in_array($type, ['dine_in', 'delivery'])) {
+        if (! in_array($type, ['dine_in', 'delivery'], true)) {
             $type = 'dine_in';
         }
 
@@ -369,7 +369,7 @@ class CartController extends Controller
         }
 
         $request->validate([
-            'payment_method' => 'required|in:cash,qris,transfer',
+            'payment_method' => 'required|in:cash,qris,transfer,debit,credit',
             'amount_paid' => 'required|numeric|min:0',
             'order_type' => 'required|in:dine_in,delivery',
         ]);
@@ -389,7 +389,7 @@ class CartController extends Controller
             return (float) ($item['line_total'] ?? 0);
         });
 
-        $paymentMethod = $request->input('payment_method');
+        $paymentMethod = strtolower((string) $request->input('payment_method'));
         $amountPaid = (float) $request->input('amount_paid');
 
         if ($paymentMethod === 'cash' && $amountPaid < $subtotal) {
@@ -398,7 +398,7 @@ class CartController extends Controller
                 ->with('error', 'Nominal cash kurang dari total transaksi.');
         }
 
-        if (in_array($paymentMethod, ['qris', 'transfer'])) {
+        if (in_array($paymentMethod, ['qris', 'transfer', 'debit', 'credit'], true)) {
             $amountPaid = $subtotal;
         }
 
