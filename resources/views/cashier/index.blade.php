@@ -698,6 +698,8 @@
             flex-direction: column;
             gap: 18px;
             padding: 22px;
+            position: sticky;
+            top: 18px;
         }
 
         .cart-box {
@@ -1069,10 +1071,91 @@
             margin-top: 12px;
         }
 
+        .receipt-history-box {
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+            border: 1px solid #e7edf5;
+            border-radius: 22px;
+            padding: 18px;
+        }
+
+        .receipt-history-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .receipt-history-item {
+            border: 1px solid #e8edf4;
+            border-radius: 16px;
+            padding: 14px;
+            background: #ffffff;
+        }
+
+        .receipt-history-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .receipt-history-number {
+            font-size: 15px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1.4;
+        }
+
+        .receipt-history-time {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-top: 2px;
+        }
+
+        .receipt-history-total {
+            font-size: 16px;
+            font-weight: 800;
+            color: #166534;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .receipt-history-meta {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+
+        .receipt-history-items {
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+
+        .receipt-history-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .receipt-history-empty {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.7;
+            margin-top: 12px;
+        }
+
         @media (max-width: 1200px) {
             .hero,
             .layout {
                 grid-template-columns: 1fr;
+            }
+
+            .cart-panel {
+                position: static;
             }
         }
 
@@ -1133,14 +1216,16 @@
             .checkout-success-actions,
             .member-actions,
             .cart-actions,
-            .shift-actions {
+            .shift-actions,
+            .receipt-history-actions {
                 flex-direction: column;
             }
 
             .checkout-success-actions .btn,
             .member-actions .btn,
             .cart-actions .mini-btn,
-            .shift-actions .shift-btn {
+            .shift-actions .shift-btn,
+            .receipt-history-actions .btn {
                 width: 100%;
             }
         }
@@ -1194,10 +1279,15 @@
         'cash_sales' => (float) ($shiftSummary['cash_sales'] ?? 0),
         'qris_sales' => (float) ($shiftSummary['qris_sales'] ?? 0),
         'transfer_sales' => (float) ($shiftSummary['transfer_sales'] ?? 0),
+        'debit_sales' => (float) ($shiftSummary['debit_sales'] ?? 0),
+        'credit_sales' => (float) ($shiftSummary['credit_sales'] ?? 0),
         'void_transactions' => (int) ($shiftSummary['void_transactions'] ?? 0),
         'expected_cash' => (float) ($shiftSummary['expected_cash'] ?? 0),
         'difference' => 0,
     ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+    $oldPaymentMethod = old('payment_method', 'cash');
+    $oldAmountPaid = old('amount_paid', (float) $subtotal);
 @endphp
 
     <div class="page">
@@ -1331,8 +1421,20 @@
 
                             <form id="end-shift-form" class="shift-form">
                                 <div class="shift-field">
-                                    <label for="closing_cash_actual">Closing Cash Actual</label>
-                                    <input type="number" id="closing_cash_actual" name="closing_cash_actual" min="0" step="0.01" value="{{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 2, '.', '') }}">
+                                    <label for="closing_cash_actual_display">Closing Cash Actual</label>
+                                    <input
+                                        type="text"
+                                        id="closing_cash_actual_display"
+                                        inputmode="numeric"
+                                        autocomplete="off"
+                                        value="Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}"
+                                    >
+                                    <input
+                                        type="hidden"
+                                        id="closing_cash_actual"
+                                        name="closing_cash_actual"
+                                        value="{{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 2, '.', '') }}"
+                                    >
                                 </div>
 
                                 <div class="shift-field">
@@ -1572,29 +1674,31 @@
                                     </div>
                                 </div>
 
-                                <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form">
+                                <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
                                     @csrf
 
                                     <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
+                                    <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
 
                                     <div class="field">
                                         <label for="payment_method">Payment Method</label>
                                         <select name="payment_method" id="payment_method" required>
-                                            <option value="cash" {{ old('payment_method') === 'cash' ? 'selected' : '' }}>Cash</option>
-                                            <option value="qris" {{ old('payment_method') === 'qris' ? 'selected' : '' }}>QRIS</option>
-                                            <option value="transfer" {{ old('payment_method') === 'transfer' ? 'selected' : '' }}>Transfer</option>
+                                            <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
+                                            <option value="qris" {{ $oldPaymentMethod === 'qris' ? 'selected' : '' }}>QRIS</option>
+                                            <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
+                                            <option value="debit" {{ $oldPaymentMethod === 'debit' ? 'selected' : '' }}>Debit</option>
+                                            <option value="credit" {{ $oldPaymentMethod === 'credit' ? 'selected' : '' }}>Credit</option>
                                         </select>
                                     </div>
 
                                     <div class="field">
-                                        <label for="amount_paid">Amount Paid</label>
+                                        <label for="amount_paid_display">Amount Paid</label>
                                         <input
-                                            type="number"
-                                            name="amount_paid"
-                                            id="amount_paid"
-                                            min="0"
-                                            step="0.01"
-                                            value="{{ old('amount_paid', (float) $subtotal) }}"
+                                            type="text"
+                                            id="amount_paid_display"
+                                            inputmode="numeric"
+                                            autocomplete="off"
+                                            value="Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}"
                                             required
                                         >
                                     </div>
@@ -1622,7 +1726,7 @@
 
                                         <div class="payment-live-row">
                                             <div class="payment-live-label">Amount Paid</div>
-                                            <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                            <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}</div>
                                         </div>
 
                                         <div class="payment-live-row change-highlight" id="change-highlight-row">
@@ -1685,6 +1789,91 @@
                                     </form>
                                 @endif
                             </div>
+
+                            <div class="receipt-history-box">
+                                <div class="cart-title">Histori Struk Cashier</div>
+
+                                @if($recentReceipts->count())
+                                    <div class="receipt-history-list">
+                                        @foreach($recentReceipts as $receipt)
+                                            @php
+                                                $displayReceiptNumber = 'ATG-0001';
+
+                                                if (! empty($receipt->transaction_number)) {
+                                                    $parts = explode('-', $receipt->transaction_number);
+                                                    $lastPart = end($parts);
+
+                                                    if (is_numeric($lastPart)) {
+                                                        $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
+                                                    }
+                                                }
+                                            @endphp
+
+                                            <div class="receipt-history-item">
+                                                <div class="receipt-history-top">
+                                                    <div>
+                                                        <div class="receipt-history-number">{{ $displayReceiptNumber }}</div>
+                                                        <div class="receipt-history-time">
+                                                            {{ $receipt->created_at?->format('Y-m-d H:i:s') ?? '-' }}
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="receipt-history-total">
+                                                        Rp {{ number_format((float) $receipt->grand_total, 0, ',', '.') }}
+                                                    </div>
+                                                </div>
+
+                                                <div class="receipt-history-meta">
+                                                    Payment: {{ strtoupper((string) ($receipt->payment_method ?? '-')) }}
+                                                    • Status: {{ ucfirst((string) ($receipt->status ?? '-')) }}
+                                                    @if($receipt->outlet)
+                                                        • {{ $receipt->outlet->name }}
+                                                    @endif
+                                                </div>
+
+                                                <div class="receipt-history-items">
+                                                    @forelse($receipt->items->take(3) as $item)
+                                                        <div>
+                                                            {{ $item->product_name ?? '-' }}
+                                                            @if($item->variant_name)
+                                                                - {{ $item->variant_name }}
+                                                            @endif
+                                                            x {{ number_format((float) $item->qty, 0, ',', '.') }}
+                                                        </div>
+                                                    @empty
+                                                        <div>Tidak ada item.</div>
+                                                    @endforelse
+
+                                                    @if($receipt->items->count() > 3)
+                                                        <div>+ {{ $receipt->items->count() - 3 }} item lainnya</div>
+                                                    @endif
+                                                </div>
+
+                                                <div class="receipt-history-actions">
+                                                    <a
+                                                        href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier']) }}"
+                                                        target="_blank"
+                                                        class="btn btn-green"
+                                                    >
+                                                        Buka Receipt
+                                                    </a>
+
+                                                    <a
+                                                        href="{{ route('cashier.new-transaction') }}"
+                                                        class="btn btn-dark"
+                                                    >
+                                                        Transaksi Baru
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="receipt-history-empty">
+                                        Belum ada histori struk untuk cashier ini.
+                                    </div>
+                                @endif
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1723,7 +1912,9 @@
             const cartItemsContainer = document.getElementById('cart-items-container');
             const cartSubtotalBottom = document.getElementById('cart-subtotal-bottom');
             const paymentMethod = document.getElementById('payment_method');
-            const amountPaid = document.getElementById('amount_paid');
+            const amountPaidDisplay = document.getElementById('amount_paid_display');
+            const amountPaidNumeric = document.getElementById('amount_paid_numeric');
+            const checkoutForm = document.getElementById('checkout-form');
             const searchInput = document.getElementById('cashier-search-input');
             const clearCartButton = document.getElementById('clear-cart-button');
             const liveSubtotalValue = document.getElementById('live-subtotal-value');
@@ -1739,6 +1930,7 @@
             const endShiftForm = document.getElementById('end-shift-form');
             const openingCashInput = document.getElementById('opening_cash');
             const closingCashActualInput = document.getElementById('closing_cash_actual');
+            const closingCashActualDisplay = document.getElementById('closing_cash_actual_display');
             const closingNoteInput = document.getElementById('closing_note');
             const startShiftButton = document.getElementById('start-shift-button');
             const endShiftButton = document.getElementById('end-shift-button');
@@ -1797,6 +1989,43 @@
                 return !!cashierState.activeShift && cashierState.activeShift.status === 'open';
             }
 
+            function parseRupiahInput(value) {
+                const raw = String(value || '').replace(/[^\d]/g, '');
+                return raw ? Number(raw) : 0;
+            }
+
+            function setAmountPaidValue(value) {
+                const clean = Math.max(0, Number(value || 0));
+
+                if (amountPaidNumeric) {
+                    amountPaidNumeric.value = clean.toFixed(2);
+                }
+
+                if (amountPaidDisplay) {
+                    amountPaidDisplay.value = formatCurrency(clean);
+                }
+            }
+
+            function getAmountPaidValue() {
+                return Number(amountPaidNumeric?.value || 0);
+            }
+
+            function setClosingCashActualValue(value) {
+                const clean = Math.max(0, Number(value || 0));
+
+                if (closingCashActualInput) {
+                    closingCashActualInput.value = clean.toFixed(2);
+                }
+
+                if (closingCashActualDisplay) {
+                    closingCashActualDisplay.value = formatCurrency(clean);
+                }
+            }
+
+            function getClosingCashActualValue() {
+                return Number(closingCashActualInput?.value || 0);
+            }
+
             function updateShiftUI() {
                 const open = isShiftOpen();
 
@@ -1810,7 +2039,7 @@
                     shiftExpectedCash.textContent = formatCurrency(cashierState.shiftSummary.expected_cash || 0);
                     shiftTotalTransactions.textContent = String(cashierState.shiftSummary.total_transactions || 0);
                     shiftTotalSales.textContent = formatCurrency(cashierState.shiftSummary.total_sales || 0);
-                    closingCashActualInput.value = Number(cashierState.shiftSummary.expected_cash || 0).toFixed(2);
+                    setClosingCashActualValue(Number(cashierState.shiftSummary.expected_cash || 0));
                 }
             }
 
@@ -1872,18 +2101,20 @@
             }
 
             function syncAmountPaid() {
-                if (!paymentMethod || !amountPaid) return;
+                if (!paymentMethod) return;
 
                 const subtotalValue = Number(cashierState.cart.subtotal || 0);
 
-                if (paymentMethod.value === 'qris' || paymentMethod.value === 'transfer') {
-                    amountPaid.value = subtotalValue.toFixed(2);
-                    amountPaid.readOnly = true;
+                if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
+                    setAmountPaidValue(subtotalValue);
+                    amountPaidDisplay.readOnly = true;
                 } else {
-                    amountPaid.readOnly = false;
+                    amountPaidDisplay.readOnly = false;
 
-                    if ((amountPaid.value === '' || Number(amountPaid.value) < 0) && subtotalValue > 0) {
-                        amountPaid.value = subtotalValue.toFixed(2);
+                    if (getAmountPaidValue() <= 0 && subtotalValue > 0) {
+                        setAmountPaidValue(subtotalValue);
+                    } else {
+                        setAmountPaidValue(getAmountPaidValue());
                     }
                 }
 
@@ -1893,7 +2124,7 @@
             function updateCheckoutAvailability(canCheckout) {
                 checkoutButton.disabled = !canCheckout;
                 clearCartButton.disabled = !isShiftOpen();
-                amountPaid.disabled = !isShiftOpen();
+                amountPaidDisplay.disabled = !isShiftOpen();
                 paymentMethod.disabled = !isShiftOpen();
 
                 document.querySelectorAll('[data-add-to-cart]').forEach((button) => {
@@ -1915,7 +2146,7 @@
 
             function updateLivePaymentSummary() {
                 const subtotalValue = Number(cashierState.cart.subtotal || 0);
-                const paidValue = Number(amountPaid?.value || 0);
+                const paidValue = getAmountPaidValue();
                 const currentPaymentMethod = paymentMethod?.value || 'cash';
 
                 liveSubtotalValue.textContent = formatCurrency(subtotalValue);
@@ -2141,7 +2372,7 @@
             }
 
             async function handleEndShift() {
-                const closingCashActual = Number(closingCashActualInput.value || 0);
+                const closingCashActual = getClosingCashActualValue();
                 const closingNote = closingNoteInput.value || '';
                 const originalText = endShiftButton.textContent;
 
@@ -2164,6 +2395,8 @@
                         cash_sales: 0,
                         qris_sales: 0,
                         transfer_sales: 0,
+                        debit_sales: 0,
+                        credit_sales: 0,
                         void_transactions: 0,
                         expected_cash: 0,
                         difference: 0,
@@ -2201,14 +2434,14 @@
                     return;
                 }
 
-                if (!amountPaid) return;
-                if (paymentMethod.value === 'qris' || paymentMethod.value === 'transfer') {
+                if (!amountPaidDisplay) return;
+                if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
                     showAlert('info', 'Quick amount dipakai untuk pembayaran cash.');
                     return;
                 }
 
                 const subtotalValue = Number(cashierState.cart.subtotal || 0);
-                let currentValue = Number(amountPaid.value || 0);
+                let currentValue = getAmountPaidValue();
 
                 if (mode === 'exact') {
                     currentValue = subtotalValue;
@@ -2222,7 +2455,7 @@
                     currentValue += Number(mode || 0);
                 }
 
-                amountPaid.value = Math.max(0, currentValue).toFixed(2);
+                setAmountPaidValue(Math.max(0, currentValue));
                 updateLivePaymentSummary();
             }
 
@@ -2294,11 +2527,37 @@
             });
 
             paymentMethod?.addEventListener('change', syncAmountPaid);
-            amountPaid?.addEventListener('input', updateLivePaymentSummary);
+
+            amountPaidDisplay?.addEventListener('input', function () {
+                if (this.readOnly) return;
+                const parsed = parseRupiahInput(this.value);
+                setAmountPaidValue(parsed);
+                updateLivePaymentSummary();
+            });
+
+            amountPaidDisplay?.addEventListener('blur', function () {
+                setAmountPaidValue(getAmountPaidValue());
+                updateLivePaymentSummary();
+            });
+
+            closingCashActualDisplay?.addEventListener('input', function () {
+                const parsed = parseRupiahInput(this.value);
+                setClosingCashActualValue(parsed);
+            });
+
+            closingCashActualDisplay?.addEventListener('blur', function () {
+                setClosingCashActualValue(getClosingCashActualValue());
+            });
+
+            checkoutForm?.addEventListener('submit', function () {
+                amountPaidNumeric.value = Number(getAmountPaidValue()).toFixed(2);
+            });
 
             window.addEventListener('DOMContentLoaded', () => {
                 updateShiftUI();
                 applyCartPayload(cashierState.cart);
+                setAmountPaidValue({{ (float) $oldAmountPaid }});
+                setClosingCashActualValue({{ (float) ($shiftSummary['expected_cash'] ?? 0) }});
                 syncAmountPaid();
                 updateLivePaymentSummary();
             });
