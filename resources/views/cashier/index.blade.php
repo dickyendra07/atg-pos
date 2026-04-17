@@ -52,7 +52,7 @@
             border-radius: 34px;
             box-shadow: var(--shadow);
             backdrop-filter: blur(10px);
-            overflow: visible;
+            overflow: hidden;
         }
 
         .topbar {
@@ -288,9 +288,8 @@
 
         .layout {
             display: grid;
-            grid-template-columns: minmax(0, 1.12fr) minmax(420px, 0.88fr);
+            grid-template-columns: 1.12fr 0.88fr;
             gap: 22px;
-            align-items: start;
         }
 
         .section-card {
@@ -298,7 +297,7 @@
             border: 1px solid #eceff5;
             border-radius: 28px;
             box-shadow: var(--shadow-soft);
-            overflow: visible;
+            overflow: hidden;
         }
 
         .section-head {
@@ -694,11 +693,6 @@
             white-space: nowrap;
         }
 
-        .cart-panel-wrap {
-            position: relative;
-            align-self: start;
-        }
-
         .cart-panel {
             display: flex;
             flex-direction: column;
@@ -706,7 +700,6 @@
             padding: 22px;
             position: sticky;
             top: 18px;
-            align-self: start;
         }
 
         .cart-box {
@@ -1163,7 +1156,6 @@
 
             .cart-panel {
                 position: static;
-                top: auto;
             }
         }
 
@@ -1287,6 +1279,8 @@
         'cash_sales' => (float) ($shiftSummary['cash_sales'] ?? 0),
         'qris_sales' => (float) ($shiftSummary['qris_sales'] ?? 0),
         'transfer_sales' => (float) ($shiftSummary['transfer_sales'] ?? 0),
+        'debit_sales' => (float) ($shiftSummary['debit_sales'] ?? 0),
+        'credit_sales' => (float) ($shiftSummary['credit_sales'] ?? 0),
         'void_transactions' => (int) ($shiftSummary['void_transactions'] ?? 0),
         'expected_cash' => (float) ($shiftSummary['expected_cash'] ?? 0),
         'difference' => 0,
@@ -1378,7 +1372,7 @@
                             <form id="start-shift-form" class="shift-form">
                                 <div class="shift-field">
                                     <label for="opening_cash">Opening Cash</label>
-                                    <input type="text" id="opening_cash" name="opening_cash" inputmode="numeric" autocomplete="off" value="Rp 0">
+                                    <input type="number" id="opening_cash" name="opening_cash" min="0" step="0.01" value="0">
                                 </div>
 
                                 <div class="shift-actions">
@@ -1427,8 +1421,20 @@
 
                             <form id="end-shift-form" class="shift-form">
                                 <div class="shift-field">
-                                    <label for="closing_cash_actual">Closing Cash Actual</label>
-                                    <input type="text" id="closing_cash_actual" name="closing_cash_actual" inputmode="numeric" autocomplete="off" value="Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}">
+                                    <label for="closing_cash_actual_display">Closing Cash Actual</label>
+                                    <input
+                                        type="text"
+                                        id="closing_cash_actual_display"
+                                        inputmode="numeric"
+                                        autocomplete="off"
+                                        value="Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}"
+                                    >
+                                    <input
+                                        type="hidden"
+                                        id="closing_cash_actual"
+                                        name="closing_cash_actual"
+                                        value="{{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 2, '.', '') }}"
+                                    >
                                 </div>
 
                                 <div class="shift-field">
@@ -1576,299 +1582,297 @@
                         </div>
                     </div>
 
-                    <div class="cart-panel-wrap">
-                        <div class="section-card">
-                            <div class="cart-panel">
-                                <div class="summary-grid">
-                                    <div class="summary-card soft-orange">
-                                        <div class="summary-label">Total Items</div>
-                                        <div class="summary-value" id="summary-cart-count">{{ count($cart) }}</div>
-                                        <div class="summary-desc">Jumlah baris item aktif di cart.</div>
-                                    </div>
+                    <div class="section-card">
+                        <div class="cart-panel">
+                            <div class="summary-grid">
+                                <div class="summary-card soft-orange">
+                                    <div class="summary-label">Total Items</div>
+                                    <div class="summary-value" id="summary-cart-count">{{ count($cart) }}</div>
+                                    <div class="summary-desc">Jumlah baris item aktif di cart.</div>
+                                </div>
 
-                                    <div class="summary-card soft-green">
-                                        <div class="summary-label">Subtotal</div>
-                                        <div class="summary-value" id="summary-subtotal">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
-                                        <div class="summary-desc">Nilai transaksi sementara.</div>
-                                    </div>
+                                <div class="summary-card soft-green">
+                                    <div class="summary-label">Subtotal</div>
+                                    <div class="summary-value" id="summary-subtotal">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                    <div class="summary-desc">Nilai transaksi sementara.</div>
+                                </div>
 
-                                    <div class="summary-card soft-blue">
-                                        <div class="summary-label">Member</div>
-                                        <div class="summary-value" id="summary-member-name" style="font-size:20px;">
-                                            {{ $member['name'] ?? $member['phone'] ?? 'Belum ada member' }}
+                                <div class="summary-card soft-blue">
+                                    <div class="summary-label">Member</div>
+                                    <div class="summary-value" id="summary-member-name" style="font-size:20px;">
+                                        {{ $member['name'] ?? $member['phone'] ?? 'Belum ada member' }}
+                                    </div>
+                                    <div class="summary-desc">Attach member opsional untuk transaksi ini.</div>
+                                </div>
+                            </div>
+
+                            <div class="cart-box">
+                                <div class="cart-title">Current Cart</div>
+                                <div id="cart-items-container">
+                                    @forelse($cart as $cartKey => $item)
+                                        <div class="cart-item">
+                                            <div class="cart-item-name">
+                                                {{ $item['product_name'] ?? 'Product' }}
+                                                @if(!empty($item['variant_name']))
+                                                    - {{ $item['variant_name'] }}
+                                                @endif
+                                            </div>
+
+                                            <div class="cart-item-meta">
+                                                Type: {{ strtoupper(str_replace('_', ' ', $item['order_type'] ?? 'dine_in')) }}
+                                                • Qty: {{ $item['qty'] ?? 0 }}
+                                                • Price: Rp {{ number_format((float) ($item['price'] ?? 0), 0, ',', '.') }}
+                                                • Line Total: Rp {{ number_format((float) ($item['line_total'] ?? 0), 0, ',', '.') }}
+
+                                                @if(!empty($item['less_sugar']) || !empty($item['less_ice']))
+                                                    <br>
+                                                    Modifier:
+                                                    @if(!empty($item['less_sugar']))
+                                                        Less Sugar
+                                                    @endif
+                                                    @if(!empty($item['less_sugar']) && !empty($item['less_ice']))
+                                                        •
+                                                    @endif
+                                                    @if(!empty($item['less_ice']))
+                                                        Less Ice
+                                                    @endif
+                                                @endif
+                                            </div>
+
+                                            <div class="cart-actions">
+                                                <button type="button" class="mini-btn mini-btn-dark" data-cart-action="increase" data-url="{{ route('cashier.cart.increase', $cartKey) }}">+ Tambah</button>
+                                                <button type="button" class="mini-btn mini-btn-brand" data-cart-action="decrease" data-url="{{ route('cashier.cart.decrease', $cartKey) }}">- Kurangi</button>
+                                                <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
+                                                    {{ !empty($item['less_sugar']) ? '✓ Less Sugar' : 'Less Sugar' }}
+                                                </button>
+                                                <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
+                                                    {{ !empty($item['less_ice']) ? '✓ Less Ice' : 'Less Ice' }}
+                                                </button>
+                                                <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="{{ route('cashier.cart.remove', $cartKey) }}">Hapus</button>
+                                            </div>
                                         </div>
-                                        <div class="summary-desc">Attach member opsional untuk transaksi ini.</div>
+                                    @empty
+                                        <div class="cart-empty" id="cart-empty-state">
+                                            Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
+                                        </div>
+                                    @endforelse
+                                </div>
+
+                                <div class="cart-total">
+                                    <span>Subtotal</span>
+                                    <span id="cart-subtotal-bottom">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</span>
+                                </div>
+                            </div>
+
+                            <div class="payment-section">
+                                <div class="payment-section-head">
+                                    <div>
+                                        <div class="payment-section-title">Payment & Checkout</div>
+                                        <div class="payment-section-subtitle">
+                                            Dibuat lebih nyaman untuk tap flow di tablet.
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="cart-box">
-                                    <div class="cart-title">Current Cart</div>
-                                    <div id="cart-items-container">
-                                        @forelse($cart as $cartKey => $item)
-                                            <div class="cart-item">
-                                                <div class="cart-item-name">
-                                                    {{ $item['product_name'] ?? 'Product' }}
-                                                    @if(!empty($item['variant_name']))
-                                                        - {{ $item['variant_name'] }}
-                                                    @endif
-                                                </div>
+                                <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
+                                    @csrf
 
-                                                <div class="cart-item-meta">
-                                                    Type: {{ strtoupper(str_replace('_', ' ', $item['order_type'] ?? 'dine_in')) }}
-                                                    • Qty: {{ $item['qty'] ?? 0 }}
-                                                    • Price: Rp {{ number_format((float) ($item['price'] ?? 0), 0, ',', '.') }}
-                                                    • Line Total: Rp {{ number_format((float) ($item['line_total'] ?? 0), 0, ',', '.') }}
+                                    <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
+                                    <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
 
-                                                    @if(!empty($item['less_sugar']) || !empty($item['less_ice']))
-                                                        <br>
-                                                        Modifier:
-                                                        @if(!empty($item['less_sugar']))
-                                                            Less Sugar
-                                                        @endif
-                                                        @if(!empty($item['less_sugar']) && !empty($item['less_ice']))
-                                                            •
-                                                        @endif
-                                                        @if(!empty($item['less_ice']))
-                                                            Less Ice
-                                                        @endif
-                                                    @endif
-                                                </div>
-
-                                                <div class="cart-actions">
-                                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-action="increase" data-url="{{ route('cashier.cart.increase', $cartKey) }}">+ Tambah</button>
-                                                    <button type="button" class="mini-btn mini-btn-brand" data-cart-action="decrease" data-url="{{ route('cashier.cart.decrease', $cartKey) }}">- Kurangi</button>
-                                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
-                                                        {{ !empty($item['less_sugar']) ? '✓ Less Sugar' : 'Less Sugar' }}
-                                                    </button>
-                                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
-                                                        {{ !empty($item['less_ice']) ? '✓ Less Ice' : 'Less Ice' }}
-                                                    </button>
-                                                    <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="{{ route('cashier.cart.remove', $cartKey) }}">Hapus</button>
-                                                </div>
-                                            </div>
-                                        @empty
-                                            <div class="cart-empty" id="cart-empty-state">
-                                                Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
-                                            </div>
-                                        @endforelse
+                                    <div class="field">
+                                        <label for="payment_method">Payment Method</label>
+                                        <select name="payment_method" id="payment_method" required>
+                                            <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
+                                            <option value="qris" {{ $oldPaymentMethod === 'qris' ? 'selected' : '' }}>QRIS</option>
+                                            <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
+                                            <option value="debit" {{ $oldPaymentMethod === 'debit' ? 'selected' : '' }}>Debit</option>
+                                            <option value="credit" {{ $oldPaymentMethod === 'credit' ? 'selected' : '' }}>Credit</option>
+                                        </select>
                                     </div>
 
-                                    <div class="cart-total">
-                                        <span>Subtotal</span>
-                                        <span id="cart-subtotal-bottom">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</span>
+                                    <div class="field">
+                                        <label for="amount_paid_display">Amount Paid</label>
+                                        <input
+                                            type="text"
+                                            id="amount_paid_display"
+                                            inputmode="numeric"
+                                            autocomplete="off"
+                                            value="Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}"
+                                            required
+                                        >
                                     </div>
-                                </div>
 
-                                <div class="payment-section">
-                                    <div class="payment-section-head">
-                                        <div>
-                                            <div class="payment-section-title">Payment & Checkout</div>
-                                            <div class="payment-section-subtitle">
-                                                Dibuat lebih nyaman untuk tap flow di tablet.
-                                            </div>
+                                    <div class="quick-amount-wrap">
+                                        <div class="quick-amount-label">Quick Amount</div>
+                                        <div class="quick-amount-grid">
+                                            <button type="button" class="quick-amount-btn primary" data-quick-amount="exact">Uang Pas</button>
+                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="5000">+5.000</button>
+                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="10000">+10.000</button>
+                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="20000">+20.000</button>
+                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="50000">+50.000</button>
+                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="100000">+100.000</button>
+                                            <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_5000">Bulat 5rb</button>
+                                            <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_10000">Bulat 10rb</button>
+                                            <button type="button" class="quick-amount-btn neutral" data-quick-amount="reset">Reset</button>
                                         </div>
                                     </div>
 
-                                    <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
+                                    <div class="payment-live-box">
+                                        <div class="payment-live-row">
+                                            <div class="payment-live-label">Subtotal Transaksi</div>
+                                            <div class="payment-live-value" id="live-subtotal-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                        </div>
+
+                                        <div class="payment-live-row">
+                                            <div class="payment-live-label">Amount Paid</div>
+                                            <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}</div>
+                                        </div>
+
+                                        <div class="payment-live-row change-highlight" id="change-highlight-row">
+                                            <div class="payment-live-label">Kembalian / Selisih</div>
+                                            <div class="payment-live-value" id="live-change-value">Rp 0</div>
+                                        </div>
+
+                                        <div class="payment-helper ok" id="payment-helper-text">
+                                            Nominal pembayaran sudah aman untuk checkout.
+                                        </div>
+                                    </div>
+
+                                    <div class="checkout-actions">
+                                        <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
+                                    </div>
+                                </form>
+
+                                <div class="checkout-actions" style="margin-top:12px;">
+                                    <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
+                                </div>
+                            </div>
+
+                            <div class="member-box">
+                                <div class="cart-title">Member Access</div>
+
+                                @if($member)
+                                    <div class="member-active">
+                                        Member aktif:
+                                        <strong>{{ $member['name'] ?? '-' }}</strong>
+                                        @if(!empty($member['phone']))
+                                            • {{ $member['phone'] }}
+                                        @endif
+                                        @if(isset($member['points']))
+                                            <br>Poin: {{ $member['points'] }}
+                                        @endif
+                                    </div>
+
+                                    <div class="member-actions">
+                                        <form method="POST" action="{{ route('cashier.member.detach') }}">
+                                            @csrf
+                                            <button type="submit" class="btn btn-dark">Lepas Member</button>
+                                        </form>
+                                    </div>
+                                @else
+                                    <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
                                         @csrf
-
-                                        <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
-                                        <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
-
-                                        <div class="field">
-                                            <label for="payment_method">Payment Method</label>
-                                            <select name="payment_method" id="payment_method" required>
-                                                <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
-                                                <option value="qris" {{ $oldPaymentMethod === 'qris' ? 'selected' : '' }}>QRIS</option>
-                                                <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
-                                            </select>
-                                        </div>
-
-                                        <div class="field">
-                                            <label for="amount_paid_display">Amount Paid</label>
-                                            <input
-                                                type="text"
-                                                id="amount_paid_display"
-                                                inputmode="numeric"
-                                                autocomplete="off"
-                                                value="Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}"
-                                                required
-                                            >
-                                        </div>
-
-                                        <div class="quick-amount-wrap">
-                                            <div class="quick-amount-label">Quick Amount</div>
-                                            <div class="quick-amount-grid">
-                                                <button type="button" class="quick-amount-btn primary" data-quick-amount="exact">Uang Pas</button>
-                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="5000">+5.000</button>
-                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="10000">+10.000</button>
-                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="20000">+20.000</button>
-                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="50000">+50.000</button>
-                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="100000">+100.000</button>
-                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_5000">Bulat 5rb</button>
-                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_10000">Bulat 10rb</button>
-                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="reset">Reset</button>
-                                            </div>
-                                        </div>
-
-                                        <div class="payment-live-box">
-                                            <div class="payment-live-row">
-                                                <div class="payment-live-label">Subtotal Transaksi</div>
-                                                <div class="payment-live-value" id="live-subtotal-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
-                                            </div>
-
-                                            <div class="payment-live-row">
-                                                <div class="payment-live-label">Amount Paid</div>
-                                                <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}</div>
-                                            </div>
-
-                                            <div class="payment-live-row change-highlight" id="change-highlight-row">
-                                                <div class="payment-live-label">Kembalian / Selisih</div>
-                                                <div class="payment-live-value" id="live-change-value">Rp 0</div>
-                                            </div>
-
-                                            <div class="payment-helper ok" id="payment-helper-text">
-                                                Nominal pembayaran sudah aman untuk checkout.
-                                            </div>
-                                        </div>
-
-                                        <div class="checkout-actions">
-                                            <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
+                                        <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
+                                        <div class="member-actions">
+                                            <button type="submit" class="btn btn-dark">Attach Member</button>
                                         </div>
                                     </form>
 
-                                    <div class="checkout-actions" style="margin-top:12px;">
-                                        <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
-                                    </div>
-                                </div>
-
-                                <div class="member-box">
-                                    <div class="cart-title">Member Access</div>
-
-                                    @if($member)
-                                        <div class="member-active">
-                                            Member aktif:
-                                            <strong>{{ $member['name'] ?? '-' }}</strong>
-                                            @if(!empty($member['phone']))
-                                                • {{ $member['phone'] }}
-                                            @endif
-                                            @if(isset($member['points']))
-                                                <br>Poin: {{ $member['points'] }}
-                                            @endif
-                                        </div>
-
+                                    <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
+                                        @csrf
+                                        <input type="text" name="name" class="member-input" placeholder="Nama member baru">
+                                        <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
                                         <div class="member-actions">
-                                            <form method="POST" action="{{ route('cashier.member.detach') }}">
-                                                @csrf
-                                                <button type="submit" class="btn btn-dark">Lepas Member</button>
-                                            </form>
+                                            <button type="submit" class="btn btn-brand">Quick Register</button>
                                         </div>
-                                    @else
-                                        <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
-                                            @csrf
-                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
-                                            <div class="member-actions">
-                                                <button type="submit" class="btn btn-dark">Attach Member</button>
-                                            </div>
-                                        </form>
+                                    </form>
+                                @endif
+                            </div>
 
-                                        <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
-                                            @csrf
-                                            <input type="text" name="name" class="member-input" placeholder="Nama member baru">
-                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
-                                            <div class="member-actions">
-                                                <button type="submit" class="btn btn-brand">Quick Register</button>
-                                            </div>
-                                        </form>
-                                    @endif
-                                </div>
+                            <div class="receipt-history-box">
+                                <div class="cart-title">Histori Struk Cashier</div>
 
-                                @isset($recentReceipts)
-                                <div class="receipt-history-box">
-                                    <div class="cart-title">Histori Struk Cashier</div>
+                                @if($recentReceipts->count())
+                                    <div class="receipt-history-list">
+                                        @foreach($recentReceipts as $receipt)
+                                            @php
+                                                $displayReceiptNumber = 'ATG-0001';
 
-                                    @if($recentReceipts->count())
-                                        <div class="receipt-history-list">
-                                            @foreach($recentReceipts as $receipt)
-                                                @php
-                                                    $displayReceiptNumber = 'ATG-0001';
+                                                if (! empty($receipt->transaction_number)) {
+                                                    $parts = explode('-', $receipt->transaction_number);
+                                                    $lastPart = end($parts);
 
-                                                    if (! empty($receipt->transaction_number)) {
-                                                        $parts = explode('-', $receipt->transaction_number);
-                                                        $lastPart = end($parts);
-
-                                                        if (is_numeric($lastPart)) {
-                                                            $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
-                                                        }
+                                                    if (is_numeric($lastPart)) {
+                                                        $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
                                                     }
-                                                @endphp
+                                                }
+                                            @endphp
 
-                                                <div class="receipt-history-item">
-                                                    <div class="receipt-history-top">
-                                                        <div>
-                                                            <div class="receipt-history-number">{{ $displayReceiptNumber }}</div>
-                                                            <div class="receipt-history-time">
-                                                                {{ $receipt->created_at?->format('Y-m-d H:i:s') ?? '-' }}
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="receipt-history-total">
-                                                            Rp {{ number_format((float) $receipt->grand_total, 0, ',', '.') }}
+                                            <div class="receipt-history-item">
+                                                <div class="receipt-history-top">
+                                                    <div>
+                                                        <div class="receipt-history-number">{{ $displayReceiptNumber }}</div>
+                                                        <div class="receipt-history-time">
+                                                            {{ $receipt->created_at?->format('Y-m-d H:i:s') ?? '-' }}
                                                         </div>
                                                     </div>
 
-                                                    <div class="receipt-history-meta">
-                                                        Payment: {{ strtoupper((string) ($receipt->payment_method ?? '-')) }}
-                                                        • Status: {{ ucfirst((string) ($receipt->status ?? '-')) }}
-                                                        @if($receipt->outlet)
-                                                            • {{ $receipt->outlet->name }}
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="receipt-history-items">
-                                                        @forelse($receipt->items->take(3) as $item)
-                                                            <div>
-                                                                {{ $item->product_name ?? '-' }}
-                                                                @if($item->variant_name)
-                                                                    - {{ $item->variant_name }}
-                                                                @endif
-                                                                x {{ number_format((float) $item->qty, 0, ',', '.') }}
-                                                            </div>
-                                                        @empty
-                                                            <div>Tidak ada item.</div>
-                                                        @endforelse
-
-                                                        @if($receipt->items->count() > 3)
-                                                            <div>+ {{ $receipt->items->count() - 3 }} item lainnya</div>
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="receipt-history-actions">
-                                                        <a
-                                                            href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier']) }}"
-                                                            target="_blank"
-                                                            class="btn btn-green"
-                                                        >
-                                                            Buka Receipt
-                                                        </a>
-
-                                                        <a
-                                                            href="{{ route('cashier.new-transaction') }}"
-                                                            class="btn btn-dark"
-                                                        >
-                                                            Transaksi Baru
-                                                        </a>
+                                                    <div class="receipt-history-total">
+                                                        Rp {{ number_format((float) $receipt->grand_total, 0, ',', '.') }}
                                                     </div>
                                                 </div>
-                                            @endforeach
-                                        </div>
-                                    @else
-                                        <div class="receipt-history-empty">
-                                            Belum ada histori struk untuk cashier ini.
-                                        </div>
-                                    @endif
-                                </div>
-                                @endisset
+
+                                                <div class="receipt-history-meta">
+                                                    Payment: {{ strtoupper((string) ($receipt->payment_method ?? '-')) }}
+                                                    • Status: {{ ucfirst((string) ($receipt->status ?? '-')) }}
+                                                    @if($receipt->outlet)
+                                                        • {{ $receipt->outlet->name }}
+                                                    @endif
+                                                </div>
+
+                                                <div class="receipt-history-items">
+                                                    @forelse($receipt->items->take(3) as $item)
+                                                        <div>
+                                                            {{ $item->product_name ?? '-' }}
+                                                            @if($item->variant_name)
+                                                                - {{ $item->variant_name }}
+                                                            @endif
+                                                            x {{ number_format((float) $item->qty, 0, ',', '.') }}
+                                                        </div>
+                                                    @empty
+                                                        <div>Tidak ada item.</div>
+                                                    @endforelse
+
+                                                    @if($receipt->items->count() > 3)
+                                                        <div>+ {{ $receipt->items->count() - 3 }} item lainnya</div>
+                                                    @endif
+                                                </div>
+
+                                                <div class="receipt-history-actions">
+                                                    <a
+                                                        href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier']) }}"
+                                                        target="_blank"
+                                                        class="btn btn-green"
+                                                    >
+                                                        Buka Receipt
+                                                    </a>
+
+                                                    <a
+                                                        href="{{ route('cashier.new-transaction') }}"
+                                                        class="btn btn-dark"
+                                                    >
+                                                        Transaksi Baru
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="receipt-history-empty">
+                                        Belum ada histori struk untuk cashier ini.
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -1926,6 +1930,7 @@
             const endShiftForm = document.getElementById('end-shift-form');
             const openingCashInput = document.getElementById('opening_cash');
             const closingCashActualInput = document.getElementById('closing_cash_actual');
+            const closingCashActualDisplay = document.getElementById('closing_cash_actual_display');
             const closingNoteInput = document.getElementById('closing_note');
             const startShiftButton = document.getElementById('start-shift-button');
             const endShiftButton = document.getElementById('end-shift-button');
@@ -1957,21 +1962,6 @@
                 return String(value || 'dine_in').replace('_', ' ').toUpperCase();
             }
 
-            function parseRupiahInput(value) {
-                const raw = String(value || '').replace(/[^\d]/g, '');
-                return raw ? Number(raw) : 0;
-            }
-
-            function setRupiahFieldValue(element, value) {
-                if (!element) return;
-                const clean = Math.max(0, Number(value || 0));
-                element.value = formatCurrency(clean);
-            }
-
-            function getRupiahFieldValue(element) {
-                return parseRupiahInput(element?.value || '');
-            }
-
             function showAlert(type, message) {
                 successAlert.classList.add('hidden');
                 errorAlert.classList.add('hidden');
@@ -1999,11 +1989,18 @@
                 return !!cashierState.activeShift && cashierState.activeShift.status === 'open';
             }
 
+            function parseRupiahInput(value) {
+                const raw = String(value || '').replace(/[^\d]/g, '');
+                return raw ? Number(raw) : 0;
+            }
+
             function setAmountPaidValue(value) {
                 const clean = Math.max(0, Number(value || 0));
+
                 if (amountPaidNumeric) {
                     amountPaidNumeric.value = clean.toFixed(2);
                 }
+
                 if (amountPaidDisplay) {
                     amountPaidDisplay.value = formatCurrency(clean);
                 }
@@ -2011,6 +2008,22 @@
 
             function getAmountPaidValue() {
                 return Number(amountPaidNumeric?.value || 0);
+            }
+
+            function setClosingCashActualValue(value) {
+                const clean = Math.max(0, Number(value || 0));
+
+                if (closingCashActualInput) {
+                    closingCashActualInput.value = clean.toFixed(2);
+                }
+
+                if (closingCashActualDisplay) {
+                    closingCashActualDisplay.value = formatCurrency(clean);
+                }
+            }
+
+            function getClosingCashActualValue() {
+                return Number(closingCashActualInput?.value || 0);
             }
 
             function updateShiftUI() {
@@ -2026,7 +2039,7 @@
                     shiftExpectedCash.textContent = formatCurrency(cashierState.shiftSummary.expected_cash || 0);
                     shiftTotalTransactions.textContent = String(cashierState.shiftSummary.total_transactions || 0);
                     shiftTotalSales.textContent = formatCurrency(cashierState.shiftSummary.total_sales || 0);
-                    setRupiahFieldValue(closingCashActualInput, cashierState.shiftSummary.expected_cash || 0);
+                    setClosingCashActualValue(Number(cashierState.shiftSummary.expected_cash || 0));
                 }
             }
 
@@ -2092,7 +2105,7 @@
 
                 const subtotalValue = Number(cashierState.cart.subtotal || 0);
 
-                if (paymentMethod.value === 'qris' || paymentMethod.value === 'transfer') {
+                if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
                     setAmountPaidValue(subtotalValue);
                     amountPaidDisplay.readOnly = true;
                 } else {
@@ -2334,7 +2347,7 @@
             }
 
             async function handleStartShift() {
-                const openingCash = getRupiahFieldValue(openingCashInput);
+                const openingCash = Number(openingCashInput.value || 0);
                 const originalText = startShiftButton.textContent;
 
                 startShiftButton.disabled = true;
@@ -2359,7 +2372,7 @@
             }
 
             async function handleEndShift() {
-                const closingCashActual = getRupiahFieldValue(closingCashActualInput);
+                const closingCashActual = getClosingCashActualValue();
                 const closingNote = closingNoteInput.value || '';
                 const originalText = endShiftButton.textContent;
 
@@ -2382,6 +2395,8 @@
                         cash_sales: 0,
                         qris_sales: 0,
                         transfer_sales: 0,
+                        debit_sales: 0,
+                        credit_sales: 0,
                         void_transactions: 0,
                         expected_cash: 0,
                         difference: 0,
@@ -2420,7 +2435,7 @@
                 }
 
                 if (!amountPaidDisplay) return;
-                if (paymentMethod.value === 'qris' || paymentMethod.value === 'transfer') {
+                if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
                     showAlert('info', 'Quick amount dipakai untuk pembayaran cash.');
                     return;
                 }
@@ -2525,24 +2540,13 @@
                 updateLivePaymentSummary();
             });
 
-            openingCashInput?.addEventListener('input', function () {
+            closingCashActualDisplay?.addEventListener('input', function () {
                 const parsed = parseRupiahInput(this.value);
-                setRupiahFieldValue(this, parsed);
+                setClosingCashActualValue(parsed);
             });
 
-            openingCashInput?.addEventListener('blur', function () {
-                const parsed = parseRupiahInput(this.value);
-                setRupiahFieldValue(this, parsed);
-            });
-
-            closingCashActualInput?.addEventListener('input', function () {
-                const parsed = parseRupiahInput(this.value);
-                setRupiahFieldValue(this, parsed);
-            });
-
-            closingCashActualInput?.addEventListener('blur', function () {
-                const parsed = parseRupiahInput(this.value);
-                setRupiahFieldValue(this, parsed);
+            closingCashActualDisplay?.addEventListener('blur', function () {
+                setClosingCashActualValue(getClosingCashActualValue());
             });
 
             checkoutForm?.addEventListener('submit', function () {
@@ -2553,8 +2557,7 @@
                 updateShiftUI();
                 applyCartPayload(cashierState.cart);
                 setAmountPaidValue({{ (float) $oldAmountPaid }});
-                setRupiahFieldValue(openingCashInput, parseRupiahInput(openingCashInput?.value || 0));
-                setRupiahFieldValue(closingCashActualInput, parseRupiahInput(closingCashActualInput?.value || 0));
+                setClosingCashActualValue({{ (float) ($shiftSummary['expected_cash'] ?? 0) }});
                 syncAmountPaid();
                 updateLivePaymentSummary();
             });
