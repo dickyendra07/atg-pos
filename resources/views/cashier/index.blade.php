@@ -52,7 +52,7 @@
             border-radius: 34px;
             box-shadow: var(--shadow);
             backdrop-filter: blur(10px);
-            overflow: hidden;
+            overflow: visible;
         }
 
         .topbar {
@@ -288,8 +288,9 @@
 
         .layout {
             display: grid;
-            grid-template-columns: 1.12fr 0.88fr;
+            grid-template-columns: minmax(0, 1.12fr) minmax(420px, 0.88fr);
             gap: 22px;
+            align-items: start;
         }
 
         .section-card {
@@ -297,7 +298,7 @@
             border: 1px solid #eceff5;
             border-radius: 28px;
             box-shadow: var(--shadow-soft);
-            overflow: hidden;
+            overflow: visible;
         }
 
         .section-head {
@@ -693,11 +694,19 @@
             white-space: nowrap;
         }
 
+        .cart-panel-wrap {
+            position: relative;
+            align-self: start;
+        }
+
         .cart-panel {
             display: flex;
             flex-direction: column;
             gap: 18px;
             padding: 22px;
+            position: sticky;
+            top: 18px;
+            align-self: start;
         }
 
         .cart-box {
@@ -1069,10 +1078,92 @@
             margin-top: 12px;
         }
 
+        .receipt-history-box {
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+            border: 1px solid #e7edf5;
+            border-radius: 22px;
+            padding: 18px;
+        }
+
+        .receipt-history-list {
+            display: grid;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .receipt-history-item {
+            border: 1px solid #e8edf4;
+            border-radius: 16px;
+            padding: 14px;
+            background: #ffffff;
+        }
+
+        .receipt-history-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .receipt-history-number {
+            font-size: 15px;
+            font-weight: 800;
+            color: #111827;
+            line-height: 1.4;
+        }
+
+        .receipt-history-time {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.5;
+            margin-top: 2px;
+        }
+
+        .receipt-history-total {
+            font-size: 16px;
+            font-weight: 800;
+            color: #166534;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .receipt-history-meta {
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.7;
+            margin-bottom: 10px;
+        }
+
+        .receipt-history-items {
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.7;
+            margin-bottom: 12px;
+        }
+
+        .receipt-history-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .receipt-history-empty {
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.7;
+            margin-top: 12px;
+        }
+
         @media (max-width: 1200px) {
             .hero,
             .layout {
                 grid-template-columns: 1fr;
+            }
+
+            .cart-panel {
+                position: static;
+                top: auto;
             }
         }
 
@@ -1133,14 +1224,16 @@
             .checkout-success-actions,
             .member-actions,
             .cart-actions,
-            .shift-actions {
+            .shift-actions,
+            .receipt-history-actions {
                 flex-direction: column;
             }
 
             .checkout-success-actions .btn,
             .member-actions .btn,
             .cart-actions .mini-btn,
-            .shift-actions .shift-btn {
+            .shift-actions .shift-btn,
+            .receipt-history-actions .btn {
                 width: 100%;
             }
         }
@@ -1198,6 +1291,9 @@
         'expected_cash' => (float) ($shiftSummary['expected_cash'] ?? 0),
         'difference' => 0,
     ], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+
+    $oldPaymentMethod = old('payment_method', 'cash');
+    $oldAmountPaid = old('amount_paid', (float) $subtotal);
 @endphp
 
     <div class="page">
@@ -1282,7 +1378,7 @@
                             <form id="start-shift-form" class="shift-form">
                                 <div class="shift-field">
                                     <label for="opening_cash">Opening Cash</label>
-                                    <input type="number" id="opening_cash" name="opening_cash" min="0" step="0.01" value="0">
+                                    <input type="text" id="opening_cash" name="opening_cash" inputmode="numeric" autocomplete="off" value="Rp 0">
                                 </div>
 
                                 <div class="shift-actions">
@@ -1332,7 +1428,7 @@
                             <form id="end-shift-form" class="shift-form">
                                 <div class="shift-field">
                                     <label for="closing_cash_actual">Closing Cash Actual</label>
-                                    <input type="number" id="closing_cash_actual" name="closing_cash_actual" min="0" step="0.01" value="{{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 2, '.', '') }}">
+                                    <input type="text" id="closing_cash_actual" name="closing_cash_actual" inputmode="numeric" autocomplete="off" value="Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}">
                                 </div>
 
                                 <div class="shift-field">
@@ -1480,210 +1576,299 @@
                         </div>
                     </div>
 
-                    <div class="section-card">
-                        <div class="cart-panel">
-                            <div class="summary-grid">
-                                <div class="summary-card soft-orange">
-                                    <div class="summary-label">Total Items</div>
-                                    <div class="summary-value" id="summary-cart-count">{{ count($cart) }}</div>
-                                    <div class="summary-desc">Jumlah baris item aktif di cart.</div>
-                                </div>
-
-                                <div class="summary-card soft-green">
-                                    <div class="summary-label">Subtotal</div>
-                                    <div class="summary-value" id="summary-subtotal">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
-                                    <div class="summary-desc">Nilai transaksi sementara.</div>
-                                </div>
-
-                                <div class="summary-card soft-blue">
-                                    <div class="summary-label">Member</div>
-                                    <div class="summary-value" id="summary-member-name" style="font-size:20px;">
-                                        {{ $member['name'] ?? $member['phone'] ?? 'Belum ada member' }}
+                    <div class="cart-panel-wrap">
+                        <div class="section-card">
+                            <div class="cart-panel">
+                                <div class="summary-grid">
+                                    <div class="summary-card soft-orange">
+                                        <div class="summary-label">Total Items</div>
+                                        <div class="summary-value" id="summary-cart-count">{{ count($cart) }}</div>
+                                        <div class="summary-desc">Jumlah baris item aktif di cart.</div>
                                     </div>
-                                    <div class="summary-desc">Attach member opsional untuk transaksi ini.</div>
-                                </div>
-                            </div>
 
-                            <div class="cart-box">
-                                <div class="cart-title">Current Cart</div>
-                                <div id="cart-items-container">
-                                    @forelse($cart as $cartKey => $item)
-                                        <div class="cart-item">
-                                            <div class="cart-item-name">
-                                                {{ $item['product_name'] ?? 'Product' }}
-                                                @if(!empty($item['variant_name']))
-                                                    - {{ $item['variant_name'] }}
-                                                @endif
+                                    <div class="summary-card soft-green">
+                                        <div class="summary-label">Subtotal</div>
+                                        <div class="summary-value" id="summary-subtotal">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                        <div class="summary-desc">Nilai transaksi sementara.</div>
+                                    </div>
+
+                                    <div class="summary-card soft-blue">
+                                        <div class="summary-label">Member</div>
+                                        <div class="summary-value" id="summary-member-name" style="font-size:20px;">
+                                            {{ $member['name'] ?? $member['phone'] ?? 'Belum ada member' }}
+                                        </div>
+                                        <div class="summary-desc">Attach member opsional untuk transaksi ini.</div>
+                                    </div>
+                                </div>
+
+                                <div class="cart-box">
+                                    <div class="cart-title">Current Cart</div>
+                                    <div id="cart-items-container">
+                                        @forelse($cart as $cartKey => $item)
+                                            <div class="cart-item">
+                                                <div class="cart-item-name">
+                                                    {{ $item['product_name'] ?? 'Product' }}
+                                                    @if(!empty($item['variant_name']))
+                                                        - {{ $item['variant_name'] }}
+                                                    @endif
+                                                </div>
+
+                                                <div class="cart-item-meta">
+                                                    Type: {{ strtoupper(str_replace('_', ' ', $item['order_type'] ?? 'dine_in')) }}
+                                                    • Qty: {{ $item['qty'] ?? 0 }}
+                                                    • Price: Rp {{ number_format((float) ($item['price'] ?? 0), 0, ',', '.') }}
+                                                    • Line Total: Rp {{ number_format((float) ($item['line_total'] ?? 0), 0, ',', '.') }}
+
+                                                    @if(!empty($item['less_sugar']) || !empty($item['less_ice']))
+                                                        <br>
+                                                        Modifier:
+                                                        @if(!empty($item['less_sugar']))
+                                                            Less Sugar
+                                                        @endif
+                                                        @if(!empty($item['less_sugar']) && !empty($item['less_ice']))
+                                                            •
+                                                        @endif
+                                                        @if(!empty($item['less_ice']))
+                                                            Less Ice
+                                                        @endif
+                                                    @endif
+                                                </div>
+
+                                                <div class="cart-actions">
+                                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-action="increase" data-url="{{ route('cashier.cart.increase', $cartKey) }}">+ Tambah</button>
+                                                    <button type="button" class="mini-btn mini-btn-brand" data-cart-action="decrease" data-url="{{ route('cashier.cart.decrease', $cartKey) }}">- Kurangi</button>
+                                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
+                                                        {{ !empty($item['less_sugar']) ? '✓ Less Sugar' : 'Less Sugar' }}
+                                                    </button>
+                                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
+                                                        {{ !empty($item['less_ice']) ? '✓ Less Ice' : 'Less Ice' }}
+                                                    </button>
+                                                    <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="{{ route('cashier.cart.remove', $cartKey) }}">Hapus</button>
+                                                </div>
+                                            </div>
+                                        @empty
+                                            <div class="cart-empty" id="cart-empty-state">
+                                                Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
+                                            </div>
+                                        @endforelse
+                                    </div>
+
+                                    <div class="cart-total">
+                                        <span>Subtotal</span>
+                                        <span id="cart-subtotal-bottom">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="payment-section">
+                                    <div class="payment-section-head">
+                                        <div>
+                                            <div class="payment-section-title">Payment & Checkout</div>
+                                            <div class="payment-section-subtitle">
+                                                Dibuat lebih nyaman untuk tap flow di tablet.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
+                                        @csrf
+
+                                        <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
+                                        <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
+
+                                        <div class="field">
+                                            <label for="payment_method">Payment Method</label>
+                                            <select name="payment_method" id="payment_method" required>
+                                                <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
+                                                <option value="qris" {{ $oldPaymentMethod === 'qris' ? 'selected' : '' }}>QRIS</option>
+                                                <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label for="amount_paid_display">Amount Paid</label>
+                                            <input
+                                                type="text"
+                                                id="amount_paid_display"
+                                                inputmode="numeric"
+                                                autocomplete="off"
+                                                value="Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}"
+                                                required
+                                            >
+                                        </div>
+
+                                        <div class="quick-amount-wrap">
+                                            <div class="quick-amount-label">Quick Amount</div>
+                                            <div class="quick-amount-grid">
+                                                <button type="button" class="quick-amount-btn primary" data-quick-amount="exact">Uang Pas</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="5000">+5.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="10000">+10.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="20000">+20.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="50000">+50.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="100000">+100.000</button>
+                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_5000">Bulat 5rb</button>
+                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_10000">Bulat 10rb</button>
+                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="reset">Reset</button>
+                                            </div>
+                                        </div>
+
+                                        <div class="payment-live-box">
+                                            <div class="payment-live-row">
+                                                <div class="payment-live-label">Subtotal Transaksi</div>
+                                                <div class="payment-live-value" id="live-subtotal-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
                                             </div>
 
-                                            <div class="cart-item-meta">
-                                                Type: {{ strtoupper(str_replace('_', ' ', $item['order_type'] ?? 'dine_in')) }}
-                                                • Qty: {{ $item['qty'] ?? 0 }}
-                                                • Price: Rp {{ number_format((float) ($item['price'] ?? 0), 0, ',', '.') }}
-                                                • Line Total: Rp {{ number_format((float) ($item['line_total'] ?? 0), 0, ',', '.') }}
-
-                                                @if(!empty($item['less_sugar']) || !empty($item['less_ice']))
-                                                    <br>
-                                                    Modifier:
-                                                    @if(!empty($item['less_sugar']))
-                                                        Less Sugar
-                                                    @endif
-                                                    @if(!empty($item['less_sugar']) && !empty($item['less_ice']))
-                                                        •
-                                                    @endif
-                                                    @if(!empty($item['less_ice']))
-                                                        Less Ice
-                                                    @endif
-                                                @endif
+                                            <div class="payment-live-row">
+                                                <div class="payment-live-label">Amount Paid</div>
+                                                <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}</div>
                                             </div>
 
-                                            <div class="cart-actions">
-                                                <button type="button" class="mini-btn mini-btn-dark" data-cart-action="increase" data-url="{{ route('cashier.cart.increase', $cartKey) }}">+ Tambah</button>
-                                                <button type="button" class="mini-btn mini-btn-brand" data-cart-action="decrease" data-url="{{ route('cashier.cart.decrease', $cartKey) }}">- Kurangi</button>
-                                                <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
-                                                    {{ !empty($item['less_sugar']) ? '✓ Less Sugar' : 'Less Sugar' }}
-                                                </button>
-                                                <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
-                                                    {{ !empty($item['less_ice']) ? '✓ Less Ice' : 'Less Ice' }}
-                                                </button>
-                                                <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="{{ route('cashier.cart.remove', $cartKey) }}">Hapus</button>
+                                            <div class="payment-live-row change-highlight" id="change-highlight-row">
+                                                <div class="payment-live-label">Kembalian / Selisih</div>
+                                                <div class="payment-live-value" id="live-change-value">Rp 0</div>
+                                            </div>
+
+                                            <div class="payment-helper ok" id="payment-helper-text">
+                                                Nominal pembayaran sudah aman untuk checkout.
                                             </div>
                                         </div>
-                                    @empty
-                                        <div class="cart-empty" id="cart-empty-state">
-                                            Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
-                                        </div>
-                                    @endforelse
-                                </div>
 
-                                <div class="cart-total">
-                                    <span>Subtotal</span>
-                                    <span id="cart-subtotal-bottom">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</span>
-                                </div>
-                            </div>
-
-                            <div class="payment-section">
-                                <div class="payment-section-head">
-                                    <div>
-                                        <div class="payment-section-title">Payment & Checkout</div>
-                                        <div class="payment-section-subtitle">
-                                            Dibuat lebih nyaman untuk tap flow di tablet.
+                                        <div class="checkout-actions">
+                                            <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
                                         </div>
+                                    </form>
+
+                                    <div class="checkout-actions" style="margin-top:12px;">
+                                        <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
                                     </div>
                                 </div>
 
-                                <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form">
-                                    @csrf
+                                <div class="member-box">
+                                    <div class="cart-title">Member Access</div>
 
-                                    <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
-
-                                    <div class="field">
-                                        <label for="payment_method">Payment Method</label>
-                                        <select name="payment_method" id="payment_method" required>
-                                            <option value="cash" {{ old('payment_method') === 'cash' ? 'selected' : '' }}>Cash</option>
-                                            <option value="qris" {{ old('payment_method') === 'qris' ? 'selected' : '' }}>QRIS</option>
-                                            <option value="transfer" {{ old('payment_method') === 'transfer' ? 'selected' : '' }}>Transfer</option>
-                                        </select>
-                                    </div>
-
-                                    <div class="field">
-                                        <label for="amount_paid">Amount Paid</label>
-                                        <input
-                                            type="number"
-                                            name="amount_paid"
-                                            id="amount_paid"
-                                            min="0"
-                                            step="0.01"
-                                            value="{{ old('amount_paid', (float) $subtotal) }}"
-                                            required
-                                        >
-                                    </div>
-
-                                    <div class="quick-amount-wrap">
-                                        <div class="quick-amount-label">Quick Amount</div>
-                                        <div class="quick-amount-grid">
-                                            <button type="button" class="quick-amount-btn primary" data-quick-amount="exact">Uang Pas</button>
-                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="5000">+5.000</button>
-                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="10000">+10.000</button>
-                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="20000">+20.000</button>
-                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="50000">+50.000</button>
-                                            <button type="button" class="quick-amount-btn soft" data-quick-amount="100000">+100.000</button>
-                                            <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_5000">Bulat 5rb</button>
-                                            <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_10000">Bulat 10rb</button>
-                                            <button type="button" class="quick-amount-btn neutral" data-quick-amount="reset">Reset</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="payment-live-box">
-                                        <div class="payment-live-row">
-                                            <div class="payment-live-label">Subtotal Transaksi</div>
-                                            <div class="payment-live-value" id="live-subtotal-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                    @if($member)
+                                        <div class="member-active">
+                                            Member aktif:
+                                            <strong>{{ $member['name'] ?? '-' }}</strong>
+                                            @if(!empty($member['phone']))
+                                                • {{ $member['phone'] }}
+                                            @endif
+                                            @if(isset($member['points']))
+                                                <br>Poin: {{ $member['points'] }}
+                                            @endif
                                         </div>
 
-                                        <div class="payment-live-row">
-                                            <div class="payment-live-label">Amount Paid</div>
-                                            <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                        <div class="member-actions">
+                                            <form method="POST" action="{{ route('cashier.member.detach') }}">
+                                                @csrf
+                                                <button type="submit" class="btn btn-dark">Lepas Member</button>
+                                            </form>
                                         </div>
-
-                                        <div class="payment-live-row change-highlight" id="change-highlight-row">
-                                            <div class="payment-live-label">Kembalian / Selisih</div>
-                                            <div class="payment-live-value" id="live-change-value">Rp 0</div>
-                                        </div>
-
-                                        <div class="payment-helper ok" id="payment-helper-text">
-                                            Nominal pembayaran sudah aman untuk checkout.
-                                        </div>
-                                    </div>
-
-                                    <div class="checkout-actions">
-                                        <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
-                                    </div>
-                                </form>
-
-                                <div class="checkout-actions" style="margin-top:12px;">
-                                    <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
-                                </div>
-                            </div>
-
-                            <div class="member-box">
-                                <div class="cart-title">Member Access</div>
-
-                                @if($member)
-                                    <div class="member-active">
-                                        Member aktif:
-                                        <strong>{{ $member['name'] ?? '-' }}</strong>
-                                        @if(!empty($member['phone']))
-                                            • {{ $member['phone'] }}
-                                        @endif
-                                        @if(isset($member['points']))
-                                            <br>Poin: {{ $member['points'] }}
-                                        @endif
-                                    </div>
-
-                                    <div class="member-actions">
-                                        <form method="POST" action="{{ route('cashier.member.detach') }}">
+                                    @else
+                                        <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
                                             @csrf
-                                            <button type="submit" class="btn btn-dark">Lepas Member</button>
+                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
+                                            <div class="member-actions">
+                                                <button type="submit" class="btn btn-dark">Attach Member</button>
+                                            </div>
                                         </form>
-                                    </div>
-                                @else
-                                    <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
-                                        @csrf
-                                        <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
-                                        <div class="member-actions">
-                                            <button type="submit" class="btn btn-dark">Attach Member</button>
-                                        </div>
-                                    </form>
 
-                                    <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
-                                        @csrf
-                                        <input type="text" name="name" class="member-input" placeholder="Nama member baru">
-                                        <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
-                                        <div class="member-actions">
-                                            <button type="submit" class="btn btn-brand">Quick Register</button>
+                                        <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
+                                            @csrf
+                                            <input type="text" name="name" class="member-input" placeholder="Nama member baru">
+                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
+                                            <div class="member-actions">
+                                                <button type="submit" class="btn btn-brand">Quick Register</button>
+                                            </div>
+                                        </form>
+                                    @endif
+                                </div>
+
+                                @isset($recentReceipts)
+                                <div class="receipt-history-box">
+                                    <div class="cart-title">Histori Struk Cashier</div>
+
+                                    @if($recentReceipts->count())
+                                        <div class="receipt-history-list">
+                                            @foreach($recentReceipts as $receipt)
+                                                @php
+                                                    $displayReceiptNumber = 'ATG-0001';
+
+                                                    if (! empty($receipt->transaction_number)) {
+                                                        $parts = explode('-', $receipt->transaction_number);
+                                                        $lastPart = end($parts);
+
+                                                        if (is_numeric($lastPart)) {
+                                                            $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
+                                                        }
+                                                    }
+                                                @endphp
+
+                                                <div class="receipt-history-item">
+                                                    <div class="receipt-history-top">
+                                                        <div>
+                                                            <div class="receipt-history-number">{{ $displayReceiptNumber }}</div>
+                                                            <div class="receipt-history-time">
+                                                                {{ $receipt->created_at?->format('Y-m-d H:i:s') ?? '-' }}
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="receipt-history-total">
+                                                            Rp {{ number_format((float) $receipt->grand_total, 0, ',', '.') }}
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="receipt-history-meta">
+                                                        Payment: {{ strtoupper((string) ($receipt->payment_method ?? '-')) }}
+                                                        • Status: {{ ucfirst((string) ($receipt->status ?? '-')) }}
+                                                        @if($receipt->outlet)
+                                                            • {{ $receipt->outlet->name }}
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="receipt-history-items">
+                                                        @forelse($receipt->items->take(3) as $item)
+                                                            <div>
+                                                                {{ $item->product_name ?? '-' }}
+                                                                @if($item->variant_name)
+                                                                    - {{ $item->variant_name }}
+                                                                @endif
+                                                                x {{ number_format((float) $item->qty, 0, ',', '.') }}
+                                                            </div>
+                                                        @empty
+                                                            <div>Tidak ada item.</div>
+                                                        @endforelse
+
+                                                        @if($receipt->items->count() > 3)
+                                                            <div>+ {{ $receipt->items->count() - 3 }} item lainnya</div>
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="receipt-history-actions">
+                                                        <a
+                                                            href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier']) }}"
+                                                            target="_blank"
+                                                            class="btn btn-green"
+                                                        >
+                                                            Buka Receipt
+                                                        </a>
+
+                                                        <a
+                                                            href="{{ route('cashier.new-transaction') }}"
+                                                            class="btn btn-dark"
+                                                        >
+                                                            Transaksi Baru
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            @endforeach
                                         </div>
-                                    </form>
-                                @endif
+                                    @else
+                                        <div class="receipt-history-empty">
+                                            Belum ada histori struk untuk cashier ini.
+                                        </div>
+                                    @endif
+                                </div>
+                                @endisset
                             </div>
                         </div>
                     </div>
@@ -1723,7 +1908,9 @@
             const cartItemsContainer = document.getElementById('cart-items-container');
             const cartSubtotalBottom = document.getElementById('cart-subtotal-bottom');
             const paymentMethod = document.getElementById('payment_method');
-            const amountPaid = document.getElementById('amount_paid');
+            const amountPaidDisplay = document.getElementById('amount_paid_display');
+            const amountPaidNumeric = document.getElementById('amount_paid_numeric');
+            const checkoutForm = document.getElementById('checkout-form');
             const searchInput = document.getElementById('cashier-search-input');
             const clearCartButton = document.getElementById('clear-cart-button');
             const liveSubtotalValue = document.getElementById('live-subtotal-value');
@@ -1770,6 +1957,21 @@
                 return String(value || 'dine_in').replace('_', ' ').toUpperCase();
             }
 
+            function parseRupiahInput(value) {
+                const raw = String(value || '').replace(/[^\d]/g, '');
+                return raw ? Number(raw) : 0;
+            }
+
+            function setRupiahFieldValue(element, value) {
+                if (!element) return;
+                const clean = Math.max(0, Number(value || 0));
+                element.value = formatCurrency(clean);
+            }
+
+            function getRupiahFieldValue(element) {
+                return parseRupiahInput(element?.value || '');
+            }
+
             function showAlert(type, message) {
                 successAlert.classList.add('hidden');
                 errorAlert.classList.add('hidden');
@@ -1797,6 +1999,20 @@
                 return !!cashierState.activeShift && cashierState.activeShift.status === 'open';
             }
 
+            function setAmountPaidValue(value) {
+                const clean = Math.max(0, Number(value || 0));
+                if (amountPaidNumeric) {
+                    amountPaidNumeric.value = clean.toFixed(2);
+                }
+                if (amountPaidDisplay) {
+                    amountPaidDisplay.value = formatCurrency(clean);
+                }
+            }
+
+            function getAmountPaidValue() {
+                return Number(amountPaidNumeric?.value || 0);
+            }
+
             function updateShiftUI() {
                 const open = isShiftOpen();
 
@@ -1810,7 +2026,7 @@
                     shiftExpectedCash.textContent = formatCurrency(cashierState.shiftSummary.expected_cash || 0);
                     shiftTotalTransactions.textContent = String(cashierState.shiftSummary.total_transactions || 0);
                     shiftTotalSales.textContent = formatCurrency(cashierState.shiftSummary.total_sales || 0);
-                    closingCashActualInput.value = Number(cashierState.shiftSummary.expected_cash || 0).toFixed(2);
+                    setRupiahFieldValue(closingCashActualInput, cashierState.shiftSummary.expected_cash || 0);
                 }
             }
 
@@ -1872,18 +2088,20 @@
             }
 
             function syncAmountPaid() {
-                if (!paymentMethod || !amountPaid) return;
+                if (!paymentMethod) return;
 
                 const subtotalValue = Number(cashierState.cart.subtotal || 0);
 
                 if (paymentMethod.value === 'qris' || paymentMethod.value === 'transfer') {
-                    amountPaid.value = subtotalValue.toFixed(2);
-                    amountPaid.readOnly = true;
+                    setAmountPaidValue(subtotalValue);
+                    amountPaidDisplay.readOnly = true;
                 } else {
-                    amountPaid.readOnly = false;
+                    amountPaidDisplay.readOnly = false;
 
-                    if ((amountPaid.value === '' || Number(amountPaid.value) < 0) && subtotalValue > 0) {
-                        amountPaid.value = subtotalValue.toFixed(2);
+                    if (getAmountPaidValue() <= 0 && subtotalValue > 0) {
+                        setAmountPaidValue(subtotalValue);
+                    } else {
+                        setAmountPaidValue(getAmountPaidValue());
                     }
                 }
 
@@ -1893,7 +2111,7 @@
             function updateCheckoutAvailability(canCheckout) {
                 checkoutButton.disabled = !canCheckout;
                 clearCartButton.disabled = !isShiftOpen();
-                amountPaid.disabled = !isShiftOpen();
+                amountPaidDisplay.disabled = !isShiftOpen();
                 paymentMethod.disabled = !isShiftOpen();
 
                 document.querySelectorAll('[data-add-to-cart]').forEach((button) => {
@@ -1915,7 +2133,7 @@
 
             function updateLivePaymentSummary() {
                 const subtotalValue = Number(cashierState.cart.subtotal || 0);
-                const paidValue = Number(amountPaid?.value || 0);
+                const paidValue = getAmountPaidValue();
                 const currentPaymentMethod = paymentMethod?.value || 'cash';
 
                 liveSubtotalValue.textContent = formatCurrency(subtotalValue);
@@ -2116,7 +2334,7 @@
             }
 
             async function handleStartShift() {
-                const openingCash = Number(openingCashInput.value || 0);
+                const openingCash = getRupiahFieldValue(openingCashInput);
                 const originalText = startShiftButton.textContent;
 
                 startShiftButton.disabled = true;
@@ -2141,7 +2359,7 @@
             }
 
             async function handleEndShift() {
-                const closingCashActual = Number(closingCashActualInput.value || 0);
+                const closingCashActual = getRupiahFieldValue(closingCashActualInput);
                 const closingNote = closingNoteInput.value || '';
                 const originalText = endShiftButton.textContent;
 
@@ -2201,14 +2419,14 @@
                     return;
                 }
 
-                if (!amountPaid) return;
+                if (!amountPaidDisplay) return;
                 if (paymentMethod.value === 'qris' || paymentMethod.value === 'transfer') {
                     showAlert('info', 'Quick amount dipakai untuk pembayaran cash.');
                     return;
                 }
 
                 const subtotalValue = Number(cashierState.cart.subtotal || 0);
-                let currentValue = Number(amountPaid.value || 0);
+                let currentValue = getAmountPaidValue();
 
                 if (mode === 'exact') {
                     currentValue = subtotalValue;
@@ -2222,7 +2440,7 @@
                     currentValue += Number(mode || 0);
                 }
 
-                amountPaid.value = Math.max(0, currentValue).toFixed(2);
+                setAmountPaidValue(Math.max(0, currentValue));
                 updateLivePaymentSummary();
             }
 
@@ -2294,11 +2512,49 @@
             });
 
             paymentMethod?.addEventListener('change', syncAmountPaid);
-            amountPaid?.addEventListener('input', updateLivePaymentSummary);
+
+            amountPaidDisplay?.addEventListener('input', function () {
+                if (this.readOnly) return;
+                const parsed = parseRupiahInput(this.value);
+                setAmountPaidValue(parsed);
+                updateLivePaymentSummary();
+            });
+
+            amountPaidDisplay?.addEventListener('blur', function () {
+                setAmountPaidValue(getAmountPaidValue());
+                updateLivePaymentSummary();
+            });
+
+            openingCashInput?.addEventListener('input', function () {
+                const parsed = parseRupiahInput(this.value);
+                setRupiahFieldValue(this, parsed);
+            });
+
+            openingCashInput?.addEventListener('blur', function () {
+                const parsed = parseRupiahInput(this.value);
+                setRupiahFieldValue(this, parsed);
+            });
+
+            closingCashActualInput?.addEventListener('input', function () {
+                const parsed = parseRupiahInput(this.value);
+                setRupiahFieldValue(this, parsed);
+            });
+
+            closingCashActualInput?.addEventListener('blur', function () {
+                const parsed = parseRupiahInput(this.value);
+                setRupiahFieldValue(this, parsed);
+            });
+
+            checkoutForm?.addEventListener('submit', function () {
+                amountPaidNumeric.value = Number(getAmountPaidValue()).toFixed(2);
+            });
 
             window.addEventListener('DOMContentLoaded', () => {
                 updateShiftUI();
                 applyCartPayload(cashierState.cart);
+                setAmountPaidValue({{ (float) $oldAmountPaid }});
+                setRupiahFieldValue(openingCashInput, parseRupiahInput(openingCashInput?.value || 0));
+                setRupiahFieldValue(closingCashActualInput, parseRupiahInput(closingCashActualInput?.value || 0));
                 syncAmountPaid();
                 updateLivePaymentSummary();
             });
