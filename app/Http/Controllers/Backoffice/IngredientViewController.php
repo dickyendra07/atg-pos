@@ -74,17 +74,22 @@ class IngredientViewController extends Controller
         return Ingredient::ingredientTypeOptions();
     }
 
-    public function index(Request $request)
+    protected function buildIngredientQuery(Request $request)
     {
-        $user = $this->authorizeAccess();
-
         $ingredientsQuery = Ingredient::with('category')->latest();
 
         if ($request->filled('ingredient_type')) {
             $ingredientsQuery->where('ingredient_type', $request->ingredient_type);
         }
 
-        $ingredients = $ingredientsQuery->get();
+        return $ingredientsQuery;
+    }
+
+    public function index(Request $request)
+    {
+        $user = $this->authorizeAccess();
+
+        $ingredients = $this->buildIngredientQuery($request)->get();
 
         return view('backoffice.ingredients.index', [
             'user' => $user,
@@ -92,6 +97,52 @@ class IngredientViewController extends Controller
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
             'selectedIngredientType' => $request->input('ingredient_type', ''),
         ]);
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $this->authorizeAccess();
+
+        $ingredients = $this->buildIngredientQuery($request)->get();
+
+        $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        return response()->stream(function () use ($ingredients) {
+            $handle = fopen('php://output', 'w');
+
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($handle, [
+                'code',
+                'name',
+                'category_name',
+                'unit',
+                'ingredient_type',
+                'minimum_stock',
+                'cost_per_unit',
+                'is_active',
+            ]);
+
+            foreach ($ingredients as $ingredient) {
+                fputcsv($handle, [
+                    $ingredient->code ?? '',
+                    $ingredient->name ?? '',
+                    $ingredient->category->name ?? '',
+                    $ingredient->unit ?? '',
+                    $ingredient->ingredient_type ?? '',
+                    (float) ($ingredient->minimum_stock ?? 0),
+                    (float) ($ingredient->cost_per_unit ?? 0),
+                    $ingredient->is_active ? '1' : '0',
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
     }
 
     public function create()

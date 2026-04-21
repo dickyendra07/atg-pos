@@ -98,6 +98,10 @@
             background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
         }
 
+        .btn-blue {
+            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+        }
+
         .alert {
             border-radius: 18px;
             padding: 16px 18px;
@@ -197,7 +201,7 @@
 
         .filter-form {
             display: grid;
-            grid-template-columns: 1fr auto auto;
+            grid-template-columns: 1fr auto auto auto;
             gap: 12px;
             align-items: end;
         }
@@ -439,6 +443,7 @@
             </div>
 
             <div class="ingredients-actions">
+                <a href="{{ route('backoffice.ingredients.export.csv', ['ingredient_type' => $selectedIngredientType]) }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-green">Import CSV</a>
                 <a href="{{ route('backoffice.ingredients.create') }}" class="btn btn-orange">Tambah Ingredient</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
@@ -493,6 +498,7 @@
 
                     <button type="submit" class="btn btn-orange">Apply Filter</button>
                     <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Reset</a>
+                    <a href="{{ route('backoffice.ingredients.export.csv', ['ingredient_type' => $selectedIngredientType]) }}" class="btn btn-blue">Export CSV</a>
                 </form>
             </div>
 
@@ -510,6 +516,7 @@
                             <thead>
                                 <tr>
                                     <th>Category</th>
+                                    <th>Code</th>
                                     <th>Name</th>
                                     <th>Type</th>
                                     <th>Unit</th>
@@ -523,6 +530,7 @@
                                 @foreach($ingredients as $ingredient)
                                     <tr>
                                         <td class="category-text">{{ $ingredient->category->name ?? '-' }}</td>
+                                        <td class="number-text">{{ $ingredient->code ?? '-' }}</td>
                                         <td class="ingredient-name">{{ $ingredient->name }}</td>
                                         <td>
                                             @if($ingredient->ingredient_type === \App\Models\Ingredient::TYPE_SEMI_FINISHED)

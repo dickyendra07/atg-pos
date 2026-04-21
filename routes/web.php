@@ -114,6 +114,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/backoffice/ingredients/import', [IngredientViewController::class, 'importForm'])->name('backoffice.ingredients.import');
     Route::get('/backoffice/ingredients/import/template', [IngredientViewController::class, 'downloadTemplate'])->name('backoffice.ingredients.import.template');
     Route::post('/backoffice/ingredients/import', [IngredientViewController::class, 'importStore'])->name('backoffice.ingredients.import.store');
+    Route::get('/backoffice/ingredients/export/csv', [IngredientViewController::class, 'exportCsv'])->name('backoffice.ingredients.export.csv');
     Route::get('/backoffice/ingredients', [IngredientViewController::class, 'index'])->name('backoffice.ingredients.index');
     Route::get('/backoffice/ingredients/create', [IngredientViewController::class, 'create'])->name('backoffice.ingredients.create');
     Route::post('/backoffice/ingredients', [IngredientViewController::class, 'store'])->name('backoffice.ingredients.store');
