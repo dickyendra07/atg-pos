@@ -122,6 +122,15 @@ class CashierController extends Controller
         $shiftSummary = $this->buildShiftSummary($activeShift);
         $recentReceipts = $this->getRecentReceipts($user);
 
+        $recentReceipts = SalesTransaction::with(['items', 'outlet'])
+            ->where('user_id', $user->id)
+            ->when($user->outlet_id, function ($query) use ($user) {
+                $query->where('outlet_id', $user->outlet_id);
+            })
+            ->latest()
+            ->take(10)
+            ->get();
+
         return view('cashier.index', [
             'user' => $user,
             'products' => $products,

@@ -51,6 +51,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/cashier/member/detach', [MemberCartController::class, 'detach'])->name('cashier.member.detach');
 
     Route::get('/backoffice', BackofficeController::class)->name('backoffice.index');
+    Route::get('/backoffice/print-summary', [BackofficeController::class, 'printSummary'])->name('backoffice.print-summary');
 
     Route::get('/backoffice/users', [UserManagementController::class, 'index'])->name('backoffice.users.index');
     Route::get('/backoffice/users/create', [UserManagementController::class, 'create'])->name('backoffice.users.create');

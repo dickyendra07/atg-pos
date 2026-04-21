@@ -51,7 +51,7 @@
 
         .variants-subtitle {
             margin: 0;
-            max-width: 780px;
+            max-width: 820px;
             color: #6b7280;
             font-size: 15px;
             line-height: 1.9;
@@ -102,6 +102,19 @@
             background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
         }
 
+        .btn-small {
+            min-height: 34px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            box-shadow: none;
+        }
+
+        .btn-small-red {
+            background: #dc2626;
+            color: white;
+        }
+
         .alert {
             border-radius: 18px;
             padding: 16px 18px;
@@ -122,30 +135,7 @@
             border: 1px solid #fecaca;
         }
 
-        .card {
-            background: rgba(255,255,255,0.92);
-            border: 1px solid #e8edf4;
-            border-radius: 30px;
-            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
-            overflow: hidden;
-        }
-
-        .card-head {
-            padding: 24px 24px 0;
-        }
-
-        .info-box {
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 18px;
-            padding: 16px 18px;
-            font-size: 14px;
-            line-height: 1.8;
-            color: #374151;
-        }
-
         .summary-grid {
-            padding: 20px 24px 0;
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;
@@ -207,14 +197,55 @@
             line-height: 1.7;
         }
 
-        .table-wrap {
-            padding: 24px;
+        .group-list {
+            display: grid;
+            gap: 18px;
+        }
+
+        .group-card {
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+            border-radius: 28px;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+        }
+
+        .group-head {
+            padding: 22px 22px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .group-title {
+            margin: 0 0 6px;
+            font-size: 24px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .group-meta {
+            font-size: 14px;
+            color: #6b7280;
+            line-height: 1.8;
+        }
+
+        .group-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .group-body {
+            padding: 22px;
             overflow-x: auto;
         }
 
         table {
             width: 100%;
-            min-width: 1380px;
+            min-width: 760px;
             border-collapse: collapse;
             background: white;
             border: 1px solid #e8edf4;
@@ -244,17 +275,6 @@
 
         tbody tr:last-child td {
             border-bottom: 0;
-        }
-
-        .variant-name {
-            font-weight: 800;
-            color: #111827;
-            font-size: 15px;
-        }
-
-        .product-line {
-            font-weight: 700;
-            color: #111827;
         }
 
         .code-pill {
@@ -294,55 +314,18 @@
             color: #b42318;
         }
 
-        .action-stack {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-            min-width: 150px;
-        }
-
-        .btn-small {
-            min-height: 34px;
-            padding: 8px 12px;
-            font-size: 12px;
-            border-radius: 10px;
-            box-shadow: none;
-        }
-
-        .btn-small-blue {
-            background: #2563eb;
-            color: white;
-        }
-
-        .btn-small-red {
-            background: #dc2626;
-            color: white;
-        }
-
         .inline-form {
             display: inline-block;
             margin: 0;
         }
 
         .empty {
-            margin: 24px;
-            padding: 18px;
             background: #fff7ed;
             color: #9a3412;
-            border-radius: 16px;
+            border-radius: 18px;
+            padding: 18px;
             font-weight: 700;
             border: 1px solid #fed7aa;
-        }
-
-        .note {
-            margin: 0 24px 24px;
-            background: #f4f3ff;
-            color: #4338ca;
-            padding: 16px 18px;
-            border-radius: 16px;
-            font-weight: 700;
-            border: 1px solid #ddd6fe;
-            line-height: 1.7;
         }
 
         @media (max-width: 1280px) {
@@ -352,7 +335,8 @@
         }
 
         @media (max-width: 780px) {
-            .variants-topbar {
+            .variants-topbar,
+            .group-head {
                 flex-direction: column;
                 align-items: flex-start;
             }
@@ -365,17 +349,9 @@
                 grid-template-columns: 1fr;
             }
 
-            .table-wrap,
-            .card-head,
-            .summary-grid {
-                padding-left: 18px;
-                padding-right: 18px;
-            }
-
-            .note,
-            .empty {
-                margin-left: 18px;
-                margin-right: 18px;
+            .group-body,
+            .group-head {
+                padding: 18px;
             }
         }
     </style>
@@ -384,16 +360,16 @@
         <div class="variants-topbar">
             <div class="variants-title-block">
                 <div class="variants-kicker">Variants Workspace</div>
-                <h1 class="variants-title">Back Office - Variants</h1>
+                <h1 class="variants-title">Variants Group Management</h1>
                 <p class="variants-subtitle">
-                    Kelola variant product, harga dine in dan delivery, status aktif, serta akses import dan export CSV dalam tampilan yang konsisten dengan sidebar back office.
+                    Variant sekarang ditata per product, jadi lebih gampang input banyak kode seperti R, L, XL sekaligus, lengkap dengan harga dine in dan delivery.
                 </p>
             </div>
 
             <div class="variants-actions">
                 <a href="{{ route('backoffice.variants.export.csv') }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.variants.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.variants.create') }}" class="btn btn-green">Tambah Variant</a>
+                <a href="{{ route('backoffice.variants.create') }}" class="btn btn-green">Tambah Multi Variant</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
@@ -421,109 +397,104 @@
             </div>
         @endif
 
-        <div class="card">
-            <div class="card-head">
-                <div class="info-box">
-                    <strong>User:</strong> {{ $user->name }}<br>
-                    <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                    <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
-                </div>
+        <div class="summary-grid">
+            <div class="summary-card orange">
+                <div class="summary-label">Total Product Group</div>
+                <div class="summary-value">{{ $groupedProducts->count() }}</div>
+                <div class="summary-desc">Jumlah product yang sudah punya group variant.</div>
             </div>
 
-            <div class="summary-grid">
-                <div class="summary-card orange">
-                    <div class="summary-label">Total Variants</div>
-                    <div class="summary-value">{{ $variants->count() }}</div>
-                    <div class="summary-desc">Jumlah seluruh variant yang terdaftar di sistem.</div>
-                </div>
-
-                <div class="summary-card green">
-                    <div class="summary-label">Active Variants</div>
-                    <div class="summary-value">{{ $variants->where('is_active', true)->count() }}</div>
-                    <div class="summary-desc">Variant aktif yang siap dipakai di cashier dan operasional.</div>
-                </div>
-
-                <div class="summary-card blue">
-                    <div class="summary-label">Delivery Ready</div>
-                    <div class="summary-value">{{ $variants->filter(fn($v) => !is_null($v->price_delivery))->count() }}</div>
-                    <div class="summary-desc">Variant yang sudah punya harga delivery.</div>
-                </div>
-
-                <div class="summary-card violet">
-                    <div class="summary-label">Dine In Ready</div>
-                    <div class="summary-value">{{ $variants->filter(fn($v) => !is_null($v->price_dine_in))->count() }}</div>
-                    <div class="summary-desc">Variant yang sudah punya harga dine in.</div>
-                </div>
+            <div class="summary-card green">
+                <div class="summary-label">Total Variant Rows</div>
+                <div class="summary-value">{{ $variants->count() }}</div>
+                <div class="summary-desc">Semua row variant aktif dan non aktif yang tersimpan.</div>
             </div>
 
-            @if($variants->count())
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Brand</th>
-                                <th>Category</th>
-                                <th>Product</th>
-                                <th>Variant</th>
-                                <th>Code</th>
-                                <th>Price Dine In</th>
-                                <th>Price Delivery</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($variants as $variant)
-                                <tr>
-                                    <td>{{ $variant->product->brand->name ?? '-' }}</td>
-                                    <td>{{ $variant->product->category->name ?? '-' }}</td>
-                                    <td>
-                                        <div class="product-line">{{ $variant->product->name ?? '-' }}</div>
-                                    </td>
-                                    <td>
-                                        <div class="variant-name">{{ $variant->name ?? '-' }}</div>
-                                    </td>
-                                    <td>
-                                        <span class="code-pill">{{ $variant->code ?? '-' }}</span>
-                                    </td>
-                                    <td class="price-text">
-                                        Rp{{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}
-                                    </td>
-                                    <td class="price-text">
-                                        Rp{{ number_format((float) ($variant->price_delivery ?? $variant->price ?? 0), 0, ',', '.') }}
-                                    </td>
-                                    <td>
-                                        @if($variant->is_active)
-                                            <span class="status-badge status-active">Active</span>
-                                        @else
-                                            <span class="status-badge status-inactive">Inactive</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="action-stack">
-                                            <a href="{{ route('backoffice.variants.edit', $variant->id) }}" class="btn btn-small btn-small-blue">Edit</a>
+            <div class="summary-card blue">
+                <div class="summary-label">Dine In Ready</div>
+                <div class="summary-value">{{ $variants->filter(fn($v) => !is_null($v->price_dine_in))->count() }}</div>
+                <div class="summary-desc">Variant yang sudah punya harga dine in.</div>
+            </div>
 
-                                            <form method="POST" action="{{ route('backoffice.variants.destroy', $variant->id) }}" class="inline-form" onsubmit="return confirm('Yakin hapus variant ini?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-small btn-small-red">Hapus</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <div class="empty">
-                    Belum ada variant tersimpan.
-                </div>
-            @endif
-
-            <div class="note">
-                Variants sekarang sudah terhubung dengan sidebar back office dan tetap mempertahankan fitur penting seperti import CSV, export CSV, harga dine in, harga delivery, edit, dan hapus dengan pengaman data operasional.
+            <div class="summary-card violet">
+                <div class="summary-label">Delivery Ready</div>
+                <div class="summary-value">{{ $variants->filter(fn($v) => !is_null($v->price_delivery))->count() }}</div>
+                <div class="summary-desc">Variant yang sudah punya harga delivery.</div>
             </div>
         </div>
+
+        @if($groupedProducts->count())
+            <div class="group-list">
+                @foreach($groupedProducts as $group)
+                    <div class="group-card">
+                        <div class="group-head">
+                            <div>
+                                <h2 class="group-title">{{ $group['product']->name ?? '-' }}</h2>
+                                <div class="group-meta">
+                                    Brand: {{ $group['product']->brand->name ?? '-' }}<br>
+                                    Category: {{ $group['product']->category->name ?? '-' }}<br>
+                                    Total Variant: {{ $group['variants']->count() }} • Active: {{ $group['active_count'] }}
+                                </div>
+                            </div>
+
+                            <div class="group-actions">
+                                <a href="{{ route('backoffice.variants.edit', $group['first_variant_id']) }}" class="btn btn-blue">
+                                    Edit Group
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="group-body">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Variant</th>
+                                        <th>Code</th>
+                                        <th>Price Dine In</th>
+                                        <th>Price Delivery</th>
+                                        <th>Status</th>
+                                        <th>Delete Single</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($group['variants'] as $variant)
+                                        <tr>
+                                            <td>{{ $variant->name }}</td>
+                                            <td>
+                                                <span class="code-pill">{{ $variant->code }}</span>
+                                            </td>
+                                            <td class="price-text">
+                                                Rp{{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}
+                                            </td>
+                                            <td class="price-text">
+                                                Rp{{ number_format((float) ($variant->price_delivery ?? $variant->price ?? 0), 0, ',', '.') }}
+                                            </td>
+                                            <td>
+                                                @if($variant->is_active)
+                                                    <span class="status-badge status-active">Active</span>
+                                                @else
+                                                    <span class="status-badge status-inactive">Inactive</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <form method="POST" action="{{ route('backoffice.variants.destroy', $variant->id) }}" class="inline-form" onsubmit="return confirm('Yakin hapus variant ini?');">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-small btn-small-red">Hapus</button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @else
+            <div class="empty">
+                Belum ada variant tersimpan.
+            </div>
+        @endif
     </div>
 @endsection
