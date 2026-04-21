@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Cashier;
 use App\Http\Controllers\Controller;
 use App\Models\CashierShift;
 use App\Models\Product;
+use App\Models\SalesTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -102,6 +103,15 @@ class CashierController extends Controller
         $activeShift = $this->getActiveShift($user);
         $shiftSummary = $this->buildShiftSummary($activeShift);
 
+        $recentReceipts = SalesTransaction::with(['items', 'outlet'])
+            ->where('user_id', $user->id)
+            ->when($user->outlet_id, function ($query) use ($user) {
+                $query->where('outlet_id', $user->outlet_id);
+            })
+            ->latest()
+            ->take(10)
+            ->get();
+
         return view('cashier.index', [
             'user' => $user,
             'products' => $products,
@@ -112,6 +122,7 @@ class CashierController extends Controller
             'orderType' => $orderType,
             'activeShift' => $activeShift,
             'shiftSummary' => $shiftSummary,
+            'recentReceipts' => $recentReceipts,
         ]);
     }
 

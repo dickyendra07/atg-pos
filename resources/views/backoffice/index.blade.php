@@ -11,9 +11,14 @@
         (int) ($stats['ingredient_count'] ?? 0) +
         (int) ($stats['recipe_count'] ?? 0);
 
-    $inventoryLogCount = (int) ($stats['stock_movement_count'] ?? 0);
-    $transactionCount = (int) ($stats['transaction_count'] ?? 0);
-    $shiftCount = (int) ($stats['shift_count'] ?? 0);
+    $selectedOutletName = 'Semua Outlet';
+
+    if (! empty($filters['outlet_id'])) {
+        $selectedOutlet = $outletOptions->firstWhere('id', (int) $filters['outlet_id']);
+        $selectedOutletName = $selectedOutlet->name ?? 'Outlet';
+    }
+
+    $maxDailySales = max(1, (float) collect($dailyTransactionSummary ?? [])->max('total_sales'));
 @endphp
 
 @section('content')
@@ -28,6 +33,7 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 16px;
+            flex-wrap: wrap;
         }
 
         .dashboard-kicker {
@@ -47,17 +53,17 @@
 
         .dashboard-title {
             margin: 0 0 10px;
-            font-size: 42px;
+            font-size: 40px;
             line-height: 1;
             font-weight: 800;
             letter-spacing: -0.04em;
             color: #111827;
-            max-width: 820px;
+            max-width: 980px;
         }
 
         .dashboard-subtitle {
             margin: 0;
-            max-width: 860px;
+            max-width: 960px;
             color: #6b7280;
             font-size: 15px;
             line-height: 1.9;
@@ -74,92 +80,71 @@
             white-space: nowrap;
         }
 
-        .hero-grid {
-            display: grid;
-            grid-template-columns: 1.1fr 0.9fr;
-            gap: 18px;
-        }
-
-        .hero-main,
-        .hero-side,
-        .stats-card,
-        .module-panel {
+        .filter-card,
+        .summary-section,
+        .premium-strip {
             background: rgba(255,255,255,0.92);
             border: 1px solid #e8edf4;
             border-radius: 28px;
             box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
         }
 
-        .hero-main {
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(135deg, #ffffff 0%, #fff9f5 58%, #fff1ea 100%);
-            border-color: #f0e1d8;
-            padding: 30px;
-            min-height: 230px;
+        .filter-card {
+            padding: 22px;
         }
 
-        .hero-main::after {
-            content: "";
-            position: absolute;
-            right: -70px;
-            top: -70px;
-            width: 220px;
-            height: 220px;
-            border-radius: 999px;
-            background: radial-gradient(circle, rgba(232,106,58,0.14) 0%, rgba(232,106,58,0.04) 55%, rgba(232,106,58,0) 78%);
-            pointer-events: none;
-        }
-
-        .hero-main-title {
-            position: relative;
-            z-index: 1;
-            margin: 0 0 14px;
-            font-size: 34px;
-            line-height: 1.03;
+        .filter-title {
+            margin: 0 0 6px;
+            font-size: 22px;
             font-weight: 800;
-            letter-spacing: -0.04em;
             color: #111827;
-            max-width: 640px;
         }
 
-        .hero-main-desc {
-            position: relative;
-            z-index: 1;
-            margin: 0;
-            max-width: 620px;
+        .filter-subtitle {
+            margin: 0 0 18px;
             color: #6b7280;
-            font-size: 15px;
-            line-height: 1.85;
-        }
-
-        .hero-side {
-            padding: 26px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            gap: 18px;
-        }
-
-        .hero-side-title {
-            margin: 0 0 14px;
-            font-size: 15px;
-            font-weight: 800;
-            color: #111827;
-        }
-
-        .hero-side-line {
             font-size: 14px;
-            line-height: 1.9;
-            color: #374151;
+            line-height: 1.7;
         }
 
-        .hero-side-line strong {
+        .filter-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 1fr 1fr auto;
+            gap: 14px;
+            align-items: end;
+        }
+
+        .field label {
+            display: block;
+            font-size: 12px;
+            font-weight: 800;
+            color: #6b7280;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .field input,
+        .field select {
+            width: 100%;
+            min-height: 52px;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: white;
+            padding: 0 14px;
+            font-size: 14px;
             color: #111827;
-            margin-right: 6px;
+            outline: none;
+            box-sizing: border-box;
         }
 
-        .hero-actions {
+        .field input:focus,
+        .field select:focus {
+            border-color: rgba(232,106,58,0.75);
+            box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
+        }
+
+        .filter-actions {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
@@ -195,15 +180,150 @@
             background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
         }
 
-        .stats-grid {
+        .btn-soft {
+            background: #f3f4f6;
+            color: #374151;
+            box-shadow: none;
+        }
+
+        .premium-strip {
+            padding: 22px;
+            background: linear-gradient(135deg, #ffffff 0%, #fff8f4 60%, #fff1ea 100%);
+            border-color: #f0e1d8;
+        }
+
+        .premium-grid {
             display: grid;
             grid-template-columns: repeat(4, minmax(0, 1fr));
-            gap: 18px;
+            gap: 16px;
+        }
+
+        .premium-card {
+            position: relative;
+            overflow: hidden;
+            border-radius: 24px;
+            padding: 22px;
+            min-height: 152px;
+            color: #111827;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+            box-shadow: 0 14px 24px rgba(15,23,42,0.06);
+        }
+
+        .premium-card::after {
+            content: "";
+            position: absolute;
+            right: -24px;
+            top: -24px;
+            width: 110px;
+            height: 110px;
+            border-radius: 999px;
+            opacity: 0.22;
+        }
+
+        .premium-card.orange {
+            background: linear-gradient(180deg, #fff9f6 0%, #ffffff 100%);
+            border-color: #f4ddd0;
+        }
+
+        .premium-card.orange::after {
+            background: radial-gradient(circle, rgba(232,106,58,0.28) 0%, rgba(232,106,58,0) 72%);
+        }
+
+        .premium-card.green {
+            background: linear-gradient(180deg, #f5fcf7 0%, #ffffff 100%);
+            border-color: #d8f0de;
+        }
+
+        .premium-card.green::after {
+            background: radial-gradient(circle, rgba(22,101,52,0.22) 0%, rgba(22,101,52,0) 72%);
+        }
+
+        .premium-card.blue {
+            background: linear-gradient(180deg, #f7faff 0%, #ffffff 100%);
+            border-color: #dbe7ff;
+        }
+
+        .premium-card.blue::after {
+            background: radial-gradient(circle, rgba(29,78,216,0.20) 0%, rgba(29,78,216,0) 72%);
+        }
+
+        .premium-card.violet {
+            background: linear-gradient(180deg, #f8f7ff 0%, #ffffff 100%);
+            border-color: #e3deff;
+        }
+
+        .premium-card.violet::after {
+            background: radial-gradient(circle, rgba(91,75,209,0.20) 0%, rgba(91,75,209,0) 72%);
+        }
+
+        .premium-label {
+            position: relative;
+            z-index: 1;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+
+        .premium-value {
+            position: relative;
+            z-index: 1;
+            font-size: 34px;
+            font-weight: 800;
+            line-height: 1;
+            margin-bottom: 12px;
+            letter-spacing: -0.03em;
+        }
+
+        .premium-card.orange .premium-value { color: #c9552a; }
+        .premium-card.green .premium-value { color: #166534; }
+        .premium-card.blue .premium-value { color: #1d4ed8; }
+        .premium-card.violet .premium-value { color: #5b4bd1; }
+
+        .premium-desc {
+            position: relative;
+            z-index: 1;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.7;
+        }
+
+        .summary-head {
+            padding: 24px 24px 0;
+        }
+
+        .summary-title {
+            margin: 0 0 6px;
+            font-size: 28px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.02em;
+        }
+
+        .summary-subtitle {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .stats-grid {
+            padding: 20px 24px 0;
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 16px;
         }
 
         .stats-card {
-            padding: 22px;
-            min-height: 150px;
+            border-radius: 22px;
+            padding: 20px;
+            border: 1px solid #e8edf4;
+            background: rgba(255,255,255,0.92);
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+            min-height: 138px;
         }
 
         .stats-card.orange {
@@ -236,7 +356,7 @@
         }
 
         .stats-value {
-            font-size: 38px;
+            font-size: 34px;
             font-weight: 800;
             line-height: 1;
             margin-bottom: 12px;
@@ -253,149 +373,187 @@
             line-height: 1.7;
         }
 
-        .module-panel {
-            overflow: hidden;
-        }
-
-        .module-panel-head {
-            padding: 26px 26px 0;
-        }
-
-        .module-panel-title {
-            margin: 0 0 8px;
-            font-size: 28px;
-            font-weight: 800;
-            color: #111827;
-            letter-spacing: -0.02em;
-        }
-
-        .module-panel-subtitle {
-            margin: 0;
-            color: #6b7280;
-            font-size: 14px;
-            line-height: 1.8;
-            max-width: 780px;
-        }
-
-        .module-grid {
-            padding: 24px 26px 26px;
+        .dual-grid {
+            padding: 18px 24px 24px;
             display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 18px;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
         }
 
-        .module-card {
-            text-decoration: none;
-            color: inherit;
-            position: relative;
-            overflow: hidden;
-            background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
-            border: 1px solid #e7edf5;
-            border-radius: 24px;
-            padding: 20px;
-            min-height: 210px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+        .info-panel {
+            border: 1px solid #e8edf4;
+            background: #ffffff;
+            border-radius: 22px;
+            padding: 18px;
         }
 
-        .module-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 16px 26px rgba(15, 23, 42, 0.08);
-            border-color: #f2d8cb;
-        }
-
-        .module-card::after {
-            content: "";
-            position: absolute;
-            right: -24px;
-            bottom: -24px;
-            width: 90px;
-            height: 90px;
-            border-radius: 999px;
-            opacity: 0.35;
-        }
-
-        .module-card.orange::after {
-            background: radial-gradient(circle, rgba(232,106,58,0.16) 0%, rgba(232,106,58,0) 72%);
-        }
-
-        .module-card.green::after {
-            background: radial-gradient(circle, rgba(22,101,52,0.16) 0%, rgba(22,101,52,0) 72%);
-        }
-
-        .module-card.blue::after {
-            background: radial-gradient(circle, rgba(29,78,216,0.12) 0%, rgba(29,78,216,0) 72%);
-        }
-
-        .module-card.violet::after {
-            background: radial-gradient(circle, rgba(91,75,209,0.12) 0%, rgba(91,75,209,0) 72%);
-        }
-
-        .module-icon {
-            width: 64px;
-            height: 64px;
-            border-radius: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 18px;
-            border: 1px solid transparent;
-            box-shadow: 0 10px 20px rgba(15,23,42,0.05);
-        }
-
-        .icon-orange {
-            background: #fff3eb;
-            border-color: #f3d7c9;
-        }
-
-        .icon-green {
-            background: #eefaf1;
-            border-color: #d8f0de;
-        }
-
-        .icon-blue {
-            background: #eff6ff;
-            border-color: #dbe7ff;
-        }
-
-        .icon-violet {
-            background: #f4f3ff;
-            border-color: #e3deff;
-        }
-
-        .module-icon svg {
-            width: 28px;
-            height: 28px;
-            stroke: #111827;
-            fill: none;
-            stroke-width: 1.8;
-            stroke-linecap: round;
-            stroke-linejoin: round;
-        }
-
-        .module-title {
-            font-size: 22px;
+        .info-panel-title {
+            margin: 0 0 14px;
+            font-size: 16px;
             font-weight: 800;
             color: #111827;
-            margin-bottom: 10px;
-            line-height: 1.2;
-            letter-spacing: -0.02em;
         }
 
-        .module-desc {
+        .info-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #374151;
+        }
+
+        .info-row strong {
+            color: #111827;
+        }
+
+        .chart-card {
+            margin: 0 24px 24px;
+            border: 1px solid #e8edf4;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+            border-radius: 22px;
+            padding: 18px;
+        }
+
+        .chart-title {
+            margin: 0 0 6px;
+            font-size: 16px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .chart-subtitle {
+            margin: 0 0 16px;
             font-size: 13px;
             color: #6b7280;
-            line-height: 1.75;
-            max-width: 240px;
+            line-height: 1.7;
         }
 
-        .module-link {
-            margin-top: 18px;
+        .chart-area {
+            position: relative;
+            height: 280px;
+            border-radius: 18px;
+            background:
+                linear-gradient(to top, rgba(29,78,216,0.02), rgba(29,78,216,0.00)),
+                repeating-linear-gradient(
+                    to top,
+                    #eef2f7 0,
+                    #eef2f7 1px,
+                    transparent 1px,
+                    transparent 56px
+                );
+            border: 1px solid #edf1f6;
+            padding: 16px 18px 18px;
+            overflow: hidden;
+        }
+
+        .chart-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .chart-footer {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .chart-legend {
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            font-size: 12px;
+            color: #4b5563;
+            line-height: 1.6;
+        }
+
+        .chart-legend strong {
+            display: block;
             font-size: 13px;
+            color: #111827;
+            margin-bottom: 2px;
+        }
+
+        .table-card {
+            margin: 0 24px 24px;
+            border: 1px solid #e8edf4;
+            background: #ffffff;
+            border-radius: 22px;
+            overflow: hidden;
+        }
+
+        .table-head {
+            padding: 18px 18px 0;
+        }
+
+        .table-title {
+            margin: 0 0 6px;
+            font-size: 16px;
             font-weight: 800;
-            color: #c9552a;
+            color: #111827;
+        }
+
+        .table-subtitle {
+            margin: 0 0 16px;
+            font-size: 13px;
+            color: #6b7280;
+            line-height: 1.7;
+        }
+
+        .table-wrap {
+            overflow-x: auto;
+            padding: 0 18px 18px;
+        }
+
+        table {
+            width: 100%;
+            min-width: 840px;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            font-size: 12px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 14px 12px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e8edf4;
+            white-space: nowrap;
+        }
+
+        tbody td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #edf1f6;
+            vertical-align: top;
+            font-size: 14px;
+            color: #111827;
+        }
+
+        tbody tr:last-child td {
+            border-bottom: 0;
+        }
+
+        .td-strong {
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .bottom-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding: 0 24px 24px;
         }
 
         .bottom-bar {
@@ -408,46 +566,60 @@
             font-size: 14px;
         }
 
+        .empty-state {
+            padding: 18px;
+            border-radius: 16px;
+            background: #fff7ed;
+            color: #9a3412;
+            border: 1px solid #fed7aa;
+            font-size: 14px;
+            font-weight: 700;
+            margin-top: 8px;
+        }
+
         @media (max-width: 1280px) {
-            .hero-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .stats-grid {
+            .filter-grid,
+            .premium-grid,
+            .stats-grid,
+            .dual-grid {
                 grid-template-columns: 1fr 1fr;
             }
 
-            .module-grid {
-                grid-template-columns: 1fr 1fr;
+            .filter-actions {
+                grid-column: 1 / -1;
             }
         }
 
         @media (max-width: 780px) {
-            .dashboard-topbar {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-
             .dashboard-title {
-                font-size: 34px;
+                font-size: 32px;
             }
 
+            .filter-grid,
+            .premium-grid,
             .stats-grid,
-            .module-grid {
+            .dual-grid {
                 grid-template-columns: 1fr;
             }
 
-            .hero-main,
-            .hero-side,
-            .stats-card,
-            .module-panel-head,
-            .module-grid {
-                padding-left: 18px;
-                padding-right: 18px;
+            .filter-actions {
+                width: 100%;
             }
 
-            .module-grid {
-                padding-bottom: 18px;
+            .filter-actions .btn,
+            .bottom-actions .btn {
+                width: 100%;
+            }
+
+            .chart-card,
+            .table-card {
+                margin-left: 18px;
+                margin-right: 18px;
+            }
+
+            .bottom-actions {
+                padding-left: 18px;
+                padding-right: 18px;
             }
         }
     </style>
@@ -456,9 +628,9 @@
         <div class="dashboard-topbar">
             <div>
                 <div class="dashboard-kicker">Back Office Dashboard</div>
-                <h1 class="dashboard-title">Monitor and manage your operations in one elegant workspace.</h1>
+                <h1 class="dashboard-title">Dashboard summary yang lebih premium, lebih rapih, dan lebih dekat ke referensi client.</h1>
                 <p class="dashboard-subtitle">
-                    Kelola inventory, warehouse, transfer, recipe, produksi bahan setengah jadi, transaksi, dan monitoring shift dari dashboard yang lebih clean, ringan, dan nyaman dipresentasikan.
+                    Batch D fokus ke KPI cards yang lebih clean, area chart yang lebih halus, serta tabel ringkasan transaksi per hari dan per outlet supaya client bisa baca angka utama lebih cepat.
                 </p>
             </div>
 
@@ -467,302 +639,473 @@
             </div>
         </div>
 
-        <div class="hero-grid">
-            <div class="hero-main">
-                <h2 class="hero-main-title">One dashboard for master data, stock flow, production, and sales monitoring.</h2>
-                <p class="hero-main-desc">
-                    Struktur baru ini memakai sidebar yang lebih rapi supaya client lebih mudah baca area kerja back office tanpa kehilangan nuansa clean dan elegant dari dashboard sebelumnya.
-                </p>
-            </div>
+        <div class="filter-card">
+            <h2 class="filter-title">Filter Dashboard</h2>
+            <p class="filter-subtitle">
+                Filter outlet dan tanggal akan mempengaruhi transaction summary, area chart, tabel daily summary, tabel outlet summary, dan inventory movement summary.
+            </p>
 
-            <div class="hero-side">
-                <div>
-                    <h3 class="hero-side-title">Workspace Snapshot</h3>
-                    <div class="hero-side-line"><strong>Master data:</strong> {{ number_format($masterDataCount, 0, ',', '.') }} item area aktif</div>
-                    <div class="hero-side-line"><strong>Transactions:</strong> {{ number_format($transactionCount, 0, ',', '.') }} total transaksi</div>
-                    <div class="hero-side-line"><strong>Shifts:</strong> {{ number_format($shiftCount, 0, ',', '.') }} shift tercatat</div>
-                    <div class="hero-side-line"><strong>Stock movement:</strong> {{ number_format($inventoryLogCount, 0, ',', '.') }} log movement</div>
+            <form method="GET" action="{{ route('backoffice.index') }}" class="filter-grid">
+                <div class="field">
+                    <label for="outlet_id">Outlet</label>
+                    <select name="outlet_id" id="outlet_id">
+                        <option value="">Semua Outlet</option>
+                        @foreach($outletOptions as $outlet)
+                            <option value="{{ $outlet->id }}" @selected((string) $filters['outlet_id'] === (string) $outlet->id)>
+                                {{ $outlet->name }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
-                <div class="hero-actions">
-                    <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-brand">Inventory</a>
-                    <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-dark">Transactions</a>
+                <div class="field">
+                    <label for="date_from">Date From</label>
+                    <input type="date" name="date_from" id="date_from" value="{{ $filters['date_from'] }}">
+                </div>
+
+                <div class="field">
+                    <label for="date_to">Date To</label>
+                    <input type="date" name="date_to" id="date_to" value="{{ $filters['date_to'] }}">
+                </div>
+
+                <div class="filter-actions">
+                    <button type="submit" class="btn btn-brand">Apply Filter</button>
+                    <a href="{{ route('backoffice.index') }}" class="btn btn-soft">Reset</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="premium-strip">
+            <div class="premium-grid">
+                <div class="premium-card orange">
+                    <div class="premium-label">Total Sales</div>
+                    <div class="premium-value">Rp {{ number_format((float) ($stats['total_sales'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="premium-desc">Akumulasi sales completed pada outlet dan periode yang sedang dipilih.</div>
+                </div>
+
+                <div class="premium-card green">
+                    <div class="premium-label">Completed Transactions</div>
+                    <div class="premium-value">{{ number_format((int) ($stats['completed_transaction_count'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="premium-desc">Jumlah transaksi completed yang valid untuk dibaca sebagai performa penjualan.</div>
+                </div>
+
+                <div class="premium-card blue">
+                    <div class="premium-label">Items Sold</div>
+                    <div class="premium-value">{{ number_format((float) ($stats['items_sold'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="premium-desc">Total qty item terjual dari semua transaksi completed pada filter aktif.</div>
+                </div>
+
+                <div class="premium-card violet">
+                    <div class="premium-label">Average Order</div>
+                    <div class="premium-value">Rp {{ number_format((float) ($stats['average_order'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="premium-desc">Rata-rata nilai order supaya client cepat membaca kualitas ticket size.</div>
                 </div>
             </div>
         </div>
 
-        <div class="stats-grid">
-            <div class="stats-card orange">
-                <div class="stats-label">Master Data</div>
-                <div class="stats-value">{{ number_format($masterDataCount, 0, ',', '.') }}</div>
-                <div class="stats-desc">
-                    Outlets, warehouses, products, variants, ingredients, dan recipes aktif dalam workspace back office.
+        <div class="summary-section">
+            <div class="summary-head">
+                <h2 class="summary-title">Transaction Summary</h2>
+                <p class="summary-subtitle">
+                    Ringkasan transaksi utama berdasarkan outlet <strong>{{ $selectedOutletName }}</strong> dan periode <strong>{{ $filters['date_from'] }}</strong> sampai <strong>{{ $filters['date_to'] }}</strong>.
+                </p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stats-card orange">
+                    <div class="stats-label">Total Transactions</div>
+                    <div class="stats-value">{{ number_format((int) ($stats['transaction_count'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Semua transaksi yang masuk dalam filter aktif.</div>
+                </div>
+
+                <div class="stats-card green">
+                    <div class="stats-label">Cash Sales</div>
+                    <div class="stats-value">Rp {{ number_format((float) ($stats['payment_summary']['cash']['total'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Nilai penjualan dari payment method cash.</div>
+                </div>
+
+                <div class="stats-card blue">
+                    <div class="stats-label">QRIS Sales</div>
+                    <div class="stats-value">Rp {{ number_format((float) ($stats['payment_summary']['qris']['total'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Nilai penjualan dari payment method QRIS.</div>
+                </div>
+
+                <div class="stats-card violet">
+                    <div class="stats-label">Transfer Sales</div>
+                    <div class="stats-value">Rp {{ number_format((float) ($stats['payment_summary']['transfer']['total'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Nilai penjualan dari payment method transfer.</div>
                 </div>
             </div>
 
-            <div class="stats-card green">
-                <div class="stats-label">Inventory Logs</div>
-                <div class="stats-value">{{ number_format($inventoryLogCount, 0, ',', '.') }}</div>
-                <div class="stats-desc">
-                    Semua histori stock movement untuk transfer, stock in, adjustment, produksi, dan audit operasional.
+            <div class="dual-grid">
+                <div class="info-panel">
+                    <h3 class="info-panel-title">Status Breakdown</h3>
+                    <div class="info-list">
+                        <div class="info-row">
+                            <span>Completed Transactions</span>
+                            <strong>{{ number_format((int) ($stats['completed_transaction_count'] ?? 0), 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Void Transactions</span>
+                            <strong>{{ number_format((int) ($stats['void_transaction_count'] ?? 0), 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Selected Outlet</span>
+                            <strong>{{ $selectedOutletName }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Selected Date Range</span>
+                            <strong>{{ $filters['date_from'] }} s/d {{ $filters['date_to'] }}</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h3 class="info-panel-title">Payment Summary</h3>
+                    <div class="info-list">
+                        <div class="info-row">
+                            <span>Cash</span>
+                            <strong>
+                                {{ number_format((int) ($stats['payment_summary']['cash']['count'] ?? 0), 0, ',', '.') }}
+                                trx • Rp {{ number_format((float) ($stats['payment_summary']['cash']['total'] ?? 0), 0, ',', '.') }}
+                            </strong>
+                        </div>
+                        <div class="info-row">
+                            <span>QRIS</span>
+                            <strong>
+                                {{ number_format((int) ($stats['payment_summary']['qris']['count'] ?? 0), 0, ',', '.') }}
+                                trx • Rp {{ number_format((float) ($stats['payment_summary']['qris']['total'] ?? 0), 0, ',', '.') }}
+                            </strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Transfer</span>
+                            <strong>
+                                {{ number_format((int) ($stats['payment_summary']['transfer']['count'] ?? 0), 0, ',', '.') }}
+                                trx • Rp {{ number_format((float) ($stats['payment_summary']['transfer']['total'] ?? 0), 0, ',', '.') }}
+                            </strong>
+                        </div>
+                    </div>
                 </div>
             </div>
 
-            <div class="stats-card blue">
-                <div class="stats-label">Transactions</div>
-                <div class="stats-value">{{ number_format($transactionCount, 0, ',', '.') }}</div>
-                <div class="stats-desc">
-                    Total transaksi tercatat, termasuk transaksi completed dan void yang bisa dimonitor dari back office.
+            <div class="chart-card">
+                <h3 class="chart-title">Daily Sales Area Chart</h3>
+                <p class="chart-subtitle">
+                    Visual transaksi harian dibuat lebih halus supaya lebih mirip area chart referensi client walaupun masih tanpa chart library eksternal.
+                </p>
+
+                @if(collect($dailyTransactionSummary)->count())
+                    @php
+                        $dailyRows = collect($dailyTransactionSummary)->values();
+                        $countRows = max(1, $dailyRows->count());
+                        $points = [];
+                        $fillPoints = [];
+                        $baseHeight = 230;
+                        $leftPadding = 18;
+                        $rightPadding = 18;
+                        $usableWidth = 1000 - $leftPadding - $rightPadding;
+
+                        foreach ($dailyRows as $index => $row) {
+                            $x = $leftPadding + ($countRows === 1 ? ($usableWidth / 2) : ($index * ($usableWidth / ($countRows - 1))));
+                            $y = 240 - (($row['total_sales'] / $maxDailySales) * 180);
+                            $points[] = round($x, 2) . ',' . round($y, 2);
+                            $fillPoints[] = round($x, 2) . ',' . round($y, 2);
+                        }
+
+                        $firstX = $countRows === 1 ? ($leftPadding + ($usableWidth / 2)) : $leftPadding;
+                        $lastX = $countRows === 1 ? ($leftPadding + ($usableWidth / 2)) : ($leftPadding + $usableWidth);
+
+                        $areaPolygon = $firstX . ',240 ' . implode(' ', $fillPoints) . ' ' . $lastX . ',240';
+                    @endphp
+
+                    <div class="chart-area">
+                        <svg class="chart-svg" viewBox="0 0 1000 250" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="salesAreaGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="rgba(29,78,216,0.30)" />
+                                    <stop offset="100%" stop-color="rgba(29,78,216,0.02)" />
+                                </linearGradient>
+                            </defs>
+
+                            <polygon points="{{ $areaPolygon }}" fill="url(#salesAreaGradient)"></polygon>
+                            <polyline
+                                points="{{ implode(' ', $points) }}"
+                                fill="none"
+                                stroke="#1d4ed8"
+                                stroke-width="4"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                            ></polyline>
+
+                            @foreach($dailyRows as $index => $row)
+                                @php
+                                    $x = $countRows === 1 ? 500 : ($leftPadding + ($index * ($usableWidth / ($countRows - 1))));
+                                    $y = 240 - (($row['total_sales'] / $maxDailySales) * 180);
+                                @endphp
+                                <circle cx="{{ $x }}" cy="{{ $y }}" r="4.5" fill="#1d4ed8"></circle>
+                            @endforeach
+                        </svg>
+                    </div>
+
+                    <div class="chart-footer">
+                        @foreach($dailyRows->take(6) as $row)
+                            <div class="chart-legend">
+                                <strong>{{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}</strong>
+                                Sales Rp {{ number_format((float) $row['total_sales'], 0, ',', '.') }}<br>
+                                {{ number_format((int) $row['total_transactions'], 0, ',', '.') }} transaksi
+                            </div>
+                        @endforeach
+                    </div>
+                @else
+                    <div class="empty-state">Belum ada data transaksi harian untuk filter ini.</div>
+                @endif
+            </div>
+
+            <div class="table-card">
+                <div class="table-head">
+                    <h3 class="table-title">Daily Transaction Summary</h3>
+                    <p class="table-subtitle">
+                        Tabel ringkas performa transaksi per hari untuk memudahkan client membaca pola penjualan harian.
+                    </p>
+                </div>
+
+                <div class="table-wrap">
+                    @if(collect($dailyTransactionSummary)->count())
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tanggal</th>
+                                    <th>Total Transactions</th>
+                                    <th>Completed</th>
+                                    <th>Void</th>
+                                    <th>Total Sales</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($dailyTransactionSummary as $row)
+                                    <tr>
+                                        <td class="td-strong">{{ \Carbon\Carbon::parse($row['date'])->format('d M Y') }}</td>
+                                        <td>{{ number_format((int) $row['total_transactions'], 0, ',', '.') }}</td>
+                                        <td>{{ number_format((int) $row['completed_transactions'], 0, ',', '.') }}</td>
+                                        <td>{{ number_format((int) $row['void_transactions'], 0, ',', '.') }}</td>
+                                        <td class="td-strong">Rp {{ number_format((float) $row['total_sales'], 0, ',', '.') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @else
+                        <div class="empty-state">Belum ada data daily transaction summary.</div>
+                    @endif
                 </div>
             </div>
 
-            <div class="stats-card violet">
-                <div class="stats-label">Shifts</div>
-                <div class="stats-value">{{ number_format($shiftCount, 0, ',', '.') }}</div>
-                <div class="stats-desc">
-                    Monitor opening shift, closing shift, serta histori shift kasir yang sudah berjalan.
+            <div class="table-card">
+                <div class="table-head">
+                    <h3 class="table-title">Outlet Transaction Summary</h3>
+                    <p class="table-subtitle">
+                        Tabel ringkasan penjualan per outlet. Saat filter outlet dipilih, tabel ini tetap menampilkan scope outlet yang aktif.
+                    </p>
+                </div>
+
+                <div class="table-wrap">
+                    @if(collect($outletTransactionSummary)->count())
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Outlet</th>
+                                    <th>Total Transactions</th>
+                                    <th>Completed</th>
+                                    <th>Void</th>
+                                    <th>Total Sales</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($outletTransactionSummary as $row)
+                                    <tr>
+                                        <td class="td-strong">{{ $row['outlet_name'] }}</td>
+                                        <td>{{ number_format((int) $row['total_transactions'], 0, ',', '.') }}</td>
+                                        <td>{{ number_format((int) $row['completed_transactions'], 0, ',', '.') }}</td>
+                                        <td>{{ number_format((int) $row['void_transactions'], 0, ',', '.') }}</td>
+                                        <td class="td-strong">Rp {{ number_format((float) $row['total_sales'], 0, ',', '.') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @else
+                        <div class="empty-state">Belum ada data outlet transaction summary.</div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="table-head">
+                    <h3 class="table-title">Top Products</h3>
+                    <p class="table-subtitle">
+                        Produk terlaris pada periode aktif untuk membantu client membaca produk mana yang paling mendorong sales.
+                    </p>
+                </div>
+
+                <div class="table-wrap">
+                    @if(collect($topProducts)->count())
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product / Variant</th>
+                                    <th>Qty Sold</th>
+                                    <th>Sales</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($topProducts as $row)
+                                    <tr>
+                                        <td class="td-strong">{{ $row['name'] }}</td>
+                                        <td>{{ number_format((float) $row['qty'], 0, ',', '.') }}</td>
+                                        <td class="td-strong">Rp {{ number_format((float) $row['sales'], 0, ',', '.') }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    @else
+                        <div class="empty-state">Belum ada data top products.</div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bottom-actions">
+                <a href="{{ route('backoffice.print-summary', request()->query()) }}" target="_blank" class="btn btn-dark">
+                    Print Summary
+                </a>
+                <a href="{{ route('backoffice.transactions.index', request()->query()) }}" class="btn btn-brand">
+                    Buka Transactions
+                </a>
+            </div>
+        </div>
+
+        <div class="summary-section">
+            <div class="summary-head">
+                <h2 class="summary-title">Inventory Summary</h2>
+                <p class="summary-subtitle">
+                    Current stock summary mengikuti outlet yang dipilih. Movement summary mengikuti outlet dan custom tanggal.
+                </p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stats-card blue">
+                    <div class="stats-label">Current Stock Rows</div>
+                    <div class="stats-value">{{ number_format((int) ($stats['current_stock_rows'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Jumlah baris stock balance aktif pada scope lokasi yang sedang dilihat.</div>
+                </div>
+
+                <div class="stats-card green">
+                    <div class="stats-label">Total Qty On Hand</div>
+                    <div class="stats-value">{{ number_format((float) ($stats['total_qty_on_hand'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Total qty stok current semua ingredient pada scope terpilih.</div>
+                </div>
+
+                <div class="stats-card orange">
+                    <div class="stats-label">Low Stock</div>
+                    <div class="stats-value">{{ number_format((int) ($stats['low_stock_count'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Item yang stoknya masih ada, tapi sudah menyentuh minimum stock.</div>
+                </div>
+
+                <div class="stats-card violet">
+                    <div class="stats-label">Out of Stock</div>
+                    <div class="stats-value">{{ number_format((int) ($stats['out_of_stock_count'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Item yang qty current-nya sudah habis pada scope terpilih.</div>
+                </div>
+            </div>
+
+            <div class="dual-grid">
+                <div class="info-panel">
+                    <h3 class="info-panel-title">Current Stock Snapshot</h3>
+                    <div class="info-list">
+                        <div class="info-row">
+                            <span>Active Ingredients in Scope</span>
+                            <strong>{{ number_format((int) ($stats['active_ingredients_in_scope'] ?? 0), 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Selected Outlet</span>
+                            <strong>{{ $selectedOutletName }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Current Stock Logic</span>
+                            <strong>{{ !empty($filters['outlet_id']) ? 'Outlet terpilih' : 'Semua lokasi aktif' }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Inventory Page</span>
+                            <a href="{{ route('backoffice.stock-balances.index') }}" style="font-weight:800; color:#c9552a; text-decoration:none;">
+                                Buka Inventory Control
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-panel">
+                    <h3 class="info-panel-title">Movement Summary</h3>
+                    <div class="info-list">
+                        <div class="info-row">
+                            <span>Movement Logs</span>
+                            <strong>{{ number_format((int) ($stats['stock_movement_count'] ?? 0), 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Total Qty In</span>
+                            <strong>{{ number_format((float) ($stats['total_qty_in'] ?? 0), 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Total Qty Out</span>
+                            <strong>{{ number_format((float) ($stats['total_qty_out'] ?? 0), 0, ',', '.') }}</strong>
+                        </div>
+                        <div class="info-row">
+                            <span>Stock In / Adjustment / Transfer / Production</span>
+                            <strong>
+                                {{ (int) ($stats['movement_type_summary']['stock_in'] ?? 0) }} /
+                                {{ (int) ($stats['movement_type_summary']['stock_adjustment'] ?? 0) }} /
+                                {{ (int) ($stats['movement_type_summary']['transfer'] ?? 0) }} /
+                                {{ (int) ($stats['movement_type_summary']['production'] ?? 0) }}
+                            </strong>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
 
-        <div class="module-panel">
-            <div class="module-panel-head">
-                <h2 class="module-panel-title">Core Modules</h2>
-                <p class="module-panel-subtitle">
-                    Semua modul utama tetap lengkap dalam satu area supaya tidak ada fitur yang hilang, tidak ada duplikasi, dan struktur antara Master Data, Inventory, Production, Transfers, transaksi, dan audit operasional tetap jelas.
+        <div class="summary-section">
+            <div class="summary-head">
+                <h2 class="summary-title">Operational Snapshot</h2>
+                <p class="summary-subtitle">
+                    Snapshot tambahan untuk monitoring shift dan area master data utama.
                 </p>
             </div>
 
-            <div class="module-grid">
-                <a href="{{ route('backoffice.outlets.index') }}" class="module-card orange">
-                    <div>
-                        <div class="module-icon icon-orange">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M4 20h16"></path>
-                                <path d="M6 20V8l6-4 6 4v12"></path>
-                                <path d="M9 20v-5h6v5"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Outlets</div>
-                        <div class="module-desc">Kelola outlet, alamat, nomor telepon, dan status aktif outlet.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
+            <div class="stats-grid" style="padding-bottom:24px;">
+                <div class="stats-card orange">
+                    <div class="stats-label">Master Data</div>
+                    <div class="stats-value">{{ number_format($masterDataCount, 0, ',', '.') }}</div>
+                    <div class="stats-desc">Outlets, warehouses, products, variants, ingredients, dan recipes aktif.</div>
+                </div>
 
-                <a href="{{ route('backoffice.warehouses.index') }}" class="module-card green">
-                    <div>
-                        <div class="module-icon icon-green">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M3 10.5 12 5l9 5.5"></path>
-                                <path d="M5 9.5V19h14V9.5"></path>
-                                <path d="M9 19v-5h6v5"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Warehouses</div>
-                        <div class="module-desc">Pantau gudang, stock warehouse, movement gudang, dan akses transfer operasional.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
+                <div class="stats-card blue">
+                    <div class="stats-label">Total Shifts</div>
+                    <div class="stats-value">{{ number_format((int) ($stats['shift_count'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Total shift pada periode filter aktif.</div>
+                </div>
 
-                <a href="{{ route('backoffice.users.index') }}" class="module-card violet">
-                    <div>
-                        <div class="module-icon icon-violet">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path>
-                                <circle cx="9.5" cy="7" r="4"></circle>
-                                <path d="M20 8v6"></path>
-                                <path d="M17 11h6"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Users</div>
-                        <div class="module-desc">Tambah kasir, admin, role user, dan outlet akses utama dari back office.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
+                <div class="stats-card green">
+                    <div class="stats-label">Open Shifts</div>
+                    <div class="stats-value">{{ number_format((int) ($stats['open_shift_count'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Shift yang masih berjalan.</div>
+                </div>
 
-                <a href="{{ route('backoffice.products.index') }}" class="module-card blue">
-                    <div>
-                        <div class="module-icon icon-blue">
-                            <svg viewBox="0 0 24 24">
-                                <rect x="4" y="4" width="16" height="16" rx="3"></rect>
-                                <path d="M8 9h8"></path>
-                                <path d="M8 13h8"></path>
-                                <path d="M8 17h4"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Products</div>
-                        <div class="module-desc">Kelola product utama, brand, category, dan status aktif product.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.variants.index') }}" class="module-card violet">
-                    <div>
-                        <div class="module-icon icon-violet">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M7 7h10"></path>
-                                <path d="M7 12h10"></path>
-                                <path d="M7 17h6"></path>
-                                <path d="M5 7h.01"></path>
-                                <path d="M5 12h.01"></path>
-                                <path d="M5 17h.01"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Variants</div>
-                        <div class="module-desc">Kelola variant size, harga jual, kode variant, dan status aktif product.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.ingredients.index') }}" class="module-card green">
-                    <div>
-                        <div class="module-icon icon-green">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M7 4h10"></path>
-                                <path d="M9 4v5l-4 7a3 3 0 0 0 2.6 4.5h8.8A3 3 0 0 0 19 16l-4-7V4"></path>
-                                <path d="M8 14h8"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Ingredients</div>
-                        <div class="module-desc">Kelola bahan baku, minimum stock, cost per unit, dan data utama ingredient.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.recipes.index') }}" class="module-card orange">
-                    <div>
-                        <div class="module-icon icon-orange">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M6 4h12"></path>
-                                <path d="M8 4v16"></path>
-                                <path d="M16 4v16"></path>
-                                <path d="M8 9h8"></path>
-                                <path d="M8 14h8"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Recipes</div>
-                        <div class="module-desc">Atur recipe manual dan recipe import untuk deduction operasional.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.production-recipes.index') }}" class="module-card violet">
-                    <div>
-                        <div class="module-icon icon-violet">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M7 4h10"></path>
-                                <path d="M9 4v4"></path>
-                                <path d="M15 4v4"></path>
-                                <path d="M5 10h14"></path>
-                                <path d="M6 20h12"></path>
-                                <path d="M8 14h8"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Production Recipes</div>
-                        <div class="module-desc">Kelola recipe internal untuk bahan setengah jadi, termasuk output semi-finished dan komposisi bahan mentahnya.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.productions.index') }}" class="module-card green">
-                    <div>
-                        <div class="module-icon icon-green">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M4 7h16"></path>
-                                <path d="M6 7v10h12V7"></path>
-                                <path d="M9 12h6"></path>
-                                <path d="M12 9v6"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Productions</div>
-                        <div class="module-desc">Jalankan produksi stok dari bahan mentah ke bahan setengah jadi dan monitor histori hasil produksinya.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.stock-balances.index') }}" class="module-card blue">
-                    <div>
-                        <div class="module-icon icon-blue">
-                            <svg viewBox="0 0 24 24">
-                                <rect x="4" y="4" width="16" height="16" rx="3"></rect>
-                                <path d="M8 9h8"></path>
-                                <path d="M8 13h8"></path>
-                                <path d="M8 17h4"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Inventory Control</div>
-                        <div class="module-desc">Pusat kontrol stock balances, penerimaan barang, adjustment, import, dan opname gudang.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.stock-movements.index') }}" class="module-card violet">
-                    <div>
-                        <div class="module-icon icon-violet">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M5 17h14"></path>
-                                <path d="M5 12h10"></path>
-                                <path d="M5 7h6"></path>
-                                <path d="M17 9l2-2 2 2"></path>
-                                <path d="M19 7v10"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Stock Movements</div>
-                        <div class="module-desc">Audit histori stock in, adjustment, opname, transfer, sales usage, dan produksi.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.transfers.index') }}" class="module-card orange">
-                    <div>
-                        <div class="module-icon icon-orange">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M7 7h11"></path>
-                                <path d="m14 4 4 3-4 3"></path>
-                                <path d="M17 17H6"></path>
-                                <path d="m10 14-4 3 4 3"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Transfers</div>
-                        <div class="module-desc">Perpindahan stock antar lokasi internal: gudang ke outlet, outlet ke outlet, dan outlet ke gudang.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.transactions.index') }}" class="module-card green">
-                    <div>
-                        <div class="module-icon icon-green">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M4 7h16"></path>
-                                <rect x="3" y="5" width="18" height="14" rx="3"></rect>
-                                <path d="M7 15h3"></path>
-                                <path d="M14 15h3"></path>
-                            </svg>
-                        </div>
-                        <div class="module-title">Transactions</div>
-                        <div class="module-desc">Lihat transaksi cashier, payment method, receipt, dan sales history yang sudah terhubung.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
-
-                <a href="{{ route('backoffice.shifts.index') }}" class="module-card blue">
-                    <div>
-                        <div class="module-icon icon-blue">
-                            <svg viewBox="0 0 24 24">
-                                <path d="M12 6v6l4 2"></path>
-                                <circle cx="12" cy="12" r="8"></circle>
-                            </svg>
-                        </div>
-                        <div class="module-title">Shifts</div>
-                        <div class="module-desc">Monitor shift kasir, opening cash, closing cash, expected cash, dan performa transaksi per shift.</div>
-                    </div>
-                    <div class="module-link">Open module</div>
-                </a>
+                <div class="stats-card violet">
+                    <div class="stats-label">Closed Shifts</div>
+                    <div class="stats-value">{{ number_format((int) ($stats['closed_shift_count'] ?? 0), 0, ',', '.') }}</div>
+                    <div class="stats-desc">Shift yang sudah ditutup.</div>
+                </div>
             </div>
         </div>
 
         <div class="bottom-bar">
-            Back Office Dashboard active: semua modul utama tetap lengkap, tanpa duplikasi, dan dengan struktur yang lebih jelas antara Warehouse, Inventory Control, Production Recipes, Productions, Transfers, Transactions, Shift Monitoring, dan User Management.
+            Dashboard Batch D aktif: KPI cards lebih premium, chart lebih halus, dan sudah ada tabel daily transaction summary, outlet transaction summary, top products, serta tombol print summary.
         </div>
     </div>
 @endsection
