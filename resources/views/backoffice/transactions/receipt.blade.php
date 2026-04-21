@@ -180,7 +180,8 @@
             text-align: right;
         }
 
-        .grand-total {
+        .total-label.grand-total,
+        .total-value.grand-total {
             font-size: 16px;
             font-weight: 800;
             color: #111827;
@@ -346,13 +347,8 @@
                 </div>
 
                 <div class="total-row">
-                    <div class="total-label">Tax</div>
-                    <div class="total-value">Rp{{ number_format((float) $transaction->tax_amount, 0, ',', '.') }}</div>
-                </div>
-
-                <div class="total-row grand-total">
-                    <div class="total-label grand-total">Grand Total</div>
-                    <div class="total-value grand-total">Rp{{ number_format((float) $transaction->grand_total, 0, ',', '.') }}</div>
+                    <div class="total-label">Discount</div>
+                    <div class="total-value">Rp{{ number_format((float) $transaction->discount_amount, 0, ',', '.') }}</div>
                 </div>
 
                 <div class="total-row">
@@ -363,6 +359,11 @@
                 <div class="total-row">
                     <div class="total-label">Change</div>
                     <div class="total-value">Rp{{ number_format((float) $transaction->change_amount, 0, ',', '.') }}</div>
+                </div>
+
+                <div class="total-row">
+                    <div class="total-label grand-total">Grand Total</div>
+                    <div class="total-value grand-total">Rp{{ number_format((float) $transaction->grand_total, 0, ',', '.') }}</div>
                 </div>
             </div>
 
