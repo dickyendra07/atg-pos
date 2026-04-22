@@ -1262,19 +1262,19 @@
             background: rgba(15, 23, 42, 0.48);
             backdrop-filter: blur(4px);
             display: none;
-            align-items: center;
-            justify-content: center;
-            padding: 16px;
-            z-index: 99999;
+            z-index: 2147483000;
         }
 
         .modal-backdrop.active {
-            display: flex !important;
+            display: block !important;
         }
 
         .variant-modal {
-            position: relative;
-            z-index: 100000;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2147483001;
             width: min(1080px, calc(100vw - 32px));
             max-height: calc(100vh - 32px);
             overflow: hidden;
@@ -1517,6 +1517,11 @@
 
             .variant-modal-title {
                 font-size: 28px;
+            }
+
+            .variant-modal {
+                width: calc(100vw - 24px);
+                max-height: calc(100vh - 24px);
             }
         }
 
@@ -2291,27 +2296,29 @@
             </div>
         </div>
 
-        <div class="modal-backdrop" id="variant-modal-backdrop">
-            <div class="variant-modal" role="dialog" aria-modal="true" aria-labelledby="variant-modal-title">
-                <div class="variant-modal-head">
-                    <div>
-                        <h3 class="variant-modal-title" id="variant-modal-title">Pilih Variant</h3>
-                        <p class="variant-modal-subtitle" id="variant-modal-subtitle">Pilih salah satu variant untuk ditambahkan ke cart.</p>
-                    </div>
-                    <button type="button" class="variant-modal-close" id="variant-modal-close">&times;</button>
-                </div>
+    </div>
+</div>
 
-                <div class="variant-modal-toolbar">
-                    <div class="variant-modal-order-chip">
-                        Order type aktif: <span id="variant-modal-order-type" style="margin-left:6px;">DINE IN</span>
-                    </div>
-                </div>
+<div class="modal-backdrop" id="variant-modal-backdrop" aria-hidden="true">
+    <div class="variant-modal" role="dialog" aria-modal="true" aria-labelledby="variant-modal-title">
+        <div class="variant-modal-head">
+            <div>
+                <h3 class="variant-modal-title" id="variant-modal-title">Pilih Variant</h3>
+                <p class="variant-modal-subtitle" id="variant-modal-subtitle">Pilih salah satu variant untuk ditambahkan ke cart.</p>
+            </div>
+            <button type="button" class="variant-modal-close" id="variant-modal-close">&times;</button>
+        </div>
 
-                <div class="variant-modal-body">
-                    <div class="variant-modal-grid" id="variant-modal-grid"></div>
-                </div>
+        <div class="variant-modal-toolbar">
+            <div class="variant-modal-order-chip">
+                Order type aktif: <span id="variant-modal-order-type" style="margin-left:6px;">DINE IN</span>
             </div>
         </div>
+
+        <div class="variant-modal-body">
+            <div class="variant-modal-grid" id="variant-modal-grid"></div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -3004,6 +3011,7 @@
         }
 
         variantModalBackdrop.classList.add('active');
+        variantModalBackdrop.setAttribute('aria-hidden', 'false');
         document.body.classList.add('modal-open');
         updateCheckoutAvailability(checkoutButton ? !checkoutButton.disabled : true);
     }
@@ -3023,6 +3031,7 @@
 
     function closeVariantModal() {
         variantModalBackdrop.classList.remove('active');
+        variantModalBackdrop.setAttribute('aria-hidden', 'true');
         document.body.classList.remove('modal-open');
     }
 
