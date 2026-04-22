@@ -31,7 +31,7 @@ class IngredientViewController extends Controller
         return $user;
     }
 
-    protected function makeIngredientCode(string $name): string
+    protected function makeIngredientCode(string $name, ?int $ignoreId = null): string
     {
         $base = Str::upper(Str::slug($name, '_'));
 
@@ -42,7 +42,14 @@ class IngredientViewController extends Controller
         $code = $base;
         $counter = 1;
 
-        while (Ingredient::where('code', $code)->exists()) {
+        while (
+            Ingredient::query()
+                ->where('code', $code)
+                ->when($ignoreId, function ($query) use ($ignoreId) {
+                    $query->where('id', '!=', $ignoreId);
+                })
+                ->exists()
+        ) {
             $code = $base . '_' . $counter;
             $counter++;
         }
@@ -50,7 +57,7 @@ class IngredientViewController extends Controller
         return $code;
     }
 
-    protected function makeCategoryCode(string $name): string
+    protected function makeCategoryCode(string $name, ?int $ignoreId = null): string
     {
         $base = Str::upper(Str::slug($name, '_'));
 
@@ -61,7 +68,14 @@ class IngredientViewController extends Controller
         $code = $base;
         $counter = 1;
 
-        while (IngredientCategory::where('code', $code)->exists()) {
+        while (
+            IngredientCategory::query()
+                ->where('code', $code)
+                ->when($ignoreId, function ($query) use ($ignoreId) {
+                    $query->where('id', '!=', $ignoreId);
+                })
+                ->exists()
+        ) {
             $code = $base . '_' . $counter;
             $counter++;
         }
@@ -74,22 +88,17 @@ class IngredientViewController extends Controller
         return Ingredient::ingredientTypeOptions();
     }
 
-    protected function buildIngredientQuery(Request $request)
+    public function index(Request $request)
     {
+        $user = $this->authorizeAccess();
+
         $ingredientsQuery = Ingredient::with('category')->latest();
 
         if ($request->filled('ingredient_type')) {
             $ingredientsQuery->where('ingredient_type', $request->ingredient_type);
         }
 
-        return $ingredientsQuery;
-    }
-
-    public function index(Request $request)
-    {
-        $user = $this->authorizeAccess();
-
-        $ingredients = $this->buildIngredientQuery($request)->get();
+        $ingredients = $ingredientsQuery->get();
 
         return view('backoffice.ingredients.index', [
             'user' => $user,
@@ -97,52 +106,6 @@ class IngredientViewController extends Controller
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
             'selectedIngredientType' => $request->input('ingredient_type', ''),
         ]);
-    }
-
-    public function exportCsv(Request $request): StreamedResponse
-    {
-        $this->authorizeAccess();
-
-        $ingredients = $this->buildIngredientQuery($request)->get();
-
-        $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
-
-        $headers = [
-            'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-        ];
-
-        return response()->stream(function () use ($ingredients) {
-            $handle = fopen('php://output', 'w');
-
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
-
-            fputcsv($handle, [
-                'code',
-                'name',
-                'category_name',
-                'unit',
-                'ingredient_type',
-                'minimum_stock',
-                'cost_per_unit',
-                'is_active',
-            ]);
-
-            foreach ($ingredients as $ingredient) {
-                fputcsv($handle, [
-                    $ingredient->code ?? '',
-                    $ingredient->name ?? '',
-                    $ingredient->category->name ?? '',
-                    $ingredient->unit ?? '',
-                    $ingredient->ingredient_type ?? '',
-                    (float) ($ingredient->minimum_stock ?? 0),
-                    (float) ($ingredient->cost_per_unit ?? 0),
-                    $ingredient->is_active ? '1' : '0',
-                ]);
-            }
-
-            fclose($handle);
-        }, 200, $headers);
     }
 
     public function create()
@@ -219,7 +182,7 @@ class IngredientViewController extends Controller
         $newCode = $ingredient->code;
 
         if ($ingredient->name !== $validated['name']) {
-            $newCode = $this->makeIngredientCode($validated['name']);
+            $newCode = $this->makeIngredientCode($validated['name'], $ingredient->id);
         }
 
         $ingredient->update([
@@ -256,6 +219,56 @@ class IngredientViewController extends Controller
         return view('backoffice.ingredients.import', [
             'user' => $user,
         ]);
+    }
+
+    public function exportCsv(Request $request): StreamedResponse
+    {
+        $this->authorizeAccess();
+
+        $ingredientsQuery = Ingredient::with('category')->orderBy('name');
+
+        if ($request->filled('ingredient_type')) {
+            $ingredientsQuery->where('ingredient_type', $request->ingredient_type);
+        }
+
+        $ingredients = $ingredientsQuery->get();
+
+        $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
+
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+        ];
+
+        return response()->stream(function () use ($ingredients) {
+            $handle = fopen('php://output', 'w');
+
+            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+            fputcsv($handle, [
+                'name',
+                'category_name',
+                'unit',
+                'ingredient_type',
+                'minimum_stock',
+                'cost_per_unit',
+                'is_active',
+            ]);
+
+            foreach ($ingredients as $ingredient) {
+                fputcsv($handle, [
+                    $ingredient->name,
+                    $ingredient->category->name ?? '',
+                    $ingredient->unit,
+                    $ingredient->ingredient_type,
+                    (float) $ingredient->minimum_stock,
+                    (float) $ingredient->cost_per_unit,
+                    $ingredient->is_active ? '1' : '0',
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
     }
 
     public function downloadTemplate(): StreamedResponse
@@ -342,10 +355,11 @@ class IngredientViewController extends Controller
         }
 
         $imported = 0;
+        $updated = 0;
         $skipped = 0;
         $errors = [];
 
-        DB::transaction(function () use ($lines, $delimiter, &$imported, &$skipped, &$errors) {
+        DB::transaction(function () use ($lines, $delimiter, &$imported, &$updated, &$skipped, &$errors) {
             foreach (array_slice($lines, 1) as $index => $line) {
                 $rowNumber = $index + 2;
 
@@ -409,15 +423,7 @@ class IngredientViewController extends Controller
 
                 $minimumStock = (float) $minimumStockRaw;
                 $costPerUnit = (float) $costPerUnitRaw;
-                $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
-
-                $alreadyExists = Ingredient::whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->exists();
-
-                if ($alreadyExists) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: ingredient '{$name}' sudah ada.";
-                    continue;
-                }
+                $isActive = in_array(strtolower($isActiveRaw), ['1', 'true', 'yes'], true) ? 1 : 0;
 
                 $category = IngredientCategory::whereRaw('LOWER(name) = ?', [mb_strtolower($categoryName)])->first();
 
@@ -429,24 +435,47 @@ class IngredientViewController extends Controller
                     ]);
                 }
 
-                Ingredient::create([
-                    'ingredient_category_id' => $category->id,
-                    'code' => $this->makeIngredientCode($name),
-                    'name' => $name,
-                    'unit' => $unit,
-                    'ingredient_type' => $ingredientType,
-                    'minimum_stock' => $minimumStock,
-                    'cost_per_unit' => $costPerUnit,
-                    'is_active' => $isActive,
-                ]);
+                $existingIngredient = Ingredient::whereRaw('LOWER(name) = ?', [mb_strtolower($name)])->first();
 
-                $imported++;
+                if ($existingIngredient) {
+                    $newCode = $existingIngredient->code;
+
+                    if (blank($newCode)) {
+                        $newCode = $this->makeIngredientCode($name, $existingIngredient->id);
+                    }
+
+                    $existingIngredient->update([
+                        'ingredient_category_id' => $category->id,
+                        'code' => $newCode,
+                        'name' => $name,
+                        'unit' => $unit,
+                        'ingredient_type' => $ingredientType,
+                        'minimum_stock' => $minimumStock,
+                        'cost_per_unit' => $costPerUnit,
+                        'is_active' => $isActive,
+                    ]);
+
+                    $updated++;
+                } else {
+                    Ingredient::create([
+                        'ingredient_category_id' => $category->id,
+                        'code' => $this->makeIngredientCode($name),
+                        'name' => $name,
+                        'unit' => $unit,
+                        'ingredient_type' => $ingredientType,
+                        'minimum_stock' => $minimumStock,
+                        'cost_per_unit' => $costPerUnit,
+                        'is_active' => $isActive,
+                    ]);
+
+                    $imported++;
+                }
             }
         });
 
         return redirect()
             ->route('backoffice.ingredients.index')
-            ->with('success', "Import ingredients selesai. Data masuk: {$imported}. Data dilewati: {$skipped}.")
+            ->with('success', "Import ingredients selesai. Baru: {$imported}. Update: {$updated}. Dilewati: {$skipped}.")
             ->with('import_errors', $errors);
     }
 }
