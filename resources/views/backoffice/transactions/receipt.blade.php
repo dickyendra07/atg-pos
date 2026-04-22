@@ -3,374 +3,512 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Receipt - {{ $displayReceiptNumber ?? ($transaction->transaction_number ?? '-') }}</title>
+    <title>Receipt {{ $transaction->transaction_number ?? 'ATG POS' }}</title>
     <style>
-        body {
+        :root {
+            --paper-width: 58mm;
+            --text: #000000;
+            --muted: #555555;
+            --line: #000000;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html, body {
             margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f3f4f6;
-            color: #111827;
+            padding: 0;
+            background: #ececec;
+            color: var(--text);
+            font-family: "Courier New", Courier, monospace;
+            -webkit-font-smoothing: none;
+            font-size: 12px;
+            line-height: 1.35;
         }
 
-        .page {
-            min-height: 100vh;
-            padding: 32px 16px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        body {
+            padding: 16px 0;
         }
 
-        .top-actions {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 16px;
-        }
-
-        .btn {
-            text-decoration: none;
-            border: 0;
-            cursor: pointer;
-            background: #111827;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: 700;
-            font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .receipt {
+        .receipt-preview-wrap {
             width: 100%;
-            max-width: 320px;
-            background: white;
-            border-radius: 18px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.08);
-            padding: 20px 18px;
+            display: flex;
+            justify-content: center;
+            padding: 0 12px;
         }
 
-        .brand {
+        .receipt-paper {
+            width: var(--paper-width);
+            max-width: 100%;
+            background: #ffffff;
+            color: #000000;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            padding: 10px 8px 14px;
+        }
+
+        .center {
             text-align: center;
-            padding-bottom: 14px;
-            border-bottom: 1px dashed #d1d5db;
         }
 
-        .brand-title {
-            font-size: 22px;
-            font-weight: 800;
-            margin-bottom: 4px;
+        .bold {
+            font-weight: 700;
         }
 
-        .brand-subtitle {
-            font-size: 13px;
-            color: #4b5563;
-            line-height: 1.4;
+        .muted {
+            color: var(--muted);
         }
 
-        .meta {
-            padding: 14px 0;
-            border-bottom: 1px dashed #d1d5db;
+        .tiny {
+            font-size: 10px;
         }
 
-        .meta-row {
+        .small {
+            font-size: 11px;
+        }
+
+        .normal {
+            font-size: 12px;
+        }
+
+        .big {
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .brand-name {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+
+        .brand-sub {
+            font-size: 11px;
+            margin-bottom: 2px;
+        }
+
+        .header-block,
+        .meta-block,
+        .items-block,
+        .summary-block,
+        .footer-block {
+            width: 100%;
+        }
+
+        .divider {
+            border-top: 1px dashed var(--line);
+            margin: 8px 0;
+            width: 100%;
+        }
+
+        .solid-divider {
+            border-top: 1px solid var(--line);
+            margin: 8px 0;
+            width: 100%;
+        }
+
+        .meta-line,
+        .summary-line,
+        .item-total-line {
             display: flex;
             justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 8px;
-            font-size: 13px;
-            line-height: 1.45;
+            align-items: flex-start;
+            gap: 8px;
+            width: 100%;
         }
 
-        .meta-row:last-child {
-            margin-bottom: 0;
+        .meta-line .label,
+        .summary-line .label {
+            flex: 1 1 auto;
+            min-width: 0;
+            word-break: break-word;
         }
 
-        .meta-label {
-            color: #6b7280;
-        }
-
-        .meta-value {
+        .meta-line .value,
+        .summary-line .value {
+            flex: 0 0 auto;
             text-align: right;
+            white-space: nowrap;
+        }
+
+        .item-row {
+            padding: 4px 0 6px;
+        }
+
+        .item-name {
+            font-weight: 700;
+            word-break: break-word;
+            white-space: normal;
+        }
+
+        .item-variant {
+            margin-top: 1px;
+            word-break: break-word;
+        }
+
+        .item-modifier {
+            margin-top: 1px;
+            word-break: break-word;
+        }
+
+        .item-total-line {
+            margin-top: 2px;
+        }
+
+        .item-total-line .left {
+            flex: 1 1 auto;
+            min-width: 0;
+            word-break: break-word;
+        }
+
+        .item-total-line .right {
+            flex: 0 0 auto;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .summary-line.grand-total {
+            font-size: 13px;
             font-weight: 700;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 12px;
+            padding: 1px 6px;
+            border: 1px solid #000000;
+            font-size: 10px;
             font-weight: 700;
+            margin-top: 4px;
         }
 
-        .status-completed {
-            background: #e8fff1;
-            color: #17663a;
+        .void-box {
+            border: 1px solid #000000;
+            padding: 6px;
+            margin-top: 8px;
         }
 
-        .status-void {
-            background: #ffe8e8;
-            color: #9b1c1c;
-        }
-
-        .items {
-            padding: 14px 0;
-            border-bottom: 1px dashed #d1d5db;
-        }
-
-        .item {
+        .print-toolbar {
+            width: 100%;
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            justify-content: center;
             gap: 10px;
-            margin-bottom: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+            padding: 0 12px;
         }
 
-        .item:last-child {
-            margin-bottom: 0;
-        }
-
-        .item-left {
-            min-width: 0;
-        }
-
-        .item-name {
-            font-size: 14px;
-            font-weight: 800;
-            margin-bottom: 3px;
-            line-height: 1.35;
-        }
-
-        .item-meta {
-            font-size: 12px;
-            color: #4b5563;
-            line-height: 1.45;
-        }
-
-        .item-price {
+        .print-btn {
+            border: 0;
+            cursor: pointer;
+            min-height: 40px;
+            padding: 0 16px;
+            border-radius: 10px;
+            background: #111827;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
             font-size: 13px;
             font-weight: 700;
-            white-space: nowrap;
-            text-align: right;
         }
 
-        .totals {
-            padding: 14px 0 8px;
-            border-bottom: 1px dashed #d1d5db;
-        }
-
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 12px;
-            margin-bottom: 8px;
-            font-size: 13px;
-        }
-
-        .total-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .total-label {
-            color: #4b5563;
-        }
-
-        .total-value {
-            font-weight: 700;
-            text-align: right;
-        }
-
-        .total-label.grand-total,
-        .total-value.grand-total {
-            font-size: 16px;
-            font-weight: 800;
+        .print-btn.secondary {
+            background: #e5e7eb;
             color: #111827;
         }
 
-        .footer {
-            padding-top: 14px;
-            text-align: center;
-            font-size: 12px;
-            color: #6b7280;
-            line-height: 1.5;
+        .footer-space {
+            height: 10px;
+        }
+
+        @page {
+            size: 58mm auto;
+            margin: 0;
         }
 
         @media print {
-            body {
-                background: white;
+            html, body {
+                background: #ffffff;
+                width: 58mm;
+                min-width: 58mm;
+                max-width: 58mm;
+                margin: 0;
+                padding: 0;
+                font-size: 11px;
+                line-height: 1.3;
             }
 
-            .page {
+            body {
                 padding: 0;
             }
 
-            .top-actions {
-                display: none;
+            .print-toolbar {
+                display: none !important;
             }
 
-            .receipt {
+            .receipt-preview-wrap {
+                padding: 0;
+                margin: 0;
+                display: block;
+                width: 58mm;
+            }
+
+            .receipt-paper {
+                width: 58mm;
+                min-width: 58mm;
+                max-width: 58mm;
                 box-shadow: none;
-                border-radius: 0;
-                max-width: 100%;
+                padding: 6px 6px 10px;
+                margin: 0;
+            }
+
+            .brand-name {
+                font-size: 15px;
+            }
+
+            .brand-sub,
+            .small {
+                font-size: 10px;
+            }
+
+            .normal {
+                font-size: 11px;
+            }
+
+            .big {
+                font-size: 12px;
+            }
+
+            .divider,
+            .solid-divider {
+                margin: 6px 0;
+            }
+
+            .footer-space {
+                height: 16px;
             }
         }
     </style>
 </head>
 <body>
     @php
-        $backUrl = request('source') === 'cashier'
-            ? route('cashier.index')
-            : route('backoffice.transactions.show', $transaction->id);
-
-        $status = strtolower((string) ($transaction->status ?? 'completed'));
-        $isVoid = $status === 'void';
-
-        $displayReceiptNumber = 'ATG-0001';
-
-        if (! empty($transaction->transaction_number)) {
-            $parts = explode('-', $transaction->transaction_number);
-            $lastPart = end($parts);
-
-            if (is_numeric($lastPart)) {
-                $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
-            }
-        }
-
-        $displayAmountPaid = in_array(strtolower((string) $transaction->payment_method), ['qris', 'transfer'], true)
-            ? (float) $transaction->grand_total
-            : (float) $transaction->amount_paid;
+        $source = $source ?? request('source', 'backoffice');
+        $autoprint = (bool) ($autoprint ?? request('autoprint'));
+        $transactionNumber = $transaction->transaction_number ?? ('TRX-' . $transaction->id);
+        $outletName = $transaction->outlet->name ?? 'ATG POS';
+        $cashierName = $transaction->user->name ?? '-';
+        $memberName = $transaction->member->name ?? null;
+        $memberPhone = $transaction->member->phone ?? null;
+        $createdAt = $transaction->created_at?->format('Y-m-d H:i:s') ?? '-';
+        $paymentMethod = strtoupper((string) ($transaction->payment_method ?? '-'));
+        $status = strtoupper((string) ($transaction->status ?? '-'));
+        $subtotal = (float) ($transaction->subtotal ?? 0);
+        $discountAmount = (float) ($transaction->discount_amount ?? 0);
+        $taxAmount = (float) ($transaction->tax_amount ?? 0);
+        $grandTotal = (float) ($transaction->grand_total ?? 0);
+        $amountPaid = (float) ($transaction->amount_paid ?? 0);
+        $changeAmount = (float) ($transaction->change_amount ?? 0);
+        $isVoid = strtolower((string) ($transaction->status ?? '')) === 'void';
     @endphp
 
-    <div class="page">
-        <div class="top-actions">
-            <button onclick="window.print()" class="btn">Print</button>
-            <a href="{{ $backUrl }}" class="btn">Kembali</a>
-        </div>
+    <div class="print-toolbar">
+        <button type="button" class="print-btn" onclick="window.print()">Print Receipt</button>
 
-        <div class="receipt">
-            <div class="brand">
-                <div class="brand-title">ATG POS</div>
-                <div class="brand-subtitle">
-                    {{ $transaction->outlet->name ?? 'Outlet' }}<br>
-                    Receipt Transaksi
-                </div>
-            </div>
+        @if($source === 'cashier')
+            <button type="button" class="print-btn secondary" onclick="window.location.href='{{ route('cashier.index') }}'">
+                Kembali ke Cashier
+            </button>
+        @else
+            <button type="button" class="print-btn secondary" onclick="window.history.back()">
+                Kembali
+            </button>
+        @endif
+    </div>
 
-            <div class="meta">
-                <div class="meta-row">
-                    <div class="meta-label">No. Struk</div>
-                    <div class="meta-value">{{ $displayReceiptNumber }}</div>
-                </div>
-
-                <div class="meta-row">
-                    <div class="meta-label">Tanggal</div>
-                    <div class="meta-value">{{ $transaction->created_at?->format('Y-m-d H:i:s') }}</div>
-                </div>
-
-                <div class="meta-row">
-                    <div class="meta-label">Kasir</div>
-                    <div class="meta-value">{{ $transaction->user->name ?? '-' }}</div>
-                </div>
-
-                <div class="meta-row">
-                    <div class="meta-label">Member</div>
-                    <div class="meta-value">{{ $transaction->member->name ?? '-' }}</div>
-                </div>
-
-                <div class="meta-row">
-                    <div class="meta-label">Payment</div>
-                    <div class="meta-value">{{ strtoupper((string) ($transaction->payment_method ?? '-')) }}</div>
-                </div>
-
-                <div class="meta-row">
-                    <div class="meta-label">Status</div>
-                    <div class="meta-value">
-                        <span class="status-badge {{ $isVoid ? 'status-void' : 'status-completed' }}">
-                            {{ ucfirst($transaction->status ?? 'completed') }}
-                        </span>
-                    </div>
-                </div>
+    <div class="receipt-preview-wrap">
+        <div class="receipt-paper">
+            <div class="header-block center">
+                <div class="brand-name">{{ $outletName }}</div>
+                <div class="brand-sub">ATG POS RECEIPT</div>
+                <div class="small">{{ $createdAt }}</div>
 
                 @if($isVoid)
-                    <div class="meta-row">
-                        <div class="meta-label">Void At</div>
-                        <div class="meta-value">{{ $transaction->void_at ? \Carbon\Carbon::parse($transaction->void_at)->format('Y-m-d H:i:s') : '-' }}</div>
-                    </div>
+                    <div class="status-badge">VOID</div>
+                @endif
+            </div>
 
-                    <div class="meta-row">
-                        <div class="meta-label">Void Reason</div>
-                        <div class="meta-value">{{ $transaction->void_reason ?? '-' }}</div>
+            <div class="divider"></div>
+
+            <div class="meta-block small">
+                <div class="meta-line">
+                    <div class="label">No</div>
+                    <div class="value">{{ $transactionNumber }}</div>
+                </div>
+                <div class="meta-line">
+                    <div class="label">Cashier</div>
+                    <div class="value">{{ $cashierName }}</div>
+                </div>
+                <div class="meta-line">
+                    <div class="label">Payment</div>
+                    <div class="value">{{ $paymentMethod }}</div>
+                </div>
+                <div class="meta-line">
+                    <div class="label">Status</div>
+                    <div class="value">{{ $status }}</div>
+                </div>
+
+                @if($memberName || $memberPhone)
+                    <div class="meta-line">
+                        <div class="label">Member</div>
+                        <div class="value">
+                            {{ $memberName ?: '-' }}
+                            @if($memberPhone)
+                                <br>{{ $memberPhone }}
+                            @endif
+                        </div>
                     </div>
                 @endif
             </div>
 
-            <div class="items">
-                @forelse($transaction->items as $item)
-                    <div class="item">
-                        <div class="item-left">
-                            <div class="item-name">{{ $item->product_name ?? '-' }}</div>
-                            <div class="item-meta">
-                                {{ $item->variant_name ?? '-' }} x {{ number_format((float) $item->qty, 0, ',', '.') }}
+            <div class="divider"></div>
 
-                                @if($item->less_sugar || $item->less_ice)
-                                    <br>
-                                    @if($item->less_sugar)
-                                        Less Sugar
-                                    @endif
-                                    @if($item->less_sugar && $item->less_ice)
-                                        •
-                                    @endif
-                                    @if($item->less_ice)
-                                        Less Ice
-                                    @endif
-                                @endif
-                            </div>
+            <div class="items-block normal">
+                @forelse($transaction->items as $item)
+                    <div class="item-row">
+                        <div class="item-name">
+                            {{ $item->product_name ?? '-' }}
                         </div>
 
-                        <div class="item-price">
-                            Rp{{ number_format((float) $item->line_total, 0, ',', '.') }}
+                        @if(!empty($item->variant_name))
+                            <div class="item-variant small muted">
+                                {{ $item->variant_name }}
+                            </div>
+                        @endif
+
+                        @php
+                            $modifiers = [];
+                            if (!empty($item->less_sugar)) {
+                                $modifiers[] = 'Less Sugar';
+                            }
+                            if (!empty($item->less_ice)) {
+                                $modifiers[] = 'Less Ice';
+                            }
+                        @endphp
+
+                        @if(count($modifiers))
+                            <div class="item-modifier small muted">
+                                {{ implode(' • ', $modifiers) }}
+                            </div>
+                        @endif
+
+                        <div class="item-total-line small">
+                            <div class="left">
+                                {{ number_format((float) ($item->qty ?? 0), 0, ',', '.') }}
+                                x
+                                {{ number_format((float) ($item->price ?? 0), 0, ',', '.') }}
+                            </div>
+                            <div class="right">
+                                {{ number_format((float) ($item->line_total ?? 0), 0, ',', '.') }}
+                            </div>
                         </div>
                     </div>
                 @empty
-                    <div class="item">
-                        <div class="item-left">
-                            <div class="item-name">Tidak ada item</div>
-                        </div>
-                    </div>
+                    <div class="center small">Tidak ada item.</div>
                 @endforelse
             </div>
 
-            <div class="totals">
-                <div class="total-row">
-                    <div class="total-label">Subtotal</div>
-                    <div class="total-value">Rp{{ number_format((float) $transaction->subtotal, 0, ',', '.') }}</div>
+            <div class="divider"></div>
+
+            <div class="summary-block normal">
+                <div class="summary-line">
+                    <div class="label">Subtotal</div>
+                    <div class="value">{{ number_format($subtotal, 0, ',', '.') }}</div>
                 </div>
 
-                <div class="total-row">
-                    <div class="total-label">Discount</div>
-                    <div class="total-value">Rp{{ number_format((float) $transaction->discount_amount, 0, ',', '.') }}</div>
+                @if($discountAmount > 0)
+                    <div class="summary-line">
+                        <div class="label">Discount</div>
+                        <div class="value">-{{ number_format($discountAmount, 0, ',', '.') }}</div>
+                    </div>
+                @endif
+
+                @if($taxAmount > 0)
+                    <div class="summary-line">
+                        <div class="label">Tax</div>
+                        <div class="value">{{ number_format($taxAmount, 0, ',', '.') }}</div>
+                    </div>
+                @endif
+
+                <div class="solid-divider"></div>
+
+                <div class="summary-line grand-total">
+                    <div class="label">TOTAL</div>
+                    <div class="value">{{ number_format($grandTotal, 0, ',', '.') }}</div>
                 </div>
 
-                <div class="total-row">
-                    <div class="total-label">Amount Paid</div>
-                    <div class="total-value">Rp{{ number_format((float) $displayAmountPaid, 0, ',', '.') }}</div>
+                <div class="solid-divider"></div>
+
+                <div class="summary-line">
+                    <div class="label">Paid</div>
+                    <div class="value">{{ number_format($amountPaid, 0, ',', '.') }}</div>
                 </div>
 
-                <div class="total-row">
-                    <div class="total-label">Change</div>
-                    <div class="total-value">Rp{{ number_format((float) $transaction->change_amount, 0, ',', '.') }}</div>
-                </div>
-
-                <div class="total-row">
-                    <div class="total-label grand-total">Grand Total</div>
-                    <div class="total-value grand-total">Rp{{ number_format((float) $transaction->grand_total, 0, ',', '.') }}</div>
+                <div class="summary-line">
+                    <div class="label">Change</div>
+                    <div class="value">{{ number_format($changeAmount, 0, ',', '.') }}</div>
                 </div>
             </div>
 
-            <div class="footer">
-                Terima kasih sudah berbelanja.
+            @if($isVoid)
+                <div class="void-box small">
+                    <div class="bold">VOID INFO</div>
+
+                    @if(!empty($transaction->void_at))
+                        <div>Void At: {{ $transaction->void_at?->format('Y-m-d H:i:s') }}</div>
+                    @endif
+
+                    @if(!empty($transaction->voidBy?->name))
+                        <div>Void By: {{ $transaction->voidBy->name }}</div>
+                    @endif
+
+                    @if(!empty($transaction->void_reason))
+                        <div style="margin-top:4px;">
+                            Reason: {{ $transaction->void_reason }}
+                        </div>
+                    @endif
+                </div>
+            @endif
+
+            <div class="divider"></div>
+
+            <div class="footer-block center">
+                <div class="small bold">Terima kasih</div>
+                <div class="tiny">Simpan struk ini sebagai bukti transaksi</div>
+                <div class="tiny">Powered by ATG POS</div>
             </div>
+
+            <div class="footer-space"></div>
         </div>
     </div>
+
+    <script>
+        (function () {
+            const shouldAutoPrint = @json($autoprint);
+
+            if (!shouldAutoPrint) {
+                return;
+            }
+
+            window.addEventListener('load', function () {
+                setTimeout(function () {
+                    window.print();
+                }, 400);
+            });
+
+            window.addEventListener('afterprint', function () {
+                // Biarkan tetap di halaman receipt setelah print
+            });
+        })();
+    </script>
 </body>
 </html>

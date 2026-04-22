@@ -157,7 +157,6 @@
         }
 
         .btn:disabled,
-        .btn-add:disabled,
         .mini-btn:disabled,
         .btn-wide:disabled,
         .order-type-btn:disabled,
@@ -302,7 +301,7 @@
 
         .layout {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) 430px;
+            grid-template-columns: minmax(0, 1fr) 400px;
             gap: 22px;
             align-items: start;
             overflow: visible;
@@ -314,10 +313,14 @@
             overflow: visible;
         }
 
-        .cashier-sticky-wrap {
+        .cashier-side-column {
             position: sticky;
             top: 20px;
             align-self: start;
+        }
+
+        .cashier-sticky-wrap {
+            position: static;
             max-height: calc(100vh - 40px);
             overflow-y: auto;
             padding-right: 2px;
@@ -677,7 +680,7 @@
         .products-grid {
             padding: 0 22px 22px;
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;
         }
 
@@ -979,7 +982,6 @@
         }
 
         .mini-btn-dark { background: #111827; }
-        .mini-btn-brand { background: var(--brand); }
         .mini-btn-red { background: #dc2626; }
 
         .cart-total {
@@ -1262,17 +1264,19 @@
             display: none;
             align-items: center;
             justify-content: center;
-            padding: 24px;
-            z-index: 9999;
+            padding: 16px;
+            z-index: 99999;
         }
 
         .modal-backdrop.active {
-            display: flex;
+            display: flex !important;
         }
 
         .variant-modal {
-            width: min(1080px, 100%);
-            max-height: calc(100vh - 48px);
+            position: relative;
+            z-index: 100000;
+            width: min(1080px, calc(100vw - 32px));
+            max-height: calc(100vh - 32px);
             overflow: hidden;
             background: #ffffff;
             border-radius: 30px;
@@ -1456,19 +1460,21 @@
             }
         }
 
-        @media (max-width: 1320px) {
+        @media (max-width: 1180px) {
             .layout {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr) 340px;
+            }
+
+            .cashier-side-column {
+                position: sticky;
+                top: 16px;
             }
 
             .cashier-sticky-wrap {
-                position: static;
-                max-height: none;
-                overflow: visible;
+                max-height: calc(100vh - 32px);
+                overflow-y: auto;
             }
-        }
 
-        @media (max-width: 1180px) {
             .hero {
                 grid-template-columns: 1fr;
             }
@@ -1482,7 +1488,25 @@
             }
         }
 
-        @media (max-width: 920px) {
+        @media (max-width: 980px) {
+            .hero {
+                grid-template-columns: 1fr;
+            }
+
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .cashier-side-column {
+                position: static;
+            }
+
+            .cashier-sticky-wrap {
+                position: static;
+                max-height: none;
+                overflow: visible;
+            }
+
             .products-grid {
                 grid-template-columns: repeat(2, minmax(0, 1fr));
             }
@@ -1542,12 +1566,14 @@
             .payment-live-row,
             .variant-active-price,
             .variant-option-top,
-            .cart-item-row {
+            .cart-item-row,
+            .receipt-history-top {
                 flex-direction: column;
                 align-items: flex-start;
             }
 
-            .payment-live-value {
+            .payment-live-value,
+            .receipt-history-total {
                 text-align: left;
             }
 
@@ -1635,632 +1661,628 @@
     $oldAmountPaid = old('amount_paid', (float) $subtotal);
 @endphp
 
-    <div class="page">
-        <div class="shell">
-            <div class="topbar">
-                <div class="brand">
-                    <div class="brand-logo">
-                        <img src="{{ asset('images/atg-icon.png') }}" alt="ATG Logo">
-                    </div>
-                    <div class="brand-text">
-                        <div class="brand-name">ATG POS</div>
-                        <div class="brand-sub">Cashier Workspace</div>
-                    </div>
+<div class="page">
+    <div class="shell">
+        <div class="topbar">
+            <div class="brand">
+                <div class="brand-logo">
+                    <img src="{{ asset('images/atg-icon.png') }}" alt="ATG Logo">
                 </div>
-
-                <div class="top-actions">
-                    <div class="mini-info">
-                        {{ $user->name ?? 'Cashier User' }} • {{ $user->outlet->name ?? 'Outlet' }}
-                    </div>
-                    <a href="{{ route('dashboard') }}" class="btn btn-dark">Mode Select</a>
+                <div class="brand-text">
+                    <div class="brand-name">ATG POS</div>
+                    <div class="brand-sub">Cashier Workspace</div>
                 </div>
             </div>
 
-            <div class="content">
-                <div class="hero">
-                    <div class="hero-main">
-                        <h1 class="hero-title">Fast selling flow with a cleaner frontliner experience.</h1>
-                        <p class="hero-subtitle">
-                            Fokus ke transaksi yang cepat, nyaman, dan lebih presentable dengan tampilan cashier yang selaras dengan sistem ATG POS.
-                        </p>
+            <div class="top-actions">
+                <div class="mini-info">
+                    {{ $user->name ?? 'Cashier User' }} • {{ $user->outlet->name ?? 'Outlet' }}
+                </div>
+                <a href="{{ route('dashboard') }}" class="btn btn-dark">Mode Select</a>
+            </div>
+        </div>
 
-                        <div class="hero-pills">
-                            <div class="hero-pill">Quick checkout</div>
-                            <div class="hero-pill">Sticky cart</div>
-                            <div class="hero-pill">Variant popup</div>
-                            <div class="hero-pill">History ready</div>
-                        </div>
+        <div class="content">
+            <div class="hero">
+                <div class="hero-main">
+                    <h1 class="hero-title">Fast selling flow with a cleaner frontliner experience.</h1>
+                    <p class="hero-subtitle">
+                        Fokus ke transaksi yang cepat, nyaman, dan lebih presentable dengan tampilan cashier yang selaras dengan sistem ATG POS.
+                    </p>
+
+                    <div class="hero-pills">
+                        <div class="hero-pill">Quick checkout</div>
+                        <div class="hero-pill">Tablet ready</div>
+                        <div class="hero-pill">Sticky cart</div>
+                        <div class="hero-pill">Thermal receipt</div>
                     </div>
+                </div>
 
-                    <div class="session-card">
-                        <div class="session-title">Cashier Session</div>
-                        <div class="session-line"><span class="label">User:</span>{{ $user->name ?? '-' }}</div>
-                        <div class="session-line"><span class="label">Role:</span>{{ $user->role->name ?? '-' }}</div>
-                        <div class="session-line"><span class="label">Outlet:</span>{{ $user->outlet->name ?? '-' }}</div>
-                        <div class="session-line"><span class="label">Order Type:</span><span id="session-order-type-text">{{ strtoupper(str_replace('_', ' ', $orderType ?? 'dine_in')) }}</span></div>
-                        <div class="toolbar">
-                            <div class="toolbar-pill">{{ $activeShift ? 'Shift active' : 'Shift not started' }}</div>
-                            <div class="toolbar-pill">POS ready</div>
+                <div class="session-card">
+                    <div class="session-title">Cashier Session</div>
+                    <div class="session-line"><span class="label">User:</span>{{ $user->name ?? '-' }}</div>
+                    <div class="session-line"><span class="label">Role:</span>{{ $user->role->name ?? '-' }}</div>
+                    <div class="session-line"><span class="label">Outlet:</span>{{ $user->outlet->name ?? '-' }}</div>
+                    <div class="session-line"><span class="label">Order Type:</span><span id="session-order-type-text">{{ strtoupper(str_replace('_', ' ', $orderType ?? 'dine_in')) }}</span></div>
+                    <div class="toolbar">
+                        <div class="toolbar-pill">{{ $activeShift ? 'Shift active' : 'Shift not started' }}</div>
+                        <div class="toolbar-pill">POS ready</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layout">
+                <div class="cashier-main-column">
+                    <div class="section-card">
+                        <div class="section-head">
+                            <h2 class="section-title">Cashier Workspace</h2>
+                            <p class="section-subtitle">Transaksi, history, dan shift dipisah tab supaya area kerja lebih lega.</p>
+                        </div>
+
+                        <div id="cashier-alert-success" class="alert alert-success {{ session('success') ? '' : 'hidden' }}">
+                            {{ session('success') ?? '' }}
+                        </div>
+
+                        <div id="cashier-alert-error" class="alert alert-error {{ (session('error') || $errors->any()) ? '' : 'hidden' }}">
+                            @if(session('error'))
+                                {{ session('error') }}
+                            @elseif($errors->any())
+                                @foreach($errors->all() as $error)
+                                    <div>{{ $error }}</div>
+                                @endforeach
+                            @endif
+                        </div>
+
+                        <div id="cashier-alert-info" class="alert alert-info hidden"></div>
+
+                        @if(session('last_checkout'))
+                            <div class="checkout-success-box">
+                                <div class="checkout-success-title">Checkout berhasil disimpan.</div>
+
+                                <div class="checkout-success-meta">
+                                    <div class="checkout-success-item">
+                                        <div class="checkout-success-label">Transaction Number</div>
+                                        <div class="checkout-success-value">{{ session('last_checkout.transaction_number') }}</div>
+                                    </div>
+
+                                    <div class="checkout-success-item">
+                                        <div class="checkout-success-label">Waktu</div>
+                                        <div class="checkout-success-value">{{ session('last_checkout.created_at') }}</div>
+                                    </div>
+
+                                    <div class="checkout-success-item">
+                                        <div class="checkout-success-label">Grand Total</div>
+                                        <div class="checkout-success-value">
+                                            Rp {{ number_format((float) session('last_checkout.grand_total'), 0, ',', '.') }}
+                                        </div>
+                                    </div>
+
+                                    <div class="checkout-success-item">
+                                        <div class="checkout-success-label">Payment</div>
+                                        <div class="checkout-success-value">
+                                            {{ session('last_checkout.payment_method') }}
+                                            @if((float) session('last_checkout.change_amount') > 0)
+                                                • Change Rp {{ number_format((float) session('last_checkout.change_amount'), 0, ',', '.') }}
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="checkout-success-actions">
+                                    <a
+                                        href="{{ route('backoffice.transactions.receipt', ['transaction' => session('last_checkout.transaction_id'), 'source' => 'cashier', 'autoprint' => 1]) }}"
+                                        target="_blank"
+                                        class="btn btn-green"
+                                    >
+                                        Print Receipt
+                                    </a>
+
+                                    <a href="{{ route('cashier.new-transaction') }}" class="btn btn-dark">
+                                        Transaksi Baru
+                                    </a>
+                                </div>
+                            </div>
+                        @endif
+
+                        <div class="tab-wrap">
+                            <div class="tab-nav">
+                                <button type="button" class="tab-btn active" data-tab-btn="transaction">Transaksi</button>
+                                <button type="button" class="tab-btn" data-tab-btn="history">History Transaksi</button>
+                                <button type="button" class="tab-btn" data-tab-btn="shift">Shift</button>
+                            </div>
+                        </div>
+
+                        <div id="tab-panel-transaction" class="tab-panel">
+                            <div class="search-wrap">
+                                <input type="text" id="cashier-search-input" class="search-input" placeholder="Cari menu secara visual di daftar bawah...">
+                            </div>
+
+                            <div class="order-type-wrap">
+                                <div class="order-type-card">
+                                    <div class="order-type-title">Order Type</div>
+                                    <div class="order-type-buttons">
+                                        <button type="button" class="order-type-btn {{ ($orderType ?? 'dine_in') === 'dine_in' ? 'active' : '' }}" data-order-type-btn data-order-type="dine_in">Dine In</button>
+                                        <button type="button" class="order-type-btn {{ ($orderType ?? 'dine_in') === 'delivery' ? 'active' : '' }}" data-order-type-btn data-order-type="delivery">Delivery</button>
+                                    </div>
+                                    <div class="order-type-note">
+                                        Kalau order type diganti saat cart masih ada isi, cart akan otomatis dikosongkan supaya harga tetap konsisten.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="products-grid" id="products-grid">
+                                @forelse($products as $product)
+                                    @php
+                                        $activeVariants = $product->variants->where('is_active', true)->values();
+                                    @endphp
+
+                                    <div
+                                        class="product-card"
+                                        data-product-card
+                                        data-search="{{ strtolower(trim(($product->name ?? '') . ' ' . ($product->category->name ?? '') . ' ' . ($product->brand->name ?? ''))) }}"
+                                    >
+                                        <div class="product-image">
+                                            <img src="{{ asset('images/atg-icon.png') }}" alt="Product">
+                                        </div>
+
+                                        <div class="product-name">{{ $product->name }}</div>
+                                        <div class="product-meta">
+                                            {{ $product->category->name ?? 'Uncategorized' }}
+                                            @if($product->brand)
+                                                • {{ $product->brand->name }}
+                                            @endif
+                                        </div>
+
+                                        <div class="product-foot">
+                                            <div class="product-variant-count">
+                                                {{ $activeVariants->count() }} variant aktif
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                class="product-pick-btn"
+                                                data-open-variant-modal
+                                                data-product-name="{{ $product->name }}"
+                                                data-product-meta="{{ trim(($product->category->name ?? 'Uncategorized') . ($product->brand ? ' • ' . $product->brand->name : '')) }}"
+                                            >
+                                                Pilih Variant
+                                            </button>
+
+                                            <div class="hidden" data-variant-modal-source>
+                                                @foreach($activeVariants as $variant)
+                                                    @php
+                                                        $dineInPrice = (float) ($variant->price_dine_in ?? $variant->price);
+                                                        $deliveryPrice = (float) ($variant->price_delivery ?? $variant->price);
+                                                    @endphp
+
+                                                    <div
+                                                        data-variant-source-item
+                                                        data-name="{{ $variant->name }}"
+                                                        data-code="{{ $variant->code }}"
+                                                        data-dine-in="{{ $dineInPrice }}"
+                                                        data-delivery="{{ $deliveryPrice }}"
+                                                        data-url="{{ route('cashier.cart.add', $variant) }}"
+                                                    ></div>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    </div>
+                                @empty
+                                    <div class="product-card" style="grid-column: 1 / -1;">
+                                        <div class="product-name">Belum ada product aktif</div>
+                                        <div class="product-meta">Product aktif akan muncul di area ini.</div>
+                                    </div>
+                                @endforelse
+                            </div>
+                        </div>
+
+                        <div id="tab-panel-history" class="tab-panel hidden">
+                            <div class="history-panel-wrap">
+                                <div class="history-panel-box">
+                                    <div class="section-title" style="font-size:22px; margin-bottom:6px;">History Transaksi Cashier</div>
+                                    <div class="section-subtitle">Riwayat transaksi terbaru dari cashier dan outlet aktif.</div>
+
+                                    @if($recentReceipts->count())
+                                        <div class="receipt-history-list">
+                                            @foreach($recentReceipts as $receipt)
+                                                @php
+                                                    $displayReceiptNumber = 'ATG-0001';
+
+                                                    if (! empty($receipt->transaction_number)) {
+                                                        $parts = explode('-', $receipt->transaction_number);
+                                                        $lastPart = end($parts);
+
+                                                        if (is_numeric($lastPart)) {
+                                                            $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
+                                                        }
+                                                    }
+                                                @endphp
+
+                                                <div class="receipt-history-item">
+                                                    <div class="receipt-history-top">
+                                                        <div>
+                                                            <div class="receipt-history-number">{{ $displayReceiptNumber }}</div>
+                                                            <div class="receipt-history-time">
+                                                                {{ $receipt->created_at?->format('Y-m-d H:i:s') ?? '-' }}
+                                                            </div>
+                                                        </div>
+
+                                                        <div class="receipt-history-total">
+                                                            Rp {{ number_format((float) $receipt->grand_total, 0, ',', '.') }}
+                                                        </div>
+                                                    </div>
+
+                                                    <div class="receipt-history-meta">
+                                                        Payment: {{ strtoupper((string) ($receipt->payment_method ?? '-')) }}
+                                                        • Status: {{ ucfirst((string) ($receipt->status ?? '-')) }}
+                                                        @if($receipt->outlet)
+                                                            • {{ $receipt->outlet->name }}
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="receipt-history-items">
+                                                        @forelse($receipt->items->take(4) as $item)
+                                                            <div>
+                                                                {{ $item->product_name ?? '-' }}
+                                                                @if($item->variant_name)
+                                                                    - {{ $item->variant_name }}
+                                                                @endif
+                                                                x {{ number_format((float) $item->qty, 0, ',', '.') }}
+                                                            </div>
+                                                        @empty
+                                                            <div>Tidak ada item.</div>
+                                                        @endforelse
+
+                                                        @if($receipt->items->count() > 4)
+                                                            <div>+ {{ $receipt->items->count() - 4 }} item lainnya</div>
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="receipt-history-actions">
+                                                        <a
+                                                            href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier', 'autoprint' => 1]) }}"
+                                                            target="_blank"
+                                                            class="receipt-action-btn green"
+                                                        >
+                                                            Print Receipt
+                                                        </a>
+
+                                                        @if($receipt->status === 'completed')
+                                                            <form method="POST" action="{{ route('backoffice.transactions.void', $receipt) }}" class="cashier-void-form">
+                                                                @csrf
+                                                                <input type="hidden" name="void_reason" value="">
+                                                                <button type="submit" class="receipt-action-btn red">Void</button>
+                                                            </form>
+                                                        @endif
+
+                                                        <a href="{{ route('cashier.new-transaction') }}" class="receipt-action-btn dark">
+                                                            Transaksi Baru
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <div class="receipt-history-empty">
+                                            Belum ada histori struk untuk cashier ini.
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="tab-panel-shift" class="tab-panel hidden">
+                            <div id="shift-start-box" class="shift-box start {{ $activeShift ? 'hidden' : '' }}">
+                                <div class="shift-title">Shift belum dibuka</div>
+                                <div class="shift-subtitle">
+                                    Kasir harus mulai shift dulu sebelum bisa tambah item, clear cart, dan checkout.
+                                </div>
+
+                                <form id="start-shift-form" class="shift-form">
+                                    <div class="shift-field">
+                                        <label for="opening_cash">Opening Cash</label>
+                                        <input type="number" id="opening_cash" name="opening_cash" min="0" step="0.01" value="0">
+                                    </div>
+
+                                    <div class="shift-actions">
+                                        <button type="submit" id="start-shift-button" class="shift-btn start">Start Shift</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div id="shift-active-box" class="shift-box {{ $activeShift ? '' : 'hidden' }}">
+                                <div class="shift-title">Shift aktif</div>
+                                <div class="shift-subtitle">
+                                    Ringkasan transaksi aktif selama shift berjalan.
+                                </div>
+
+                                <div class="shift-grid">
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Started At</div>
+                                        <div class="shift-stat-value" id="shift-started-at">{{ $activeShift?->started_at?->format('Y-m-d H:i:s') ?? '-' }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Opening Cash</div>
+                                        <div class="shift-stat-value" id="shift-opening-cash">Rp {{ number_format((float) ($activeShift?->opening_cash ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Cash Sales</div>
+                                        <div class="shift-stat-value" id="shift-cash-sales">Rp {{ number_format((float) ($shiftSummary['cash_sales'] ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Expected Cash</div>
+                                        <div class="shift-stat-value" id="shift-expected-cash">Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Total Transactions</div>
+                                        <div class="shift-stat-value" id="shift-total-transactions">{{ (int) ($shiftSummary['total_transactions'] ?? 0) }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Total Sales</div>
+                                        <div class="shift-stat-value" id="shift-total-sales">Rp {{ number_format((float) ($shiftSummary['total_sales'] ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Void Transactions</div>
+                                        <div class="shift-stat-value" id="shift-void-transactions">{{ (int) ($shiftSummary['void_transactions'] ?? 0) }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Order Type</div>
+                                        <div class="shift-stat-value" id="shift-order-type-preview">{{ strtoupper(str_replace('_', ' ', $orderType ?? 'dine_in')) }}</div>
+                                    </div>
+                                </div>
+
+                                <form id="end-shift-form" class="shift-form">
+                                    <div class="shift-field">
+                                        <label for="closing_cash_actual_display">Closing Cash Actual</label>
+                                        <input
+                                            type="text"
+                                            id="closing_cash_actual_display"
+                                            inputmode="numeric"
+                                            autocomplete="off"
+                                            value="Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}"
+                                        >
+                                        <input
+                                            type="hidden"
+                                            id="closing_cash_actual"
+                                            name="closing_cash_actual"
+                                            value="{{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 2, '.', '') }}"
+                                        >
+                                    </div>
+
+                                    <div class="shift-field">
+                                        <label for="closing_note">Closing Note</label>
+                                        <textarea id="closing_note" name="closing_note" placeholder="Catatan shift penutup (opsional)"></textarea>
+                                    </div>
+
+                                    <div class="shift-actions">
+                                        <button type="submit" id="end-shift-button" class="shift-btn end">End Shift</button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="layout">
-                    <div class="cashier-main-column">
+                <div class="cashier-side-column">
+                    <div class="cashier-sticky-wrap" id="cashier-sticky-wrap">
                         <div class="section-card">
-                            <div class="section-head">
-                                <h2 class="section-title">Cashier Workspace</h2>
-                                <p class="section-subtitle">Transaksi, history, dan shift dipisah tab supaya area kerja lebih lega.</p>
-                            </div>
-
-                            <div id="cashier-alert-success" class="alert alert-success {{ session('success') ? '' : 'hidden' }}">
-                                {{ session('success') ?? '' }}
-                            </div>
-
-                            <div id="cashier-alert-error" class="alert alert-error {{ (session('error') || $errors->any()) ? '' : 'hidden' }}">
-                                @if(session('error'))
-                                    {{ session('error') }}
-                                @elseif($errors->any())
-                                    @foreach($errors->all() as $error)
-                                        <div>{{ $error }}</div>
-                                    @endforeach
-                                @endif
-                            </div>
-
-                            <div id="cashier-alert-info" class="alert alert-info hidden"></div>
-
-                            @if(session('last_checkout'))
-                                <div class="checkout-success-box">
-                                    <div class="checkout-success-title">Checkout berhasil disimpan.</div>
-
-                                    <div class="checkout-success-meta">
-                                        <div class="checkout-success-item">
-                                            <div class="checkout-success-label">Transaction Number</div>
-                                            <div class="checkout-success-value">{{ session('last_checkout.transaction_number') }}</div>
-                                        </div>
-
-                                        <div class="checkout-success-item">
-                                            <div class="checkout-success-label">Waktu</div>
-                                            <div class="checkout-success-value">{{ session('last_checkout.created_at') }}</div>
-                                        </div>
-
-                                        <div class="checkout-success-item">
-                                            <div class="checkout-success-label">Grand Total</div>
-                                            <div class="checkout-success-value">
-                                                Rp {{ number_format((float) session('last_checkout.grand_total'), 0, ',', '.') }}
-                                            </div>
-                                        </div>
-
-                                        <div class="checkout-success-item">
-                                            <div class="checkout-success-label">Payment</div>
-                                            <div class="checkout-success-value">
-                                                {{ session('last_checkout.payment_method') }}
-                                                @if((float) session('last_checkout.change_amount') > 0)
-                                                    • Change Rp {{ number_format((float) session('last_checkout.change_amount'), 0, ',', '.') }}
-                                                @endif
-                                            </div>
-                                        </div>
+                            <div class="cart-panel">
+                                <div class="summary-grid">
+                                    <div class="summary-card soft-orange">
+                                        <div class="summary-label">Total Items</div>
+                                        <div class="summary-value" id="summary-cart-count">{{ count($cart) }}</div>
+                                        <div class="summary-desc">Jumlah baris item aktif di cart.</div>
                                     </div>
 
-                                    <div class="checkout-success-actions">
-                                        <a
-                                            href="{{ route('backoffice.transactions.receipt', ['transaction' => session('last_checkout.transaction_id'), 'source' => 'cashier']) }}"
-                                            target="_blank"
-                                            class="btn btn-green"
-                                        >
-                                            Print Receipt
-                                        </a>
-
-                                        <a href="{{ route('cashier.new-transaction') }}" class="btn btn-dark">
-                                            Transaksi Baru
-                                        </a>
+                                    <div class="summary-card soft-green">
+                                        <div class="summary-label">Subtotal</div>
+                                        <div class="summary-value" id="summary-subtotal">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                        <div class="summary-desc">Nilai transaksi sementara.</div>
                                     </div>
-                                </div>
-                            @endif
 
-                            <div class="tab-wrap">
-                                <div class="tab-nav">
-                                    <button type="button" class="tab-btn active" data-tab-btn="transaction">Transaksi</button>
-                                    <button type="button" class="tab-btn" data-tab-btn="history">History Transaksi</button>
-                                    <button type="button" class="tab-btn" data-tab-btn="shift">Shift</button>
-                                </div>
-                            </div>
-
-                            <div id="tab-panel-transaction" class="tab-panel">
-                                <div class="search-wrap">
-                                    <input type="text" id="cashier-search-input" class="search-input" placeholder="Cari menu secara visual di daftar bawah...">
-                                </div>
-
-                                <div class="order-type-wrap">
-                                    <div class="order-type-card">
-                                        <div class="order-type-title">Order Type</div>
-                                        <div class="order-type-buttons">
-                                            <button type="button" class="order-type-btn {{ ($orderType ?? 'dine_in') === 'dine_in' ? 'active' : '' }}" data-order-type-btn data-order-type="dine_in">Dine In</button>
-                                            <button type="button" class="order-type-btn {{ ($orderType ?? 'dine_in') === 'delivery' ? 'active' : '' }}" data-order-type-btn data-order-type="delivery">Delivery</button>
+                                    <div class="summary-card soft-blue">
+                                        <div class="summary-label">Member</div>
+                                        <div class="summary-value" id="summary-member-name" style="font-size:20px;">
+                                            {{ $member['name'] ?? $member['phone'] ?? 'Belum ada member' }}
                                         </div>
-                                        <div class="order-type-note">
-                                            Kalau order type diganti saat cart masih ada isi, cart akan otomatis dikosongkan supaya harga tetap konsisten.
-                                        </div>
+                                        <div class="summary-desc">Attach member opsional untuk transaksi ini.</div>
                                     </div>
                                 </div>
 
-                                <div class="products-grid" id="products-grid">
-                                    @forelse($products as $product)
-                                        @php
-                                            $activeVariants = $product->variants->where('is_active', true)->values();
-                                        @endphp
-
-                                        <div
-                                            class="product-card"
-                                            data-product-card
-                                            data-search="{{ strtolower(trim(($product->name ?? '') . ' ' . ($product->category->name ?? '') . ' ' . ($product->brand->name ?? ''))) }}"
-                                        >
-                                            <div class="product-image">
-                                                <img src="{{ asset('images/atg-icon.png') }}" alt="Product">
-                                            </div>
-
-                                            <div class="product-name">{{ $product->name }}</div>
-                                            <div class="product-meta">
-                                                {{ $product->category->name ?? 'Uncategorized' }}
-                                                @if($product->brand)
-                                                    • {{ $product->brand->name }}
-                                                @endif
-                                            </div>
-
-                                            <div class="product-foot">
-                                                <div class="product-variant-count">
-                                                    {{ $activeVariants->count() }} variant aktif
+                                <div class="cart-box">
+                                    <div class="cart-title">Current Cart</div>
+                                    <div id="cart-items-container">
+                                        @forelse($cart as $cartKey => $item)
+                                            <div class="cart-item">
+                                                <div class="cart-item-name">
+                                                    {{ $item['product_name'] ?? 'Product' }}
+                                                    @if(!empty($item['variant_name']))
+                                                        - {{ $item['variant_name'] }}
+                                                    @endif
                                                 </div>
 
-                                                <button
-                                                    type="button"
-                                                    class="product-pick-btn"
-                                                    data-open-variant-modal
-                                                    data-product-name="{{ $product->name }}"
-                                                    data-product-meta="{{ trim(($product->category->name ?? 'Uncategorized') . ($product->brand ? ' • ' . $product->brand->name : '')) }}"
-                                                >
-                                                    Pilih Variant
-                                                </button>
+                                                <div class="cart-item-meta">
+                                                    Type: {{ strtoupper(str_replace('_', ' ', $item['order_type'] ?? 'dine_in')) }}
+                                                    • Price: Rp {{ number_format((float) ($item['price'] ?? 0), 0, ',', '.') }}
+                                                    • Line Total: Rp {{ number_format((float) ($item['line_total'] ?? 0), 0, ',', '.') }}
 
-                                                <div class="hidden" data-variant-modal-source>
-                                                    @forelse($activeVariants as $variant)
-                                                        @php
-                                                            $dineInPrice = (float) ($variant->price_dine_in ?? $variant->price);
-                                                            $deliveryPrice = (float) ($variant->price_delivery ?? $variant->price);
-                                                        @endphp
-
-                                                        <div
-                                                            data-variant-source-item
-                                                            data-name="{{ $variant->name }}"
-                                                            data-code="{{ $variant->code }}"
-                                                            data-dine-in="{{ $dineInPrice }}"
-                                                            data-delivery="{{ $deliveryPrice }}"
-                                                            data-url="{{ route('cashier.cart.add', $variant) }}"
-                                                        ></div>
-                                                    @empty
-                                                    @endforelse
+                                                    @if(!empty($item['less_sugar']) || !empty($item['less_ice']))
+                                                        <br>
+                                                        Modifier:
+                                                        @if(!empty($item['less_sugar']))
+                                                            Less Sugar
+                                                        @endif
+                                                        @if(!empty($item['less_sugar']) && !empty($item['less_ice']))
+                                                            •
+                                                        @endif
+                                                        @if(!empty($item['less_ice']))
+                                                            Less Ice
+                                                        @endif
+                                                    @endif
                                                 </div>
-                                            </div>
-                                        </div>
-                                    @empty
-                                        <div class="product-card" style="grid-column: 1 / -1;">
-                                            <div class="product-name">Belum ada product aktif</div>
-                                            <div class="product-meta">Product aktif akan muncul di area ini.</div>
-                                        </div>
-                                    @endforelse
-                                </div>
-                            </div>
 
-                            <div id="tab-panel-history" class="tab-panel hidden">
-                                <div class="history-panel-wrap">
-                                    <div class="history-panel-box">
-                                        <div class="section-title" style="font-size:22px; margin-bottom:6px;">History Transaksi Cashier</div>
-                                        <div class="section-subtitle">Riwayat transaksi terbaru dari cashier dan outlet aktif.</div>
-
-                                        @if($recentReceipts->count())
-                                            <div class="receipt-history-list">
-                                                @foreach($recentReceipts as $receipt)
-                                                    @php
-                                                        $displayReceiptNumber = 'ATG-0001';
-
-                                                        if (! empty($receipt->transaction_number)) {
-                                                            $parts = explode('-', $receipt->transaction_number);
-                                                            $lastPart = end($parts);
-
-                                                            if (is_numeric($lastPart)) {
-                                                                $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
-                                                            }
-                                                        }
-                                                    @endphp
-
-                                                    <div class="receipt-history-item">
-                                                        <div class="receipt-history-top">
-                                                            <div>
-                                                                <div class="receipt-history-number">{{ $displayReceiptNumber }}</div>
-                                                                <div class="receipt-history-time">
-                                                                    {{ $receipt->created_at?->format('Y-m-d H:i:s') ?? '-' }}
-                                                                </div>
-                                                            </div>
-
-                                                            <div class="receipt-history-total">
-                                                                Rp {{ number_format((float) $receipt->grand_total, 0, ',', '.') }}
-                                                            </div>
-                                                        </div>
-
-                                                        <div class="receipt-history-meta">
-                                                            Payment: {{ strtoupper((string) ($receipt->payment_method ?? '-')) }}
-                                                            • Status: {{ ucfirst((string) ($receipt->status ?? '-')) }}
-                                                            @if($receipt->outlet)
-                                                                • {{ $receipt->outlet->name }}
-                                                            @endif
-                                                        </div>
-
-                                                        <div class="receipt-history-items">
-                                                            @forelse($receipt->items->take(4) as $item)
-                                                                <div>
-                                                                    {{ $item->product_name ?? '-' }}
-                                                                    @if($item->variant_name)
-                                                                        - {{ $item->variant_name }}
-                                                                    @endif
-                                                                    x {{ number_format((float) $item->qty, 0, ',', '.') }}
-                                                                </div>
-                                                            @empty
-                                                                <div>Tidak ada item.</div>
-                                                            @endforelse
-
-                                                            @if($receipt->items->count() > 4)
-                                                                <div>+ {{ $receipt->items->count() - 4 }} item lainnya</div>
-                                                            @endif
-                                                        </div>
-
-                                                        <div class="receipt-history-actions">
-                                                            <a
-                                                                href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier']) }}"
-                                                                target="_blank"
-                                                                class="receipt-action-btn green"
-                                                            >
-                                                                Buka Receipt
-                                                            </a>
-
-                                                            @if($receipt->status === 'completed')
-                                                                <form method="POST" action="{{ route('backoffice.transactions.void', $receipt) }}" onsubmit="return confirm('Yakin void transaksi ini?');">
-                                                                    @csrf
-                                                                    <button type="submit" class="receipt-action-btn red">Void</button>
-                                                                </form>
-                                                            @endif
-
-                                                            <a
-                                                                href="{{ route('cashier.new-transaction') }}"
-                                                                class="receipt-action-btn dark"
-                                                            >
-                                                                Transaksi Baru
-                                                            </a>
-                                                        </div>
+                                                <div class="cart-item-row">
+                                                    <div class="qty-control">
+                                                        <button type="button" class="qty-btn minus" data-cart-action="decrease" data-url="{{ route('cashier.cart.decrease', $cartKey) }}">−</button>
+                                                        <div class="qty-pill">{{ number_format((float) ($item['qty'] ?? 0), 0, ',', '.') }}</div>
+                                                        <button type="button" class="qty-btn plus" data-cart-action="increase" data-url="{{ route('cashier.cart.increase', $cartKey) }}">+</button>
                                                     </div>
-                                                @endforeach
+
+                                                    <div class="modifier-buttons">
+                                                        <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
+                                                            {{ !empty($item['less_sugar']) ? '✓ Less Sugar' : 'Less Sugar' }}
+                                                        </button>
+                                                        <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
+                                                            {{ !empty($item['less_ice']) ? '✓ Less Ice' : 'Less Ice' }}
+                                                        </button>
+                                                        <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="{{ route('cashier.cart.remove', $cartKey) }}">Hapus</button>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        @else
-                                            <div class="receipt-history-empty">
-                                                Belum ada histori struk untuk cashier ini.
+                                        @empty
+                                            <div class="cart-empty" id="cart-empty-state">
+                                                Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
                                             </div>
-                                        @endif
+                                        @endforelse
+                                    </div>
+
+                                    <div class="cart-total">
+                                        <span>Subtotal</span>
+                                        <span id="cart-subtotal-bottom">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</span>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div id="tab-panel-shift" class="tab-panel hidden">
-                                <div id="shift-start-box" class="shift-box start {{ $activeShift ? 'hidden' : '' }}">
-                                    <div class="shift-title">Shift belum dibuka</div>
-                                    <div class="shift-subtitle">
-                                        Kasir harus mulai shift dulu sebelum bisa tambah item, clear cart, dan checkout.
-                                    </div>
-
-                                    <form id="start-shift-form" class="shift-form">
-                                        <div class="shift-field">
-                                            <label for="opening_cash">Opening Cash</label>
-                                            <input type="number" id="opening_cash" name="opening_cash" min="0" step="0.01" value="0">
-                                        </div>
-
-                                        <div class="shift-actions">
-                                            <button type="submit" id="start-shift-button" class="shift-btn start">Start Shift</button>
-                                        </div>
-                                    </form>
-                                </div>
-
-                                <div id="shift-active-box" class="shift-box {{ $activeShift ? '' : 'hidden' }}">
-                                    <div class="shift-title">Shift aktif</div>
-                                    <div class="shift-subtitle">
-                                        Ringkasan transaksi aktif selama shift berjalan.
-                                    </div>
-
-                                    <div class="shift-grid">
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Started At</div>
-                                            <div class="shift-stat-value" id="shift-started-at">{{ $activeShift?->started_at?->format('Y-m-d H:i:s') ?? '-' }}</div>
-                                        </div>
-
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Opening Cash</div>
-                                            <div class="shift-stat-value" id="shift-opening-cash">Rp {{ number_format((float) ($activeShift?->opening_cash ?? 0), 0, ',', '.') }}</div>
-                                        </div>
-
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Cash Sales</div>
-                                            <div class="shift-stat-value" id="shift-cash-sales">Rp {{ number_format((float) ($shiftSummary['cash_sales'] ?? 0), 0, ',', '.') }}</div>
-                                        </div>
-
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Expected Cash</div>
-                                            <div class="shift-stat-value" id="shift-expected-cash">Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}</div>
-                                        </div>
-
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Total Transactions</div>
-                                            <div class="shift-stat-value" id="shift-total-transactions">{{ (int) ($shiftSummary['total_transactions'] ?? 0) }}</div>
-                                        </div>
-
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Total Sales</div>
-                                            <div class="shift-stat-value" id="shift-total-sales">Rp {{ number_format((float) ($shiftSummary['total_sales'] ?? 0), 0, ',', '.') }}</div>
-                                        </div>
-
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Void Transactions</div>
-                                            <div class="shift-stat-value" id="shift-void-transactions">{{ (int) ($shiftSummary['void_transactions'] ?? 0) }}</div>
-                                        </div>
-
-                                        <div class="shift-stat">
-                                            <div class="shift-stat-label">Order Type</div>
-                                            <div class="shift-stat-value" id="shift-order-type-preview">{{ strtoupper(str_replace('_', ' ', $orderType ?? 'dine_in')) }}</div>
+                                <div class="payment-section">
+                                    <div class="payment-section-head">
+                                        <div>
+                                            <div class="payment-section-title">Payment & Checkout</div>
+                                            <div class="payment-section-subtitle">
+                                                Dibuat lebih nyaman untuk tap flow di tablet.
+                                            </div>
                                         </div>
                                     </div>
 
-                                    <form id="end-shift-form" class="shift-form">
-                                        <div class="shift-field">
-                                            <label for="closing_cash_actual_display">Closing Cash Actual</label>
+                                    <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
+                                        @csrf
+
+                                        <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
+                                        <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
+
+                                        <div class="field">
+                                            <label for="payment_method">Payment Method</label>
+                                            <select name="payment_method" id="payment_method" required>
+                                                <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
+                                                <option value="qris" {{ $oldPaymentMethod === 'qris' ? 'selected' : '' }}>QRIS</option>
+                                                <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
+                                                <option value="debit" {{ $oldPaymentMethod === 'debit' ? 'selected' : '' }}>Debit</option>
+                                                <option value="credit" {{ $oldPaymentMethod === 'credit' ? 'selected' : '' }}>Credit</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="field">
+                                            <label for="amount_paid_display">Amount Paid</label>
                                             <input
                                                 type="text"
-                                                id="closing_cash_actual_display"
+                                                id="amount_paid_display"
                                                 inputmode="numeric"
                                                 autocomplete="off"
-                                                value="Rp {{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 0, ',', '.') }}"
-                                            >
-                                            <input
-                                                type="hidden"
-                                                id="closing_cash_actual"
-                                                name="closing_cash_actual"
-                                                value="{{ number_format((float) ($shiftSummary['expected_cash'] ?? 0), 2, '.', '') }}"
+                                                value="Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}"
+                                                required
                                             >
                                         </div>
 
-                                        <div class="shift-field">
-                                            <label for="closing_note">Closing Note</label>
-                                            <textarea id="closing_note" name="closing_note" placeholder="Catatan shift penutup (opsional)"></textarea>
+                                        <div class="quick-amount-wrap">
+                                            <div class="quick-amount-label">Quick Amount</div>
+                                            <div class="quick-amount-grid">
+                                                <button type="button" class="quick-amount-btn primary" data-quick-amount="exact">Uang Pas</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="5000">+5.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="10000">+10.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="20000">+20.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="50000">+50.000</button>
+                                                <button type="button" class="quick-amount-btn soft" data-quick-amount="100000">+100.000</button>
+                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_5000">Bulat 5rb</button>
+                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_10000">Bulat 10rb</button>
+                                                <button type="button" class="quick-amount-btn neutral" data-quick-amount="reset">Reset</button>
+                                            </div>
                                         </div>
 
-                                        <div class="shift-actions">
-                                            <button type="submit" id="end-shift-button" class="shift-btn end">End Shift</button>
+                                        <div class="payment-live-box">
+                                            <div class="payment-live-row">
+                                                <div class="payment-live-label">Subtotal Transaksi</div>
+                                                <div class="payment-live-value" id="live-subtotal-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                            </div>
+
+                                            <div class="payment-live-row">
+                                                <div class="payment-live-label">Amount Paid</div>
+                                                <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}</div>
+                                            </div>
+
+                                            <div class="payment-live-row change-highlight" id="change-highlight-row">
+                                                <div class="payment-live-label">Kembalian / Selisih</div>
+                                                <div class="payment-live-value" id="live-change-value">Rp 0</div>
+                                            </div>
+
+                                            <div class="payment-helper ok" id="payment-helper-text">
+                                                Nominal pembayaran sudah aman untuk checkout.
+                                            </div>
+                                        </div>
+
+                                        <div class="checkout-actions">
+                                            <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
                                         </div>
                                     </form>
+
+                                    <div class="checkout-actions" style="margin-top:12px;">
+                                        <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
+                                    </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
 
-                    <div class="cashier-side-column">
-                        <div class="cashier-sticky-wrap" id="cashier-sticky-wrap">
-                            <div class="section-card">
-                                <div class="cart-panel">
-                                    <div class="summary-grid">
-                                        <div class="summary-card soft-orange">
-                                            <div class="summary-label">Total Items</div>
-                                            <div class="summary-value" id="summary-cart-count">{{ count($cart) }}</div>
-                                            <div class="summary-desc">Jumlah baris item aktif di cart.</div>
+                                <div class="member-box">
+                                    <div class="cart-title">Member Access</div>
+
+                                    @if($member)
+                                        <div class="member-active">
+                                            Member aktif:
+                                            <strong>{{ $member['name'] ?? '-' }}</strong>
+                                            @if(!empty($member['phone']))
+                                                • {{ $member['phone'] }}
+                                            @endif
+                                            @if(isset($member['points']))
+                                                <br>Poin: {{ $member['points'] }}
+                                            @endif
                                         </div>
 
-                                        <div class="summary-card soft-green">
-                                            <div class="summary-label">Subtotal</div>
-                                            <div class="summary-value" id="summary-subtotal">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
-                                            <div class="summary-desc">Nilai transaksi sementara.</div>
+                                        <div class="member-actions">
+                                            <form method="POST" action="{{ route('cashier.member.detach') }}">
+                                                @csrf
+                                                <button type="submit" class="btn btn-dark">Lepas Member</button>
+                                            </form>
                                         </div>
-
-                                        <div class="summary-card soft-blue">
-                                            <div class="summary-label">Member</div>
-                                            <div class="summary-value" id="summary-member-name" style="font-size:20px;">
-                                                {{ $member['name'] ?? $member['phone'] ?? 'Belum ada member' }}
-                                            </div>
-                                            <div class="summary-desc">Attach member opsional untuk transaksi ini.</div>
-                                        </div>
-                                    </div>
-
-                                    <div class="cart-box">
-                                        <div class="cart-title">Current Cart</div>
-                                        <div id="cart-items-container">
-                                            @forelse($cart as $cartKey => $item)
-                                                <div class="cart-item">
-                                                    <div class="cart-item-name">
-                                                        {{ $item['product_name'] ?? 'Product' }}
-                                                        @if(!empty($item['variant_name']))
-                                                            - {{ $item['variant_name'] }}
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="cart-item-meta">
-                                                        Type: {{ strtoupper(str_replace('_', ' ', $item['order_type'] ?? 'dine_in')) }}
-                                                        • Price: Rp {{ number_format((float) ($item['price'] ?? 0), 0, ',', '.') }}
-                                                        • Line Total: Rp {{ number_format((float) ($item['line_total'] ?? 0), 0, ',', '.') }}
-
-                                                        @if(!empty($item['less_sugar']) || !empty($item['less_ice']))
-                                                            <br>
-                                                            Modifier:
-                                                            @if(!empty($item['less_sugar']))
-                                                                Less Sugar
-                                                            @endif
-                                                            @if(!empty($item['less_sugar']) && !empty($item['less_ice']))
-                                                                •
-                                                            @endif
-                                                            @if(!empty($item['less_ice']))
-                                                                Less Ice
-                                                            @endif
-                                                        @endif
-                                                    </div>
-
-                                                    <div class="cart-item-row">
-                                                        <div class="qty-control">
-                                                            <button type="button" class="qty-btn minus" data-cart-action="decrease" data-url="{{ route('cashier.cart.decrease', $cartKey) }}">−</button>
-                                                            <div class="qty-pill">{{ number_format((float) ($item['qty'] ?? 0), 0, ',', '.') }}</div>
-                                                            <button type="button" class="qty-btn plus" data-cart-action="increase" data-url="{{ route('cashier.cart.increase', $cartKey) }}">+</button>
-                                                        </div>
-
-                                                        <div class="modifier-buttons">
-                                                            <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
-                                                                {{ !empty($item['less_sugar']) ? '✓ Less Sugar' : 'Less Sugar' }}
-                                                            </button>
-                                                            <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
-                                                                {{ !empty($item['less_ice']) ? '✓ Less Ice' : 'Less Ice' }}
-                                                            </button>
-                                                            <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="{{ route('cashier.cart.remove', $cartKey) }}">Hapus</button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            @empty
-                                                <div class="cart-empty" id="cart-empty-state">
-                                                    Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
-                                                </div>
-                                            @endforelse
-                                        </div>
-
-                                        <div class="cart-total">
-                                            <span>Subtotal</span>
-                                            <span id="cart-subtotal-bottom">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="payment-section">
-                                        <div class="payment-section-head">
-                                            <div>
-                                                <div class="payment-section-title">Payment & Checkout</div>
-                                                <div class="payment-section-subtitle">
-                                                    Dibuat lebih nyaman untuk tap flow di tablet.
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
+                                    @else
+                                        <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
                                             @csrf
-
-                                            <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
-                                            <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
-
-                                            <div class="field">
-                                                <label for="payment_method">Payment Method</label>
-                                                <select name="payment_method" id="payment_method" required>
-                                                    <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
-                                                    <option value="qris" {{ $oldPaymentMethod === 'qris' ? 'selected' : '' }}>QRIS</option>
-                                                    <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
-                                                    <option value="debit" {{ $oldPaymentMethod === 'debit' ? 'selected' : '' }}>Debit</option>
-                                                    <option value="credit" {{ $oldPaymentMethod === 'credit' ? 'selected' : '' }}>Credit</option>
-                                                </select>
-                                            </div>
-
-                                            <div class="field">
-                                                <label for="amount_paid_display">Amount Paid</label>
-                                                <input
-                                                    type="text"
-                                                    id="amount_paid_display"
-                                                    inputmode="numeric"
-                                                    autocomplete="off"
-                                                    value="Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}"
-                                                    required
-                                                >
-                                            </div>
-
-                                            <div class="quick-amount-wrap">
-                                                <div class="quick-amount-label">Quick Amount</div>
-                                                <div class="quick-amount-grid">
-                                                    <button type="button" class="quick-amount-btn primary" data-quick-amount="exact">Uang Pas</button>
-                                                    <button type="button" class="quick-amount-btn soft" data-quick-amount="5000">+5.000</button>
-                                                    <button type="button" class="quick-amount-btn soft" data-quick-amount="10000">+10.000</button>
-                                                    <button type="button" class="quick-amount-btn soft" data-quick-amount="20000">+20.000</button>
-                                                    <button type="button" class="quick-amount-btn soft" data-quick-amount="50000">+50.000</button>
-                                                    <button type="button" class="quick-amount-btn soft" data-quick-amount="100000">+100.000</button>
-                                                    <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_5000">Bulat 5rb</button>
-                                                    <button type="button" class="quick-amount-btn neutral" data-quick-amount="round_10000">Bulat 10rb</button>
-                                                    <button type="button" class="quick-amount-btn neutral" data-quick-amount="reset">Reset</button>
-                                                </div>
-                                            </div>
-
-                                            <div class="payment-live-box">
-                                                <div class="payment-live-row">
-                                                    <div class="payment-live-label">Subtotal Transaksi</div>
-                                                    <div class="payment-live-value" id="live-subtotal-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
-                                                </div>
-
-                                                <div class="payment-live-row">
-                                                    <div class="payment-live-label">Amount Paid</div>
-                                                    <div class="payment-live-value" id="live-paid-value">Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}</div>
-                                                </div>
-
-                                                <div class="payment-live-row change-highlight" id="change-highlight-row">
-                                                    <div class="payment-live-label">Kembalian / Selisih</div>
-                                                    <div class="payment-live-value" id="live-change-value">Rp 0</div>
-                                                </div>
-
-                                                <div class="payment-helper ok" id="payment-helper-text">
-                                                    Nominal pembayaran sudah aman untuk checkout.
-                                                </div>
-                                            </div>
-
-                                            <div class="checkout-actions">
-                                                <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
+                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
+                                            <div class="member-actions">
+                                                <button type="submit" class="btn btn-dark">Attach Member</button>
                                             </div>
                                         </form>
 
-                                        <div class="checkout-actions" style="margin-top:12px;">
-                                            <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
-                                        </div>
-                                    </div>
-
-                                    <div class="member-box">
-                                        <div class="cart-title">Member Access</div>
-
-                                        @if($member)
-                                            <div class="member-active">
-                                                Member aktif:
-                                                <strong>{{ $member['name'] ?? '-' }}</strong>
-                                                @if(!empty($member['phone']))
-                                                    • {{ $member['phone'] }}
-                                                @endif
-                                                @if(isset($member['points']))
-                                                    <br>Poin: {{ $member['points'] }}
-                                                @endif
-                                            </div>
-
+                                        <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
+                                            @csrf
+                                            <input type="text" name="name" class="member-input" placeholder="Nama member baru">
+                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
                                             <div class="member-actions">
-                                                <form method="POST" action="{{ route('cashier.member.detach') }}">
-                                                    @csrf
-                                                    <button type="submit" class="btn btn-dark">Lepas Member</button>
-                                                </form>
+                                                <button type="submit" class="btn btn-brand">Quick Register</button>
                                             </div>
-                                        @else
-                                            <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
-                                                @csrf
-                                                <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
-                                                <div class="member-actions">
-                                                    <button type="submit" class="btn btn-dark">Attach Member</button>
-                                                </div>
-                                            </form>
-
-                                            <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
-                                                @csrf
-                                                <input type="text" name="name" class="member-input" placeholder="Nama member baru">
-                                                <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
-                                                <div class="member-actions">
-                                                    <button type="submit" class="btn btn-brand">Quick Register</button>
-                                                </div>
-                                            </form>
-                                        @endif
-                                    </div>
+                                        </form>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -2290,852 +2312,882 @@
                 </div>
             </div>
         </div>
+</div>
 
-        <script>
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            const setOrderTypeUrl = {!! $setOrderTypeUrlJson !!};
-            const clearCartUrl = {!! $clearCartUrlJson !!};
-            const startShiftUrl = {!! $startShiftUrlJson !!};
-            const endShiftUrl = {!! $endShiftUrlJson !!};
+<script>
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+    const setOrderTypeUrl = {!! $setOrderTypeUrlJson !!};
+    const clearCartUrl = {!! $clearCartUrlJson !!};
+    const startShiftUrl = {!! $startShiftUrlJson !!};
+    const endShiftUrl = {!! $endShiftUrlJson !!};
 
-            let cashierState = {
-                orderType: {!! $orderTypeJson !!},
-                activeShift: {!! $activeShiftJson !!},
-                shiftSummary: {!! $shiftSummaryJson !!},
-                cart: {
-                    order_type: {!! $orderTypeJson !!},
-                    cart_count: {{ count($cart) }},
-                    subtotal: {{ (float) $subtotal }},
-                    subtotal_formatted: {!! $subtotalFormattedJson !!},
-                    member: {!! $memberJson !!},
-                    items: {!! $cartItemsJson !!}
-                }
+    let cashierState = {
+        orderType: {!! $orderTypeJson !!},
+        activeShift: {!! $activeShiftJson !!},
+        shiftSummary: {!! $shiftSummaryJson !!},
+        cart: {
+            order_type: {!! $orderTypeJson !!},
+            cart_count: {{ count($cart) }},
+            subtotal: {{ (float) $subtotal }},
+            subtotal_formatted: {!! $subtotalFormattedJson !!},
+            member: {!! $memberJson !!},
+            items: {!! $cartItemsJson !!}
+        }
+    };
+
+    const successAlert = document.getElementById('cashier-alert-success');
+    const errorAlert = document.getElementById('cashier-alert-error');
+    const infoAlert = document.getElementById('cashier-alert-info');
+    const sessionOrderTypeText = document.getElementById('session-order-type-text');
+    const checkoutOrderType = document.getElementById('checkout-order-type');
+    const summaryCartCount = document.getElementById('summary-cart-count');
+    const summarySubtotal = document.getElementById('summary-subtotal');
+    const summaryMemberName = document.getElementById('summary-member-name');
+    const cartItemsContainer = document.getElementById('cart-items-container');
+    const cartSubtotalBottom = document.getElementById('cart-subtotal-bottom');
+    const paymentMethod = document.getElementById('payment_method');
+    const amountPaidDisplay = document.getElementById('amount_paid_display');
+    const amountPaidNumeric = document.getElementById('amount_paid_numeric');
+    const checkoutForm = document.getElementById('checkout-form');
+    const searchInput = document.getElementById('cashier-search-input');
+    const clearCartButton = document.getElementById('clear-cart-button');
+    const liveSubtotalValue = document.getElementById('live-subtotal-value');
+    const livePaidValue = document.getElementById('live-paid-value');
+    const liveChangeValue = document.getElementById('live-change-value');
+    const paymentHelperText = document.getElementById('payment-helper-text');
+    const checkoutButton = document.getElementById('checkout-button');
+    const changeHighlightRow = document.getElementById('change-highlight-row');
+
+    const shiftStartBox = document.getElementById('shift-start-box');
+    const shiftActiveBox = document.getElementById('shift-active-box');
+    const startShiftForm = document.getElementById('start-shift-form');
+    const endShiftForm = document.getElementById('end-shift-form');
+    const openingCashInput = document.getElementById('opening_cash');
+    const closingCashActualInput = document.getElementById('closing_cash_actual');
+    const closingCashActualDisplay = document.getElementById('closing_cash_actual_display');
+    const closingNoteInput = document.getElementById('closing_note');
+    const startShiftButton = document.getElementById('start-shift-button');
+    const endShiftButton = document.getElementById('end-shift-button');
+    const shiftStartedAt = document.getElementById('shift-started-at');
+    const shiftOpeningCash = document.getElementById('shift-opening-cash');
+    const shiftCashSales = document.getElementById('shift-cash-sales');
+    const shiftExpectedCash = document.getElementById('shift-expected-cash');
+    const shiftTotalTransactions = document.getElementById('shift-total-transactions');
+    const shiftTotalSales = document.getElementById('shift-total-sales');
+    const shiftVoidTransactions = document.getElementById('shift-void-transactions');
+    const shiftOrderTypePreview = document.getElementById('shift-order-type-preview');
+
+    const variantModalBackdrop = document.getElementById('variant-modal-backdrop');
+    const variantModalClose = document.getElementById('variant-modal-close');
+    const variantModalTitle = document.getElementById('variant-modal-title');
+    const variantModalSubtitle = document.getElementById('variant-modal-subtitle');
+    const variantModalOrderType = document.getElementById('variant-modal-order-type');
+    const variantModalGrid = document.getElementById('variant-modal-grid');
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function formatCurrency(value) {
+        const number = Number(value || 0);
+        return 'Rp ' + new Intl.NumberFormat('id-ID', {
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(number);
+    }
+
+    function formatOrderType(value) {
+        return String(value || 'dine_in').replace('_', ' ').toUpperCase();
+    }
+
+    function showAlert(type, message) {
+        successAlert.classList.add('hidden');
+        errorAlert.classList.add('hidden');
+        infoAlert.classList.add('hidden');
+
+        if (!message) return;
+
+        if (type === 'success') {
+            successAlert.textContent = message;
+            successAlert.classList.remove('hidden');
+            return;
+        }
+
+        if (type === 'error') {
+            errorAlert.textContent = message;
+            errorAlert.classList.remove('hidden');
+            return;
+        }
+
+        infoAlert.textContent = message;
+        infoAlert.classList.remove('hidden');
+    }
+
+    function isShiftOpen() {
+        return !!cashierState.activeShift && cashierState.activeShift.status === 'open';
+    }
+
+    function parseRupiahInput(value) {
+        const raw = String(value || '').replace(/[^\d]/g, '');
+        return raw ? Number(raw) : 0;
+    }
+
+    function setAmountPaidValue(value) {
+        const clean = Math.max(0, Number(value || 0));
+
+        if (amountPaidNumeric) {
+            amountPaidNumeric.value = clean.toFixed(2);
+        }
+
+        if (amountPaidDisplay) {
+            amountPaidDisplay.value = formatCurrency(clean);
+        }
+    }
+
+    function getAmountPaidValue() {
+        return Number(amountPaidNumeric?.value || 0);
+    }
+
+    function setClosingCashActualValue(value) {
+        const clean = Math.max(0, Number(value || 0));
+
+        if (closingCashActualInput) {
+            closingCashActualInput.value = clean.toFixed(2);
+        }
+
+        if (closingCashActualDisplay) {
+            closingCashActualDisplay.value = formatCurrency(clean);
+        }
+    }
+
+    function getClosingCashActualValue() {
+        return Number(closingCashActualInput?.value || 0);
+    }
+
+    function updateShiftUI() {
+        const open = isShiftOpen();
+
+        shiftStartBox.classList.toggle('hidden', open);
+        shiftActiveBox.classList.toggle('hidden', !open);
+
+        if (open) {
+            shiftStartedAt.textContent = cashierState.activeShift.started_at || '-';
+            shiftOpeningCash.textContent = formatCurrency(cashierState.activeShift.opening_cash || 0);
+            shiftCashSales.textContent = formatCurrency(cashierState.shiftSummary.cash_sales || 0);
+            shiftExpectedCash.textContent = formatCurrency(cashierState.shiftSummary.expected_cash || 0);
+            shiftTotalTransactions.textContent = String(cashierState.shiftSummary.total_transactions || 0);
+            shiftTotalSales.textContent = formatCurrency(cashierState.shiftSummary.total_sales || 0);
+
+            if (shiftVoidTransactions) {
+                shiftVoidTransactions.textContent = String(cashierState.shiftSummary.void_transactions || 0);
+            }
+
+            if (shiftOrderTypePreview) {
+                shiftOrderTypePreview.textContent = formatOrderType(cashierState.orderType);
+            }
+
+            setClosingCashActualValue(Number(cashierState.shiftSummary.expected_cash || 0));
+        }
+    }
+
+    function updateOrderTypeButtons() {
+        document.querySelectorAll('[data-order-type-btn]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.orderType === cashierState.orderType);
+        });
+
+        if (variantModalOrderType) {
+            variantModalOrderType.textContent = formatOrderType(cashierState.orderType);
+        }
+
+        if (shiftOrderTypePreview) {
+            shiftOrderTypePreview.textContent = formatOrderType(cashierState.orderType);
+        }
+    }
+
+    function renderCartItems(items) {
+        if (!items.length) {
+            cartItemsContainer.innerHTML = `
+                <div class="cart-empty" id="cart-empty-state">
+                    Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
+                </div>
+            `;
+            return;
+        }
+
+        cartItemsContainer.innerHTML = items.map((item) => {
+            const modifiers = [];
+            if (item.less_sugar) modifiers.push('Less Sugar');
+            if (item.less_ice) modifiers.push('Less Ice');
+
+            return `
+                <div class="cart-item">
+                    <div class="cart-item-name">
+                        ${escapeHtml(item.product_name || 'Product')}
+                        ${item.variant_name ? ' - ' + escapeHtml(item.variant_name) : ''}
+                    </div>
+
+                    <div class="cart-item-meta">
+                        Type: ${escapeHtml(formatOrderType(item.order_type))}
+                        • Price: ${escapeHtml(formatCurrency(item.price))}
+                        • Line Total: ${escapeHtml(formatCurrency(item.line_total))}
+                        ${modifiers.length ? `<br>Modifier: ${escapeHtml(modifiers.join(' • '))}` : ''}
+                    </div>
+
+                    <div class="cart-item-row">
+                        <div class="qty-control">
+                            <button type="button" class="qty-btn minus" data-cart-action="decrease" data-url="/cashier/cart/decrease/${encodeURIComponent(item.cart_key)}">−</button>
+                            <div class="qty-pill">${escapeHtml(item.qty)}</div>
+                            <button type="button" class="qty-btn plus" data-cart-action="increase" data-url="/cashier/cart/increase/${encodeURIComponent(item.cart_key)}">+</button>
+                        </div>
+
+                        <div class="modifier-buttons">
+                            <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="/cashier/cart/toggle-modifier/${encodeURIComponent(item.cart_key)}">${item.less_sugar ? '✓ Less Sugar' : 'Less Sugar'}</button>
+                            <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="/cashier/cart/toggle-modifier/${encodeURIComponent(item.cart_key)}">${item.less_ice ? '✓ Less Ice' : 'Less Ice'}</button>
+                            <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="/cashier/cart/remove/${encodeURIComponent(item.cart_key)}">Hapus</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function syncAmountPaid() {
+        if (!paymentMethod) return;
+
+        const subtotalValue = Number(cashierState.cart.subtotal || 0);
+
+        if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
+            setAmountPaidValue(subtotalValue);
+            amountPaidDisplay.readOnly = true;
+        } else {
+            amountPaidDisplay.readOnly = false;
+
+            if (getAmountPaidValue() <= 0 && subtotalValue > 0) {
+                setAmountPaidValue(subtotalValue);
+            } else {
+                setAmountPaidValue(getAmountPaidValue());
+            }
+        }
+
+        updateLivePaymentSummary();
+    }
+
+    function updateCheckoutAvailability(canCheckout) {
+        checkoutButton.disabled = !canCheckout;
+        clearCartButton.disabled = !isShiftOpen();
+        amountPaidDisplay.disabled = !isShiftOpen();
+        paymentMethod.disabled = !isShiftOpen();
+
+        document.querySelectorAll('[data-open-variant-modal]').forEach((button) => {
+            button.disabled = !isShiftOpen();
+        });
+
+        document.querySelectorAll('[data-cart-action]').forEach((button) => {
+            button.disabled = !isShiftOpen();
+        });
+
+        document.querySelectorAll('[data-cart-modifier]').forEach((button) => {
+            button.disabled = !isShiftOpen();
+        });
+
+        document.querySelectorAll('[data-quick-amount]').forEach((button) => {
+            button.disabled = !isShiftOpen();
+        });
+
+        document.querySelectorAll('.modal-add-btn').forEach((button) => {
+            button.disabled = !isShiftOpen();
+        });
+    }
+
+    function updateLivePaymentSummary() {
+        const subtotalValue = Number(cashierState.cart.subtotal || 0);
+        const paidValue = getAmountPaidValue();
+        const currentPaymentMethod = paymentMethod?.value || 'cash';
+
+        liveSubtotalValue.textContent = formatCurrency(subtotalValue);
+        livePaidValue.textContent = formatCurrency(paidValue);
+
+        let delta = 0;
+        let helperText = 'Nominal pembayaran sudah aman untuk checkout.';
+        let helperClass = 'ok';
+        let valueClass = 'change-ok';
+        let canCheckout = true;
+
+        if (!isShiftOpen()) {
+            helperText = 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.';
+            helperClass = 'warn';
+            canCheckout = false;
+        } else if (currentPaymentMethod === 'cash') {
+            delta = paidValue - subtotalValue;
+
+            if (delta < 0) {
+                helperText = 'Nominal cash masih kurang. Tambahkan pembayaran dulu sebelum checkout.';
+                helperClass = 'warn';
+                valueClass = 'change-minus';
+                canCheckout = false;
+            } else if (subtotalValue <= 0) {
+                helperText = 'Cart masih kosong. Tambahkan item dulu sebelum checkout.';
+                helperClass = 'warn';
+                canCheckout = false;
+            }
+        } else {
+            delta = 0;
+
+            if (subtotalValue <= 0) {
+                helperText = 'Cart masih kosong. Tambahkan item dulu sebelum checkout.';
+                helperClass = 'warn';
+                canCheckout = false;
+            } else {
+                helperText = 'Pembayaran non-cash akan mengikuti subtotal transaksi.';
+            }
+        }
+
+        liveChangeValue.textContent = formatCurrency(Math.abs(delta));
+        liveChangeValue.classList.remove('change-ok', 'change-minus');
+        liveChangeValue.classList.add(valueClass);
+
+        changeHighlightRow.classList.remove('minus');
+
+        if (currentPaymentMethod === 'cash' && delta < 0) {
+            liveChangeValue.textContent = '- ' + formatCurrency(Math.abs(delta));
+            changeHighlightRow.classList.add('minus');
+        }
+
+        paymentHelperText.textContent = helperText;
+        paymentHelperText.classList.remove('ok', 'warn');
+        paymentHelperText.classList.add(helperClass);
+
+        updateCheckoutAvailability(canCheckout);
+    }
+
+    function applyCartPayload(cartPayload) {
+        cashierState.cart = cartPayload;
+        cashierState.orderType = cartPayload.order_type || cashierState.orderType;
+
+        summaryCartCount.textContent = cartPayload.cart_count ?? 0;
+        summarySubtotal.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
+        cartSubtotalBottom.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
+        summaryMemberName.textContent = (cartPayload.member && (cartPayload.member.name || cartPayload.member.phone))
+            ? (cartPayload.member.name || cartPayload.member.phone)
+            : 'Belum ada member';
+
+        sessionOrderTypeText.textContent = formatOrderType(cashierState.orderType);
+        checkoutOrderType.value = cashierState.orderType;
+
+        updateOrderTypeButtons();
+        renderCartItems(cartPayload.items || []);
+        syncAmountPaid();
+        rerenderOpenModalPrices();
+    }
+
+    async function postJson(url, body = {}) {
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(body),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok || data.success === false) {
+            throw new Error(data.message || 'Terjadi kendala saat memproses permintaan.');
+        }
+
+        return data;
+    }
+
+    async function handleOrderTypeChange(newOrderType, button) {
+        if (newOrderType === cashierState.orderType) return;
+
+        const hasCartItems = Number(cashierState.cart?.cart_count || 0) > 0;
+
+        if (hasCartItems) {
+            const confirmed = window.confirm('Ganti order type akan mengosongkan cart supaya harga tetap konsisten. Lanjut?');
+            if (!confirmed) return;
+        }
+
+        const previousText = button.textContent;
+        button.disabled = true;
+        button.textContent = 'Loading...';
+
+        try {
+            const result = await postJson(setOrderTypeUrl, {
+                order_type: newOrderType,
+            });
+
+            applyCartPayload(result.cart);
+            showAlert('success', result.message || 'Order type berhasil diganti.');
+        } catch (error) {
+            showAlert('error', error.message);
+        } finally {
+            button.disabled = false;
+            button.textContent = previousText;
+        }
+    }
+
+    async function handleAddToCart(button) {
+        const url = button.dataset.url;
+        const originalText = button.textContent;
+
+        button.disabled = true;
+        button.textContent = 'Adding...';
+
+        try {
+            const result = await postJson(url, {
+                order_type: cashierState.orderType,
+            });
+
+            applyCartPayload(result.cart);
+            showAlert('success', result.message || 'Item berhasil masuk ke keranjang.');
+            closeVariantModal();
+        } catch (error) {
+            showAlert('error', error.message);
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    async function handleCartAction(button) {
+        const url = button.dataset.url;
+        const originalText = button.textContent;
+
+        button.disabled = true;
+        button.textContent = '...';
+
+        try {
+            const result = await postJson(url, {});
+            applyCartPayload(result.cart);
+            showAlert('success', result.message || 'Cart berhasil diupdate.');
+        } catch (error) {
+            showAlert('error', error.message);
+        } finally {
+            button.disabled = false;
+            button.textContent = originalText;
+        }
+    }
+
+    async function handleClearCart() {
+        if (!isShiftOpen()) {
+            showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
+            return;
+        }
+
+        if (Number(cashierState.cart?.cart_count || 0) <= 0) {
+            showAlert('info', 'Cart sudah kosong.');
+            return;
+        }
+
+        const confirmed = window.confirm('Yakin mau kosongkan seluruh cart?');
+        if (!confirmed) return;
+
+        const originalText = clearCartButton.textContent;
+        clearCartButton.disabled = true;
+        clearCartButton.textContent = 'Clearing...';
+
+        try {
+            const result = await postJson(clearCartUrl, {});
+            applyCartPayload(result.cart);
+            showAlert('success', result.message || 'Keranjang berhasil dikosongkan.');
+        } catch (error) {
+            showAlert('error', error.message);
+        } finally {
+            clearCartButton.disabled = false;
+            clearCartButton.textContent = originalText;
+        }
+    }
+
+    async function handleStartShift() {
+        const openingCash = Number(openingCashInput.value || 0);
+        const originalText = startShiftButton.textContent;
+
+        startShiftButton.disabled = true;
+        startShiftButton.textContent = 'Starting...';
+
+        try {
+            const result = await postJson(startShiftUrl, {
+                opening_cash: openingCash,
+            });
+
+            cashierState.activeShift = result.shift.active_shift;
+            cashierState.shiftSummary = result.shift.summary;
+            updateShiftUI();
+            updateLivePaymentSummary();
+            showAlert('success', result.message || 'Shift berhasil dibuka.');
+        } catch (error) {
+            showAlert('error', error.message);
+        } finally {
+            startShiftButton.disabled = false;
+            startShiftButton.textContent = originalText;
+        }
+    }
+
+    async function handleEndShift() {
+        const closingCashActual = getClosingCashActualValue();
+        const closingNote = closingNoteInput.value || '';
+        const originalText = endShiftButton.textContent;
+
+        const confirmed = window.confirm('Yakin mau tutup shift sekarang?');
+        if (!confirmed) return;
+
+        endShiftButton.disabled = true;
+        endShiftButton.textContent = 'Ending...';
+
+        try {
+            const result = await postJson(endShiftUrl, {
+                closing_cash_actual: closingCashActual,
+                closing_note: closingNote,
+            });
+
+            cashierState.activeShift = null;
+            cashierState.shiftSummary = result.shift.summary || {
+                total_transactions: 0,
+                total_sales: 0,
+                cash_sales: 0,
+                qris_sales: 0,
+                transfer_sales: 0,
+                debit_sales: 0,
+                credit_sales: 0,
+                void_transactions: 0,
+                expected_cash: 0,
+                difference: 0,
             };
 
-            const successAlert = document.getElementById('cashier-alert-success');
-            const errorAlert = document.getElementById('cashier-alert-error');
-            const infoAlert = document.getElementById('cashier-alert-info');
-            const sessionOrderTypeText = document.getElementById('session-order-type-text');
-            const checkoutOrderType = document.getElementById('checkout-order-type');
-            const summaryCartCount = document.getElementById('summary-cart-count');
-            const summarySubtotal = document.getElementById('summary-subtotal');
-            const summaryMemberName = document.getElementById('summary-member-name');
-            const cartItemsContainer = document.getElementById('cart-items-container');
-            const cartSubtotalBottom = document.getElementById('cart-subtotal-bottom');
-            const paymentMethod = document.getElementById('payment_method');
-            const amountPaidDisplay = document.getElementById('amount_paid_display');
-            const amountPaidNumeric = document.getElementById('amount_paid_numeric');
-            const checkoutForm = document.getElementById('checkout-form');
-            const searchInput = document.getElementById('cashier-search-input');
-            const clearCartButton = document.getElementById('clear-cart-button');
-            const liveSubtotalValue = document.getElementById('live-subtotal-value');
-            const livePaidValue = document.getElementById('live-paid-value');
-            const liveChangeValue = document.getElementById('live-change-value');
-            const paymentHelperText = document.getElementById('payment-helper-text');
-            const checkoutButton = document.getElementById('checkout-button');
-            const changeHighlightRow = document.getElementById('change-highlight-row');
+            updateShiftUI();
+            updateLivePaymentSummary();
+            showAlert('success', result.message || 'Shift berhasil ditutup.');
+        } catch (error) {
+            showAlert('error', error.message);
+        } finally {
+            endShiftButton.disabled = false;
+            endShiftButton.textContent = originalText;
+        }
+    }
 
-            const shiftStartBox = document.getElementById('shift-start-box');
-            const shiftActiveBox = document.getElementById('shift-active-box');
-            const startShiftForm = document.getElementById('start-shift-form');
-            const endShiftForm = document.getElementById('end-shift-form');
-            const openingCashInput = document.getElementById('opening_cash');
-            const closingCashActualInput = document.getElementById('closing_cash_actual');
-            const closingCashActualDisplay = document.getElementById('closing_cash_actual_display');
-            const closingNoteInput = document.getElementById('closing_note');
-            const startShiftButton = document.getElementById('start-shift-button');
-            const endShiftButton = document.getElementById('end-shift-button');
-            const shiftStartedAt = document.getElementById('shift-started-at');
-            const shiftOpeningCash = document.getElementById('shift-opening-cash');
-            const shiftCashSales = document.getElementById('shift-cash-sales');
-            const shiftExpectedCash = document.getElementById('shift-expected-cash');
-            const shiftTotalTransactions = document.getElementById('shift-total-transactions');
-            const shiftTotalSales = document.getElementById('shift-total-sales');
-            const shiftVoidTransactions = document.getElementById('shift-void-transactions');
-            const shiftOrderTypePreview = document.getElementById('shift-order-type-preview');
+    function applySearchFilter(keyword) {
+        const normalized = String(keyword || '').trim().toLowerCase();
 
-            const variantModalBackdrop = document.getElementById('variant-modal-backdrop');
-            const variantModalClose = document.getElementById('variant-modal-close');
-            const variantModalTitle = document.getElementById('variant-modal-title');
-            const variantModalSubtitle = document.getElementById('variant-modal-subtitle');
-            const variantModalOrderType = document.getElementById('variant-modal-order-type');
-            const variantModalGrid = document.getElementById('variant-modal-grid');
+        document.querySelectorAll('[data-product-card]').forEach((card) => {
+            const haystack = card.dataset.search || '';
+            const isMatch = normalized === '' || haystack.includes(normalized);
+            card.classList.toggle('hidden', !isMatch);
+        });
+    }
 
-            function escapeHtml(value) {
-                return String(value ?? '')
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#039;');
-            }
+    function roundUp(value, base) {
+        if (value <= 0) return base;
+        return Math.ceil(value / base) * base;
+    }
 
-            function formatCurrency(value) {
-                const number = Number(value || 0);
-                return 'Rp ' + new Intl.NumberFormat('id-ID', {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
-                }).format(number);
-            }
+    function applyQuickAmount(mode) {
+        if (!isShiftOpen()) {
+            showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
+            return;
+        }
 
-            function formatOrderType(value) {
-                return String(value || 'dine_in').replace('_', ' ').toUpperCase();
-            }
+        if (!amountPaidDisplay) return;
+        if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
+            showAlert('info', 'Quick amount dipakai untuk pembayaran cash.');
+            return;
+        }
 
-            function showAlert(type, message) {
-                successAlert.classList.add('hidden');
-                errorAlert.classList.add('hidden');
-                infoAlert.classList.add('hidden');
+        const subtotalValue = Number(cashierState.cart.subtotal || 0);
+        let currentValue = getAmountPaidValue();
 
-                if (!message) return;
+        if (mode === 'exact') {
+            currentValue = subtotalValue;
+        } else if (mode === 'reset') {
+            currentValue = 0;
+        } else if (mode === 'round_5000') {
+            currentValue = roundUp(subtotalValue, 5000);
+        } else if (mode === 'round_10000') {
+            currentValue = roundUp(subtotalValue, 10000);
+        } else {
+            currentValue += Number(mode || 0);
+        }
 
-                if (type === 'success') {
-                    successAlert.textContent = message;
-                    successAlert.classList.remove('hidden');
-                    return;
-                }
+        setAmountPaidValue(Math.max(0, currentValue));
+        updateLivePaymentSummary();
+    }
 
-                if (type === 'error') {
-                    errorAlert.textContent = message;
-                    errorAlert.classList.remove('hidden');
-                    return;
-                }
+    function switchTab(tabName) {
+        document.querySelectorAll('[data-tab-btn]').forEach((button) => {
+            button.classList.toggle('active', button.dataset.tabBtn === tabName);
+        });
 
-                infoAlert.textContent = message;
-                infoAlert.classList.remove('hidden');
-            }
+        document.getElementById('tab-panel-transaction').classList.toggle('hidden', tabName !== 'transaction');
+        document.getElementById('tab-panel-history').classList.toggle('hidden', tabName !== 'history');
+        document.getElementById('tab-panel-shift').classList.toggle('hidden', tabName !== 'shift');
+    }
 
-            function isShiftOpen() {
-                return !!cashierState.activeShift && cashierState.activeShift.status === 'open';
-            }
+    function openVariantModal(button) {
+        const productCard = button.closest('[data-product-card]');
+        if (!productCard) return;
 
-            function parseRupiahInput(value) {
-                const raw = String(value || '').replace(/[^\d]/g, '');
-                return raw ? Number(raw) : 0;
-            }
+        const productName = button.dataset.productName || 'Product';
+        const productMeta = button.dataset.productMeta || '-';
+        const sourceContainer = productCard.querySelector('[data-variant-modal-source]');
 
-            function setAmountPaidValue(value) {
-                const clean = Math.max(0, Number(value || 0));
+        if (!sourceContainer) return;
 
-                if (amountPaidNumeric) {
-                    amountPaidNumeric.value = clean.toFixed(2);
-                }
+        const sourceItems = Array.from(sourceContainer.querySelectorAll('[data-variant-source-item]'));
 
-                if (amountPaidDisplay) {
-                    amountPaidDisplay.value = formatCurrency(clean);
-                }
-            }
+        variantModalTitle.textContent = productName;
+        variantModalSubtitle.textContent = productMeta;
+        variantModalOrderType.textContent = formatOrderType(cashierState.orderType);
 
-            function getAmountPaidValue() {
-                return Number(amountPaidNumeric?.value || 0);
-            }
+        if (!sourceItems.length) {
+            variantModalGrid.innerHTML = `
+                <div class="variant-option-card" style="grid-column:1/-1; min-height:unset;">
+                    <div class="variant-option-name">Belum ada variant aktif</div>
+                    <div class="variant-active-price-text" style="margin-top:12px;">Product ini belum bisa dijual.</div>
+                </div>
+            `;
+        } else {
+            variantModalGrid.innerHTML = sourceItems.map((item) => {
+                const name = item.dataset.name || 'Variant';
+                const code = item.dataset.code || '-';
+                const dineIn = Number(item.dataset.dineIn || 0);
+                const delivery = Number(item.dataset.delivery || 0);
+                const activePrice = cashierState.orderType === 'delivery' ? delivery : dineIn;
+                const url = item.dataset.url || '#';
 
-            function setClosingCashActualValue(value) {
-                const clean = Math.max(0, Number(value || 0));
-
-                if (closingCashActualInput) {
-                    closingCashActualInput.value = clean.toFixed(2);
-                }
-
-                if (closingCashActualDisplay) {
-                    closingCashActualDisplay.value = formatCurrency(clean);
-                }
-            }
-
-            function getClosingCashActualValue() {
-                return Number(closingCashActualInput?.value || 0);
-            }
-
-            function updateShiftUI() {
-                const open = isShiftOpen();
-
-                shiftStartBox.classList.toggle('hidden', open);
-                shiftActiveBox.classList.toggle('hidden', !open);
-
-                if (open) {
-                    shiftStartedAt.textContent = cashierState.activeShift.started_at || '-';
-                    shiftOpeningCash.textContent = formatCurrency(cashierState.activeShift.opening_cash || 0);
-                    shiftCashSales.textContent = formatCurrency(cashierState.shiftSummary.cash_sales || 0);
-                    shiftExpectedCash.textContent = formatCurrency(cashierState.shiftSummary.expected_cash || 0);
-                    shiftTotalTransactions.textContent = String(cashierState.shiftSummary.total_transactions || 0);
-                    shiftTotalSales.textContent = formatCurrency(cashierState.shiftSummary.total_sales || 0);
-
-                    if (shiftVoidTransactions) {
-                        shiftVoidTransactions.textContent = String(cashierState.shiftSummary.void_transactions || 0);
-                    }
-
-                    if (shiftOrderTypePreview) {
-                        shiftOrderTypePreview.textContent = formatOrderType(cashierState.orderType);
-                    }
-
-                    setClosingCashActualValue(Number(cashierState.shiftSummary.expected_cash || 0));
-                }
-            }
-
-            function updateOrderTypeButtons() {
-                document.querySelectorAll('[data-order-type-btn]').forEach((button) => {
-                    button.classList.toggle('active', button.dataset.orderType === cashierState.orderType);
-                });
-
-                if (variantModalOrderType) {
-                    variantModalOrderType.textContent = formatOrderType(cashierState.orderType);
-                }
-
-                if (shiftOrderTypePreview) {
-                    shiftOrderTypePreview.textContent = formatOrderType(cashierState.orderType);
-                }
-            }
-
-            function renderCartItems(items) {
-                if (!items.length) {
-                    cartItemsContainer.innerHTML = `
-                        <div class="cart-empty" id="cart-empty-state">
-                            Cart masih kosong. Tambahkan menu dari panel kiri untuk mulai transaksi.
-                        </div>
-                    `;
-                    return;
-                }
-
-                cartItemsContainer.innerHTML = items.map((item) => {
-                    const modifiers = [];
-                    if (item.less_sugar) modifiers.push('Less Sugar');
-                    if (item.less_ice) modifiers.push('Less Ice');
-
-                    return `
-                        <div class="cart-item">
-                            <div class="cart-item-name">
-                                ${escapeHtml(item.product_name || 'Product')}
-                                ${item.variant_name ? ' - ' + escapeHtml(item.variant_name) : ''}
-                            </div>
-
-                            <div class="cart-item-meta">
-                                Type: ${escapeHtml(formatOrderType(item.order_type))}
-                                • Price: ${escapeHtml(formatCurrency(item.price))}
-                                • Line Total: ${escapeHtml(formatCurrency(item.line_total))}
-                                ${modifiers.length ? `<br>Modifier: ${escapeHtml(modifiers.join(' • '))}` : ''}
-                            </div>
-
-                            <div class="cart-item-row">
-                                <div class="qty-control">
-                                    <button type="button" class="qty-btn minus" data-cart-action="decrease" data-url="/cashier/cart/decrease/${encodeURIComponent(item.cart_key)}">−</button>
-                                    <div class="qty-pill">${escapeHtml(item.qty)}</div>
-                                    <button type="button" class="qty-btn plus" data-cart-action="increase" data-url="/cashier/cart/increase/${encodeURIComponent(item.cart_key)}">+</button>
-                                </div>
-
-                                <div class="modifier-buttons">
-                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="/cashier/cart/toggle-modifier/${encodeURIComponent(item.cart_key)}">${item.less_sugar ? '✓ Less Sugar' : 'Less Sugar'}</button>
-                                    <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="/cashier/cart/toggle-modifier/${encodeURIComponent(item.cart_key)}">${item.less_ice ? '✓ Less Ice' : 'Less Ice'}</button>
-                                    <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="/cashier/cart/remove/${encodeURIComponent(item.cart_key)}">Hapus</button>
-                                </div>
+                return `
+                    <div class="variant-option-card">
+                        <div class="variant-option-top">
+                            <div>
+                                <div class="variant-option-name">${escapeHtml(name)}</div>
+                                <div class="variant-option-code">${escapeHtml(code)}</div>
                             </div>
                         </div>
-                    `;
-                }).join('');
-            }
 
-            function syncAmountPaid() {
-                if (!paymentMethod) return;
-
-                const subtotalValue = Number(cashierState.cart.subtotal || 0);
-
-                if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
-                    setAmountPaidValue(subtotalValue);
-                    amountPaidDisplay.readOnly = true;
-                } else {
-                    amountPaidDisplay.readOnly = false;
-
-                    if (getAmountPaidValue() <= 0 && subtotalValue > 0) {
-                        setAmountPaidValue(subtotalValue);
-                    } else {
-                        setAmountPaidValue(getAmountPaidValue());
-                    }
-                }
-
-                updateLivePaymentSummary();
-            }
-
-            function updateCheckoutAvailability(canCheckout) {
-                checkoutButton.disabled = !canCheckout;
-                clearCartButton.disabled = !isShiftOpen();
-                amountPaidDisplay.disabled = !isShiftOpen();
-                paymentMethod.disabled = !isShiftOpen();
-
-                document.querySelectorAll('[data-open-variant-modal]').forEach((button) => {
-                    button.disabled = !isShiftOpen();
-                });
-
-                document.querySelectorAll('[data-cart-action]').forEach((button) => {
-                    button.disabled = !isShiftOpen();
-                });
-
-                document.querySelectorAll('[data-cart-modifier]').forEach((button) => {
-                    button.disabled = !isShiftOpen();
-                });
-
-                document.querySelectorAll('[data-quick-amount]').forEach((button) => {
-                    button.disabled = !isShiftOpen();
-                });
-
-                document.querySelectorAll('.modal-add-btn').forEach((button) => {
-                    button.disabled = !isShiftOpen();
-                });
-            }
-
-            function updateLivePaymentSummary() {
-                const subtotalValue = Number(cashierState.cart.subtotal || 0);
-                const paidValue = getAmountPaidValue();
-                const currentPaymentMethod = paymentMethod?.value || 'cash';
-
-                liveSubtotalValue.textContent = formatCurrency(subtotalValue);
-                livePaidValue.textContent = formatCurrency(paidValue);
-
-                let delta = 0;
-                let helperText = 'Nominal pembayaran sudah aman untuk checkout.';
-                let helperClass = 'ok';
-                let valueClass = 'change-ok';
-                let canCheckout = true;
-
-                if (!isShiftOpen()) {
-                    helperText = 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.';
-                    helperClass = 'warn';
-                    canCheckout = false;
-                } else if (currentPaymentMethod === 'cash') {
-                    delta = paidValue - subtotalValue;
-
-                    if (delta < 0) {
-                        helperText = 'Nominal cash masih kurang. Tambahkan pembayaran dulu sebelum checkout.';
-                        helperClass = 'warn';
-                        valueClass = 'change-minus';
-                        canCheckout = false;
-                    } else if (subtotalValue <= 0) {
-                        helperText = 'Cart masih kosong. Tambahkan item dulu sebelum checkout.';
-                        helperClass = 'warn';
-                        canCheckout = false;
-                    }
-                } else {
-                    delta = 0;
-
-                    if (subtotalValue <= 0) {
-                        helperText = 'Cart masih kosong. Tambahkan item dulu sebelum checkout.';
-                        helperClass = 'warn';
-                        canCheckout = false;
-                    } else {
-                        helperText = 'Pembayaran non-cash akan mengikuti subtotal transaksi.';
-                    }
-                }
-
-                liveChangeValue.textContent = formatCurrency(Math.abs(delta));
-                liveChangeValue.classList.remove('change-ok', 'change-minus');
-                liveChangeValue.classList.add(valueClass);
-
-                changeHighlightRow.classList.remove('minus');
-
-                if (currentPaymentMethod === 'cash' && delta < 0) {
-                    liveChangeValue.textContent = '- ' + formatCurrency(Math.abs(delta));
-                    changeHighlightRow.classList.add('minus');
-                }
-
-                paymentHelperText.textContent = helperText;
-                paymentHelperText.classList.remove('ok', 'warn');
-                paymentHelperText.classList.add(helperClass);
-
-                updateCheckoutAvailability(canCheckout);
-            }
-
-            function applyCartPayload(cartPayload) {
-                cashierState.cart = cartPayload;
-                cashierState.orderType = cartPayload.order_type || cashierState.orderType;
-
-                summaryCartCount.textContent = cartPayload.cart_count ?? 0;
-                summarySubtotal.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
-                cartSubtotalBottom.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
-                summaryMemberName.textContent = (cartPayload.member && (cartPayload.member.name || cartPayload.member.phone))
-                    ? (cartPayload.member.name || cartPayload.member.phone)
-                    : 'Belum ada member';
-
-                sessionOrderTypeText.textContent = formatOrderType(cashierState.orderType);
-                checkoutOrderType.value = cashierState.orderType;
-
-                updateOrderTypeButtons();
-                renderCartItems(cartPayload.items || []);
-                syncAmountPaid();
-                rerenderOpenModalPrices();
-            }
-
-            async function postJson(url, body = {}) {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': csrfToken,
-                        'X-Requested-With': 'XMLHttpRequest',
-                    },
-                    body: JSON.stringify(body),
-                });
-
-                const data = await response.json().catch(() => ({}));
-
-                if (!response.ok || data.success === false) {
-                    throw new Error(data.message || 'Terjadi kendala saat memproses permintaan.');
-                }
-
-                return data;
-            }
-
-            async function handleOrderTypeChange(newOrderType, button) {
-                if (newOrderType === cashierState.orderType) return;
-
-                const hasCartItems = Number(cashierState.cart?.cart_count || 0) > 0;
-
-                if (hasCartItems) {
-                    const confirmed = window.confirm('Ganti order type akan mengosongkan cart supaya harga tetap konsisten. Lanjut?');
-                    if (!confirmed) return;
-                }
-
-                const previousText = button.textContent;
-                button.disabled = true;
-                button.textContent = 'Loading...';
-
-                try {
-                    const result = await postJson(setOrderTypeUrl, {
-                        order_type: newOrderType,
-                    });
-
-                    applyCartPayload(result.cart);
-                    showAlert('success', result.message || 'Order type berhasil diganti.');
-                } catch (error) {
-                    showAlert('error', error.message);
-                } finally {
-                    button.disabled = false;
-                    button.textContent = previousText;
-                }
-            }
-
-            async function handleAddToCart(button) {
-                const url = button.dataset.url;
-                const originalText = button.textContent;
-
-                button.disabled = true;
-                button.textContent = 'Adding...';
-
-                try {
-                    const result = await postJson(url, {
-                        order_type: cashierState.orderType,
-                    });
-
-                    applyCartPayload(result.cart);
-                    showAlert('success', result.message || 'Item berhasil masuk ke keranjang.');
-                    closeVariantModal();
-                } catch (error) {
-                    showAlert('error', error.message);
-                } finally {
-                    button.disabled = false;
-                    button.textContent = originalText;
-                }
-            }
-
-            async function handleCartAction(button) {
-                const url = button.dataset.url;
-                const originalText = button.textContent;
-
-                button.disabled = true;
-                button.textContent = '...';
-
-                try {
-                    const result = await postJson(url, {});
-                    applyCartPayload(result.cart);
-                    showAlert('success', result.message || 'Cart berhasil diupdate.');
-                } catch (error) {
-                    showAlert('error', error.message);
-                } finally {
-                    button.disabled = false;
-                    button.textContent = originalText;
-                }
-            }
-
-            async function handleClearCart() {
-                if (!isShiftOpen()) {
-                    showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
-                    return;
-                }
-
-                if (Number(cashierState.cart?.cart_count || 0) <= 0) {
-                    showAlert('info', 'Cart sudah kosong.');
-                    return;
-                }
-
-                const confirmed = window.confirm('Yakin mau kosongkan seluruh cart?');
-                if (!confirmed) return;
-
-                const originalText = clearCartButton.textContent;
-                clearCartButton.disabled = true;
-                clearCartButton.textContent = 'Clearing...';
-
-                try {
-                    const result = await postJson(clearCartUrl, {});
-                    applyCartPayload(result.cart);
-                    showAlert('success', result.message || 'Keranjang berhasil dikosongkan.');
-                } catch (error) {
-                    showAlert('error', error.message);
-                } finally {
-                    clearCartButton.disabled = false;
-                    clearCartButton.textContent = originalText;
-                }
-            }
-
-            async function handleStartShift() {
-                const openingCash = Number(openingCashInput.value || 0);
-                const originalText = startShiftButton.textContent;
-
-                startShiftButton.disabled = true;
-                startShiftButton.textContent = 'Starting...';
-
-                try {
-                    const result = await postJson(startShiftUrl, {
-                        opening_cash: openingCash,
-                    });
-
-                    cashierState.activeShift = result.shift.active_shift;
-                    cashierState.shiftSummary = result.shift.summary;
-                    updateShiftUI();
-                    updateLivePaymentSummary();
-                    showAlert('success', result.message || 'Shift berhasil dibuka.');
-                } catch (error) {
-                    showAlert('error', error.message);
-                } finally {
-                    startShiftButton.disabled = false;
-                    startShiftButton.textContent = originalText;
-                }
-            }
-
-            async function handleEndShift() {
-                const closingCashActual = getClosingCashActualValue();
-                const closingNote = closingNoteInput.value || '';
-                const originalText = endShiftButton.textContent;
-
-                const confirmed = window.confirm('Yakin mau tutup shift sekarang?');
-                if (!confirmed) return;
-
-                endShiftButton.disabled = true;
-                endShiftButton.textContent = 'Ending...';
-
-                try {
-                    const result = await postJson(endShiftUrl, {
-                        closing_cash_actual: closingCashActual,
-                        closing_note: closingNote,
-                    });
-
-                    cashierState.activeShift = null;
-                    cashierState.shiftSummary = result.shift.summary || {
-                        total_transactions: 0,
-                        total_sales: 0,
-                        cash_sales: 0,
-                        qris_sales: 0,
-                        transfer_sales: 0,
-                        debit_sales: 0,
-                        credit_sales: 0,
-                        void_transactions: 0,
-                        expected_cash: 0,
-                        difference: 0,
-                    };
-
-                    updateShiftUI();
-                    updateLivePaymentSummary();
-                    showAlert('success', result.message || 'Shift berhasil ditutup.');
-                } catch (error) {
-                    showAlert('error', error.message);
-                } finally {
-                    endShiftButton.disabled = false;
-                    endShiftButton.textContent = originalText;
-                }
-            }
-
-            function applySearchFilter(keyword) {
-                const normalized = String(keyword || '').trim().toLowerCase();
-
-                document.querySelectorAll('[data-product-card]').forEach((card) => {
-                    const haystack = card.dataset.search || '';
-                    const isMatch = normalized === '' || haystack.includes(normalized);
-                    card.classList.toggle('hidden', !isMatch);
-                });
-            }
-
-            function roundUp(value, base) {
-                if (value <= 0) return base;
-                return Math.ceil(value / base) * base;
-            }
-
-            function applyQuickAmount(mode) {
-                if (!isShiftOpen()) {
-                    showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
-                    return;
-                }
-
-                if (!amountPaidDisplay) return;
-                if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
-                    showAlert('info', 'Quick amount dipakai untuk pembayaran cash.');
-                    return;
-                }
-
-                const subtotalValue = Number(cashierState.cart.subtotal || 0);
-                let currentValue = getAmountPaidValue();
-
-                if (mode === 'exact') {
-                    currentValue = subtotalValue;
-                } else if (mode === 'reset') {
-                    currentValue = 0;
-                } else if (mode === 'round_5000') {
-                    currentValue = roundUp(subtotalValue, 5000);
-                } else if (mode === 'round_10000') {
-                    currentValue = roundUp(subtotalValue, 10000);
-                } else {
-                    currentValue += Number(mode || 0);
-                }
-
-                setAmountPaidValue(Math.max(0, currentValue));
-                updateLivePaymentSummary();
-            }
-
-            function switchTab(tabName) {
-                document.querySelectorAll('[data-tab-btn]').forEach((button) => {
-                    button.classList.toggle('active', button.dataset.tabBtn === tabName);
-                });
-
-                document.getElementById('tab-panel-transaction').classList.toggle('hidden', tabName !== 'transaction');
-                document.getElementById('tab-panel-history').classList.toggle('hidden', tabName !== 'history');
-                document.getElementById('tab-panel-shift').classList.toggle('hidden', tabName !== 'shift');
-            }
-
-            function openVariantModal(button) {
-                const productCard = button.closest('[data-product-card]');
-                if (!productCard) return;
-
-                const productName = button.dataset.productName || 'Product';
-                const productMeta = button.dataset.productMeta || '-';
-                const sourceContainer = productCard.querySelector('[data-variant-modal-source]');
-
-                if (!sourceContainer) return;
-
-                const sourceItems = Array.from(sourceContainer.querySelectorAll('[data-variant-source-item]'));
-
-                variantModalTitle.textContent = productName;
-                variantModalSubtitle.textContent = productMeta;
-                variantModalOrderType.textContent = formatOrderType(cashierState.orderType);
-
-                if (!sourceItems.length) {
-                    variantModalGrid.innerHTML = `
-                        <div class="variant-option-card" style="grid-column:1/-1; min-height:unset;">
-                            <div class="variant-option-name">Belum ada variant aktif</div>
-                            <div class="variant-active-price-text" style="margin-top:12px;">Product ini belum bisa dijual.</div>
-                        </div>
-                    `;
-                } else {
-                    variantModalGrid.innerHTML = sourceItems.map((item) => {
-                        const name = item.dataset.name || 'Variant';
-                        const code = item.dataset.code || '-';
-                        const dineIn = Number(item.dataset.dineIn || 0);
-                        const delivery = Number(item.dataset.delivery || 0);
-                        const activePrice = cashierState.orderType === 'delivery' ? delivery : dineIn;
-                        const url = item.dataset.url || '#';
-
-                        return `
-                            <div class="variant-option-card">
-                                <div class="variant-option-top">
-                                    <div>
-                                        <div class="variant-option-name">${escapeHtml(name)}</div>
-                                        <div class="variant-option-code">${escapeHtml(code)}</div>
-                                    </div>
-                                </div>
-
-                                <div class="variant-price-grid">
-                                    <div class="variant-price-box">
-                                        <div class="variant-price-label">Dine In</div>
-                                        <div class="variant-price-value">${escapeHtml(formatCurrency(dineIn))}</div>
-                                    </div>
-
-                                    <div class="variant-price-box">
-                                        <div class="variant-price-label">Delivery</div>
-                                        <div class="variant-price-value">${escapeHtml(formatCurrency(delivery))}</div>
-                                    </div>
-                                </div>
-
-                                <div class="variant-active-price">
-                                    <div class="variant-active-price-text">
-                                        Harga aktif sekarang:<br>
-                                        <strong>${escapeHtml(formatCurrency(activePrice))}</strong>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        class="modal-add-btn"
-                                        data-add-to-cart
-                                        data-url="${escapeHtml(url)}"
-                                    >
-                                        Tambah
-                                    </button>
-                                </div>
+                        <div class="variant-price-grid">
+                            <div class="variant-price-box">
+                                <div class="variant-price-label">Dine In</div>
+                                <div class="variant-price-value">${escapeHtml(formatCurrency(dineIn))}</div>
                             </div>
-                        `;
-                    }).join('');
-                }
 
-                variantModalBackdrop.classList.add('active');
-                document.body.classList.add('modal-open');
-                updateCheckoutAvailability(checkoutButton ? !checkoutButton.disabled : true);
+                            <div class="variant-price-box">
+                                <div class="variant-price-label">Delivery</div>
+                                <div class="variant-price-value">${escapeHtml(formatCurrency(delivery))}</div>
+                            </div>
+                        </div>
+
+                        <div class="variant-active-price">
+                            <div class="variant-active-price-text">
+                                Harga aktif sekarang:<br>
+                                <strong>${escapeHtml(formatCurrency(activePrice))}</strong>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="modal-add-btn"
+                                data-add-to-cart
+                                data-url="${escapeHtml(url)}"
+                            >
+                                Tambah
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        variantModalBackdrop.classList.add('active');
+        document.body.classList.add('modal-open');
+        updateCheckoutAvailability(checkoutButton ? !checkoutButton.disabled : true);
+    }
+
+    function rerenderOpenModalPrices() {
+        if (!variantModalBackdrop.classList.contains('active')) return;
+
+        const title = variantModalTitle.textContent || '';
+        const opener = Array.from(document.querySelectorAll('[data-open-variant-modal]')).find((button) => {
+            return (button.dataset.productName || '') === title;
+        });
+
+        if (opener) {
+            openVariantModal(opener);
+        }
+    }
+
+    function closeVariantModal() {
+        variantModalBackdrop.classList.remove('active');
+        document.body.classList.remove('modal-open');
+    }
+
+    document.addEventListener('click', async (event) => {
+        const orderTypeButton = event.target.closest('[data-order-type-btn]');
+        if (orderTypeButton) {
+            await handleOrderTypeChange(orderTypeButton.dataset.orderType, orderTypeButton);
+            return;
+        }
+
+        const openVariantButton = event.target.closest('[data-open-variant-modal]');
+        if (openVariantButton) {
+            if (!isShiftOpen()) {
+                showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
+                return;
             }
 
-            function rerenderOpenModalPrices() {
-                if (!variantModalBackdrop.classList.contains('active')) return;
+            openVariantModal(openVariantButton);
+            return;
+        }
 
-                const title = variantModalTitle.textContent || '';
-                const opener = Array.from(document.querySelectorAll('[data-open-variant-modal]')).find((button) => {
-                    return (button.dataset.productName || '') === title;
+        const addButton = event.target.closest('[data-add-to-cart]');
+        if (addButton) {
+            await handleAddToCart(addButton);
+            return;
+        }
+
+        const cartActionButton = event.target.closest('[data-cart-action]');
+        if (cartActionButton) {
+            await handleCartAction(cartActionButton);
+            return;
+        }
+
+        const modifierButton = event.target.closest('[data-cart-modifier]');
+        if (modifierButton) {
+            const url = modifierButton.dataset.url;
+            const modifier = modifierButton.dataset.cartModifier;
+            const originalText = modifierButton.textContent;
+
+            modifierButton.disabled = true;
+            modifierButton.textContent = '...';
+
+            try {
+                const result = await postJson(url, {
+                    modifier: modifier,
                 });
 
-                if (opener) {
-                    openVariantModal(opener);
-                }
+                applyCartPayload(result.cart);
+                showAlert('success', result.message || 'Modifier berhasil diupdate.');
+            } catch (error) {
+                showAlert('error', error.message);
+            } finally {
+                modifierButton.disabled = false;
+                modifierButton.textContent = originalText;
             }
 
-            function closeVariantModal() {
-                variantModalBackdrop.classList.remove('active');
-                document.body.classList.remove('modal-open');
+            return;
+        }
+
+        const quickAmountButton = event.target.closest('[data-quick-amount]');
+        if (quickAmountButton) {
+            applyQuickAmount(quickAmountButton.dataset.quickAmount);
+            return;
+        }
+
+        const tabButton = event.target.closest('[data-tab-btn]');
+        if (tabButton) {
+            switchTab(tabButton.dataset.tabBtn);
+            return;
+        }
+
+        if (event.target === variantModalBackdrop) {
+            closeVariantModal();
+        }
+    });
+
+    variantModalClose?.addEventListener('click', closeVariantModal);
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && variantModalBackdrop.classList.contains('active')) {
+            closeVariantModal();
+        }
+    });
+
+    document.querySelectorAll('.cashier-void-form').forEach((form) => {
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            const reason = window.prompt('Masukkan alasan void transaksi:');
+
+            if (reason === null) {
+                return;
             }
 
-            document.addEventListener('click', async (event) => {
-                const orderTypeButton = event.target.closest('[data-order-type-btn]');
-                if (orderTypeButton) {
-                    await handleOrderTypeChange(orderTypeButton.dataset.orderType, orderTypeButton);
-                    return;
-                }
+            if (!String(reason).trim()) {
+                showAlert('error', 'Alasan void wajib diisi.');
+                return;
+            }
 
-                const openVariantButton = event.target.closest('[data-open-variant-modal]');
-                if (openVariantButton) {
-                    if (!isShiftOpen()) {
-                        showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
-                        return;
-                    }
+            const confirmed = window.confirm('Yakin void transaksi ini? Stock akan dikembalikan.');
+            if (!confirmed) {
+                return;
+            }
 
-                    openVariantModal(openVariantButton);
-                    return;
-                }
+            const hiddenInput = form.querySelector('input[name="void_reason"]');
+            if (hiddenInput) {
+                hiddenInput.value = String(reason).trim();
+            }
 
-                const addButton = event.target.closest('[data-add-to-cart]');
-                if (addButton) {
-                    await handleAddToCart(addButton);
-                    return;
-                }
+            form.submit();
+        });
+    });
 
-                const cartActionButton = event.target.closest('[data-cart-action]');
-                if (cartActionButton) {
-                    await handleCartAction(cartActionButton);
-                    return;
-                }
+    startShiftForm?.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        await handleStartShift();
+    });
 
-                const modifierButton = event.target.closest('[data-cart-modifier]');
-                if (modifierButton) {
-                    const url = modifierButton.dataset.url;
-                    const modifier = modifierButton.dataset.cartModifier;
-                    const originalText = modifierButton.textContent;
+    endShiftForm?.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        await handleEndShift();
+    });
 
-                    modifierButton.disabled = true;
-                    modifierButton.textContent = '...';
+    clearCartButton?.addEventListener('click', handleClearCart);
 
-                    try {
-                        const result = await postJson(url, {
-                            modifier: modifier,
-                        });
+    searchInput?.addEventListener('input', function () {
+        applySearchFilter(this.value);
+    });
 
-                        applyCartPayload(result.cart);
-                        showAlert('success', result.message || 'Modifier berhasil diupdate.');
-                    } catch (error) {
-                        showAlert('error', error.message);
-                    } finally {
-                        modifierButton.disabled = false;
-                        modifierButton.textContent = originalText;
-                    }
+    paymentMethod?.addEventListener('change', syncAmountPaid);
 
-                    return;
-                }
+    amountPaidDisplay?.addEventListener('input', function () {
+        if (this.readOnly) return;
+        const parsed = parseRupiahInput(this.value);
+        setAmountPaidValue(parsed);
+        updateLivePaymentSummary();
+    });
 
-                const quickAmountButton = event.target.closest('[data-quick-amount]');
-                if (quickAmountButton) {
-                    applyQuickAmount(quickAmountButton.dataset.quickAmount);
-                    return;
-                }
+    amountPaidDisplay?.addEventListener('blur', function () {
+        setAmountPaidValue(getAmountPaidValue());
+        updateLivePaymentSummary();
+    });
 
-                const tabButton = event.target.closest('[data-tab-btn]');
-                if (tabButton) {
-                    switchTab(tabButton.dataset.tabBtn);
-                    return;
-                }
+    closingCashActualDisplay?.addEventListener('input', function () {
+        const parsed = parseRupiahInput(this.value);
+        setClosingCashActualValue(parsed);
+    });
 
-                if (event.target === variantModalBackdrop) {
-                    closeVariantModal();
-                }
-            });
+    closingCashActualDisplay?.addEventListener('blur', function () {
+        setClosingCashActualValue(getClosingCashActualValue());
+    });
 
-            variantModalClose?.addEventListener('click', closeVariantModal);
+    checkoutForm?.addEventListener('submit', function () {
+        amountPaidNumeric.value = Number(getAmountPaidValue()).toFixed(2);
+    });
 
-            document.addEventListener('keydown', function (event) {
-                if (event.key === 'Escape' && variantModalBackdrop.classList.contains('active')) {
-                    closeVariantModal();
-                }
-            });
-
-            startShiftForm?.addEventListener('submit', async function (event) {
-                event.preventDefault();
-                await handleStartShift();
-            });
-
-            endShiftForm?.addEventListener('submit', async function (event) {
-                event.preventDefault();
-                await handleEndShift();
-            });
-
-            clearCartButton?.addEventListener('click', handleClearCart);
-
-            searchInput?.addEventListener('input', function () {
-                applySearchFilter(this.value);
-            });
-
-            paymentMethod?.addEventListener('change', syncAmountPaid);
-
-            amountPaidDisplay?.addEventListener('input', function () {
-                if (this.readOnly) return;
-                const parsed = parseRupiahInput(this.value);
-                setAmountPaidValue(parsed);
-                updateLivePaymentSummary();
-            });
-
-            amountPaidDisplay?.addEventListener('blur', function () {
-                setAmountPaidValue(getAmountPaidValue());
-                updateLivePaymentSummary();
-            });
-
-            closingCashActualDisplay?.addEventListener('input', function () {
-                const parsed = parseRupiahInput(this.value);
-                setClosingCashActualValue(parsed);
-            });
-
-            closingCashActualDisplay?.addEventListener('blur', function () {
-                setClosingCashActualValue(getClosingCashActualValue());
-            });
-
-            checkoutForm?.addEventListener('submit', function () {
-                amountPaidNumeric.value = Number(getAmountPaidValue()).toFixed(2);
-            });
-
-            window.addEventListener('DOMContentLoaded', () => {
-                updateShiftUI();
-                applyCartPayload(cashierState.cart);
-                setAmountPaidValue({{ (float) $oldAmountPaid }});
-                setClosingCashActualValue({{ (float) ($shiftSummary['expected_cash'] ?? 0) }});
-                syncAmountPaid();
-                updateLivePaymentSummary();
-                switchTab('transaction');
-            });
-        </script>
+    window.addEventListener('DOMContentLoaded', () => {
+        updateShiftUI();
+        applyCartPayload(cashierState.cart);
+        setAmountPaidValue({{ (float) $oldAmountPaid }});
+        setClosingCashActualValue({{ (float) ($shiftSummary['expected_cash'] ?? 0) }});
+        syncAmountPaid();
+        updateLivePaymentSummary();
+        switchTab('transaction');
+    });
+</script>
 </body>
 </html>

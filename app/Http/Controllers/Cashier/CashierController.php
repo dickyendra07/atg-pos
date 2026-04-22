@@ -41,6 +41,8 @@ class CashierController extends Controller
                 'cash_sales' => 0,
                 'qris_sales' => 0,
                 'transfer_sales' => 0,
+                'debit_sales' => 0,
+                'credit_sales' => 0,
                 'void_transactions' => 0,
                 'expected_cash' => 0,
             ];
@@ -66,12 +68,22 @@ class CashierController extends Controller
             ->where('payment_method', 'transfer')
             ->sum('grand_total');
 
+        $debitSales = (float) $completedTransactions
+            ->where('payment_method', 'debit')
+            ->sum('grand_total');
+
+        $creditSales = (float) $completedTransactions
+            ->where('payment_method', 'credit')
+            ->sum('grand_total');
+
         return [
             'total_transactions' => $completedTransactions->count(),
             'total_sales' => (float) $completedTransactions->sum('grand_total'),
             'cash_sales' => $cashSales,
             'qris_sales' => $qrisSales,
             'transfer_sales' => $transferSales,
+            'debit_sales' => $debitSales,
+            'credit_sales' => $creditSales,
             'void_transactions' => $voidTransactions->count(),
             'expected_cash' => (float) $activeShift->opening_cash + $cashSales,
         ];
@@ -79,20 +91,14 @@ class CashierController extends Controller
 
     protected function getRecentReceipts($user)
     {
-        $query = SalesTransaction::with([
-            'outlet',
-            'user',
-            'items',
-        ])
+        return SalesTransaction::with(['items', 'outlet'])
             ->where('user_id', $user->id)
-            ->orderByDesc('id')
-            ->limit(10);
-
-        if ($user->outlet_id) {
-            $query->where('outlet_id', $user->outlet_id);
-        }
-
-        return $query->get();
+            ->when($user->outlet_id, function ($query) use ($user) {
+                $query->where('outlet_id', $user->outlet_id);
+            })
+            ->latest()
+            ->take(10)
+            ->get();
     }
 
     public function __invoke()
@@ -121,15 +127,6 @@ class CashierController extends Controller
         $activeShift = $this->getActiveShift($user);
         $shiftSummary = $this->buildShiftSummary($activeShift);
         $recentReceipts = $this->getRecentReceipts($user);
-
-        $recentReceipts = SalesTransaction::with(['items', 'outlet'])
-            ->where('user_id', $user->id)
-            ->when($user->outlet_id, function ($query) use ($user) {
-                $query->where('outlet_id', $user->outlet_id);
-            })
-            ->latest()
-            ->take(10)
-            ->get();
 
         return view('cashier.index', [
             'user' => $user,
@@ -160,6 +157,8 @@ class CashierController extends Controller
         ]);
 
         session(['cashier_order_type' => $validated['order_type']]);
+        session()->forget('cashier_cart');
+        session()->forget('cashier_member');
 
         if ($request->expectsJson()) {
             return response()->json([

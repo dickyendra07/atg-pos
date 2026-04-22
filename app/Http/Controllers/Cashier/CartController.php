@@ -416,69 +416,75 @@ class CartController extends Controller
                 ->with('error', 'Checkout diblok karena stok bahan tidak cukup: ' . $e->getMessage());
         }
 
-        $transaction = DB::transaction(function () use (
-            $user,
-            $activeShift,
-            $cart,
-            $subtotal,
-            $paymentMethod,
-            $amountPaid,
-            $changeAmount,
-            $memberSession,
-            &$earnedPoints
-        ) {
-            $transaction = SalesTransaction::create([
-                'transaction_number' => $this->generateDailyTransactionNumber(),
-                'user_id' => $user->id,
-                'outlet_id' => $user->outlet?->id,
-                'cashier_shift_id' => $activeShift->id,
-                'member_id' => $memberSession['id'] ?? null,
-                'subtotal' => $subtotal,
-                'discount_amount' => 0,
-                'tax_amount' => 0,
-                'grand_total' => $subtotal,
-                'payment_method' => $paymentMethod,
-                'payment_status' => 'paid',
-                'amount_paid' => $amountPaid,
-                'change_amount' => $changeAmount,
-                'status' => 'completed',
-            ]);
-
-            foreach ($cart as $item) {
-                $variantName = $item['variant_name'] ?? null;
-                $itemOrderType = $item['order_type'] ?? 'dine_in';
-
-                if ($variantName) {
-                    $variantName .= ' [' . strtoupper(str_replace('_', ' ', $itemOrderType)) . ']';
-                } else {
-                    $variantName = strtoupper(str_replace('_', ' ', $itemOrderType));
-                }
-
-                $transaction->items()->create([
-                    'product_id' => $item['product_id'] ?? null,
-                    'product_variant_id' => $item['variant_id'] ?? null,
-                    'product_name' => $item['product_name'] ?? '-',
-                    'variant_name' => $variantName,
-                    'less_sugar' => (bool) ($item['less_sugar'] ?? false),
-                    'less_ice' => (bool) ($item['less_ice'] ?? false),
-                    'qty' => $item['qty'] ?? 1,
-                    'price' => $item['price'] ?? 0,
-                    'line_total' => $item['line_total'] ?? 0,
+        try {
+            $transaction = DB::transaction(function () use (
+                $user,
+                $activeShift,
+                $cart,
+                $subtotal,
+                $paymentMethod,
+                $amountPaid,
+                $changeAmount,
+                $memberSession,
+                &$earnedPoints
+            ) {
+                $transaction = SalesTransaction::create([
+                    'transaction_number' => $this->generateDailyTransactionNumber(),
+                    'user_id' => $user->id,
+                    'outlet_id' => $user->outlet?->id,
+                    'cashier_shift_id' => $activeShift->id,
+                    'member_id' => $memberSession['id'] ?? null,
+                    'subtotal' => $subtotal,
+                    'discount_amount' => 0,
+                    'tax_amount' => 0,
+                    'grand_total' => $subtotal,
+                    'payment_method' => $paymentMethod,
+                    'payment_status' => 'paid',
+                    'amount_paid' => $amountPaid,
+                    'change_amount' => $changeAmount,
+                    'status' => 'completed',
                 ]);
-            }
 
-            if (! empty($memberSession['id'])) {
-                $member = Member::find($memberSession['id']);
+                foreach ($cart as $item) {
+                    $variantName = $item['variant_name'] ?? null;
+                    $itemOrderType = $item['order_type'] ?? 'dine_in';
 
-                if ($member && $member->is_active) {
-                    $earnedPoints = $member->addPointsFromAmount((float) $subtotal);
+                    if ($variantName) {
+                        $variantName .= ' [' . strtoupper(str_replace('_', ' ', $itemOrderType)) . ']';
+                    } else {
+                        $variantName = strtoupper(str_replace('_', ' ', $itemOrderType));
+                    }
+
+                    $transaction->items()->create([
+                        'product_id' => $item['product_id'] ?? null,
+                        'product_variant_id' => $item['variant_id'] ?? null,
+                        'product_name' => $item['product_name'] ?? '-',
+                        'variant_name' => $variantName,
+                        'less_sugar' => (bool) ($item['less_sugar'] ?? false),
+                        'less_ice' => (bool) ($item['less_ice'] ?? false),
+                        'qty' => $item['qty'] ?? 1,
+                        'price' => $item['price'] ?? 0,
+                        'line_total' => $item['line_total'] ?? 0,
+                    ]);
                 }
-            }
 
-            return $transaction;
-        });
+                if (! empty($memberSession['id'])) {
+                    $member = Member::find($memberSession['id']);
 
-        $stockDeductionService->deductFromTransaction($transaction);
+                    if ($member && $member->is_active) {
+                        $earnedPoints = $member->addPointsFromAmount((float) $subtotal);
+                    }
+                }
+
+                return $transaction;
+            });
+
+            $stockDeductionService->deductFromTransaction($transaction);
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('cashier.index')
+                ->with('error', 'Checkout gagal diproses: ' . $e->getMessage());
+        }
 
         session()->forget('cashier_cart');
         session()->forget('cashier_member');

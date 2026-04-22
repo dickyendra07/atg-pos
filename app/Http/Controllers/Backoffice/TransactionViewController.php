@@ -8,6 +8,7 @@ use App\Services\StockDeductionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransactionViewController extends Controller
@@ -22,6 +23,7 @@ class TransactionViewController extends Controller
             'admin_pusat',
             'admin_outlet',
             'staff_gudang',
+            'kasir',
         ];
 
         if (! in_array($roleCode, $allowedRoles, true)) {
@@ -47,11 +49,7 @@ class TransactionViewController extends Controller
         }
 
         if ($roleCode === 'admin_outlet') {
-            if ((int) $user->outlet_id === (int) $transaction->outlet_id) {
-                return $user;
-            }
-
-            return null;
+            return (int) $user->outlet_id === (int) $transaction->outlet_id ? $user : null;
         }
 
         if ($roleCode === 'kasir') {
@@ -71,10 +69,56 @@ class TransactionViewController extends Controller
         return null;
     }
 
+    protected function resolveSource(Request $request): string
+    {
+        $source = strtolower((string) $request->query('source', $request->input('source', 'backoffice')));
+
+        return in_array($source, ['cashier', 'backoffice'], true) ? $source : 'backoffice';
+    }
+
+    protected function resolveAutoprint(Request $request): bool
+    {
+        $value = $request->query('autoprint', $request->input('autoprint', false));
+
+        return in_array((string) $value, ['1', 'true', 'TRUE', 'yes', 'YES'], true);
+    }
+
+    protected function redirectAfterVoid(Request $request, SalesTransaction $transaction, string $messageType, string $message)
+    {
+        $source = $this->resolveSource($request);
+
+        if ($source === 'cashier') {
+            return redirect()
+                ->route('cashier.index')
+                ->with($messageType, $message);
+        }
+
+        return redirect()
+            ->route('backoffice.transactions.show', $transaction)
+            ->with($messageType, $message);
+    }
+
     protected function buildTransactionQuery(Request $request)
     {
+        $user = Auth::user()->load(['role', 'outlet']);
+        $roleCode = $user->role?->code;
+
         $query = SalesTransaction::with(['user', 'outlet', 'member', 'items', 'voidBy'])
             ->latest();
+
+        if ($roleCode === 'admin_outlet' && ! empty($user->outlet_id)) {
+            $query->where('outlet_id', $user->outlet_id);
+        }
+
+        if ($roleCode === 'kasir') {
+            $query->where(function ($subQuery) use ($user) {
+                $subQuery->where('user_id', $user->id);
+
+                if (! empty($user->outlet_id)) {
+                    $subQuery->orWhere('outlet_id', $user->outlet_id);
+                }
+            });
+        }
 
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
@@ -92,7 +136,7 @@ class TransactionViewController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('outlet_id')) {
+        if ($request->filled('outlet_id') && $roleCode !== 'admin_outlet' && $roleCode !== 'kasir') {
             $query->where('outlet_id', $request->outlet_id);
         }
 
@@ -414,10 +458,10 @@ class TransactionViewController extends Controller
 
     public function void(Request $request, SalesTransaction $transaction, StockDeductionService $stockDeductionService)
     {
-        $user = $this->authorizeAccess();
+        $user = $this->authorizeTransactionAccess($transaction);
 
         if (! $user) {
-            abort(403, 'Role kamu tidak punya akses void transaksi.');
+            abort(403, 'Role kamu tidak punya akses void transaksi ini.');
         }
 
         $validated = $request->validate([
@@ -427,35 +471,50 @@ class TransactionViewController extends Controller
         ]);
 
         if (strtolower((string) $transaction->status) === 'void') {
-            return redirect()
-                ->route('backoffice.transactions.show', $transaction)
-                ->with('error', 'Transaksi ini sudah berstatus void.');
+            return $this->redirectAfterVoid(
+                $request,
+                $transaction,
+                'error',
+                'Transaksi ini sudah berstatus void.'
+            );
         }
 
-        DB::transaction(function () use ($transaction, $validated, $user, $stockDeductionService) {
-            $transaction->refresh();
-            $transaction->load(['items']);
+        try {
+            DB::transaction(function () use ($transaction, $validated, $user, $stockDeductionService) {
+                $transaction->refresh();
+                $transaction->load(['items']);
 
-            if (strtolower((string) $transaction->status) === 'void') {
-                throw new \RuntimeException('Transaksi ini sudah void.');
-            }
+                if (strtolower((string) $transaction->status) === 'void') {
+                    throw new RuntimeException('Transaksi ini sudah void.');
+                }
 
-            $stockDeductionService->restoreFromVoidedTransaction($transaction);
+                $stockDeductionService->restoreFromVoidedTransaction($transaction);
 
-            $transaction->update([
-                'status' => 'void',
-                'void_at' => now(),
-                'void_reason' => $validated['void_reason'],
-                'void_by_user_id' => $user->id,
-            ]);
-        });
+                $transaction->update([
+                    'status' => 'void',
+                    'void_at' => now(),
+                    'void_reason' => $validated['void_reason'],
+                    'void_by_user_id' => $user->id,
+                ]);
+            });
+        } catch (RuntimeException $e) {
+            return $this->redirectAfterVoid(
+                $request,
+                $transaction,
+                'error',
+                'Void gagal: ' . $e->getMessage()
+            );
+        }
 
-        return redirect()
-            ->route('backoffice.transactions.show', $transaction)
-            ->with('success', 'Transaksi berhasil di-void dan stok sudah dikembalikan.');
+        return $this->redirectAfterVoid(
+            $request,
+            $transaction,
+            'success',
+            'Transaksi berhasil di-void dan stok sudah dikembalikan.'
+        );
     }
 
-    public function receipt(SalesTransaction $transaction)
+    public function receipt(Request $request, SalesTransaction $transaction)
     {
         $user = $this->authorizeTransactionAccess($transaction);
 
@@ -469,6 +528,8 @@ class TransactionViewController extends Controller
 
         return view('backoffice.transactions.receipt', [
             'transaction' => $transaction,
+            'source' => $this->resolveSource($request),
+            'autoprint' => $this->resolveAutoprint($request),
         ]);
     }
 }
