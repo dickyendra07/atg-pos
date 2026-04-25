@@ -29,12 +29,39 @@ class CashierShiftController extends Controller
 
     protected function getActiveShift($user): ?CashierShift
     {
-        return CashierShift::with(['salesTransactions'])
+        return CashierShift::with([
+            'salesTransactions.items',
+            'salesTransactions.voidBy',
+            'user',
+            'outlet',
+        ])
             ->where('user_id', $user->id)
             ->where('status', 'open')
             ->whereNull('ended_at')
             ->latest('id')
             ->first();
+    }
+
+    protected function getShiftForPrint($user, CashierShift $shift): CashierShift
+    {
+        $userRole = $user->role?->code;
+
+        if ($userRole === 'kasir' && (int) $shift->user_id !== (int) $user->id) {
+            abort(403, 'Kamu tidak punya akses ke print shift ini.');
+        }
+
+        if (in_array($userRole, ['owner', 'admin_outlet'], true)) {
+            if ((int) $shift->outlet_id !== (int) ($user->outlet?->id)) {
+                abort(403, 'Shift ini bukan milik outlet kamu.');
+            }
+        }
+
+        return $shift->load([
+            'salesTransactions.items',
+            'salesTransactions.voidBy',
+            'user',
+            'outlet',
+        ]);
     }
 
     protected function buildShiftSummary(?CashierShift $shift): array
@@ -101,6 +128,23 @@ class CashierShiftController extends Controller
         ];
     }
 
+    protected function serializeShift(?CashierShift $shift): ?array
+    {
+        if (! $shift) {
+            return null;
+        }
+
+        return [
+            'id' => $shift->id,
+            'status' => $shift->status,
+            'started_at' => optional($shift->started_at)->format('Y-m-d H:i:s'),
+            'ended_at' => optional($shift->ended_at)->format('Y-m-d H:i:s'),
+            'opening_cash' => (float) $shift->opening_cash,
+            'closing_cash_actual' => $shift->closing_cash_actual !== null ? (float) $shift->closing_cash_actual : null,
+            'closing_note' => $shift->closing_note,
+        ];
+    }
+
     public function start(Request $request)
     {
         $user = $this->authorizeCashierAccess();
@@ -118,15 +162,7 @@ class CashierShiftController extends Controller
                 'success' => true,
                 'message' => 'Shift sudah aktif.',
                 'shift' => [
-                    'active_shift' => [
-                        'id' => $existingOpenShift->id,
-                        'status' => $existingOpenShift->status,
-                        'started_at' => optional($existingOpenShift->started_at)->format('Y-m-d H:i:s'),
-                        'ended_at' => optional($existingOpenShift->ended_at)->format('Y-m-d H:i:s'),
-                        'opening_cash' => (float) $existingOpenShift->opening_cash,
-                        'closing_cash_actual' => $existingOpenShift->closing_cash_actual !== null ? (float) $existingOpenShift->closing_cash_actual : null,
-                        'closing_note' => $existingOpenShift->closing_note,
-                    ],
+                    'active_shift' => $this->serializeShift($existingOpenShift),
                     'summary' => $summary,
                 ],
             ]);
@@ -142,21 +178,18 @@ class CashierShiftController extends Controller
             ]);
         });
 
-        $shift->load('salesTransactions');
+        $shift->load([
+            'salesTransactions.items',
+            'salesTransactions.voidBy',
+            'user',
+            'outlet',
+        ]);
 
         return response()->json([
             'success' => true,
             'message' => 'Shift berhasil dibuka.',
             'shift' => [
-                'active_shift' => [
-                    'id' => $shift->id,
-                    'status' => $shift->status,
-                    'started_at' => optional($shift->started_at)->format('Y-m-d H:i:s'),
-                    'ended_at' => optional($shift->ended_at)->format('Y-m-d H:i:s'),
-                    'opening_cash' => (float) $shift->opening_cash,
-                    'closing_cash_actual' => null,
-                    'closing_note' => null,
-                ],
+                'active_shift' => $this->serializeShift($shift),
                 'summary' => $this->buildShiftSummary($shift),
             ],
         ]);
@@ -189,11 +222,15 @@ class CashierShiftController extends Controller
             ]);
         });
 
+        $shift->refresh();
+
         return response()->json([
             'success' => true,
             'message' => 'Shift berhasil ditutup.',
             'shift' => [
                 'active_shift' => null,
+                'closed_shift_id' => $shift->id,
+                'print_url' => route('cashier.shift.print', $shift),
                 'summary' => [
                     'total_transactions' => 0,
                     'total_sales' => 0,
@@ -207,6 +244,24 @@ class CashierShiftController extends Controller
                     'difference' => 0,
                 ],
             ],
+        ]);
+    }
+
+    public function print(CashierShift $shift)
+    {
+        $user = $this->authorizeCashierAccess();
+        $shift = $this->getShiftForPrint($user, $shift);
+
+        $transactions = $shift->salesTransactions
+            ->sortBy('created_at')
+            ->values();
+
+        $summary = $this->buildShiftSummary($shift);
+
+        return view('cashier.shift-print', [
+            'shift' => $shift,
+            'transactions' => $transactions,
+            'summary' => $summary,
         ]);
     }
 }

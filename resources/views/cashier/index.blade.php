@@ -1392,7 +1392,7 @@
 
         .variant-price-grid {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 10px;
             margin-bottom: 12px;
         }
@@ -1986,12 +1986,12 @@
                                 <form id="start-shift-form" class="shift-form">
                                     <div class="shift-field">
                                         <label for="opening_cash">Opening Cash</label>
-                                        <input type="number" id="opening_cash" name="opening_cash" min="0" step="0.01" value="0">
+                                         <input type="number" id="opening_cash" name="opening_cash" min="0" step="0.01" value="0">
                                     </div>
 
-                                    <div class="shift-actions">
+                                     <div class="shift-actions">
                                         <button type="submit" id="start-shift-button" class="shift-btn start">Start Shift</button>
-                                    </div>
+                                     </div>
                                 </form>
                             </div>
 
@@ -2043,7 +2043,7 @@
                                     </div>
                                 </div>
 
-                                <form id="end-shift-form" class="shift-form">
+                               <form id="end-shift-form" class="shift-form">
                                     <div class="shift-field">
                                         <label for="closing_cash_actual_display">Closing Cash Actual</label>
                                         <input
@@ -2061,12 +2061,18 @@
                                         >
                                     </div>
 
-                                    <div class="shift-field">
+                                     <div class="shift-field">
                                         <label for="closing_note">Closing Note</label>
                                         <textarea id="closing_note" name="closing_note" placeholder="Catatan shift penutup (opsional)"></textarea>
                                     </div>
 
                                     <div class="shift-actions">
+                                        @if($activeShift)
+                                            <a href="{{ route('cashier.shift.print', $activeShift) }}" target="_blank" class="btn btn-dark">
+                                                Print Shift
+                                            </a>
+                                        @endif
+
                                         <button type="submit" id="end-shift-button" class="shift-btn end">End Shift</button>
                                     </div>
                                 </form>
@@ -2850,11 +2856,13 @@
         endShiftButton.disabled = true;
         endShiftButton.textContent = 'Ending...';
 
-        try {
+                try {
             const result = await postJson(endShiftUrl, {
                 closing_cash_actual: closingCashActual,
                 closing_note: closingNote,
             });
+
+            const printUrl = result?.shift?.print_url || null;
 
             cashierState.activeShift = null;
             cashierState.shiftSummary = result.shift.summary || {
@@ -2873,6 +2881,10 @@
             updateShiftUI();
             updateLivePaymentSummary();
             showAlert('success', result.message || 'Shift berhasil ditutup.');
+
+            if (printUrl) {
+                window.open(printUrl, '_blank');
+            }
         } catch (error) {
             showAlert('error', error.message);
         } finally {
@@ -2938,83 +2950,80 @@
     }
 
     function openVariantModal(button) {
-        const productCard = button.closest('[data-product-card]');
-        if (!productCard) return;
+    const productCard = button.closest('[data-product-card]');
+    if (!productCard) return;
 
-        const productName = button.dataset.productName || 'Product';
-        const productMeta = button.dataset.productMeta || '-';
-        const sourceContainer = productCard.querySelector('[data-variant-modal-source]');
+    const productName = button.dataset.productName || 'Product';
+    const productMeta = button.dataset.productMeta || '-';
+    const sourceContainer = productCard.querySelector('[data-variant-modal-source]');
 
-        if (!sourceContainer) return;
+    if (!sourceContainer) return;
 
-        const sourceItems = Array.from(sourceContainer.querySelectorAll('[data-variant-source-item]'));
+    const sourceItems = Array.from(sourceContainer.querySelectorAll('[data-variant-source-item]'));
+    const activeOrderType = cashierState.orderType === 'delivery' ? 'delivery' : 'dine_in';
+    const activeOrderTypeLabel = activeOrderType === 'delivery' ? 'Delivery' : 'Dine In';
 
-        variantModalTitle.textContent = productName;
-        variantModalSubtitle.textContent = productMeta;
-        variantModalOrderType.textContent = formatOrderType(cashierState.orderType);
+    variantModalTitle.textContent = productName;
+    variantModalSubtitle.textContent = productMeta;
+    variantModalOrderType.textContent = formatOrderType(activeOrderType);
 
-        if (!sourceItems.length) {
-            variantModalGrid.innerHTML = `
-                <div class="variant-option-card" style="grid-column:1/-1; min-height:unset;">
-                    <div class="variant-option-name">Belum ada variant aktif</div>
-                    <div class="variant-active-price-text" style="margin-top:12px;">Product ini belum bisa dijual.</div>
-                </div>
-            `;
-        } else {
-            variantModalGrid.innerHTML = sourceItems.map((item) => {
-                const name = item.dataset.name || 'Variant';
-                const code = item.dataset.code || '-';
-                const dineIn = Number(item.dataset.dineIn || 0);
-                const delivery = Number(item.dataset.delivery || 0);
-                const activePrice = cashierState.orderType === 'delivery' ? delivery : dineIn;
-                const url = item.dataset.url || '#';
+    if (!sourceItems.length) {
+        variantModalGrid.innerHTML = `
+            <div class="variant-option-card" style="grid-column:1/-1; min-height:unset;">
+                <div class="variant-option-name">Belum ada variant aktif</div>
+                <div class="variant-active-price-text" style="margin-top:12px;">Product ini belum bisa dijual.</div>
+            </div>
+        `;
+    } else {
+        variantModalGrid.innerHTML = sourceItems.map((item) => {
+            const name = item.dataset.name || 'Variant';
+            const code = item.dataset.code || '-';
+            const dineIn = Number(item.dataset.dineIn || 0);
+            const delivery = Number(item.dataset.delivery || 0);
+            const activePrice = activeOrderType === 'delivery' ? delivery : dineIn;
+            const url = item.dataset.url || '#';
 
-                return `
-                    <div class="variant-option-card">
-                        <div class="variant-option-top">
-                            <div>
-                                <div class="variant-option-name">${escapeHtml(name)}</div>
-                                <div class="variant-option-code">${escapeHtml(code)}</div>
-                            </div>
-                        </div>
-
-                        <div class="variant-price-grid">
-                            <div class="variant-price-box">
-                                <div class="variant-price-label">Dine In</div>
-                                <div class="variant-price-value">${escapeHtml(formatCurrency(dineIn))}</div>
-                            </div>
-
-                            <div class="variant-price-box">
-                                <div class="variant-price-label">Delivery</div>
-                                <div class="variant-price-value">${escapeHtml(formatCurrency(delivery))}</div>
-                            </div>
-                        </div>
-
-                        <div class="variant-active-price">
-                            <div class="variant-active-price-text">
-                                Harga aktif sekarang:<br>
-                                <strong>${escapeHtml(formatCurrency(activePrice))}</strong>
-                            </div>
-
-                            <button
-                                type="button"
-                                class="modal-add-btn"
-                                data-add-to-cart
-                                data-url="${escapeHtml(url)}"
-                            >
-                                Tambah
-                            </button>
+            return `
+                <div class="variant-option-card">
+                    <div class="variant-option-top">
+                        <div>
+                            <div class="variant-option-name">${escapeHtml(name)}</div>
+                            <div class="variant-option-code">${escapeHtml(code)}</div>
                         </div>
                     </div>
-                `;
-            }).join('');
-        }
 
-        variantModalBackdrop.classList.add('active');
-        variantModalBackdrop.setAttribute('aria-hidden', 'false');
-        document.body.classList.add('modal-open');
-        updateCheckoutAvailability(checkoutButton ? !checkoutButton.disabled : true);
+                    <div class="variant-price-grid">
+                        <div class="variant-price-box">
+                            <div class="variant-price-label">${escapeHtml(activeOrderTypeLabel)}</div>
+                            <div class="variant-price-value">${escapeHtml(formatCurrency(activePrice))}</div>
+                        </div>
+                    </div>
+
+                    <div class="variant-active-price">
+                        <div class="variant-active-price-text">
+                            Harga aktif sekarang:<br>
+                            <strong>${escapeHtml(formatCurrency(activePrice))}</strong>
+                        </div>
+
+                        <button
+                            type="button"
+                            class="modal-add-btn"
+                            data-add-to-cart
+                            data-url="${escapeHtml(url)}"
+                        >
+                            Tambah
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
+
+    variantModalBackdrop.classList.add('active');
+    variantModalBackdrop.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
+    updateCheckoutAvailability(checkoutButton ? !checkoutButton.disabled : true);
+}
 
     function rerenderOpenModalPrices() {
         if (!variantModalBackdrop.classList.contains('active')) return;

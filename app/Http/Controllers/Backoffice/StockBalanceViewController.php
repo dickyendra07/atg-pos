@@ -9,6 +9,8 @@ use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -26,7 +28,7 @@ class StockBalanceViewController extends Controller
             'staff_gudang',
         ];
 
-        if (! in_array($user->role?->code, $allowedRoles)) {
+        if (! in_array($user->role?->code, $allowedRoles, true)) {
             abort(403, 'Role kamu tidak punya akses ke halaman Inventory Control.');
         }
 
@@ -114,12 +116,210 @@ class StockBalanceViewController extends Controller
 
         return 'Safe';
     }
+    protected function getNeedActionType(StockBalance $stock): ?string
+    {
+        $qty = (float) ($stock->qty_on_hand ?? 0);
+        $minimum = (float) ($stock->ingredient->minimum_stock ?? 0);
+
+        if ($qty <= 0) {
+            return 'out';
+        }
+
+        if ($qty <= $minimum) {
+            return 'low';
+        }
+
+        return null;
+    }
+
+    protected function getNeedActionRecommendation(StockBalance $stock): string
+    {
+    $actionType = $this->getNeedActionType($stock);
+
+        if ($actionType === 'out') {
+            if (($stock->location_type ?? null) === 'outlet') {
+                return 'Segera buat Purchase Order atau transfer stok ke outlet ini.';
+        }
+
+        return 'Segera buat Purchase Order atau lakukan penyesuaian stok.';
+    }
+
+    if ($actionType === 'low') {
+        if (($stock->location_type ?? null) === 'outlet') {
+            return 'Pantau stok, siapkan restock atau transfer dari warehouse.';
+        }
+
+        return 'Pantau stok dan siapkan Purchase Order berikutnya.';
+    }
+
+    return '-';
+}
+
+    protected function applySummaryLocationFilters($query, Request $request)
+    {
+        if ($request->filled('summary_location_type')) {
+            $query->where('location_type', $request->summary_location_type);
+        }
+
+        if ($request->filled('summary_location_type') && $request->filled('summary_location_id')) {
+            $query->where('location_id', $request->summary_location_id);
+        }
+
+        return $query;
+    }
+
+    protected function sumNetMovement(Collection $movements): float
+    {
+        return (float) $movements->sum('qty_in') - (float) $movements->sum('qty_out');
+    }
+
+    protected function buildStockSummaryRows(Request $request, Collection $ingredients): Collection
+    {
+        $dateFrom = $request->filled('summary_date_from')
+            ? Carbon::parse($request->summary_date_from)->startOfDay()
+            : null;
+
+        $dateTo = $request->filled('summary_date_to')
+            ? Carbon::parse($request->summary_date_to)->endOfDay()
+            : null;
+
+        $movementBaseQuery = StockMovement::with(['ingredient.category']);
+
+        if ($request->filled('ingredient_id')) {
+            $movementBaseQuery->where('ingredient_id', $request->ingredient_id);
+        }
+
+        $this->applySummaryLocationFilters($movementBaseQuery, $request);
+
+        if ($dateTo) {
+            $movementBaseQuery->where('created_at', '<=', $dateTo);
+        }
+
+        $allRelevantMovements = $movementBaseQuery->get();
+
+        $balanceBaseQuery = StockBalance::with(['ingredient.category']);
+
+        if ($request->filled('ingredient_id')) {
+            $balanceBaseQuery->where('ingredient_id', $request->ingredient_id);
+        }
+
+        $this->applySummaryLocationFilters($balanceBaseQuery, $request);
+
+        $filteredBalances = $balanceBaseQuery->get();
+
+        $stockSummaryRows = [];
+
+        foreach ($ingredients as $ingredient) {
+            if ($request->filled('ingredient_id') && (int) $request->ingredient_id !== (int) $ingredient->id) {
+                continue;
+            }
+
+            $ingredientMovements = $allRelevantMovements->where('ingredient_id', $ingredient->id)->values();
+            $ingredientBalances = $filteredBalances->where('ingredient_id', $ingredient->id)->values();
+
+            if ($dateFrom) {
+                $openingMovements = $ingredientMovements
+                    ->filter(function ($movement) use ($dateFrom) {
+                        return $movement->created_at && $movement->created_at->lt($dateFrom);
+                    })
+                    ->values();
+
+                $periodMovements = $ingredientMovements
+                    ->filter(function ($movement) use ($dateFrom) {
+                        return $movement->created_at && $movement->created_at->gte($dateFrom);
+                    })
+                    ->values();
+
+                $openingBalance = $this->sumNetMovement($openingMovements);
+            } else {
+                $periodMovements = $ingredientMovements->values();
+
+                $openingBalance = (float) $ingredientMovements
+                    ->where('movement_type', 'opening_balance')
+                    ->sum('qty_in') - (float) $ingredientMovements
+                    ->where('movement_type', 'opening_balance')
+                    ->sum('qty_out');
+            }
+
+            if ($ingredientMovements->isEmpty() && $ingredientBalances->isEmpty() && $openingBalance == 0.0) {
+                continue;
+            }
+
+            $stockIn = (float) $periodMovements
+                ->where('movement_type', 'stock_in')
+                ->sum('qty_in');
+
+            $transferIn = (float) $periodMovements
+                ->where('movement_type', 'transfer_in')
+                ->sum('qty_in');
+
+            $transferOut = (float) $periodMovements
+                ->where('movement_type', 'transfer_out')
+                ->sum('qty_out');
+
+            $productionIn = (float) $periodMovements
+                ->where('movement_type', 'production_in')
+                ->sum('qty_in');
+
+            $productionOut = (float) $periodMovements
+                ->where('movement_type', 'production_out')
+                ->sum('qty_out');
+
+            $adjustmentIn = (float) $periodMovements
+                ->where('movement_type', 'stock_adjustment')
+                ->sum('qty_in');
+
+            $adjustmentOut = (float) $periodMovements
+                ->where('movement_type', 'stock_adjustment')
+                ->sum('qty_out');
+
+            if ($dateFrom || $dateTo) {
+                $endingStock = $openingBalance + $this->sumNetMovement($periodMovements);
+            } else {
+                $endingStock = (float) $ingredientBalances->sum('qty_on_hand');
+            }
+
+            $minimumStock = (float) ($ingredient->minimum_stock ?? 0);
+
+            $stockSummaryRows[] = [
+                'category_name' => $ingredient->category->name ?? '-',
+                'ingredient_name' => $ingredient->name,
+                'unit' => $ingredient->unit,
+                'minimum_stock' => $minimumStock,
+                'opening_balance' => $openingBalance,
+                'stock_in' => $stockIn,
+                'transfer_in' => $transferIn,
+                'transfer_out' => $transferOut,
+                'production_in' => $productionIn,
+                'production_out' => $productionOut,
+                'adjustment_in' => $adjustmentIn,
+                'adjustment_out' => $adjustmentOut,
+                'ending_stock' => $endingStock,
+                'need_action' => $endingStock <= $minimumStock,
+                'is_zero' => $endingStock <= 0,
+            ];
+        }
+
+        return collect($stockSummaryRows)
+            ->sortBy('ingredient_name')
+            ->values();
+    }
 
     public function index(Request $request)
     {
         $user = $this->authorizeAccess();
 
         $ingredients = Ingredient::with('category')
+            ->orderBy('name')
+            ->get();
+
+        $warehouses = Warehouse::query()
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $outlets = Outlet::query()
+            ->where('is_active', true)
             ->orderBy('name')
             ->get();
 
@@ -154,114 +354,46 @@ class StockBalanceViewController extends Controller
             }
         }
 
-        $movementQuery = StockMovement::with(['ingredient.category']);
+        $stockSummaryRows = $this->buildStockSummaryRows($request, $ingredients);
 
-        if ($request->filled('ingredient_id')) {
-            $movementQuery->where('ingredient_id', $request->ingredient_id);
-        }
+        $needActionItems = $stockBalances
+            ->filter(function ($stock) {
+                return $this->getNeedActionType($stock) !== null;
+            })
+            ->map(function ($stock) {
+                $actionType = $this->getNeedActionType($stock);
+                $qty = (float) ($stock->qty_on_hand ?? 0);
+                $minimum = (float) ($stock->ingredient->minimum_stock ?? 0);
 
-        if ($request->filled('location_type')) {
-            $movementQuery->where('location_type', $request->location_type);
-        }
-
-        if ($request->filled('keyword')) {
-            $keyword = trim($request->keyword);
-
-            $movementQuery->where(function ($q) use ($keyword) {
-                $q->whereHas('ingredient', function ($sub) use ($keyword) {
-                    $sub->where('name', 'like', '%' . $keyword . '%');
-                });
-
-                if (is_numeric($keyword)) {
-                    $q->orWhere('location_id', (int) $keyword);
-                }
-
-                $q->orWhere('note', 'like', '%' . $keyword . '%')
-                    ->orWhere('reference_type', 'like', '%' . $keyword . '%');
-            });
-        }
-
-        $movements = $movementQuery->get();
-
-        $stockSummaryRows = [];
-
-        foreach ($ingredients as $ingredient) {
-            if ($request->filled('ingredient_id') && (int) $request->ingredient_id !== (int) $ingredient->id) {
-                continue;
-            }
-
-            $ingredientMovements = $movements->where('ingredient_id', $ingredient->id);
-            $ingredientStocks = $stockBalances->where('ingredient_id', $ingredient->id);
-
-            if ($ingredientMovements->isEmpty() && $ingredientStocks->isEmpty()) {
-                continue;
-            }
-
-            $openingBalance = (float) $ingredientMovements
-                ->where('movement_type', 'opening_balance')
-                ->sum('qty_in');
-
-            $stockIn = (float) $ingredientMovements
-                ->where('movement_type', 'stock_in')
-                ->sum('qty_in');
-
-            $transferIn = (float) $ingredientMovements
-                ->where('movement_type', 'transfer_in')
-                ->sum('qty_in');
-
-            $transferOut = (float) $ingredientMovements
-                ->where('movement_type', 'transfer_out')
-                ->sum('qty_out');
-
-            $productionIn = (float) $ingredientMovements
-                ->where('movement_type', 'production_in')
-                ->sum('qty_in');
-
-            $productionOut = (float) $ingredientMovements
-                ->where('movement_type', 'production_out')
-                ->sum('qty_out');
-
-            $adjustmentIn = (float) $ingredientMovements
-                ->where('movement_type', 'stock_adjustment')
-                ->sum('qty_in');
-
-            $adjustmentOut = (float) $ingredientMovements
-                ->where('movement_type', 'stock_adjustment')
-                ->sum('qty_out');
-
-            $endingStock = (float) $ingredientStocks->sum('qty_on_hand');
-            $minimumStock = (float) ($ingredient->minimum_stock ?? 0);
-
-            $stockSummaryRows[] = [
-                'category_name' => $ingredient->category->name ?? '-',
-                'ingredient_name' => $ingredient->name,
-                'unit' => $ingredient->unit,
-                'minimum_stock' => $minimumStock,
-                'opening_balance' => $openingBalance,
-                'stock_in' => $stockIn,
-                'transfer_in' => $transferIn,
-                'transfer_out' => $transferOut,
-                'production_in' => $productionIn,
-                'production_out' => $productionOut,
-                'adjustment_in' => $adjustmentIn,
-                'adjustment_out' => $adjustmentOut,
-                'ending_stock' => $endingStock,
-                'need_action' => $endingStock <= $minimumStock,
-                'is_zero' => $endingStock <= 0,
-            ];
-        }
-
-        $stockSummaryRows = collect($stockSummaryRows)
-            ->sortBy('ingredient_name')
+                return [
+                    'category_name' => $stock->ingredient->category->name ?? '-',
+                    'ingredient_name' => $stock->ingredient->name ?? '-',
+                    'unit' => $stock->ingredient->unit ?? '-',
+                    'location_type' => ucfirst($stock->location_type ?? '-'),
+                    'location_name' => $this->getLocationLabel($stock),
+                    'qty_on_hand' => $qty,
+                    'minimum_stock' => $minimum,
+                    'status_label' => $actionType === 'out' ? 'Out of Stock' : 'Low Stock',
+                    'status_class' => $actionType === 'out' ? 'status-out' : 'status-low',
+                    'recommended_action' => $this->getNeedActionRecommendation($stock),
+                ];
+            })
+            ->sortBy([
+                ['status_label', 'asc'],
+                ['ingredient_name', 'asc'],
+            ])
             ->values();
 
         return view('backoffice.stock-balances.index', [
             'user' => $user,
             'ingredients' => $ingredients,
+            'warehouses' => $warehouses,
+            'outlets' => $outlets,
             'stockBalances' => $stockBalances,
             'stocks' => $stockBalances,
             'summary' => $summary,
             'stockSummaryRows' => $stockSummaryRows,
+            'needActionItems' => $needActionItems,
         ]);
     }
 
@@ -345,11 +477,13 @@ class StockBalanceViewController extends Controller
             'items' => 'required|array|min:1',
             'items.*.ingredient_id' => 'required|exists:ingredients,id',
             'items.*.qty_in' => 'required|numeric|min:0.01',
+            'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.note' => 'nullable|string|max:255',
         ], [
-            'items.required' => 'Minimal harus ada 1 item penerimaan barang.',
+            'items.required' => 'Minimal harus ada 1 item purchase order.',
             'items.*.ingredient_id.required' => 'Ingredient wajib dipilih di setiap baris.',
-            'items.*.qty_in.required' => 'Qty masuk wajib diisi di setiap baris.',
+            'items.*.qty_in.required' => 'Qty wajib diisi di setiap baris.',
+            'items.*.unit_price.required' => 'Harga satuan wajib diisi di setiap baris.',
         ]);
 
         if ($validated['location_type'] === 'warehouse') {
@@ -376,7 +510,9 @@ class StockBalanceViewController extends Controller
 
         $items = collect($validated['items'])
             ->filter(function ($item) {
-                return ! empty($item['ingredient_id']) && (float) ($item['qty_in'] ?? 0) > 0;
+                return ! empty($item['ingredient_id'])
+                    && (float) ($item['qty_in'] ?? 0) > 0
+                    && (float) ($item['unit_price'] ?? 0) >= 0;
             })
             ->values();
 
@@ -388,6 +524,10 @@ class StockBalanceViewController extends Controller
 
         DB::transaction(function () use ($validated, $items) {
             foreach ($items as $item) {
+                $qtyIn = (float) ($item['qty_in'] ?? 0);
+                $unitPrice = (float) ($item['unit_price'] ?? 0);
+                $lineTotal = $qtyIn * $unitPrice;
+
                 $stockBalance = StockBalance::firstOrCreate(
                     [
                         'ingredient_id' => $item['ingredient_id'],
@@ -400,22 +540,28 @@ class StockBalanceViewController extends Controller
                 );
 
                 $currentQty = (float) $stockBalance->qty_on_hand;
-                $newQty = $currentQty + (float) $item['qty_in'];
+                $newQty = $currentQty + $qtyIn;
 
                 $stockBalance->update([
                     'qty_on_hand' => $newQty,
                 ]);
+
+                $baseNote = trim((string) ($item['note'] ?? ''));
+                $purchaseNote = 'Purchase order dari luar sistem'
+                    . ' | Harga Satuan: Rp ' . number_format($unitPrice, 0, ',', '.')
+                    . ' | Qty: ' . number_format($qtyIn, 2, ',', '.')
+                    . ' | Total: Rp ' . number_format($lineTotal, 0, ',', '.');
 
                 StockMovement::create([
                     'ingredient_id' => $item['ingredient_id'],
                     'location_type' => $validated['location_type'],
                     'location_id' => $validated['location_id'],
                     'movement_type' => 'stock_in',
-                    'qty_in' => $item['qty_in'],
+                    'qty_in' => $qtyIn,
                     'qty_out' => 0,
                     'reference_type' => 'manual_stock_in',
                     'reference_id' => null,
-                    'note' => $item['note'] ?? 'Penerimaan barang dari luar sistem',
+                    'note' => $baseNote !== '' ? $baseNote . ' | ' . $purchaseNote : $purchaseNote,
                 ]);
             }
         });
@@ -424,7 +570,7 @@ class StockBalanceViewController extends Controller
 
         return redirect()
             ->route('backoffice.stock-balances.index')
-            ->with('success', 'Penerimaan barang bulk berhasil disimpan ke ' . $locationLabel . ' tujuan.');
+            ->with('success', 'Purchase Order berhasil disimpan ke ' . $locationLabel . ' tujuan.');
     }
 
     public function createAdjustment()
@@ -775,7 +921,7 @@ class StockBalanceViewController extends Controller
                     continue;
                 }
 
-                if (! in_array($locationType, ['outlet', 'warehouse'])) {
+                if (! in_array($locationType, ['outlet', 'warehouse'], true)) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: location_type '{$locationType}' tidak valid.";
                     continue;

@@ -236,6 +236,17 @@
             min-height: 140px;
         }
 
+        .stat-card-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .stat-card-link:hover .stat-card {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 26px rgba(15, 23, 42, 0.08);
+        }
+
         .stat-card.orange {
             background: linear-gradient(180deg, #fff9f6 0%, #ffffff 100%);
             border-color: #f4ddd0;
@@ -396,6 +407,14 @@
             padding: 0 22px 22px;
             display: grid;
             grid-template-columns: 1.3fr 1fr 1fr 1fr auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .summary-filter-form {
+            padding: 0 22px 22px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr auto;
             gap: 12px;
             align-items: end;
         }
@@ -580,7 +599,8 @@
                 grid-template-columns: 1fr 1fr;
             }
 
-            .filter-form {
+            .filter-form,
+            .summary-filter-form {
                 grid-template-columns: 1fr 1fr;
             }
         }
@@ -601,7 +621,8 @@
 
             .stats-grid,
             .action-grid,
-            .filter-form {
+            .filter-form,
+            .summary-filter-form {
                 grid-template-columns: 1fr;
             }
 
@@ -626,7 +647,7 @@
                 <div class="inventory-kicker">Inventory Workspace</div>
                 <h1 class="inventory-title">Back Office - Inventory Control</h1>
                 <p class="inventory-subtitle">
-                    Pusat kontrol stok seluruh lokasi untuk penerimaan barang, import opening stock, adjustment, opname, dan pembacaan stock summary operasional dalam satu halaman yang konsisten dengan sidebar back office.
+                    Pusat kontrol stok seluruh lokasi untuk purchase order, import opening stock, adjustment, opname, dan pembacaan stock summary operasional dalam satu halaman yang konsisten dengan sidebar back office.
                 </p>
             </div>
 
@@ -642,13 +663,13 @@
                     <div class="hero-kicker">Inventory Control</div>
                     <h2 class="hero-heading">Control stock actions and read stock summary in one place.</h2>
                     <p class="hero-text">
-                        Halaman ini adalah pusat kontrol stok seluruh lokasi. Pakai area ini untuk penerimaan barang dari luar, adjustment stok, import opening stock, dan membaca summary stok model operasional.
+                        Halaman ini adalah pusat kontrol stok seluruh lokasi. Pakai area ini untuk purchase order dari luar, adjustment stok, import opening stock, dan membaca summary stok model operasional.
                     </p>
                 </div>
 
                 <div class="rule-card">
                     <h3 class="rule-title">Inventory Rule</h3>
-                    <div class="rule-line"><strong>Barang dari luar:</strong> Penerimaan Barang</div>
+                    <div class="rule-line"><strong>Barang dari luar:</strong> Purchase Order</div>
                     <div class="rule-line"><strong>Barang antar lokasi:</strong> Transfer Barang</div>
                     <div class="rule-line"><strong>Selisih stok:</strong> Adjustment</div>
                     <div class="rule-line"><strong>Opname formal:</strong> Warehouse saja</div>
@@ -674,11 +695,13 @@
                     <div class="stat-desc">Stok yang masih aman di atas minimum stock.</div>
                 </div>
 
-                <div class="stat-card violet">
+                <a href="#need-action-list" class="stat-card-link">
+                    <div class="stat-card violet">
                     <div class="stat-label">Need Action</div>
                     <div class="stat-value">{{ $summary['need_action'] ?? 0 }}</div>
-                    <div class="stat-desc">Stok yang perlu dipantau untuk restock, transfer, atau adjustment.</div>
-                </div>
+                    <div class="stat-desc">Klik untuk melihat item yang perlu restock, transfer, atau adjustment.</div>
+                 </div>
+                </a>
 
                 <div class="stat-card red">
                     <div class="stat-label">Zero Stock</div>
@@ -693,8 +716,8 @@
                         <div class="action-icon icon-orange">
                             <svg viewBox="0 0 24 24"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
                         </div>
-                        <div class="action-title">Penerimaan Barang</div>
-                        <div class="action-desc">Untuk barang masuk dari luar sistem internal, baik ke warehouse maupun outlet.</div>
+                        <div class="action-title">Purchasing Order</div>
+                        <div class="action-desc">Untuk pembelian stok dari supplier atau vendor ke warehouse maupun outlet, lengkap dengan qty, harga satuan, dan total harga.</div>
                     </div>
                     <div class="action-link">Open action</div>
                 </a>
@@ -737,9 +760,67 @@
                 <div class="section-head">
                     <h2 class="section-title">Stock Summary</h2>
                     <p class="section-subtitle">
-                        Summary ini mengikuti cara baca stok operasional: saldo awal, penerimaan, transfer, produksi, adjustment, lalu stok akhir per bahan.
+                        Summary ini mengikuti cara baca stok operasional: saldo awal, purchase order, transfer, produksi, adjustment, lalu stok akhir per bahan.
                     </p>
                 </div>
+
+                                <form method="GET" action="{{ route('backoffice.stock-balances.index') }}" class="summary-filter-form">
+                    <input type="hidden" name="ingredient_id" value="{{ request('ingredient_id') }}">
+                    <input type="hidden" name="location_type" value="{{ request('location_type') }}">
+                    <input type="hidden" name="status" value="{{ request('status') }}">
+                    <input type="hidden" name="keyword" value="{{ request('keyword') }}">
+
+                    <div class="field">
+                        <label for="summary_location_type">Location Type Summary</label>
+                        <select name="summary_location_type" id="summary_location_type">
+                            <option value="">Semua location type</option>
+                            <option value="warehouse" {{ request('summary_location_type') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
+                            <option value="outlet" {{ request('summary_location_type') === 'outlet' ? 'selected' : '' }}>Outlet</option>
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="summary_location_id">Location Summary</label>
+                        <select name="summary_location_id" id="summary_location_id">
+                            <option value="">Semua lokasi</option>
+
+                            @foreach(($warehouses ?? []) as $warehouse)
+                                <option
+                                    value="{{ $warehouse->id }}"
+                                    data-type="warehouse"
+                                    {{ request('summary_location_type') === 'warehouse' && (string) request('summary_location_id') === (string) $warehouse->id ? 'selected' : '' }}
+                                >
+                                    Warehouse - {{ $warehouse->name }}
+                                </option>
+                            @endforeach
+
+                            @foreach(($outlets ?? []) as $outlet)
+                                <option
+                                    value="{{ $outlet->id }}"
+                                    data-type="outlet"
+                                    {{ request('summary_location_type') === 'outlet' && (string) request('summary_location_id') === (string) $outlet->id ? 'selected' : '' }}
+                                >
+                                    Outlet - {{ $outlet->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="field">
+                        <label for="summary_date_from">Date From</label>
+                        <input type="date" name="summary_date_from" id="summary_date_from" value="{{ request('summary_date_from') }}">
+                    </div>
+
+                    <div class="field">
+                        <label for="summary_date_to">Date To</label>
+                        <input type="date" name="summary_date_to" id="summary_date_to" value="{{ request('summary_date_to') }}">
+                    </div>
+
+                    <div class="filter-actions">
+                        <button type="submit" class="btn btn-brand">Apply</button>
+                        <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Reset</a>
+                    </div>
+                </form>
 
                 <div class="table-wrap">
                     <table>
@@ -749,7 +830,7 @@
                                 <th>Ingredient</th>
                                 <th>Unit</th>
                                 <th>Saldo Awal</th>
-                                <th>Penerimaan</th>
+                                <th>Purchase Order</th>
                                 <th>Transfer Masuk</th>
                                 <th>Transfer Keluar</th>
                                 <th>Produksi Masuk</th>
@@ -932,7 +1013,7 @@
 
                 <div class="note-list">
                     <div class="note-card">
-                        <div class="note-title">Penerimaan Barang</div>
+                        <div class="note-title">Purchasing Order</div>
                         <div class="note-desc">
                             Dipakai saat barang datang dari <span class="note-highlight">luar sistem internal</span>, misalnya supplier, vendor, atau pembelian darurat outlet.
                         </div>
@@ -960,10 +1041,95 @@
                     </div>
                 </div>
             </div>
-
-            <div class="bottom-bar">
-                Inventory Control sekarang sudah ikut layout sidebar back office, jadi navigasi tidak hilang saat pindah halaman dan tampilannya tetap konsisten, clean, dan elegant.
-            </div>
         </div>
     </div>
+
+    <div class="section-card" id="need-action-list">
+                <div class="section-head">
+                    <h2 class="section-title">Need Action List</h2>
+                    <p class="section-subtitle">
+                        Daftar item yang sedang perlu tindakan dari sistem, supaya tim bisa langsung tahu mana yang harus direstock, ditransfer, atau disesuaikan.
+                    </p>
+            </div>
+
+            <div class="table-wrap">
+                <table>
+                 <thead>
+                     <tr>
+                        <th>Category</th>
+                        <th>Ingredient</th>
+                        <th>Unit</th>
+                        <th>Location Type</th>
+                        <th>Location</th>
+                        <th>Qty Saat Ini</th>
+                        <th>Minimum Stock</th>
+                        <th>Status</th>
+                        <th>Recommended Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse(($needActionItems ?? []) as $item)
+                        <tr>
+                            <td>{{ $item['category_name'] ?? '-' }}</td>
+                            <td>{{ $item['ingredient_name'] ?? '-' }}</td>
+                            <td>{{ $item['unit'] ?? '-' }}</td>
+                            <td>{{ $item['location_type'] ?? '-' }}</td>
+                            <td>{{ $item['location_name'] ?? '-' }}</td>
+                            <td>
+                                @if(((float) ($item['qty_on_hand'] ?? 0)) <= 0)
+                                    <span class="qty-zero">{{ number_format((float) ($item['qty_on_hand'] ?? 0), 0, ',', '.') }}</span>
+                                @else
+                                    <span class="qty-value">{{ number_format((float) ($item['qty_on_hand'] ?? 0), 0, ',', '.') }}</span>
+                                @endif
+                            </td>
+                            <td>{{ number_format((float) ($item['minimum_stock'] ?? 0), 0, ',', '.') }}</td>
+                            <td>
+                                <span class="status-badge {{ $item['status_class'] ?? 'status-low' }}">
+                                    {{ $item['status_label'] ?? '-' }}
+                                </span>
+                            </td>
+                            <td>{{ $item['recommended_action'] ?? '-' }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="9">Belum ada item yang masuk kategori need action.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+        <script>
+        (function () {
+            const summaryTypeSelect = document.getElementById('summary_location_type');
+            const summaryLocationSelect = document.getElementById('summary_location_id');
+
+            if (!summaryTypeSelect || !summaryLocationSelect) {
+                return;
+            }
+
+            const summaryLocationOptions = Array.from(summaryLocationSelect.querySelectorAll('option'));
+
+            function filterSummaryLocationOptions() {
+                const selectedType = summaryTypeSelect.value;
+
+                summaryLocationOptions.forEach((option, index) => {
+                    if (index === 0) {
+                        option.hidden = false;
+                        return;
+                    }
+
+                    option.hidden = selectedType !== '' && option.getAttribute('data-type') !== selectedType;
+                });
+
+                const selectedOption = summaryLocationSelect.options[summaryLocationSelect.selectedIndex];
+                if (selectedOption && selectedOption.hidden) {
+                    summaryLocationSelect.selectedIndex = 0;
+                }
+            }
+
+            summaryTypeSelect.addEventListener('change', filterSummaryLocationOptions);
+            filterSummaryLocationOptions();
+        })();
+    </script>
 @endsection

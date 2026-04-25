@@ -1,151 +1,308 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adjustment - Back Office ATG POS</title>
+@extends('backoffice.layouts.app')
+
+@php
+    $pageTitle = 'Adjustment Stok - Back Office';
+@endphp
+
+@section('content')
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
-            color: #222;
+        .adjustment-shell {
+            display: grid;
+            gap: 22px;
         }
 
-        .wrap {
-            max-width: 1180px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
-
-        .topbar {
+        .adjustment-topbar {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 24px;
             gap: 16px;
+            flex-wrap: wrap;
         }
 
-        .title {
-            font-size: 30px;
-            font-weight: bold;
+        .adjustment-title-block {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
         }
 
-        .subtitle {
-            margin-top: 6px;
+        .adjustment-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.88);
+            border: 1px solid #f3dfcf;
+            color: #c9552a;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            width: fit-content;
+        }
+
+        .adjustment-title {
+            margin: 0;
+            font-size: 38px;
+            line-height: 1;
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            color: #111827;
+        }
+
+        .adjustment-subtitle {
+            margin: 0;
+            max-width: 860px;
             color: #6b7280;
-            font-size: 14px;
-            line-height: 1.7;
-            max-width: 760px;
+            font-size: 15px;
+            line-height: 1.9;
+        }
+
+        .adjustment-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .btn {
-            text-decoration: none;
-            background: #111827;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: bold;
-            display: inline-block;
             border: 0;
             cursor: pointer;
+            min-height: 42px;
+            padding: 0 16px;
+            border-radius: 14px;
+            color: white;
+            font-size: 13px;
+            font-weight: 800;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 10px 20px rgba(15,23,42,0.10);
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+            opacity: 0.96;
+        }
+
+        .btn-dark {
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
         }
 
         .btn-warning {
-            background: #92400e;
+            background: linear-gradient(135deg, #92400e 0%, #b45309 100%);
         }
 
         .btn-add {
-            background: #1d4ed8;
+            background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 100%);
         }
 
         .btn-danger-lite {
-            background: #dc2626;
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
         }
 
-        .card {
-            background: white;
+        .alert {
             border-radius: 18px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.06);
-            padding: 24px;
-        }
-
-        .helper {
-            margin-bottom: 18px;
-            background: #fef3c7;
-            color: #92400e;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
+            padding: 16px 18px;
+            font-size: 14px;
+            font-weight: 700;
             line-height: 1.7;
         }
 
+        .alert-error {
+            background: #ffe8e8;
+            color: #9b1c1c;
+            border: 1px solid #fecaca;
+        }
+
+        .card {
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+            border-radius: 30px;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+        }
+
+        .hero-wrap {
+            padding: 24px 24px 0;
+            display: grid;
+            grid-template-columns: 1.05fr 0.95fr;
+            gap: 20px;
+        }
+
+        .hero-card {
+            background: linear-gradient(135deg, #ffffff 0%, #fffaf5 58%, #fff4eb 100%);
+            border: 1px solid #f0e1d8;
+            border-radius: 28px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-card::after {
+            content: "";
+            position: absolute;
+            right: -50px;
+            top: -50px;
+            width: 180px;
+            height: 180px;
+            border-radius: 999px;
+            background: radial-gradient(circle, rgba(201,85,42,0.14) 0%, rgba(201,85,42,0.03) 65%, rgba(201,85,42,0) 80%);
+            pointer-events: none;
+        }
+
+        .hero-kicker {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 12px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.84);
+            border: 1px solid #f2dfd4;
+            color: #c9552a;
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-heading {
+            margin: 0 0 10px;
+            font-size: 34px;
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.03em;
+            color: #111827;
+            position: relative;
+            z-index: 1;
+        }
+
+        .hero-text {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.8;
+            max-width: 760px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .rule-card {
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
+            border: 1px solid #e8edf4;
+            border-radius: 28px;
+            padding: 24px;
+        }
+
+        .rule-title {
+            margin: 0 0 14px;
+            font-size: 18px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .rule-line {
+            font-size: 14px;
+            line-height: 1.9;
+            color: #374151;
+        }
+
+        .rule-line strong {
+            color: #111827;
+        }
+
+        .section-card {
+            margin: 20px 24px 24px;
+            background: rgba(255,255,255,0.94);
+            border: 1px solid #e8edf4;
+            border-radius: 26px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+            overflow: hidden;
+        }
+
+        .section-head {
+            padding: 22px 22px 0;
+        }
+
+        .section-title {
+            margin: 0 0 8px;
+            font-size: 24px;
+            font-weight: 800;
+            color: #111827;
+            letter-spacing: -0.02em;
+        }
+
+        .section-subtitle {
+            margin: 0 0 18px;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.8;
+        }
+
+        .helper-box {
+            margin: 0 22px 18px;
+            background: #fff7ed;
+            color: #b45309;
+            padding: 16px 18px;
+            border-radius: 18px;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.8;
+            border: 1px solid #fed7aa;
+        }
+
+        .form-wrap {
+            padding: 0 22px 22px;
+        }
+
+        .top-fields-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
         .field {
-            margin-bottom: 16px;
+            margin-bottom: 0;
         }
 
         .field label {
             display: block;
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 6px;
+            font-size: 12px;
+            font-weight: 800;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
         }
 
         .field input,
         .field select {
             width: 100%;
             box-sizing: border-box;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 14px;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
             background: white;
-        }
-
-        .readonly-box {
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            padding: 12px;
+            padding: 12px 14px;
             font-size: 14px;
-            background: #f9fafb;
-            color: #374151;
-            min-height: 46px;
-            display: flex;
-            align-items: center;
+            min-height: 48px;
+            outline: none;
         }
 
-        .error-box {
-            margin-bottom: 18px;
-            background: #ffe8e8;
-            color: #9b1c1c;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
-        }
-
-        .actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 8px;
-            flex-wrap: wrap;
-        }
-
-        .note {
-            margin-top: 20px;
-            background: #fef3c7;
-            color: #92400e;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
-            line-height: 1.7;
+        .field input:focus,
+        .field select:focus {
+            border-color: rgba(232,106,58,0.75);
+            box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
         }
 
         .muted {
             color: #6b7280;
             font-size: 13px;
-            margin-top: 6px;
+            margin-top: 8px;
+            line-height: 1.7;
         }
 
         .items-head {
@@ -153,12 +310,13 @@
             justify-content: space-between;
             align-items: center;
             gap: 12px;
-            margin: 20px 0 14px;
+            margin: 22px 0 16px;
+            flex-wrap: wrap;
         }
 
         .items-title {
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 20px;
+            font-weight: 800;
             color: #111827;
         }
 
@@ -166,19 +324,20 @@
             font-size: 13px;
             color: #6b7280;
             margin-top: 4px;
+            line-height: 1.7;
         }
 
         .item-row {
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            padding: 16px;
+            border: 1px solid #e8edf4;
+            border-radius: 20px;
+            padding: 18px;
             margin-bottom: 14px;
-            background: #fafafa;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
         }
 
         .row-index {
             display: inline-flex;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             padding: 6px 10px;
             border-radius: 999px;
             background: #f3f4f6;
@@ -189,52 +348,117 @@
 
         .item-grid {
             display: grid;
-            grid-template-columns: 1.2fr 0.85fr 0.85fr 0.9fr 1.1fr auto;
+            grid-template-columns: 1.2fr 0.85fr 0.85fr 0.95fr 1.15fr auto;
             gap: 12px;
             align-items: end;
         }
 
+        .readonly-box {
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            padding: 12px 14px;
+            font-size: 14px;
+            background: #f9fafb;
+            color: #374151;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            font-weight: 700;
+        }
+
         .delta-up {
             color: #166534;
-            font-weight: 700;
+            font-weight: 800;
         }
 
         .delta-down {
             color: #b91c1c;
-            font-weight: 700;
+            font-weight: 800;
         }
 
         .delta-equal {
             color: #6b7280;
-            font-weight: 700;
+            font-weight: 800;
         }
 
-        @media (max-width: 1100px) {
+        .actions {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .note {
+            margin-top: 22px;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 16px 18px;
+            border-radius: 18px;
+            font-weight: 700;
+            line-height: 1.8;
+            border: 1px solid #fcd34d;
+        }
+
+        @media (max-width: 1320px) {
+            .hero-wrap {
+                grid-template-columns: 1fr;
+            }
+
+            .item-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 860px) {
+            .adjustment-topbar {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .adjustment-title {
+                font-size: 32px;
+            }
+
+            .hero-heading {
+                font-size: 28px;
+            }
+
+            .top-fields-grid,
             .item-grid {
                 grid-template-columns: 1fr;
             }
 
-            .topbar {
-                flex-direction: column;
-                align-items: flex-start;
+            .hero-wrap {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .section-card {
+                margin-left: 18px;
+                margin-right: 18px;
             }
         }
     </style>
-</head>
-<body>
-    <div class="wrap">
-        <div class="topbar">
-            <div>
-                <div class="title">Adjustment</div>
-                <div class="subtitle">
-                    Gunakan form ini untuk menyesuaikan stok berdasarkan kondisi aktual di warehouse atau outlet. Isi stok aktual, lalu sistem otomatis menghitung selisihnya.
-                </div>
+
+    <div class="adjustment-shell">
+        <div class="adjustment-topbar">
+            <div class="adjustment-title-block">
+                <div class="adjustment-kicker">Inventory Adjustment</div>
+                <h1 class="adjustment-title">Adjustment Stok</h1>
+                <p class="adjustment-subtitle">
+                    Gunakan halaman ini untuk koreksi stok warehouse atau outlet berdasarkan kondisi aktual di lapangan. Isi stok aktual, lalu sistem otomatis menghitung selisih terhadap stok sistem.
+                </p>
             </div>
-            <a href="{{ route('backoffice.stock-balances.index') }}" class="btn">Kembali</a>
+
+            <div class="adjustment-actions">
+                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Kembali</a>
+            </div>
         </div>
 
         @if($errors->any())
-            <div class="error-box">
+            <div class="alert alert-error">
                 <div>Form belum valid:</div>
                 <ul style="margin:10px 0 0 18px;">
                     @foreach($errors->all() as $error)
@@ -245,70 +469,101 @@
         @endif
 
         <div class="card">
-            <div class="helper">
-                Adjustment dipakai untuk koreksi stok di lokasi terpilih. Isi jumlah stok aktual, lalu sistem akan otomatis menghitung selisih dari stok sistem saat ini.
+            <div class="hero-wrap">
+                <div class="hero-card">
+                    <div class="hero-kicker">Stock Correction</div>
+                    <h2 class="hero-heading">Samakan stok sistem dengan stok aktual.</h2>
+                    <p class="hero-text">
+                        Halaman ini dipakai saat ada selisih stok, bahan rusak, kesalahan input, atau hasil hitung lapangan berbeda dari stok sistem. Pilih lokasi, pilih bahan, lalu isi stok aktual yang benar.
+                    </p>
+                </div>
+
+                <div class="rule-card">
+                    <h3 class="rule-title">Rule Adjustment</h3>
+                    <div class="rule-line"><strong>Warehouse:</strong> boleh adjustment</div>
+                    <div class="rule-line"><strong>Outlet:</strong> boleh adjustment</div>
+                    <div class="rule-line"><strong>Selisih positif:</strong> sistem tambah stok</div>
+                    <div class="rule-line"><strong>Selisih negatif:</strong> sistem kurangi stok</div>
+                </div>
             </div>
 
-            <form method="POST" action="{{ route('backoffice.stock-balances.adjustment.store') }}">
-                @csrf
-
-                <div class="field">
-                    <label>Tipe Lokasi Tujuan</label>
-                    <select name="location_type" id="location_type" required>
-                        <option value="">Pilih tipe lokasi</option>
-                        <option value="warehouse" {{ old('location_type') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
-                        <option value="outlet" {{ old('location_type') === 'outlet' ? 'selected' : '' }}>Outlet</option>
-                    </select>
+            <div class="section-card">
+                <div class="section-head">
+                    <h2 class="section-title">Form Adjustment</h2>
+                    <p class="section-subtitle">
+                        Pilih lokasi dulu, lalu tambahkan item-item yang ingin dikoreksi. Sistem akan menampilkan stok sistem saat ini dan selisih otomatis.
+                    </p>
                 </div>
 
-                <div class="field">
-                    <label>Lokasi Tujuan</label>
-                    <select name="location_id" id="location_id" required>
-                        <option value="">Pilih lokasi tujuan</option>
-
-                        @foreach($warehouses as $warehouse)
-                            <option
-                                value="{{ $warehouse->id }}"
-                                data-type="warehouse"
-                                data-label="Warehouse - {{ $warehouse->name }}"
-                                {{ old('location_type') === 'warehouse' && (string) old('location_id') === (string) $warehouse->id ? 'selected' : '' }}
-                            >
-                                Warehouse - {{ $warehouse->name }}
-                            </option>
-                        @endforeach
-
-                        @foreach($outlets as $outlet)
-                            <option
-                                value="{{ $outlet->id }}"
-                                data-type="outlet"
-                                data-label="Outlet - {{ $outlet->name }}"
-                                {{ old('location_type') === 'outlet' && (string) old('location_id') === (string) $outlet->id ? 'selected' : '' }}
-                            >
-                                Outlet - {{ $outlet->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                    <div class="muted">Pilih dulu tipe lokasi, lalu pilih lokasi yang stoknya ingin disesuaikan.</div>
+                <div class="helper-box">
+                    Adjustment dipakai untuk <strong>koreksi stok</strong>, bukan untuk barang masuk dari supplier dan bukan untuk perpindahan antar lokasi. Kalau barang datang dari luar, gunakan <strong>Penerimaan Barang</strong>. Kalau barang pindah antar lokasi, gunakan <strong>Transfers</strong>.
                 </div>
 
-                <div class="items-head">
-                    <div>
-                        <div class="items-title">Daftar Item Adjustment</div>
-                        <div class="items-subtitle">Bisa input banyak bahan sekaligus dalam satu submit.</div>
+                <div class="form-wrap">
+                    <form method="POST" action="{{ route('backoffice.stock-balances.adjustment.store') }}">
+                        @csrf
+
+                        <div class="top-fields-grid">
+                            <div class="field">
+                                <label for="location_type">Tipe Lokasi</label>
+                                <select name="location_type" id="location_type" required>
+                                    <option value="">Pilih tipe lokasi</option>
+                                    <option value="warehouse" {{ old('location_type') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
+                                    <option value="outlet" {{ old('location_type') === 'outlet' ? 'selected' : '' }}>Outlet</option>
+                                </select>
+                            </div>
+
+                            <div class="field">
+                                <label for="location_id">Lokasi</label>
+                                <select name="location_id" id="location_id" required>
+                                    <option value="">Pilih lokasi</option>
+
+                                    @foreach($warehouses as $warehouse)
+                                        <option
+                                            value="{{ $warehouse->id }}"
+                                            data-type="warehouse"
+                                            data-label="Warehouse - {{ $warehouse->name }}"
+                                            {{ old('location_type') === 'warehouse' && (string) old('location_id') === (string) $warehouse->id ? 'selected' : '' }}
+                                        >
+                                            Warehouse - {{ $warehouse->name }}
+                                        </option>
+                                    @endforeach
+
+                                    @foreach($outlets as $outlet)
+                                        <option
+                                            value="{{ $outlet->id }}"
+                                            data-type="outlet"
+                                            data-label="Outlet - {{ $outlet->name }}"
+                                            {{ old('location_type') === 'outlet' && (string) old('location_id') === (string) $outlet->id ? 'selected' : '' }}
+                                        >
+                                            Outlet - {{ $outlet->name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <div class="muted">Pilih dulu tipe lokasi, lalu pilih lokasi yang stoknya ingin disesuaikan.</div>
+                            </div>
+                        </div>
+
+                        <div class="items-head">
+                            <div>
+                                <div class="items-title">Daftar Item Adjustment</div>
+                                <div class="items-subtitle">Bisa input banyak bahan sekaligus dalam satu submit.</div>
+                            </div>
+                            <button type="button" class="btn btn-add" id="add-item-btn">Tambah Baris</button>
+                        </div>
+
+                        <div id="items-wrapper"></div>
+
+                        <div class="actions">
+                            <button type="submit" class="btn btn-warning">Simpan Adjustment</button>
+                            <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Batal</a>
+                        </div>
+                    </form>
+
+                    <div class="note">
+                        Sistem akan membandingkan <strong>stok sistem saat ini</strong> dengan <strong>stok aktual</strong> yang kamu isi. Kalau ada selisih, sistem otomatis membuat <strong>stock movement adjustment</strong> sesuai hasil koreksi.
                     </div>
-                    <button type="button" class="btn btn-add" id="add-item-btn">Tambah Baris</button>
                 </div>
-
-                <div id="items-wrapper"></div>
-
-                <div class="actions">
-                    <button type="submit" class="btn btn-warning">Simpan Adjustment</button>
-                    <a href="{{ route('backoffice.stock-balances.index') }}" class="btn">Batal</a>
-                </div>
-            </form>
-
-            <div class="note">
-                Sistem akan membandingkan <strong>stok sistem saat ini</strong> dengan <strong>stok aktual</strong> yang kamu input, lalu otomatis membuat movement adjustment sesuai selisihnya.
             </div>
         </div>
     </div>
@@ -325,7 +580,7 @@
 
                 <div class="field" style="margin-bottom:0;">
                     <label>Stok Sistem Saat Ini</label>
-                    <div class="readonly-box current-stock-box">-</div>
+                    <div class="readonly-box current-stock-box">Rp 0</div>
                 </div>
 
                 <div class="field" style="margin-bottom:0;">
@@ -340,7 +595,7 @@
 
                 <div class="field" style="margin-bottom:0;">
                     <label>Keterangan</label>
-                    <input type="text" class="note-input" placeholder="contoh: Selisih hitung / bahan rusak" required>
+                    <input type="text" class="note-input" placeholder="Contoh: selisih hitung / bahan rusak" required>
                 </div>
 
                 <div class="field" style="margin-bottom:0;">
@@ -377,7 +632,10 @@
 
             function formatNumber(value) {
                 try {
-                    return new Intl.NumberFormat('id-ID').format(Number(value || 0));
+                    return new Intl.NumberFormat('id-ID', {
+                        minimumFractionDigits: 0,
+                        maximumFractionDigits: 2
+                    }).format(Number(value || 0));
                 } catch (e) {
                     return String(value || 0);
                 }
@@ -422,7 +680,7 @@
                         const stock = Object.prototype.hasOwnProperty.call(locationStock, item.value)
                             ? locationStock[item.value]
                             : 0;
-                        opt.textContent = item.name + ' (' + item.unit + ') — Stock saat ini: ' + formatNumber(stock);
+                        opt.textContent = item.name + ' (' + item.unit + ') — Stok saat ini: ' + formatNumber(stock);
                         opt.setAttribute('data-name', item.name);
                         opt.setAttribute('data-unit', item.unit);
                     }
@@ -550,5 +808,4 @@
             }
         })();
     </script>
-</body>
-</html>
+@endsection

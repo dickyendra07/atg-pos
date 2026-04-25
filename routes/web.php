@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/cashier/order-type', [CashierController::class, 'setOrderType'])->name('cashier.set-order-type');
     Route::post('/cashier/shift/start', [CashierShiftController::class, 'start'])->name('cashier.shift.start');
     Route::post('/cashier/shift/end', [CashierShiftController::class, 'end'])->name('cashier.shift.end');
+    Route::get('/cashier/shifts/{shift}/print', [CashierShiftController::class, 'print'])->name('cashier.shift.print');
 
     Route::post('/cashier/cart/add/{variant}', [CartController::class, 'add'])->name('cashier.cart.add');
     Route::post('/cashier/cart/increase/{cartKey}', [CartController::class, 'increase'])->name('cashier.cart.increase');

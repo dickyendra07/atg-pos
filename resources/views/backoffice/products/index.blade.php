@@ -214,7 +214,7 @@
 
         table {
             width: 100%;
-            min-width: 1360px;
+            min-width: 1180px;
             border-collapse: collapse;
             background: white;
             border: 1px solid #e8edf4;
@@ -223,7 +223,7 @@
         }
 
         thead th {
-            text-align: left;
+            text-align: center;
             font-size: 12px;
             color: #6b7280;
             text-transform: uppercase;
@@ -232,14 +232,16 @@
             background: #f8fafc;
             border-bottom: 1px solid #e8edf4;
             white-space: nowrap;
+            vertical-align: middle;
         }
 
         tbody td {
             padding: 16px 14px;
             border-bottom: 1px solid #edf1f6;
-            vertical-align: top;
+            vertical-align: middle;
             font-size: 14px;
             color: #111827;
+            text-align: center;
         }
 
         tbody tr:last-child td {
@@ -252,32 +254,32 @@
             font-size: 15px;
         }
 
-        .code-pill {
-            display: inline-flex;
-            align-items: center;
-            padding: 7px 10px;
-            border-radius: 999px;
-            background: #f3f4f6;
-            color: #374151;
-            font-size: 12px;
-            font-weight: 800;
-        }
-
         .variant-pill {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             background: #eef2ff;
             color: #3730a3;
             padding: 7px 10px;
             border-radius: 999px;
             font-size: 12px;
             font-weight: 800;
-            margin: 2px 6px 2px 0;
+            margin: 3px;
+            white-space: nowrap;
+        }
+
+        .variants-wrap {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
         }
 
         .status-badge {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             padding: 8px 12px;
             border-radius: 999px;
             font-size: 12px;
@@ -297,6 +299,8 @@
 
         .action-stack {
             display: flex;
+            justify-content: center;
+            align-items: center;
             gap: 8px;
             flex-wrap: wrap;
             min-width: 150px;
@@ -335,17 +339,6 @@
             border: 1px solid #fed7aa;
         }
 
-        .note {
-            margin: 0 24px 24px;
-            background: #eef2ff;
-            color: #3730a3;
-            padding: 16px 18px;
-            border-radius: 16px;
-            font-weight: 700;
-            border: 1px solid #dbe3ff;
-            line-height: 1.7;
-        }
-
         @media (max-width: 1280px) {
             .summary-grid {
                 grid-template-columns: 1fr 1fr;
@@ -373,7 +366,6 @@
                 padding-right: 18px;
             }
 
-            .note,
             .empty {
                 margin-left: 18px;
                 margin-right: 18px;
@@ -465,8 +457,6 @@
                                 <th>Brand</th>
                                 <th>Category</th>
                                 <th>Product</th>
-                                <th>Code</th>
-                                <th>Description</th>
                                 <th>Variants</th>
                                 <th>Status</th>
                                 <th>Action</th>
@@ -481,17 +471,15 @@
                                         <div class="product-name">{{ $product->name }}</div>
                                     </td>
                                     <td>
-                                        <span class="code-pill">{{ $product->code }}</span>
-                                    </td>
-                                    <td>{{ $product->description ?? '-' }}</td>
-                                    <td>
-                                        @forelse($product->variants as $variant)
-                                            <span class="variant-pill">
-                                                {{ $variant->name }} - Rp{{ number_format((float) $variant->price, 0, ',', '.') }}
-                                            </span>
-                                        @empty
-                                            -
-                                        @endforelse
+                                        <div class="variants-wrap">
+                                            @forelse($product->variants as $variant)
+                                                <span class="variant-pill">
+                                                    {{ $variant->name }} - Rp {{ number_format((float) $variant->price, 0, ',', '.') }}
+                                                </span>
+                                            @empty
+                                                -
+                                            @endforelse
+                                        </div>
                                     </td>
                                     <td>
                                         @if($product->is_active)
@@ -521,10 +509,6 @@
                     Belum ada product tersimpan.
                 </div>
             @endif
-
-            <div class="note">
-                Products sekarang sudah terhubung dengan sidebar back office dan tetap membawa fitur penting seperti tambah product, import CSV, export CSV, edit, dan hapus dengan pengaman jika masih punya variants.
-            </div>
         </div>
     </div>
 @endsection

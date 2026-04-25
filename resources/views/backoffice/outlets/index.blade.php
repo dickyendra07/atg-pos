@@ -190,17 +190,6 @@
             z-index: 1;
         }
 
-        .helper {
-            margin: 20px 24px 0;
-            background: #eef2ff;
-            color: #3730a3;
-            padding: 15px 16px;
-            border-radius: 16px;
-            font-weight: 700;
-            border: 1px solid #dbe3ff;
-            line-height: 1.75;
-        }
-
         .summary-grid {
             padding: 20px 24px 0;
             display: grid;
@@ -302,7 +291,7 @@
             width: 100%;
             border-collapse: collapse;
             background: white;
-            min-width: 1180px;
+            min-width: 1080px;
             border: 1px solid #e8edf4;
             border-radius: 18px;
             overflow: hidden;
@@ -369,17 +358,6 @@
             border: 1px solid #fed7aa;
         }
 
-        .note {
-            margin: 20px 22px 22px;
-            background: #fff7ed;
-            color: #b45309;
-            padding: 14px 16px;
-            border-radius: 14px;
-            font-weight: 700;
-            border: 1px solid #fed7aa;
-            line-height: 1.7;
-        }
-
         @media (max-width: 1280px) {
             .summary-grid {
                 grid-template-columns: 1fr 1fr;
@@ -405,7 +383,6 @@
             }
 
             .hero-card,
-            .helper,
             .table-card {
                 margin-left: 18px;
                 margin-right: 18px;
@@ -446,12 +423,8 @@
                 <div class="hero-kicker">Outlet Master</div>
                 <h2 class="hero-heading">Kelola lokasi outlet operasional dalam satu halaman yang lebih rapi.</h2>
                 <p class="hero-text">
-                    Data outlet di halaman ini dipakai untuk cashier, stock movement, transfer antar lokasi, dan referensi opening stock import.
+                    Data outlet di halaman ini dipakai untuk cashier, stock movement, transfer antar lokasi, dan referensi operasional outlet.
                 </p>
-            </div>
-
-            <div class="helper">
-                Outlet adalah lokasi operasional yang dipakai untuk transaksi cashier, stock intake outlet, adjustment outlet, dan transfer antar lokasi. Setiap outlet punya <strong>ID lokasi otomatis</strong> yang bisa dipakai sebagai referensi pada CSV import.
             </div>
 
             <div class="summary-grid">
@@ -484,7 +457,7 @@
                 <div class="table-head">
                     <h2 class="table-title">All Outlets</h2>
                     <p class="table-subtitle">
-                        Lihat ID outlet, kode, alamat, phone, dan status aktif dalam satu tabel yang lebih nyaman dibaca.
+                        Lihat nama outlet, kode, alamat, phone, dan status aktif dalam satu tabel yang lebih nyaman dibaca.
                     </p>
                 </div>
 
@@ -493,7 +466,6 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>ID</th>
                                     <th>Nama Outlet</th>
                                     <th>Kode</th>
                                     <th>Alamat</th>
@@ -505,7 +477,6 @@
                             <tbody>
                                 @foreach($outlets as $outlet)
                                     <tr>
-                                        <td>{{ $outlet->id }}</td>
                                         <td>{{ $outlet->name }}</td>
                                         <td><span class="code-text">{{ $outlet->code }}</span></td>
                                         <td>{{ $outlet->address ?? '-' }}</td>
@@ -536,10 +507,6 @@
                 @else
                     <div class="empty">Belum ada outlet tersimpan.</div>
                 @endif
-
-                <div class="note">
-                    Kolom <strong>ID</strong> ditampilkan supaya lebih mudah dipakai sebagai referensi untuk <strong>location_id</strong> di import opening stock. Tombol hapus tetap memakai pengaman konfirmasi dasar agar tidak salah hapus data outlet.
-                </div>
             </div>
         </div>
     </div>
