@@ -356,12 +356,12 @@
 
                                     <div class="field">
                                         <label>Harga Dine In</label>
-                                        <input type="number" name="variants[{{ $index }}][price_dine_in]" min="0" step="0.01" value="{{ $row['price_dine_in'] ?? 0 }}" required>
+                                        <input class="rupiah-input" type="text" name="variants[{{ $index }}][price_dine_in]" value="{{ $row['price_dine_in'] ?? 0 }}" required>
                                     </div>
 
                                     <div class="field">
                                         <label>Harga Delivery</label>
-                                        <input type="number" name="variants[{{ $index }}][price_delivery]" min="0" step="0.01" value="{{ $row['price_delivery'] ?? 0 }}" required>
+                                        <input class="rupiah-input" type="text" name="variants[{{ $index }}][price_delivery]" value="{{ $row['price_delivery'] ?? 0 }}" required>
                                     </div>
 
                                     <div class="field">
@@ -413,12 +413,12 @@
 
                 <div class="field">
                     <label>Harga Dine In</label>
-                    <input type="number" data-name="price_dine_in" min="0" step="0.01" value="0" required>
+                    <input class="rupiah-input" type="text" data-name="price_dine_in" value="0" required>
                 </div>
 
                 <div class="field">
                     <label>Harga Delivery</label>
-                    <input type="number" data-name="price_delivery" min="0" step="0.01" value="0" required>
+                    <input class="rupiah-input" type="text" data-name="price_delivery" value="0" required>
                 </div>
 
                 <div class="field">
@@ -480,4 +480,60 @@
             refreshIndexes();
         })();
     </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const cleanCurrencyNumber = function (value) {
+                let raw = String(value || '').trim();
+
+                // Database decimal value like 12000.00 / 12000,00 should become 12000, not 1200000.
+                raw = raw.replace(/[.,]00$/, '');
+
+                return raw.replace(/[^\d]/g, '');
+            };
+
+            const formatRupiah = function (value) {
+                const numeric = cleanCurrencyNumber(value);
+
+                if (!numeric) {
+                    return '';
+                }
+
+                return 'Rp. ' + Number(numeric).toLocaleString('id-ID');
+            };
+
+            const normalizeNumber = function (value) {
+                return cleanCurrencyNumber(value);
+            };
+
+            document.querySelectorAll('.rupiah-input').forEach(function (input) {
+                input.setAttribute('inputmode', 'numeric');
+                input.setAttribute('autocomplete', 'off');
+
+                input.value = formatRupiah(input.value);
+
+                input.addEventListener('input', function () {
+                    const cursorEnd = input.selectionStart === input.value.length;
+                    input.value = formatRupiah(input.value);
+
+                    if (cursorEnd) {
+                        input.setSelectionRange(input.value.length, input.value.length);
+                    }
+                });
+
+                input.addEventListener('blur', function () {
+                    input.value = formatRupiah(input.value);
+                });
+            });
+
+            document.querySelectorAll('form').forEach(function (form) {
+                form.addEventListener('submit', function () {
+                    form.querySelectorAll('.rupiah-input').forEach(function (input) {
+                        input.value = normalizeNumber(input.value);
+                    });
+                });
+            });
+        });
+    </script>
+
 @endsection
