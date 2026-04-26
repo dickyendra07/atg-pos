@@ -201,6 +201,19 @@
             <span>Transactions</span>
         </a>
 
+        <a href="{{ route('backoffice.promos.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.promos.*') ? 'active' : '' }}">
+            <span class="sidebar-nav-icon violet">
+                <svg viewBox="0 0 24 24">
+                    <path d="M4 7h16"></path>
+                    <path d="M7 7l2-3h6l2 3"></path>
+                    <rect x="4" y="7" width="16" height="13" rx="3"></rect>
+                    <path d="M8 13h8"></path>
+                    <path d="M8 16h5"></path>
+                </svg>
+            </span>
+            <span>Promos</span>
+        </a>
+
         <a href="{{ route('backoffice.discounts.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.discounts.*') ? 'active' : '' }}">
             <span class="sidebar-nav-icon orange">
                 <svg viewBox="0 0 24 24">

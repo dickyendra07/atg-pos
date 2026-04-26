@@ -9,6 +9,7 @@ use App\Http\Controllers\Backoffice\IngredientProductionRecipeController;
 use App\Http\Controllers\Backoffice\IngredientViewController;
 use App\Http\Controllers\Backoffice\OutletViewController;
 use App\Http\Controllers\Backoffice\ProductVariantViewController;
+use App\Http\Controllers\Backoffice\PromoViewController;
 use App\Http\Controllers\Backoffice\ProductViewController;
 use App\Http\Controllers\Backoffice\RecipeViewController;
 use App\Http\Controllers\Backoffice\StockBalanceViewController;
@@ -166,6 +167,13 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/backoffice/shifts', [CashierShiftViewController::class, 'index'])->name('backoffice.shifts.index');
     Route::get('/backoffice/shifts/{shift}', [CashierShiftViewController::class, 'show'])->name('backoffice.shifts.show');
+
+    Route::get('/backoffice/promos', [PromoViewController::class, 'index'])->name('backoffice.promos.index');
+    Route::get('/backoffice/promos/create', [PromoViewController::class, 'create'])->name('backoffice.promos.create');
+    Route::post('/backoffice/promos', [PromoViewController::class, 'store'])->name('backoffice.promos.store');
+    Route::get('/backoffice/promos/{promo}/edit', [PromoViewController::class, 'edit'])->name('backoffice.promos.edit');
+    Route::put('/backoffice/promos/{promo}', [PromoViewController::class, 'update'])->name('backoffice.promos.update');
+    Route::delete('/backoffice/promos/{promo}', [PromoViewController::class, 'destroy'])->name('backoffice.promos.destroy');
 
     Route::get('/backoffice/discounts', [DiscountViewController::class, 'index'])->name('backoffice.discounts.index');
     Route::get('/backoffice/discounts/create', [DiscountViewController::class, 'create'])->name('backoffice.discounts.create');
