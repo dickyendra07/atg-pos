@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashierShift;
+use App\Models\Discount;
 use App\Models\Member;
 use App\Models\ProductVariant;
+use App\Models\Promo;
 use App\Models\SalesTransaction;
 use App\Services\StockDeductionService;
 use Illuminate\Http\Request;
@@ -356,6 +358,136 @@ class CartController extends Controller
             ->with('success', 'Keranjang berhasil dikosongkan.');
     }
 
+
+    protected function calculateDiscountAmount(array $cart, float $subtotal, $user, ?int $discountId, ?int $promoId): array
+    {
+        $discountAmount = 0;
+        $discountLabel = null;
+        $promoLabel = null;
+
+        if ($discountId) {
+            $discount = Discount::query()
+                ->where('is_active', true)
+                ->where(function ($query) use ($user) {
+                    $query->whereNull('outlet_id');
+
+                    if (! empty($user->outlet_id)) {
+                        $query->orWhere('outlet_id', $user->outlet_id);
+                    }
+                })
+                ->find($discountId);
+
+            if ($discount) {
+                if ($discount->type === 'percent') {
+                    $discountAmount += $subtotal * ((float) $discount->value / 100);
+                } else {
+                    $discountAmount += (float) $discount->value;
+                }
+
+                $discountLabel = $discount->name;
+            }
+        }
+
+        if ($promoId) {
+            $promo = Promo::with(['requirements', 'rewards'])
+                ->where('is_active', true)
+                ->where('status', 'active')
+                ->where(function ($query) use ($user) {
+                    $query->whereNull('outlet_id');
+
+                    if (! empty($user->outlet_id)) {
+                        $query->orWhere('outlet_id', $user->outlet_id);
+                    }
+                })
+                ->find($promoId);
+
+            if ($promo && $this->promoIsCurrentlyActive($promo) && $this->cartMeetsPromoRequirements($cart, $promo)) {
+                foreach ($promo->rewards as $reward) {
+                    if ($reward->reward_type === 'discount_percent') {
+                        $discountAmount += $subtotal * ((float) $reward->reward_value / 100);
+                    }
+
+                    if ($reward->reward_type === 'discount_amount') {
+                        $discountAmount += (float) $reward->reward_value;
+                    }
+
+                    if ($reward->reward_type === 'free_item' && ! empty($reward->product_variant_id)) {
+                        $matchingCartItem = collect($cart)->first(function ($item) use ($reward) {
+                            return (int) ($item['variant_id'] ?? 0) === (int) $reward->product_variant_id;
+                        });
+
+                        if ($matchingCartItem) {
+                            $freeQty = min((float) $reward->qty, (float) ($matchingCartItem['qty'] ?? 0));
+                            $discountAmount += $freeQty * (float) ($matchingCartItem['price'] ?? 0);
+                        }
+                    }
+                }
+
+                $promoLabel = $promo->name;
+            }
+        }
+
+        $discountAmount = min($subtotal, max(0, $discountAmount));
+
+        return [
+            'discount_amount' => $discountAmount,
+            'discount_label' => $discountLabel,
+            'promo_label' => $promoLabel,
+        ];
+    }
+
+    protected function promoIsCurrentlyActive(Promo $promo): bool
+    {
+        $today = now()->toDateString();
+        $currentTime = now()->format('H:i:s');
+        $currentDay = strtolower(now()->format('l'));
+
+        if (! empty($promo->start_date) && $promo->start_date->toDateString() > $today) {
+            return false;
+        }
+
+        if (! empty($promo->end_date) && $promo->end_date->toDateString() < $today) {
+            return false;
+        }
+
+        if (! empty($promo->start_time) && $promo->start_time > $currentTime) {
+            return false;
+        }
+
+        if (! empty($promo->end_time) && $promo->end_time < $currentTime) {
+            return false;
+        }
+
+        $activeDays = $promo->active_days ?? [];
+
+        if (! empty($activeDays) && ! in_array($currentDay, $activeDays, true)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    protected function cartMeetsPromoRequirements(array $cart, Promo $promo): bool
+    {
+        if ($promo->requirements->isEmpty()) {
+            return false;
+        }
+
+        foreach ($promo->requirements as $requirement) {
+            $cartQty = collect($cart)
+                ->where('variant_id', (int) $requirement->product_variant_id)
+                ->sum(function ($item) {
+                    return (float) ($item['qty'] ?? 0);
+                });
+
+            if ($cartQty < (float) $requirement->qty) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function checkout(Request $request, StockDeductionService $stockDeductionService)
     {
         $user = $this->authorizeCashierAccess();
@@ -372,6 +504,8 @@ class CartController extends Controller
             'payment_method' => 'required|in:cash,qris,transfer,debit,credit',
             'amount_paid' => 'required|numeric|min:0',
             'order_type' => 'required|in:dine_in,delivery',
+            'discount_id' => 'nullable|exists:discounts,id',
+            'promo_id' => 'nullable|exists:promos,id',
         ]);
 
         $cart = session('cashier_cart', []);
@@ -389,20 +523,31 @@ class CartController extends Controller
             return (float) ($item['line_total'] ?? 0);
         });
 
+        $discountResult = $this->calculateDiscountAmount(
+            cart: $cart,
+            subtotal: (float) $subtotal,
+            user: $user,
+            discountId: $request->filled('discount_id') ? (int) $request->input('discount_id') : null,
+            promoId: $request->filled('promo_id') ? (int) $request->input('promo_id') : null,
+        );
+
+        $discountAmount = (float) $discountResult['discount_amount'];
+        $grandTotal = max(0, (float) $subtotal - $discountAmount);
+
         $paymentMethod = strtolower((string) $request->input('payment_method'));
         $amountPaid = (float) $request->input('amount_paid');
 
-        if ($paymentMethod === 'cash' && $amountPaid < $subtotal) {
+        if ($paymentMethod === 'cash' && $amountPaid < $grandTotal) {
             return redirect()
                 ->route('cashier.index')
                 ->with('error', 'Nominal cash kurang dari total transaksi.');
         }
 
         if (in_array($paymentMethod, ['qris', 'transfer', 'debit', 'credit'], true)) {
-            $amountPaid = $subtotal;
+            $amountPaid = $grandTotal;
         }
 
-        $changeAmount = max(0, $amountPaid - $subtotal);
+        $changeAmount = max(0, $amountPaid - $grandTotal);
         $earnedPoints = 0;
 
         try {
@@ -422,6 +567,8 @@ class CartController extends Controller
                 $activeShift,
                 $cart,
                 $subtotal,
+                $discountAmount,
+                $grandTotal,
                 $paymentMethod,
                 $amountPaid,
                 $changeAmount,
@@ -435,9 +582,9 @@ class CartController extends Controller
                     'cashier_shift_id' => $activeShift->id,
                     'member_id' => $memberSession['id'] ?? null,
                     'subtotal' => $subtotal,
-                    'discount_amount' => 0,
+                    'discount_amount' => $discountAmount,
                     'tax_amount' => 0,
-                    'grand_total' => $subtotal,
+                    'grand_total' => $grandTotal,
                     'payment_method' => $paymentMethod,
                     'payment_status' => 'paid',
                     'amount_paid' => $amountPaid,
@@ -472,7 +619,7 @@ class CartController extends Controller
                     $member = Member::find($memberSession['id']);
 
                     if ($member && $member->is_active) {
-                        $earnedPoints = $member->addPointsFromAmount((float) $subtotal);
+                        $earnedPoints = $member->addPointsFromAmount((float) $grandTotal);
                     }
                 }
 

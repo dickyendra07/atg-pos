@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashierShift;
+use App\Models\Discount;
 use App\Models\Product;
+use App\Models\Promo;
 use App\Models\SalesTransaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -101,6 +103,67 @@ class CashierController extends Controller
             ->get();
     }
 
+    protected function getAvailableDiscounts($user)
+    {
+        return Discount::with('outlet')
+            ->where('is_active', true)
+            ->where(function ($query) use ($user) {
+                $query->whereNull('outlet_id');
+
+                if (! empty($user->outlet_id)) {
+                    $query->orWhere('outlet_id', $user->outlet_id);
+                }
+            })
+            ->orderBy('name')
+            ->get();
+    }
+
+    protected function getAvailablePromos($user)
+    {
+        $today = now()->toDateString();
+        $currentTime = now()->format('H:i:s');
+        $currentDay = strtolower(now()->format('l'));
+
+        return Promo::with([
+                'outlet',
+                'requirements.variant.product',
+                'rewards.variant.product',
+            ])
+            ->where('is_active', true)
+            ->where('status', 'active')
+            ->where(function ($query) use ($user) {
+                $query->whereNull('outlet_id');
+
+                if (! empty($user->outlet_id)) {
+                    $query->orWhere('outlet_id', $user->outlet_id);
+                }
+            })
+            ->where(function ($query) use ($today) {
+                $query->whereNull('start_date')
+                    ->orWhereDate('start_date', '<=', $today);
+            })
+            ->where(function ($query) use ($today) {
+                $query->whereNull('end_date')
+                    ->orWhereDate('end_date', '>=', $today);
+            })
+            ->where(function ($query) use ($currentTime) {
+                $query->whereNull('start_time')
+                    ->orWhere('start_time', '<=', $currentTime);
+            })
+            ->where(function ($query) use ($currentTime) {
+                $query->whereNull('end_time')
+                    ->orWhere('end_time', '>=', $currentTime);
+            })
+            ->get()
+            ->filter(function ($promo) use ($currentDay) {
+                $activeDays = $promo->active_days ?? [];
+
+                return empty($activeDays) || in_array($currentDay, $activeDays, true);
+            })
+            ->sortBy('name')
+            ->values();
+    }
+
     public function __invoke()
     {
         $user = $this->authorizeCashierAccess();
@@ -127,6 +190,8 @@ class CashierController extends Controller
         $activeShift = $this->getActiveShift($user);
         $shiftSummary = $this->buildShiftSummary($activeShift);
         $recentReceipts = $this->getRecentReceipts($user);
+        $discountOptions = $this->getAvailableDiscounts($user);
+        $promoOptions = $this->getAvailablePromos($user);
 
         return view('cashier.index', [
             'user' => $user,
@@ -139,6 +204,8 @@ class CashierController extends Controller
             'activeShift' => $activeShift,
             'shiftSummary' => $shiftSummary,
             'recentReceipts' => $recentReceipts,
+            'discountOptions' => $discountOptions,
+            'promoOptions' => $promoOptions,
         ]);
     }
 

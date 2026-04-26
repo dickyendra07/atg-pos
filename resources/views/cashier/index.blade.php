@@ -1605,6 +1605,118 @@
                 padding-right: 16px;
             }
         }
+
+        .promo-discount-box {
+            border: 1px solid #e8edf4;
+            background: linear-gradient(180deg, #ffffff 0%, #fffaf7 100%);
+            border-radius: 22px;
+            padding: 16px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+            display: grid;
+            gap: 14px;
+        }
+
+        .promo-discount-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .promo-discount-title {
+            font-size: 16px;
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 4px;
+        }
+
+        .promo-discount-subtitle {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .promo-discount-pill {
+            flex: 0 0 auto;
+            padding: 7px 10px;
+            border-radius: 999px;
+            background: #fff1ea;
+            color: #c9552a;
+            border: 1px solid #f4ddd0;
+            font-size: 11px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .promo-discount-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .promo-discount-box .field {
+            margin: 0;
+        }
+
+        .promo-discount-box select {
+            background-color: #ffffff;
+            border-color: #e5e7eb;
+            font-weight: 800;
+        }
+
+        .promo-discount-box select:focus {
+            border-color: rgba(232,106,58,0.75);
+            box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
+        }
+
+        .promo-total-box {
+            border-radius: 18px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            overflow: hidden;
+        }
+
+        .promo-total-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 14px;
+            border-bottom: 1px solid #e8edf4;
+        }
+
+        .promo-total-row:last-child {
+            border-bottom: 0;
+        }
+
+        .promo-total-label {
+            font-size: 12px;
+            font-weight: 900;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .promo-total-value {
+            font-size: 15px;
+            font-weight: 900;
+            color: #111827;
+            white-space: nowrap;
+        }
+
+        .promo-total-value.discount {
+            color: #dc2626;
+        }
+
+        .promo-total-row.grand {
+            background: #111827;
+        }
+
+        .promo-total-row.grand .promo-total-label,
+        .promo-total-row.grand .promo-total-value {
+            color: #ffffff;
+        }
+
     </style>
 </head>
 <body>
@@ -1664,6 +1776,8 @@
 
     $oldPaymentMethod = old('payment_method', 'cash');
     $oldAmountPaid = old('amount_paid', (float) $subtotal);
+    $oldDiscountId = old('discount_id');
+    $oldPromoId = old('promo_id');
 @endphp
 
 <div class="page">
@@ -2185,6 +2299,87 @@
 
                                         <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
                                         <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
+
+                                        <div class="promo-discount-box">
+                                            <div class="promo-discount-head">
+                                                <div>
+                                                    <div class="promo-discount-title">Discount & Promo</div>
+                                                    <div class="promo-discount-subtitle">
+                                                        Pilih potongan manual atau promo aktif dari Backoffice sebelum checkout.
+                                                    </div>
+                                                </div>
+                                                <div class="promo-discount-pill">Optional</div>
+                                            </div>
+
+                                            <div class="promo-discount-grid">
+                                                <div class="field">
+                                                    <label for="discount_id">Discount</label>
+                                                    <select name="discount_id" id="discount_id">
+                                                        <option value="" data-type="" data-value="0">Tidak pakai discount</option>
+                                                        @foreach($discountOptions ?? [] as $discount)
+                                                            <option
+                                                                value="{{ $discount->id }}"
+                                                                data-type="{{ $discount->type }}"
+                                                                data-value="{{ (float) $discount->value }}"
+                                                                @selected((string) $oldDiscountId === (string) $discount->id)
+                                                            >
+                                                                {{ $discount->name }}
+                                                                @if($discount->type === 'percent')
+                                                                    - {{ number_format((float) $discount->value, 0, ',', '.') }}%
+                                                                @else
+                                                                    - Rp {{ number_format((float) $discount->value, 0, ',', '.') }}
+                                                                @endif
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+
+                                                <div class="field">
+                                                    <label for="promo_id">Promo</label>
+                                                    <select name="promo_id" id="promo_id">
+                                                        <option value="" data-promo='{}'>Tidak pakai promo</option>
+                                                        @foreach($promoOptions ?? [] as $promo)
+                                                            @php
+                                                                $requirementsPayload = $promo->requirements->map(function ($requirement) {
+                                                                    return [
+                                                                        'variant_id' => (int) $requirement->product_variant_id,
+                                                                        'qty' => (float) $requirement->qty,
+                                                                    ];
+                                                                })->values();
+
+                                                                $rewardsPayload = $promo->rewards->map(function ($reward) {
+                                                                    return [
+                                                                        'type' => $reward->reward_type,
+                                                                        'value' => (float) $reward->reward_value,
+                                                                        'variant_id' => $reward->product_variant_id ? (int) $reward->product_variant_id : null,
+                                                                        'qty' => (float) $reward->qty,
+                                                                    ];
+                                                                })->values();
+                                                            @endphp
+                                                            <option
+                                                                value="{{ $promo->id }}"
+                                                                data-promo='@json(["requirements" => $requirementsPayload, "rewards" => $rewardsPayload])'
+                                                                @selected((string) $oldPromoId === (string) $promo->id)
+                                                            >
+                                                                {{ $promo->name }}
+                                                            </option>
+                                                        @endforeach
+                                                    </select>
+                                                </div>
+                                            </div>
+
+                                            <div class="promo-total-box">
+                                                <div class="promo-total-row">
+                                                    <div class="promo-total-label">Potongan</div>
+                                                    <div class="promo-total-value discount" id="cart-discount-bottom">Rp 0</div>
+                                                </div>
+
+                                                <div class="promo-total-row grand">
+                                                    <div class="promo-total-label">Grand Total</div>
+                                                    <div class="promo-total-value" id="cart-grand-total-bottom">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
 
                                         <div class="field">
                                             <label for="payment_method">Payment Method</label>
