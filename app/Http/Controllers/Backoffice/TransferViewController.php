@@ -276,9 +276,37 @@ class TransferViewController extends Controller
             'cancelled' => $transfers->where('status', 'cancelled')->count(),
         ];
 
+        $transferGroups = $transfers
+            ->groupBy(function ($transfer) {
+                $transferNumber = (string) ($transfer->transfer_number ?? '');
+
+                return preg_replace('/-\\d+$/', '', $transferNumber) ?: $transferNumber;
+            })
+            ->map(function ($items, $groupNumber) {
+                $first = $items->first();
+                $statuses = $items->pluck('status')->filter()->unique()->values();
+
+                return [
+                    'group_number' => $groupNumber,
+                    'date' => $first?->created_at,
+                    'from_location_type' => $first?->from_location_type,
+                    'from_location_name' => $first?->from_location_name,
+                    'to_location_type' => $first?->to_location_type,
+                    'to_location_name' => $first?->to_location_name,
+                    'sender_name' => $first?->sender_name,
+                    'transferred_by' => $first?->transferredBy?->name,
+                    'status' => $statuses->count() === 1 ? $statuses->first() : 'mixed',
+                    'item_count' => $items->count(),
+                    'total_qty' => (float) $items->sum('qty'),
+                    'items' => $items->values(),
+                ];
+            })
+            ->values();
+
         return view('backoffice.transfers.index', [
             'user' => $user,
             'transfers' => $transfers,
+            'transferGroups' => $transferGroups,
             'summary' => $summary,
             'filters' => [
                 'from_location_type' => $request->from_location_type,

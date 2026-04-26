@@ -486,6 +486,63 @@
             border: 1px solid #fed7aa;
         }
 
+
+        .transfer-group-row {
+            cursor: pointer;
+        }
+
+        .transfer-group-row:hover td {
+            background: #fbfcff;
+        }
+
+        .group-detail-row {
+            display: none;
+        }
+
+        .group-detail-row.open {
+            display: table-row;
+        }
+
+        .group-detail-cell {
+            background: #fbfcfe;
+            padding: 0 !important;
+        }
+
+        .group-detail-box {
+            margin: 0;
+            padding: 18px;
+            border-top: 1px solid #e8edf4;
+        }
+
+        .group-detail-title {
+            margin: 0 0 12px;
+            font-size: 14px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .detail-table {
+            min-width: 920px;
+            border: 1px solid #e8edf4;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .detail-table th,
+        .detail-table td {
+            font-size: 13px;
+        }
+
+        .btn-toggle-detail {
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+        }
+
+        .badge-mixed {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
+        }
+
         .bottom-bar {
             margin: 20px 24px 24px;
             padding: 15px 16px;
@@ -542,7 +599,64 @@
             .section-card,
             .alert,
             .summary-grid,
-            .bottom-bar {
+    
+        .transfer-group-row {
+            cursor: pointer;
+        }
+
+        .transfer-group-row:hover td {
+            background: #fbfcff;
+        }
+
+        .group-detail-row {
+            display: none;
+        }
+
+        .group-detail-row.open {
+            display: table-row;
+        }
+
+        .group-detail-cell {
+            background: #fbfcfe;
+            padding: 0 !important;
+        }
+
+        .group-detail-box {
+            margin: 0;
+            padding: 18px;
+            border-top: 1px solid #e8edf4;
+        }
+
+        .group-detail-title {
+            margin: 0 0 12px;
+            font-size: 14px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .detail-table {
+            min-width: 920px;
+            border: 1px solid #e8edf4;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .detail-table th,
+        .detail-table td {
+            font-size: 13px;
+        }
+
+        .btn-toggle-detail {
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+        }
+
+        .badge-mixed {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
+        }
+
+        .bottom-bar {
                 margin-left: 18px;
                 margin-right: 18px;
             }
@@ -664,113 +778,155 @@
 
             <div class="section-card">
                 <div class="section-head">
-                    <h2 class="section-title">Transfer Items</h2>
+                    <h2 class="section-title">Transfer List</h2>
                     <p class="section-subtitle">
-                        Semua item transfer yang cocok dengan filter aktif, lengkap dengan lokasi asal, tujuan, status, pengirim, penerima, dan aksi status per item.
+                        Transfer ditampilkan per nomor transaksi. Klik detail untuk melihat ingredient yang dikirim dalam transfer tersebut.
                     </p>
                 </div>
 
-                @if($transfers->count())
+                @if(($transferGroups ?? collect())->count())
                     <div class="table-wrap">
                         <table>
                             <thead>
                                 <tr>
                                     <th>Transfer No</th>
                                     <th>Date</th>
-                                    <th>Dari Tipe</th>
-                                    <th>Dari Lokasi</th>
-                                    <th>Ke Tipe</th>
-                                    <th>Ke Lokasi</th>
-                                    <th>Category</th>
-                                    <th>Ingredient</th>
-                                    <th>Qty</th>
+                                    <th>Dari</th>
+                                    <th>Ke</th>
+                                    <th>Total Item</th>
+                                    <th>Total Qty</th>
                                     <th>Status</th>
                                     <th>Dikirim Oleh</th>
-                                    <th>Diterima Oleh</th>
-                                    <th>Tanggal Dikirim</th>
-                                    <th>Tanggal Diterima</th>
                                     <th>User Input</th>
-                                    <th>Note</th>
                                     <th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($transfers as $transfer)
+                                @foreach($transferGroups as $groupIndex => $group)
                                     @php
-                                        $badgeClass = match($transfer->status) {
+                                        $groupStatus = $group['status'] ?? '-';
+                                        $badgeClass = match($groupStatus) {
                                             'pending' => 'badge-pending',
                                             'received' => 'badge-received',
                                             'cancelled' => 'badge-cancelled',
+                                            'mixed' => 'badge-mixed',
                                             default => 'badge-in-transit',
                                         };
+
+                                        $detailId = 'transfer-detail-' . $groupIndex;
                                     @endphp
-                                    <tr>
-                                        <td class="number">{{ $transfer->transfer_number ?? '-' }}</td>
-                                        <td>{{ $transfer->created_at?->format('Y-m-d H:i:s') }}</td>
-                                        <td>{{ $transfer->from_location_type ?? '-' }}</td>
-                                        <td>{{ $transfer->from_location_name ?? '-' }}</td>
-                                        <td>{{ $transfer->to_location_type ?? '-' }}</td>
-                                        <td>{{ $transfer->to_location_name ?? '-' }}</td>
-                                        <td>{{ $transfer->ingredient->category->name ?? '-' }}</td>
-                                        <td>{{ $transfer->ingredient->name ?? '-' }}</td>
-                                        <td class="qty">{{ number_format((float) $transfer->qty, 0, ',', '.') }}</td>
+
+                                    <tr class="transfer-group-row" data-transfer-toggle="{{ $detailId }}">
+                                        <td class="number">{{ $group['group_number'] ?? '-' }}</td>
+                                        <td>{{ $group['date'] ? $group['date']->format('Y-m-d H:i:s') : '-' }}</td>
                                         <td>
-                                            <span class="badge {{ $badgeClass }}">{{ strtoupper($transfer->status ?? '-') }}</span>
-                                            <div class="status-note">
-                                                @if($transfer->status === 'in_transit')
-                                                    Item transfer ini sedang dalam proses pengiriman.
-                                                @elseif($transfer->status === 'received')
-                                                    Item transfer ini sudah diterima di lokasi tujuan.
-                                                @elseif($transfer->status === 'cancelled')
-                                                    Item transfer ini dibatalkan dan stoknya sudah di-rollback.
-                                                @elseif($transfer->status === 'pending')
-                                                    Item transfer ini belum dikirim.
-                                                @else
-                                                    Status item transfer aktif.
-                                                @endif
-                                            </div>
+                                            <strong>{{ $group['from_location_name'] ?? '-' }}</strong><br>
+                                            <span style="color:#6b7280; font-size:12px;">{{ $group['from_location_type'] ?? '-' }}</span>
                                         </td>
-                                        <td>{{ $transfer->sender_name ?? '-' }}</td>
-                                        <td>{{ $transfer->receiver_name ?? '-' }}</td>
-                                        <td>{{ $transfer->sent_at ? $transfer->sent_at->format('Y-m-d H:i') : '-' }}</td>
-                                        <td>{{ $transfer->received_at ? $transfer->received_at->format('Y-m-d H:i') : '-' }}</td>
-                                        <td>{{ $transfer->transferredBy->name ?? '-' }}</td>
-                                        <td>{{ $transfer->note ?? '-' }}</td>
                                         <td>
-                                            <div class="action-stack">
-                                                @if($transfer->status === 'pending')
-                                                    <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Ubah item transfer ini menjadi in transit?');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-blue btn-small">Kirimkan Item</button>
-                                                    </form>
+                                            <strong>{{ $group['to_location_name'] ?? '-' }}</strong><br>
+                                            <span style="color:#6b7280; font-size:12px;">{{ $group['to_location_type'] ?? '-' }}</span>
+                                        </td>
+                                        <td>{{ number_format((int) ($group['item_count'] ?? 0), 0, ',', '.') }} item</td>
+                                        <td class="qty">{{ number_format((float) ($group['total_qty'] ?? 0), 0, ',', '.') }}</td>
+                                        <td>
+                                            <span class="badge {{ $badgeClass }}">{{ strtoupper($groupStatus) }}</span>
+                                        </td>
+                                        <td>{{ $group['sender_name'] ?? '-' }}</td>
+                                        <td>{{ $group['transferred_by'] ?? '-' }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-small btn-toggle-detail" data-transfer-toggle="{{ $detailId }}">
+                                                Detail
+                                            </button>
+                                        </td>
+                                    </tr>
 
-                                                    <form method="POST" action="{{ route('backoffice.transfers.mark-cancelled', $transfer) }}" class="inline-form" onsubmit="return confirm('Batalkan item transfer ini dan rollback stok?');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-danger btn-small">Batalkan Item</button>
-                                                    </form>
-                                                @elseif($transfer->status === 'in_transit')
-                                                    <form method="POST" action="{{ route('backoffice.transfers.mark-received', $transfer) }}" class="inline-form" onsubmit="return confirm('Tandai item transfer ini sebagai diterima?');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-blue btn-small">Tandai Diterima</button>
-                                                    </form>
+                                    <tr id="{{ $detailId }}" class="group-detail-row">
+                                        <td colspan="10" class="group-detail-cell">
+                                            <div class="group-detail-box">
+                                                <h3 class="group-detail-title">Detail Item Transfer</h3>
 
-                                                    <form method="POST" action="{{ route('backoffice.transfers.mark-cancelled', $transfer) }}" class="inline-form" onsubmit="return confirm('Batalkan item transfer ini dan rollback stok?');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-danger btn-small">Batalkan Item</button>
-                                                    </form>
-                                                @elseif($transfer->status === 'received')
-                                                    <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Kembalikan item transfer ini ke in transit?');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-warning btn-small">Kembalikan ke In Transit</button>
-                                                    </form>
-                                                @elseif($transfer->status === 'cancelled')
-                                                    <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Aktifkan lagi item transfer ini ke status in transit? Stock akan dipindahkan lagi.');">
-                                                        @csrf
-                                                        <button type="submit" class="btn btn-secondary btn-small">Aktifkan Lagi</button>
-                                                    </form>
-                                                @else
-                                                    <span style="color:#6b7280; font-size:12px; font-weight:700;">Tidak ada aksi</span>
-                                                @endif
+                                                <div class="table-wrap" style="padding:0;">
+                                                    <table class="detail-table">
+                                                        <thead>
+                                                            <tr>
+                                                                <th>Transfer Item No</th>
+                                                                <th>Category</th>
+                                                                <th>Ingredient</th>
+                                                                <th>Qty</th>
+                                                                <th>Status</th>
+                                                                <th>Diterima Oleh</th>
+                                                                <th>Tanggal Dikirim</th>
+                                                                <th>Tanggal Diterima</th>
+                                                                <th>Note</th>
+                                                                <th>Aksi Item</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            @foreach($group['items'] as $transfer)
+                                                                @php
+                                                                    $itemBadgeClass = match($transfer->status) {
+                                                                        'pending' => 'badge-pending',
+                                                                        'received' => 'badge-received',
+                                                                        'cancelled' => 'badge-cancelled',
+                                                                        default => 'badge-in-transit',
+                                                                    };
+                                                                @endphp
+
+                                                                <tr>
+                                                                    <td class="number">{{ $transfer->transfer_number ?? '-' }}</td>
+                                                                    <td>{{ $transfer->ingredient->category->name ?? '-' }}</td>
+                                                                    <td>{{ $transfer->ingredient->name ?? '-' }}</td>
+                                                                    <td class="qty">{{ number_format((float) $transfer->qty, 0, ',', '.') }}</td>
+                                                                    <td>
+                                                                        <span class="badge {{ $itemBadgeClass }}">{{ strtoupper($transfer->status ?? '-') }}</span>
+                                                                    </td>
+                                                                    <td>{{ $transfer->receiver_name ?? '-' }}</td>
+                                                                    <td>{{ $transfer->sent_at ? $transfer->sent_at->format('Y-m-d H:i') : '-' }}</td>
+                                                                    <td>{{ $transfer->received_at ? $transfer->received_at->format('Y-m-d H:i') : '-' }}</td>
+                                                                    <td>{{ $transfer->note ?? '-' }}</td>
+                                                                    <td>
+                                                                        <div class="action-stack">
+                                                                            @if($transfer->status === 'pending')
+                                                                                <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Ubah item transfer ini menjadi in transit?');">
+                                                                                    @csrf
+                                                                                    <button type="submit" class="btn btn-blue btn-small">Kirimkan Item</button>
+                                                                                </form>
+
+                                                                                <form method="POST" action="{{ route('backoffice.transfers.mark-cancelled', $transfer) }}" class="inline-form" onsubmit="return confirm('Batalkan item transfer ini dan rollback stok?');">
+                                                                                    @csrf
+                                                                                    <button type="submit" class="btn btn-danger btn-small">Batalkan Item</button>
+                                                                                </form>
+                                                                            @elseif($transfer->status === 'in_transit')
+                                                                                <form method="POST" action="{{ route('backoffice.transfers.mark-received', $transfer) }}" class="inline-form" onsubmit="return confirm('Tandai item transfer ini sebagai diterima?');">
+                                                                                    @csrf
+                                                                                    <button type="submit" class="btn btn-blue btn-small">Tandai Diterima</button>
+                                                                                </form>
+
+                                                                                <form method="POST" action="{{ route('backoffice.transfers.mark-cancelled', $transfer) }}" class="inline-form" onsubmit="return confirm('Batalkan item transfer ini dan rollback stok?');">
+                                                                                    @csrf
+                                                                                    <button type="submit" class="btn btn-danger btn-small">Batalkan Item</button>
+                                                                                </form>
+                                                                            @elseif($transfer->status === 'received')
+                                                                                <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Kembalikan item transfer ini ke in transit?');">
+                                                                                    @csrf
+                                                                                    <button type="submit" class="btn btn-warning btn-small">Kembalikan ke In Transit</button>
+                                                                                </form>
+                                                                            @elseif($transfer->status === 'cancelled')
+                                                                                <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Aktifkan lagi item transfer ini ke status in transit? Stock akan dipindahkan lagi.');">
+                                                                                    @csrf
+                                                                                    <button type="submit" class="btn btn-secondary btn-small">Aktifkan Lagi</button>
+                                                                                </form>
+                                                                            @else
+                                                                                <span style="color:#6b7280; font-size:12px; font-weight:700;">Tidak ada aksi</span>
+                                                                            @endif
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            @endforeach
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             </div>
                                         </td>
                                     </tr>
@@ -785,9 +941,27 @@
                 @endif
             </div>
 
-            <div class="bottom-bar">
-                Transfer sekarang dibaca per item. Jadi kalau ada 1 bahan yang salah, kamu bisa batalkan item itu saja tanpa membatalkan semua bahan lain. Saat item dibatalkan, stok item itu juga otomatis di-rollback.
-            </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('click', function (event) {
+            const trigger = event.target.closest('[data-transfer-toggle]');
+
+            if (!trigger) {
+                return;
+            }
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            const targetId = trigger.getAttribute('data-transfer-toggle');
+            const target = document.getElementById(targetId);
+
+            if (target) {
+                target.classList.toggle('open');
+            }
+        });
+    </script>
+
 @endsection

@@ -1,10 +1,11 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Transfer - Back Office ATG POS</title>
-    <style>
+@extends('backoffice.layouts.app')
+
+@php
+    $pageTitle = 'Create Transfer - Back Office ATG POS';
+@endphp
+
+@section('content')
+<style>
         body {
             margin: 0;
             font-family: Arial, sans-serif;
@@ -205,9 +206,17 @@
             }
         }
     </style>
-</head>
-<body>
-    <div class="wrap">
+
+    <style>
+        .wrap {
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+    </style>
+
+
+<div class="wrap">
         <div class="title">Buat Transfer</div>
         <div class="subtitle">
             Transfer barang dari warehouse atau outlet ke lokasi lain. Sekarang kamu bisa input banyak item sekaligus dalam satu submit dengan status awal <strong>in transit</strong>.
@@ -222,10 +231,6 @@
         @endif
 
         <div class="card">
-            <div class="info">
-                Pilih lokasi asal dulu, lalu daftar ingredient per baris otomatis hanya menampilkan stock yang tersedia di lokasi tersebut.
-            </div>
-
             <form method="POST" action="{{ route('backoffice.transfers.store') }}">
                 @csrf
 
@@ -467,13 +472,13 @@
             if (!location) {
                 availableIngredients = [];
                 refreshAllIngredientSelects();
-                resetTransferHint('Pilih lokasi asal dulu. Ingredient per baris akan mengikuti stock yang tersedia di lokasi tersebut.');
+                resetTransferHint('');
                 return;
             }
 
             availableIngredients = [];
             refreshAllIngredientSelects();
-            resetTransferHint('Sedang mengambil daftar ingredient dari lokasi asal...');
+            resetTransferHint('');
 
             try {
                 const response = await fetch(`{{ route('backoffice.transfers.available-ingredients') }}?location=${encodeURIComponent(location)}`, {
@@ -492,15 +497,15 @@
                 refreshAllIngredientSelects();
 
                 if (!availableIngredients.length) {
-                    resetTransferHint('Lokasi asal ini belum punya ingredient dengan stock > 0.');
+                    resetTransferHint('');
                     return;
                 }
 
-                resetTransferHint('Ingredient per baris sekarang otomatis mengikuti stock yang tersedia di lokasi asal. Pastikan lokasi tujuan tidak sama dengan lokasi asal.');
+                resetTransferHint('');
             } catch (error) {
                 availableIngredients = [];
                 refreshAllIngredientSelects();
-                resetTransferHint('Terjadi kendala saat mengambil daftar ingredient. Coba pilih ulang lokasi asal.');
+                resetTransferHint('');
             }
         }
 
@@ -516,7 +521,7 @@
             if (fromLocationSelect.value && toLocationSelect.value && fromLocationSelect.value === toLocationSelect.value) {
                 resetTransferHint('Lokasi asal dan tujuan tidak boleh sama.');
             } else if (fromLocationSelect.value) {
-                resetTransferHint('Ingredient per baris sekarang otomatis mengikuti stock yang tersedia di lokasi asal. Pastikan lokasi tujuan tidak sama dengan lokasi asal.');
+                resetTransferHint('');
             }
         });
 
@@ -531,9 +536,9 @@
                 loadIngredientsByLocation();
             } else {
                 refreshAllIngredientSelects();
-                resetTransferHint('Pilih lokasi asal dulu. Ingredient per baris akan mengikuti stock yang tersedia di lokasi tersebut.');
+                resetTransferHint('');
             }
         });
     </script>
-</body>
-</html>
+
+@endsection
