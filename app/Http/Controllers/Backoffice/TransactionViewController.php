@@ -260,78 +260,69 @@ class TransactionViewController extends Controller
 
             $rawStatus = strtolower(trim((string) ($transaction->status ?? '-')));
             $status = match ($rawStatus) {
-                'completed', 'paid' => 'Dibayar',
+                'completed' => 'Dibayar',
                 'void' => 'Void',
                 'stock_blocked' => 'Stock Blocked',
-                default => strtoupper((string) ($transaction->status ?? '-')),
+                default => ucfirst($transaction->status ?? '-'),
             };
 
-            $transactionDiscount = (float) ($transaction->discount_amount ?? 0);
-            $transactionGrandTotal = (float) ($transaction->grand_total ?? 0);
-            $transactionRefund = 0;
-
-            $items = $transaction->items;
+            $items = $transaction->items->values();
 
             if ($items->isEmpty()) {
-                $rows[] = [
-                    'outlet' => $outletName,
-                    'business_name' => $businessName,
-                    'date' => $date,
-                    'no' => $transactionNo,
-                    'item_name' => '-',
-                    'quantity' => 0,
+                $items = collect([(object) [
+                    'product_name' => '-',
+                    'variant_name' => '',
+                    'qty' => 0,
                     'price' => 0,
-                    'total' => 0,
-                    'discount' => 0,
-                    'total_discount' => $transactionDiscount,
-                    'total_refund' => $transactionRefund,
-                    'grand_total' => $transactionGrandTotal,
-                    'payment' => $payment,
-                    'status' => $status,
-                    'void_at' => $transaction->void_at?->format('Y-m-d H:i:s') ?? '',
-                    'void_reason' => $transaction->void_reason ?? '',
-                ];
-
-                continue;
+                    'line_total' => 0,
+                ]]);
             }
 
-            $itemsSubtotal = (float) $items->sum(function ($item) {
-                return (float) ($item->line_total ?? 0);
-            });
+            $lastIndex = $items->count() - 1;
+            $transactionDiscount = (float) ($transaction->discount_amount ?? 0);
+            $grandTotal = (float) ($transaction->grand_total ?? 0);
+            $totalRefund = $rawStatus === 'void' ? $grandTotal : 0;
 
-            foreach ($items as $item) {
-                $qty = (float) ($item->qty ?? 0);
-                $price = (float) ($item->price ?? 0);
-                $lineTotal = (float) ($item->line_total ?? 0);
-
+            foreach ($items as $index => $item) {
+                $productName = trim((string) ($item->product_name ?? '-'));
                 $variantName = trim((string) ($item->variant_name ?? ''));
-                $itemName = trim((string) ($item->product_name ?? '-'));
-                if ($variantName !== '' && $variantName !== '-') {
+
+                $itemName = $productName;
+                if ($variantName !== '') {
                     $itemName .= ' - ' . $variantName;
                 }
 
+                $isFirstRow = $index === 0;
+                $isLastRow = $index === $lastIndex;
+
+                $lineTotal = (float) ($item->line_total ?? 0);
+
                 $lineDiscount = 0;
-                if ($transactionDiscount > 0 && $itemsSubtotal > 0) {
-                    $lineDiscount = ($lineTotal / $itemsSubtotal) * $transactionDiscount;
+                if ($transactionDiscount > 0 && $grandTotal + $transactionDiscount > 0 && $lineTotal > 0) {
+                    $lineSubtotalBase = (float) ($transaction->subtotal ?? 0);
+
+                    if ($lineSubtotalBase > 0) {
+                        $lineDiscount = round(($lineTotal / $lineSubtotalBase) * $transactionDiscount);
+                    }
                 }
 
                 $rows[] = [
-                    'outlet' => $outletName,
-                    'business_name' => $businessName,
-                    'date' => $date,
-                    'no' => $transactionNo,
+                    'outlet' => $isFirstRow ? $outletName : '',
+                    'business_name' => $isFirstRow ? $businessName : '',
+                    'date' => $isFirstRow ? $date : '',
+                    'no' => $isFirstRow ? $transactionNo : '',
                     'item_name' => $itemName,
-                    'quantity' => $qty,
-                    'price' => $price,
+                    'quantity' => (float) ($item->qty ?? 0),
+                    'price' => (float) ($item->price ?? 0),
                     'total' => $lineTotal,
                     'discount' => $lineDiscount,
-                    'total_discount' => $transactionDiscount,
-                    'total_refund' => $transactionRefund,
-                    'grand_total' => $transactionGrandTotal,
-                    'payment' => $payment,
-                    'status' => $status,
-                    'void_at' => $transaction->void_at?->format('Y-m-d H:i:s') ?? '',
-                    'void_reason' => $transaction->void_reason ?? '',
+                    'total_discount' => $isLastRow ? $transactionDiscount : '',
+                    'total_refund' => $isLastRow ? $totalRefund : '',
+                    'grand_total' => $isLastRow ? $grandTotal : '',
+                    'payment' => $isLastRow ? $payment : '',
+                    'status' => $isLastRow ? $status : '',
+                    'void_at' => $isLastRow ? ($transaction->void_at?->format('Y-m-d H:i:s') ?? '') : '',
+                    'void_reason' => $isLastRow ? ($transaction->void_reason ?? '') : '',
                 ];
             }
         }
