@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
+use App\Models\BackofficeNotification;
 use App\Models\CashierShift;
 use App\Models\Ingredient;
 use App\Models\Outlet;
@@ -280,6 +281,24 @@ class BackofficeController extends Controller
             ->take(10)
             ->values();
 
+        $notificationQuery = BackofficeNotification::with(['transaction', 'outlet', 'createdBy'])
+            ->latest();
+
+        if ($selectedOutletId) {
+            $notificationQuery->where('outlet_id', $selectedOutletId);
+        }
+
+        $backofficeNotifications = $notificationQuery
+            ->take(8)
+            ->get();
+
+        $unreadNotificationCount = BackofficeNotification::query()
+            ->whereNull('read_at')
+            ->when($selectedOutletId, function ($query) use ($selectedOutletId) {
+                $query->where('outlet_id', $selectedOutletId);
+            })
+            ->count();
+
         return view('backoffice.index', [
             'user' => $user,
             'outletOptions' => $outletOptions,
@@ -318,6 +337,8 @@ class BackofficeController extends Controller
             'dailyTransactionSummary' => $dailyTransactionSummary,
             'outletTransactionSummary' => $outletTransactionSummary,
             'topProducts' => $topProducts,
+            'backofficeNotifications' => $backofficeNotifications,
+            'unreadNotificationCount' => $unreadNotificationCount,
             'permissions' => [
                 'can_see_global_data' => $canSeeGlobalData,
                 'is_admin_outlet' => $isAdminOutlet,

@@ -577,6 +577,116 @@
             margin-top: 8px;
         }
 
+
+        .notification-card {
+            background: linear-gradient(135deg, #ffffff 0%, #fff7f2 100%);
+            border: 1px solid #f0d8cb;
+            border-radius: 28px;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            padding: 22px;
+        }
+
+        .notification-head {
+            display: flex;
+            justify-content: space-between;
+            gap: 16px;
+            align-items: flex-start;
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+
+        .notification-title {
+            margin: 0 0 6px;
+            font-size: 22px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .notification-subtitle {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .notification-count {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 38px;
+            padding: 0 14px;
+            border-radius: 999px;
+            background: #fff1ea;
+            color: #c9552a;
+            border: 1px solid #f4c7b6;
+            font-size: 13px;
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .notification-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .notification-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 14px;
+            align-items: center;
+            padding: 16px;
+            border-radius: 20px;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+        }
+
+        .notification-badge {
+            display: inline-flex;
+            width: fit-content;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 999px;
+            background: #111827;
+            color: white;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+
+        .notification-badge.void {
+            background: #b91c1c;
+        }
+
+        .notification-badge.reprint {
+            background: #1d4ed8;
+        }
+
+        .notification-message {
+            margin: 0 0 6px;
+            font-size: 14px;
+            color: #111827;
+            line-height: 1.7;
+            font-weight: 700;
+        }
+
+        .notification-meta {
+            font-size: 12px;
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        .notification-empty {
+            padding: 18px;
+            border-radius: 18px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
         @media (max-width: 1280px) {
             .filter-grid,
             .premium-grid,
@@ -673,6 +783,62 @@
                     <a href="{{ route('backoffice.index') }}" class="btn btn-soft">Reset</a>
                 </div>
             </form>
+        </div>
+
+        <div class="notification-card">
+            <div class="notification-head">
+                <div>
+                    <h2 class="notification-title">Need Action / Notifications</h2>
+                    <p class="notification-subtitle">
+                        Tanda pesan dari aktivitas kasir seperti void transaksi dan reprint receipt.
+                    </p>
+                </div>
+                <div class="notification-count">
+                    {{ number_format((int) ($unreadNotificationCount ?? 0), 0, ',', '.') }} unread
+                </div>
+            </div>
+
+            @if(($backofficeNotifications ?? collect())->isEmpty())
+                <div class="notification-empty">
+                    Belum ada notifikasi backoffice.
+                </div>
+            @else
+                <div class="notification-list">
+                    @foreach($backofficeNotifications as $notification)
+                        @php
+                            $badgeClass = $notification->type === 'transaction_void'
+                                ? 'void'
+                                : ($notification->type === 'receipt_reprint' ? 'reprint' : '');
+                        @endphp
+
+                        <div class="notification-item">
+                            <div>
+                                <div class="notification-badge {{ $badgeClass }}">
+                                    {{ str_replace('_', ' ', $notification->type) }}
+                                </div>
+                                <p class="notification-message">
+                                    {{ $notification->message ?? $notification->title }}
+                                </p>
+                                <div class="notification-meta">
+                                    {{ $notification->created_at?->format('d M Y H:i') ?? '-' }}
+                                    @if($notification->outlet)
+                                        • {{ $notification->outlet->name }}
+                                    @endif
+                                    @if($notification->createdBy)
+                                        • Oleh {{ $notification->createdBy->name }}
+                                    @endif
+                                </div>
+                            </div>
+
+                            @if($notification->sales_transaction_id)
+                                <a href="{{ route('backoffice.transactions.show', $notification->sales_transaction_id) }}" class="btn btn-dark">
+                                    Lihat Transaksi
+                                </a>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         <div class="premium-strip">
