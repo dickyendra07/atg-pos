@@ -516,6 +516,26 @@
                 margin-right: 18px;
             }
         }
+
+        .table-wrap table th,
+        .table-wrap table td {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        .table-wrap table td > strong,
+        .table-wrap table td > div {
+            text-align: center !important;
+        }
+
+        .table-wrap .money {
+            text-align: center !important;
+        }
+
+        .table-wrap table td:last-child > div {
+            justify-content: center !important;
+        }
+
     </style>
 
     <div class="transactions-shell">
@@ -742,59 +762,58 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Waktu</th>
-                                    <th>Transaction Number</th>
-                                    <th>Kasir</th>
                                     <th>Outlet</th>
-                                    <th>Member</th>
+                                    <th>Date</th>
+                                    <th>No</th>
+                                    <th>Grand Total</th>
                                     <th>Payment</th>
                                     <th>Status</th>
-                                    <th>Subtotal</th>
-                                    <th>Grand Total</th>
-                                    <th>Amount Paid</th>
-                                    <th>Change</th>
-                                    <th>Void By</th>
-                                    <th>Void Reason</th>
-                                    <th>Items</th>
                                     <th>Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach($transactions as $transaction)
                                     @php
-                                        $isProblem = in_array(strtolower((string) $transaction->status), ['stock_blocked', 'void'])
+                                        $statusText = strtolower((string) ($transaction->status ?? '-'));
+                                        $isProblem = in_array($statusText, ['stock_blocked', 'void'], true)
                                             || (float) ($transaction->grand_total ?? 0) <= 0;
+
+                                        $paymentMethod = strtoupper(trim((string) ($transaction->payment_method ?? 'UNSET')));
+                                        if ($paymentMethod === '' || $paymentMethod === '-') {
+                                            $paymentMethod = 'UNSET';
+                                        }
                                     @endphp
                                     <tr>
-                                        <td>{{ $transaction->created_at?->format('Y-m-d H:i:s') ?? '-' }}</td>
-                                        <td><strong>{{ $transaction->transaction_number }}</strong></td>
-                                        <td>{{ $transaction->user->name ?? '-' }}</td>
-                                        <td>{{ $transaction->outlet->name ?? '-' }}</td>
-                                        <td>{{ $transaction->member->name ?? '-' }}</td>
-                                        <td>{{ strtoupper($transaction->payment_method ?? 'UNSET') }}</td>
+                                        <td>
+                                            <strong>{{ $transaction->outlet->name ?? '-' }}</strong>
+                                        </td>
+                                        <td>
+                                            {{ $transaction->created_at?->format('d M Y') ?? '-' }}
+                                            <div style="font-size:12px; color:#6b7280; margin-top:4px;">
+                                                {{ $transaction->created_at?->format('H:i') ?? '-' }}
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <strong>{{ $transaction->transaction_number ?? '-' }}</strong>
+                                        </td>
+                                        <td class="money">
+                                            Rp {{ number_format((float) $transaction->grand_total, 0, ',', '.') }}
+                                        </td>
+                                        <td>
+                                            {{ $paymentMethod }}
+                                        </td>
                                         <td>
                                             @if($isProblem)
                                                 <span class="status-badge status-problem">{{ ucfirst($transaction->status ?? '-') }}</span>
                                             @else
                                                 <span class="status-badge status-ok">{{ ucfirst($transaction->status ?? '-') }}</span>
                                             @endif
-                                        </td>
-                                        <td class="money">Rp{{ number_format((float) $transaction->subtotal, 0, ',', '.') }}</td>
-                                        <td class="money">Rp{{ number_format((float) $transaction->grand_total, 0, ',', '.') }}</td>
-                                        <td class="money">Rp{{ number_format((float) $transaction->amount_paid, 0, ',', '.') }}</td>
-                                        <td class="money">Rp{{ number_format((float) $transaction->change_amount, 0, ',', '.') }}</td>
-                                        <td>{{ $transaction->voidBy->name ?? '-' }}</td>
-                                        <td>{{ $transaction->void_reason ?? '-' }}</td>
-                                        <td>
-                                            @foreach($transaction->items as $item)
-                                                <div style="margin-bottom:6px;">
-                                                    {{ $item->product_name ?? '-' }}
-                                                    @if($item->variant_name)
-                                                        - {{ $item->variant_name }}
-                                                    @endif
-                                                    x {{ number_format((float) $item->qty, 0, ',', '.') }}
+
+                                            @if(strtolower((string) ($transaction->status ?? '')) === 'void')
+                                                <div style="font-size:12px; color:#991b1b; margin-top:6px;">
+                                                    Void: {{ $transaction->void_reason ?? '-' }}
                                                 </div>
-                                            @endforeach
+                                            @endif
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -810,9 +829,6 @@
                 @endif
             </div>
 
-            <div class="bottom-bar">
-                Sales Summary active: halaman transaksi sekarang sudah satu bahasa visual dengan dashboard back office dan sidebar baru, jadi monitoring operasional terasa lebih konsisten.
-            </div>
         </div>
     </div>
 @endsection
