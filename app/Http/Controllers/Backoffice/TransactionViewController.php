@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
+use App\Models\BackofficeNotification;
 use App\Models\SalesTransaction;
 use App\Services\StockDeductionService;
 use Illuminate\Http\Request;
@@ -496,6 +497,15 @@ class TransactionViewController extends Controller
                     'void_reason' => $validated['void_reason'],
                     'void_by_user_id' => $user->id,
                 ]);
+
+                BackofficeNotification::create([
+                    'type' => 'transaction_void',
+                    'title' => 'Transaksi di-void',
+                    'message' => 'Transaksi ' . ($transaction->transaction_number ?? '-') . ' di-void oleh ' . ($user->name ?? 'user') . '. Alasan: ' . $validated['void_reason'],
+                    'sales_transaction_id' => $transaction->id,
+                    'outlet_id' => $transaction->outlet_id,
+                    'created_by_user_id' => $user->id,
+                ]);
             });
         } catch (RuntimeException $e) {
             return $this->redirectAfterVoid(
@@ -526,10 +536,24 @@ class TransactionViewController extends Controller
 
         $transaction->load(['user', 'outlet', 'member', 'items']);
 
+        $source = $this->resolveSource($request);
+        $autoprint = $this->resolveAutoprint($request);
+
+        if ($source === 'cashier') {
+            BackofficeNotification::create([
+                'type' => 'receipt_reprint',
+                'title' => 'Receipt di-reprint',
+                'message' => 'Receipt transaksi ' . ($transaction->transaction_number ?? '-') . ' dibuka ulang dari kasir.',
+                'sales_transaction_id' => $transaction->id,
+                'outlet_id' => $transaction->outlet_id,
+                'created_by_user_id' => $user->id,
+            ]);
+        }
+
         return view('backoffice.transactions.receipt', [
             'transaction' => $transaction,
-            'source' => $this->resolveSource($request),
-            'autoprint' => $this->resolveAutoprint($request),
+            'source' => $source,
+            'autoprint' => $autoprint,
         ]);
     }
 }

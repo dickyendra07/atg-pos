@@ -3,6 +3,7 @@
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Backoffice\BackofficeController;
 use App\Http\Controllers\Backoffice\CashierShiftViewController;
+use App\Http\Controllers\Backoffice\DiscountViewController;
 use App\Http\Controllers\Backoffice\IngredientProductionController;
 use App\Http\Controllers\Backoffice\IngredientProductionRecipeController;
 use App\Http\Controllers\Backoffice\IngredientViewController;
@@ -165,6 +166,13 @@ Route::middleware('auth')->group(function () {
 
     Route::get('/backoffice/shifts', [CashierShiftViewController::class, 'index'])->name('backoffice.shifts.index');
     Route::get('/backoffice/shifts/{shift}', [CashierShiftViewController::class, 'show'])->name('backoffice.shifts.show');
+
+    Route::get('/backoffice/discounts', [DiscountViewController::class, 'index'])->name('backoffice.discounts.index');
+    Route::get('/backoffice/discounts/create', [DiscountViewController::class, 'create'])->name('backoffice.discounts.create');
+    Route::post('/backoffice/discounts', [DiscountViewController::class, 'store'])->name('backoffice.discounts.store');
+    Route::get('/backoffice/discounts/{discount}/edit', [DiscountViewController::class, 'edit'])->name('backoffice.discounts.edit');
+    Route::put('/backoffice/discounts/{discount}', [DiscountViewController::class, 'update'])->name('backoffice.discounts.update');
+    Route::delete('/backoffice/discounts/{discount}', [DiscountViewController::class, 'destroy'])->name('backoffice.discounts.destroy');
 
     Route::get('/backoffice/transactions', [TransactionViewController::class, 'index'])->name('backoffice.transactions.index');
     Route::get('/backoffice/transactions/export/csv', [TransactionViewController::class, 'exportCsv'])->name('backoffice.transactions.export.csv');
