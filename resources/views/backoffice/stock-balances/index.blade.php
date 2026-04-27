@@ -639,6 +639,82 @@
                 margin-right: 18px;
             }
         }
+
+        .need-action-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        .need-action-filter-form {
+            display: flex;
+            align-items: end;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .need-action-filter-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 900;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 7px;
+        }
+
+        .need-action-filter-field select {
+            min-width: 260px;
+            min-height: 42px;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: #ffffff;
+            padding: 0 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #111827;
+            outline: none;
+        }
+
+        .need-action-filter-field select:focus {
+            border-color: rgba(37,99,235,0.65);
+            box-shadow: 0 0 0 4px rgba(37,99,235,0.10);
+        }
+
+        .need-action-table th,
+        .need-action-table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .need-action-table td:last-child {
+            text-align: left;
+        }
+
+        .need-action-table .recommended-action-cell {
+            max-width: 280px;
+            line-height: 1.5;
+        }
+
+
+        .inventory-table-center th,
+        .inventory-table-center td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .inventory-table-center .text-left-cell {
+            text-align: left;
+        }
+
+        .inventory-table-center .wide-text-cell {
+            text-align: left;
+            max-width: 300px;
+            line-height: 1.5;
+        }
+
     </style>
 
     <div class="inventory-shell">
@@ -823,7 +899,7 @@
                 </form>
 
                 <div class="table-wrap">
-                    <table>
+                    <table class="inventory-table-center">
                         <thead>
                             <tr>
                                 <th>Category</th>
@@ -941,7 +1017,7 @@
                 </form>
 
                 <div class="table-wrap">
-                    <table>
+                    <table class="inventory-table-center">
                         <thead>
                             <tr>
                                 <th>Category</th>
@@ -1045,15 +1121,45 @@
     </div>
 
     <div class="section-card" id="need-action-list">
-                <div class="section-head">
-                    <h2 class="section-title">Need Action List</h2>
-                    <p class="section-subtitle">
-                        Daftar item yang sedang perlu tindakan dari sistem, supaya tim bisa langsung tahu mana yang harus direstock, ditransfer, atau disesuaikan.
-                    </p>
+        <div class="section-head need-action-head">
+            <div>
+                <h2 class="section-title">Need Action List</h2>
+                <p class="section-subtitle">
+                    Daftar item yang sedang perlu tindakan dari sistem, supaya tim bisa langsung tahu mana yang harus direstock, ditransfer, atau disesuaikan.
+                </p>
             </div>
 
-            <div class="table-wrap">
-                <table>
+            <form method="GET" action="{{ route('backoffice.stock-balances.index') }}#need-action-list" class="need-action-filter-form">
+                <input type="hidden" name="summary_location_type" value="{{ request('summary_location_type') }}">
+                <input type="hidden" name="summary_location_id" value="{{ request('summary_location_id') }}">
+                <input type="hidden" name="date_from" value="{{ request('date_from') }}">
+                <input type="hidden" name="date_to" value="{{ request('date_to') }}">
+                <input type="hidden" name="location_type" value="{{ request('location_type') }}">
+                <input type="hidden" name="search" value="{{ request('search') }}">
+
+                <div class="need-action-filter-field">
+                    <label for="need_action_location">Filter Need Action</label>
+                    <select name="need_action_location" id="need_action_location" onchange="this.form.submit()">
+                        <option value="all" {{ ($needActionLocation ?? 'all') === 'all' ? 'selected' : '' }}>Semua Lokasi</option>
+
+                        @foreach($warehouses as $warehouse)
+                            <option value="warehouse:{{ $warehouse->id }}" {{ ($needActionLocation ?? 'all') === 'warehouse:' . $warehouse->id ? 'selected' : '' }}>
+                                Warehouse - {{ $warehouse->name }}
+                            </option>
+                        @endforeach
+
+                        @foreach($outlets as $outlet)
+                            <option value="outlet:{{ $outlet->id }}" {{ ($needActionLocation ?? 'all') === 'outlet:' . $outlet->id ? 'selected' : '' }}>
+                                Outlet - {{ $outlet->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+            </form>
+        </div>
+
+        <div class="table-wrap">
+            <table class="inventory-table-center need-action-table">
                  <thead>
                      <tr>
                         <th>Category</th>
@@ -1088,7 +1194,7 @@
                                     {{ $item['status_label'] ?? '-' }}
                                 </span>
                             </td>
-                            <td>{{ $item['recommended_action'] ?? '-' }}</td>
+                            <td class="recommended-action-cell wide-text-cell">{{ $item['recommended_action'] ?? '-' }}</td>
                         </tr>
                     @empty
                         <tr>

@@ -356,7 +356,22 @@ class StockBalanceViewController extends Controller
 
         $stockSummaryRows = $this->buildStockSummaryRows($request, $ingredients);
 
-        $needActionItems = $stockBalances
+        $needActionLocation = (string) $request->input('need_action_location', 'all');
+
+        $needActionBalances = $stockBalances;
+
+        if ($needActionLocation !== '' && $needActionLocation !== 'all') {
+            [$needActionLocationType, $needActionLocationId] = array_pad(explode(':', $needActionLocation, 2), 2, null);
+
+            if (in_array($needActionLocationType, ['warehouse', 'outlet'], true) && ! empty($needActionLocationId)) {
+                $needActionBalances = $needActionBalances->filter(function ($stock) use ($needActionLocationType, $needActionLocationId) {
+                    return (string) ($stock->location_type ?? '') === $needActionLocationType
+                        && (int) ($stock->location_id ?? 0) === (int) $needActionLocationId;
+                })->values();
+            }
+        }
+
+        $needActionItems = $needActionBalances
             ->filter(function ($stock) {
                 return $this->getNeedActionType($stock) !== null;
             })
@@ -394,6 +409,7 @@ class StockBalanceViewController extends Controller
             'summary' => $summary,
             'stockSummaryRows' => $stockSummaryRows,
             'needActionItems' => $needActionItems,
+            'needActionLocation' => $needActionLocation,
         ]);
     }
 
