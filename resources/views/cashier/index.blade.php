@@ -1982,7 +1982,7 @@
 
                                 <div class="checkout-success-actions">
                                     <a
-                                        href="{{ route('backoffice.transactions.receipt', ['transaction' => session('last_checkout.transaction_id'), 'source' => 'cashier', 'autoprint' => 1, 'autoclose' => 1]) }}"
+                                        href="{{ route('backoffice.transactions.receipt', ['transaction' => session('last_checkout.transaction_id'), 'source' => 'cashier']) }}"
                                         target="_blank"
                                         class="btn btn-green"
                                     >
@@ -2170,7 +2170,7 @@
 
                                                     <div class="receipt-history-actions">
                                                         <a
-                                                            href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier', 'autoprint' => 1, 'autoclose' => 1]) }}"
+                                                            href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier']) }}"
                                                             target="_blank"
                                                             class="receipt-action-btn green"
                                                         >
