@@ -677,6 +677,93 @@
             line-height: 1.6;
         }
 
+
+        .product-category-section {
+            display: grid;
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .product-category-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 18px;
+            border-radius: 22px;
+            background: linear-gradient(135deg, #ffffff 0%, #fff8f4 100%);
+            border: 1px solid #f1e3da;
+            box-shadow: 0 10px 22px rgba(15, 23, 42, 0.04);
+        }
+
+        .product-category-title {
+            font-size: 18px;
+            font-weight: 900;
+            color: #111827;
+            letter-spacing: -0.02em;
+        }
+
+        .product-category-count {
+            font-size: 12px;
+            font-weight: 900;
+            color: #c9552a;
+            background: #fff1ea;
+            border: 1px solid #f5d5c7;
+            border-radius: 999px;
+            padding: 7px 10px;
+            white-space: nowrap;
+        }
+
+
+        .product-category-head {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .product-category-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: #fff;
+            border: 1px solid #f1e3da;
+            color: #c9552a;
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .product-category-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .product-category-section.collapsed .products-grid {
+            display: none;
+        }
+
+        .product-category-section.collapsed .product-category-empty {
+            display: none !important;
+        }
+
+        .product-category-section.collapsed .product-category-toggle {
+            transform: rotate(-90deg);
+        }
+
+        .product-category-empty {
+            display: none;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: #fff7ed;
+            color: #9a3412;
+            border: 1px solid #fed7aa;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
         .products-grid {
             padding: 0 22px 22px;
             display: grid;
@@ -1929,67 +2016,85 @@
                                 </div>
                             </div>
 
-                            <div class="products-grid" id="products-grid">
-                                @forelse($products as $product)
-                                    @php
-                                        $activeVariants = $product->variants->where('is_active', true)->values();
-                                    @endphp
-
-                                    <div
-                                        class="product-card"
-                                        data-product-card
-                                        data-search="{{ strtolower(trim(($product->name ?? '') . ' ' . ($product->category->name ?? '') . ' ' . ($product->brand->name ?? ''))) }}"
-                                    >
-                                        <div class="product-image">
-                                            <img src="{{ asset('images/atg-icon.png') }}" alt="Product">
-                                        </div>
-
-                                        <div class="product-name">{{ $product->name }}</div>
-                                        <div class="product-meta">
-                                            {{ $product->category->name ?? 'Uncategorized' }}
-                                            @if($product->brand)
-                                                • {{ $product->brand->name }}
-                                            @endif
-                                        </div>
-
-                                        <div class="product-foot">
-                                            <div class="product-variant-count">
-                                                {{ $activeVariants->count() }} variant aktif
-                                            </div>
-
-                                            <button
-                                                type="button"
-                                                class="product-pick-btn"
-                                                data-open-variant-modal
-                                                data-product-name="{{ $product->name }}"
-                                                data-product-meta="{{ trim(($product->category->name ?? 'Uncategorized') . ($product->brand ? ' • ' . $product->brand->name : '')) }}"
-                                            >
-                                                Pilih Variant
-                                            </button>
-
-                                            <div class="hidden" data-variant-modal-source>
-                                                @foreach($activeVariants as $variant)
-                                                    @php
-                                                        $dineInPrice = (float) ($variant->price_dine_in ?? $variant->price);
-                                                        $deliveryPrice = (float) ($variant->price_delivery ?? $variant->price);
-                                                    @endphp
-
-                                                    <div
-                                                        data-variant-source-item
-                                                        data-name="{{ $variant->name }}"
-                                                        data-code="{{ $variant->code }}"
-                                                        data-dine-in="{{ $dineInPrice }}"
-                                                        data-delivery="{{ $deliveryPrice }}"
-                                                        data-url="{{ route('cashier.cart.add', $variant) }}"
-                                                    ></div>
-                                                @endforeach
+                            <div id="products-grid">
+                                @forelse(($productGroups ?? collect()) as $categoryName => $categoryProducts)
+                                    <div class="product-category-section {{ $loop->first ? '' : 'collapsed' }}" data-product-category-section>
+                                        <div class="product-category-head" data-product-category-toggle>
+                                            <div class="product-category-title">{{ $categoryName }}</div>
+                                            <div class="product-category-right">
+                                                <div class="product-category-count">{{ $categoryProducts->count() }} product</div>
+                                                <div class="product-category-toggle">⌄</div>
                                             </div>
                                         </div>
+
+                                        <div class="products-grid">
+                                            @foreach($categoryProducts as $product)
+                                                @php
+                                                    $activeVariants = $product->variants->where('is_active', true)->values();
+                                                @endphp
+
+                                                <div
+                                                    class="product-card"
+                                                    data-product-card
+                                                    data-search="{{ strtolower(trim(($product->name ?? '') . ' ' . ($product->category->name ?? '') . ' ' . ($product->brand->name ?? ''))) }}"
+                                                >
+                                                    <div class="product-image">
+                                                        <img src="{{ asset('images/atg-icon.png') }}" alt="Product">
+                                                    </div>
+
+                                                    <div class="product-name">{{ $product->name }}</div>
+                                                    <div class="product-meta">
+                                                        {{ $product->category->name ?? 'Uncategorized' }}
+                                                        @if($product->brand)
+                                                            • {{ $product->brand->name }}
+                                                        @endif
+                                                    </div>
+
+                                                    <div class="product-foot">
+                                                        <div class="product-variant-count">
+                                                            {{ $activeVariants->count() }} variant aktif
+                                                        </div>
+
+                                                        <button
+                                                            type="button"
+                                                            class="product-pick-btn"
+                                                            data-open-variant-modal
+                                                            data-product-name="{{ $product->name }}"
+                                                            data-product-meta="{{ trim(($product->category->name ?? 'Uncategorized') . ($product->brand ? ' • ' . $product->brand->name : '')) }}"
+                                                        >
+                                                            Pilih Variant
+                                                        </button>
+
+                                                        <div class="hidden" data-variant-modal-source>
+                                                            @foreach($activeVariants as $variant)
+                                                                @php
+                                                                    $dineInPrice = (float) ($variant->price_dine_in ?? $variant->price);
+                                                                    $deliveryPrice = (float) ($variant->price_delivery ?? $variant->price);
+                                                                @endphp
+
+                                                                <div
+                                                                    data-variant-source-item
+                                                                    data-name="{{ $variant->name }}"
+                                                                    data-code="{{ $variant->code }}"
+                                                                    data-dine-in="{{ $dineInPrice }}"
+                                                                    data-delivery="{{ $deliveryPrice }}"
+                                                                    data-url="{{ route('cashier.cart.add', $variant) }}"
+                                                                ></div>
+                                                            @endforeach
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            @endforeach
+                                        </div>
+
+                                        <div class="product-category-empty">Tidak ada product yang cocok di kategori ini.</div>
                                     </div>
                                 @empty
-                                    <div class="product-card" style="grid-column: 1 / -1;">
-                                        <div class="product-name">Belum ada product aktif</div>
-                                        <div class="product-meta">Product aktif akan muncul di area ini.</div>
+                                    <div class="products-grid">
+                                        <div class="product-card" style="grid-column: 1 / -1;">
+                                            <div class="product-name">Belum ada product aktif</div>
+                                            <div class="product-meta">Product aktif akan muncul di area ini.</div>
+                                        </div>
                                     </div>
                                 @endforelse
                             </div>
@@ -3096,6 +3201,22 @@
             const isMatch = normalized === '' || haystack.includes(normalized);
             card.classList.toggle('hidden', !isMatch);
         });
+
+        document.querySelectorAll('[data-product-category-section]').forEach((section) => {
+            const visibleCards = Array.from(section.querySelectorAll('[data-product-card]'))
+                .filter((card) => !card.classList.contains('hidden'));
+
+            section.classList.toggle('hidden', visibleCards.length === 0);
+
+            if (normalized !== '') {
+                section.classList.toggle('collapsed', visibleCards.length === 0);
+            }
+
+            const emptyState = section.querySelector('.product-category-empty');
+            if (emptyState) {
+                emptyState.style.display = normalized !== '' && visibleCards.length === 0 ? 'block' : 'none';
+            }
+        });
     }
 
     function roundUp(value, base) {
@@ -3135,7 +3256,20 @@
     }
 
     function switchTab(tabName) {
-        document.querySelectorAll('[data-tab-btn]').forEach((button) => {
+    
+    document.querySelectorAll('[data-product-category-toggle]').forEach((header) => {
+        header.addEventListener('click', function () {
+            const section = header.closest('[data-product-category-section]');
+
+            if (!section) {
+                return;
+            }
+
+            section.classList.toggle('collapsed');
+        });
+    });
+
+    document.querySelectorAll('[data-tab-btn]').forEach((button) => {
             button.classList.toggle('active', button.dataset.tabBtn === tabName);
         });
 

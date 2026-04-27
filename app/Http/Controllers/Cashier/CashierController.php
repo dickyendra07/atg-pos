@@ -179,6 +179,12 @@ class CashierController extends Controller
             ->orderBy('name')
             ->get();
 
+        $productGroups = $products
+            ->groupBy(function ($product) {
+                return $product->category->name ?? 'Uncategorized';
+            })
+            ->sortKeys();
+
         $cart = session('cashier_cart', []);
         $member = session('cashier_member');
         $orderType = session('cashier_order_type', 'dine_in');
@@ -196,6 +202,7 @@ class CashierController extends Controller
         return view('cashier.index', [
             'user' => $user,
             'products' => $products,
+            'productGroups' => $productGroups,
             'cart' => $cart,
             'member' => $member,
             'subtotal' => $subtotal,
