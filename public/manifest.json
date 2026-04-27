@@ -1,0 +1,25 @@
+{
+  "name": "ATG POS",
+  "short_name": "ATG POS",
+  "description": "ATG POS Backoffice and Cashier",
+  "start_url": "/cashier",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#111827",
+  "background_color": "#f8fafc",
+  "icons": [
+    {
+      "src": "/images/atg-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/atg-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
