@@ -422,10 +422,6 @@
                 </p>
             </div>
 
-            <div class="helper">
-                Warehouse adalah lokasi gudang yang dipakai untuk stock intake, opening stock, stock movement, opname gudang, dan transfer ke outlet. Setiap warehouse punya <strong>ID lokasi otomatis</strong> yang bisa dipakai sebagai referensi pada CSV import.
-            </div>
-
             <div class="summary-grid">
                 <div class="summary-card orange">
                     <div class="summary-label">Total Warehouses</div>
@@ -504,10 +500,6 @@
                 @else
                     <div class="empty">Belum ada warehouse tersimpan.</div>
                 @endif
-
-                <div class="note">
-                    Tombol <strong>Transfer</strong> dari halaman warehouse langsung masuk ke form transfer dengan asal warehouse otomatis terisi. Kolom <strong>ID</strong> juga ditampilkan supaya lebih mudah dipakai sebagai referensi pada import opening stock.
-                </div>
             </div>
         </div>
     </div>
