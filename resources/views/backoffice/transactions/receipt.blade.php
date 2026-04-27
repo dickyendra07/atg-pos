@@ -7,8 +7,9 @@
     <style>
         :root {
             --paper-width: 58mm;
+            --paper-padding-x: 3mm;
             --text: #000000;
-            --muted: #555555;
+            --muted: #222222;
             --line: #000000;
         }
 
@@ -16,19 +17,50 @@
             box-sizing: border-box;
         }
 
-        html, body {
+        html,
+        body {
             margin: 0;
             padding: 0;
             background: #ececec;
             color: var(--text);
-            font-family: "Courier New", Courier, monospace;
-            -webkit-font-smoothing: none;
-            font-size: 12px;
-            line-height: 1.35;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 13px;
+            line-height: 1.32;
+            font-weight: 600;
+            -webkit-font-smoothing: antialiased;
+            text-rendering: geometricPrecision;
         }
 
         body {
             padding: 16px 0;
+        }
+
+        .print-toolbar {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+            padding: 0 12px;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .print-btn {
+            border: 0;
+            cursor: pointer;
+            min-height: 40px;
+            padding: 0 16px;
+            border-radius: 10px;
+            background: #111827;
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 800;
+        }
+
+        .print-btn.secondary {
+            background: #e5e7eb;
+            color: #111827;
         }
 
         .receipt-preview-wrap {
@@ -44,15 +76,19 @@
             background: #ffffff;
             color: #000000;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-            padding: 10px 8px 14px;
+            padding: 10px var(--paper-padding-x) 14px;
         }
 
         .center {
             text-align: center;
         }
 
+        .right {
+            text-align: right;
+        }
+
         .bold {
-            font-weight: 700;
+            font-weight: 900;
         }
 
         .muted {
@@ -61,51 +97,46 @@
 
         .tiny {
             font-size: 10px;
+            line-height: 1.25;
+            font-weight: 600;
         }
 
         .small {
             font-size: 11px;
+            line-height: 1.28;
+            font-weight: 700;
         }
 
         .normal {
             font-size: 12px;
-        }
-
-        .big {
-            font-size: 14px;
+            line-height: 1.3;
             font-weight: 700;
         }
 
         .brand-name {
-            font-size: 16px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
+            font-size: 18px;
+            line-height: 1.05;
+            font-weight: 900;
+            letter-spacing: 0.2px;
             text-transform: uppercase;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
         }
 
         .brand-sub {
             font-size: 11px;
-            margin-bottom: 2px;
-        }
-
-        .header-block,
-        .meta-block,
-        .items-block,
-        .summary-block,
-        .footer-block {
-            width: 100%;
+            font-weight: 800;
+            margin-bottom: 3px;
         }
 
         .divider {
             border-top: 1px dashed var(--line);
-            margin: 8px 0;
+            margin: 7px 0;
             width: 100%;
         }
 
         .solid-divider {
             border-top: 1px solid var(--line);
-            margin: 8px 0;
+            margin: 7px 0;
             width: 100%;
         }
 
@@ -115,8 +146,12 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 8px;
+            gap: 6px;
             width: 100%;
+        }
+
+        .meta-line {
+            margin-bottom: 2px;
         }
 
         .meta-line .label,
@@ -129,32 +164,34 @@
         .meta-line .value,
         .summary-line .value {
             flex: 0 0 auto;
+            max-width: 33mm;
             text-align: right;
-            white-space: nowrap;
+            word-break: break-word;
         }
 
         .item-row {
-            padding: 4px 0 6px;
+            padding: 4px 0 5px;
         }
 
         .item-name {
-            font-weight: 700;
+            font-size: 12px;
+            line-height: 1.24;
+            font-weight: 900;
             word-break: break-word;
             white-space: normal;
+            text-transform: uppercase;
         }
 
-        .item-variant {
-            margin-top: 1px;
-            word-break: break-word;
-        }
-
+        .item-variant,
         .item-modifier {
-            margin-top: 1px;
+            margin-top: 2px;
             word-break: break-word;
         }
 
         .item-total-line {
-            margin-top: 2px;
+            margin-top: 3px;
+            font-size: 12px;
+            font-weight: 800;
         }
 
         .item-total-line .left {
@@ -167,19 +204,35 @@
             flex: 0 0 auto;
             text-align: right;
             white-space: nowrap;
+            font-weight: 900;
+        }
+
+        .summary-block {
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .summary-line {
+            margin-bottom: 2px;
         }
 
         .summary-line.grand-total {
-            font-size: 13px;
-            font-weight: 700;
+            font-size: 15px;
+            line-height: 1.2;
+            font-weight: 900;
+        }
+
+        .summary-line.grand-total .label,
+        .summary-line.grand-total .value {
+            font-weight: 900;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 1px 6px;
+            padding: 2px 7px;
             border: 1px solid #000000;
             font-size: 10px;
-            font-weight: 700;
+            font-weight: 900;
             margin-top: 4px;
         }
 
@@ -187,34 +240,19 @@
             border: 1px solid #000000;
             padding: 6px;
             margin-top: 8px;
-        }
-
-        .print-toolbar {
-            width: 100%;
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 14px;
-            padding: 0 12px;
-        }
-
-        .print-btn {
-            border: 0;
-            cursor: pointer;
-            min-height: 40px;
-            padding: 0 16px;
-            border-radius: 10px;
-            background: #111827;
-            color: #ffffff;
-            font-family: Arial, sans-serif;
-            font-size: 13px;
+            font-size: 11px;
+            line-height: 1.3;
             font-weight: 700;
         }
 
-        .print-btn.secondary {
-            background: #e5e7eb;
-            color: #111827;
+        .footer-block {
+            font-weight: 700;
+        }
+
+        .footer-thanks {
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 2px;
         }
 
         .footer-space {
@@ -227,15 +265,16 @@
         }
 
         @media print {
-            html, body {
+            html,
+            body {
                 background: #ffffff;
                 width: 58mm;
                 min-width: 58mm;
                 max-width: 58mm;
                 margin: 0;
                 padding: 0;
-                font-size: 11px;
-                line-height: 1.3;
+                font-size: 12px;
+                line-height: 1.28;
             }
 
             body {
@@ -251,6 +290,8 @@
                 margin: 0;
                 display: block;
                 width: 58mm;
+                min-width: 58mm;
+                max-width: 58mm;
             }
 
             .receipt-paper {
@@ -258,25 +299,35 @@
                 min-width: 58mm;
                 max-width: 58mm;
                 box-shadow: none;
-                padding: 6px 6px 10px;
+                padding: 5px 3mm 9px;
                 margin: 0;
             }
 
             .brand-name {
-                font-size: 15px;
+                font-size: 17px;
             }
 
-            .brand-sub,
+            .brand-sub {
+                font-size: 10px;
+            }
+
+            .tiny {
+                font-size: 9px;
+            }
+
             .small {
                 font-size: 10px;
             }
 
-            .normal {
+            .normal,
+            .summary-block,
+            .item-total-line,
+            .item-name {
                 font-size: 11px;
             }
 
-            .big {
-                font-size: 12px;
+            .summary-line.grand-total {
+                font-size: 14px;
             }
 
             .divider,
@@ -284,8 +335,12 @@
                 margin: 6px 0;
             }
 
+            .item-row {
+                padding: 3px 0 5px;
+            }
+
             .footer-space {
-                height: 16px;
+                height: 18px;
             }
         }
     </style>
@@ -295,14 +350,16 @@
         $source = $source ?? request('source', 'backoffice');
         $autoprint = (bool) ($autoprint ?? request('autoprint'));
         $autoClose = (bool) request('autoclose', false);
+
         $transactionNumber = $transaction->transaction_number ?? ('TRX-' . $transaction->id);
         $outletName = $transaction->outlet->name ?? 'ATG POS';
         $cashierName = $transaction->user->name ?? '-';
         $memberName = $transaction->member->name ?? null;
         $memberPhone = $transaction->member->phone ?? null;
-        $createdAt = $transaction->created_at?->format('Y-m-d H:i:s') ?? '-';
+        $createdAt = $transaction->created_at?->format('d/m/Y H:i') ?? '-';
         $paymentMethod = strtoupper((string) ($transaction->payment_method ?? '-'));
         $status = strtoupper((string) ($transaction->status ?? '-'));
+
         $subtotal = (float) ($transaction->subtotal ?? 0);
         $discountAmount = (float) ($transaction->discount_amount ?? 0);
         $taxAmount = (float) ($transaction->tax_amount ?? 0);
@@ -310,6 +367,15 @@
         $amountPaid = (float) ($transaction->amount_paid ?? 0);
         $changeAmount = (float) ($transaction->change_amount ?? 0);
         $isVoid = strtolower((string) ($transaction->status ?? '')) === 'void';
+
+        $receiptNumberDisplay = $transactionNumber;
+        if (! empty($transaction->transaction_number)) {
+            $parts = explode('-', $transaction->transaction_number);
+            $lastPart = end($parts);
+            if (! empty($lastPart)) {
+                $receiptNumberDisplay = 'ATG-' . str_pad((string) $lastPart, 4, '0', STR_PAD_LEFT);
+            }
+        }
     @endphp
 
     <div class="print-toolbar">
@@ -328,9 +394,9 @@
 
     <div class="receipt-preview-wrap">
         <div class="receipt-paper">
-            <div class="header-block center">
+            <div class="center">
                 <div class="brand-name">{{ $outletName }}</div>
-                <div class="brand-sub">ATG POS RECEIPT</div>
+                <div class="brand-sub">ATG POS</div>
                 <div class="small">{{ $createdAt }}</div>
 
                 @if($isVoid)
@@ -340,17 +406,17 @@
 
             <div class="divider"></div>
 
-            <div class="meta-block small">
+            <div class="small">
                 <div class="meta-line">
                     <div class="label">No</div>
-                    <div class="value">{{ $transactionNumber }}</div>
+                    <div class="value">{{ $receiptNumberDisplay }}</div>
                 </div>
                 <div class="meta-line">
-                    <div class="label">Cashier</div>
+                    <div class="label">Kasir</div>
                     <div class="value">{{ $cashierName }}</div>
                 </div>
                 <div class="meta-line">
-                    <div class="label">Payment</div>
+                    <div class="label">Bayar</div>
                     <div class="value">{{ $paymentMethod }}</div>
                 </div>
                 <div class="meta-line">
@@ -373,7 +439,7 @@
 
             <div class="divider"></div>
 
-            <div class="items-block normal">
+            <div class="normal">
                 @forelse($transaction->items as $item)
                     <div class="item-row">
                         <div class="item-name">
@@ -398,11 +464,11 @@
 
                         @if(count($modifiers))
                             <div class="item-modifier small muted">
-                                {{ implode(' • ', $modifiers) }}
+                                {{ implode(' / ', $modifiers) }}
                             </div>
                         @endif
 
-                        <div class="item-total-line small">
+                        <div class="item-total-line">
                             <div class="left">
                                 {{ number_format((float) ($item->qty ?? 0), 0, ',', '.') }}
                                 x
@@ -420,7 +486,7 @@
 
             <div class="divider"></div>
 
-            <div class="summary-block normal">
+            <div class="summary-block">
                 <div class="summary-line">
                     <div class="label">Subtotal</div>
                     <div class="value">{{ number_format($subtotal, 0, ',', '.') }}</div>
@@ -444,28 +510,28 @@
 
                 <div class="summary-line grand-total">
                     <div class="label">TOTAL</div>
-                    <div class="value">{{ number_format($grandTotal, 0, ',', '.') }}</div>
+                    <div class="value">Rp {{ number_format($grandTotal, 0, ',', '.') }}</div>
                 </div>
 
                 <div class="solid-divider"></div>
 
                 <div class="summary-line">
-                    <div class="label">Paid</div>
+                    <div class="label">Dibayar</div>
                     <div class="value">{{ number_format($amountPaid, 0, ',', '.') }}</div>
                 </div>
 
                 <div class="summary-line">
-                    <div class="label">Change</div>
+                    <div class="label">Kembali</div>
                     <div class="value">{{ number_format($changeAmount, 0, ',', '.') }}</div>
                 </div>
             </div>
 
             @if($isVoid)
-                <div class="void-box small">
+                <div class="void-box">
                     <div class="bold">VOID INFO</div>
 
                     @if(!empty($transaction->void_at))
-                        <div>Void At: {{ $transaction->void_at?->format('Y-m-d H:i:s') }}</div>
+                        <div>Void At: {{ $transaction->void_at?->format('d/m/Y H:i') }}</div>
                     @endif
 
                     @if(!empty($transaction->voidBy?->name))
@@ -483,7 +549,7 @@
             <div class="divider"></div>
 
             <div class="footer-block center">
-                <div class="small bold">Terima kasih</div>
+                <div class="footer-thanks">Terima kasih</div>
                 <div class="tiny">Simpan struk ini sebagai bukti transaksi</div>
                 <div class="tiny">Powered by ATG POS</div>
             </div>
@@ -495,6 +561,7 @@
     <script>
         (function () {
             const shouldAutoPrint = @json($autoprint);
+            const shouldAutoClose = @json($autoClose);
 
             if (!shouldAutoPrint) {
                 return;
@@ -503,20 +570,20 @@
             window.addEventListener('load', function () {
                 setTimeout(function () {
                     window.print();
-                }, 400);
+                }, 500);
             });
 
             window.addEventListener('afterprint', function () {
-                if (@json($autoClose)) {
+                if (shouldAutoClose) {
                     window.close();
                 }
             });
 
             setTimeout(function () {
-                if (@json($autoClose)) {
+                if (shouldAutoClose) {
                     window.close();
                 }
-            }, 3000);
+            }, 3500);
         })();
     </script>
 </body>
