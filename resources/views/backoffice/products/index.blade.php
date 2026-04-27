@@ -339,6 +339,134 @@
             border: 1px solid #fed7aa;
         }
 
+
+        .product-filter-card {
+            margin: 20px 24px 0;
+            padding: 18px;
+            border: 1px solid #e8edf4;
+            border-radius: 22px;
+            background: #ffffff;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        .product-filter-form {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr auto auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .filter-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 900;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+
+        .filter-field input,
+        .filter-field select {
+            width: 100%;
+            min-height: 46px;
+            box-sizing: border-box;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: #ffffff;
+            padding: 0 14px;
+            font-size: 14px;
+            color: #111827;
+            outline: none;
+        }
+
+        .filter-field input:focus,
+        .filter-field select:focus {
+            border-color: rgba(232,106,58,0.70);
+            box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
+        }
+
+        .product-category-section {
+            margin: 24px;
+            border: 1px solid #e8edf4;
+            border-radius: 24px;
+            overflow: hidden;
+            background: #ffffff;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        .product-category-head {
+            cursor: pointer;
+            user-select: none;
+            padding: 18px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #ffffff 0%, #fff8f4 100%);
+            border-bottom: 1px solid #f1e3da;
+        }
+
+        .product-category-title {
+            font-size: 18px;
+            font-weight: 900;
+            color: #111827;
+            letter-spacing: -0.02em;
+        }
+
+        .product-category-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .product-category-count {
+            font-size: 12px;
+            font-weight: 900;
+            color: #c9552a;
+            background: #fff1ea;
+            border: 1px solid #f5d5c7;
+            border-radius: 999px;
+            padding: 7px 10px;
+            white-space: nowrap;
+        }
+
+        .product-category-toggle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            border-radius: 999px;
+            background: #ffffff;
+            border: 1px solid #f1e3da;
+            color: #c9552a;
+            font-size: 16px;
+            font-weight: 900;
+            line-height: 1;
+        }
+
+        .product-category-section.collapsed .table-wrap {
+            display: none;
+        }
+
+        .product-category-section.collapsed .product-category-toggle {
+            transform: rotate(-90deg);
+        }
+
+        @media (max-width: 900px) {
+            .product-filter-form {
+                grid-template-columns: 1fr;
+            }
+
+            .product-filter-card,
+            .product-category-section {
+                margin-left: 18px;
+                margin-right: 18px;
+            }
+        }
+
         @media (max-width: 1280px) {
             .summary-grid {
                 grid-template-columns: 1fr 1fr;
@@ -449,66 +577,126 @@
                 </div>
             </div>
 
-            @if($products->count())
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Brand</th>
-                                <th>Category</th>
-                                <th>Product</th>
-                                <th>Variants</th>
-                                <th>Status</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($products as $product)
-                                <tr>
-                                    <td>{{ $product->brand->name ?? '-' }}</td>
-                                    <td>{{ $product->category->name ?? '-' }}</td>
-                                    <td>
-                                        <div class="product-name">{{ $product->name }}</div>
-                                    </td>
-                                    <td>
-                                        <div class="variants-wrap">
-                                            @forelse($product->variants as $variant)
-                                                <span class="variant-pill">
-                                                    {{ $variant->name }} - Rp {{ number_format((float) $variant->price, 0, ',', '.') }}
-                                                </span>
-                                            @empty
-                                                -
-                                            @endforelse
-                                        </div>
-                                    </td>
-                                    <td>
-                                        @if($product->is_active)
-                                            <span class="status-badge status-active">Active</span>
-                                        @else
-                                            <span class="status-badge status-inactive">Inactive</span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="action-stack">
-                                            <a href="{{ route('backoffice.products.edit', $product->id) }}" class="btn btn-small btn-small-blue">Edit</a>
+            <div class="product-filter-card">
+                <form method="GET" action="{{ route('backoffice.products.index') }}" class="product-filter-form">
+                    <div class="filter-field">
+                        <label for="search">Search</label>
+                        <input
+                            type="text"
+                            name="search"
+                            id="search"
+                            value="{{ $filters['search'] ?? '' }}"
+                            placeholder="Cari product / brand / category / variant"
+                        >
+                    </div>
 
-                                            <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form" onsubmit="return confirm('Yakin mau hapus product ini?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-small btn-small-red">Hapus</button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
+                    <div class="filter-field">
+                        <label for="category_id">Category</label>
+                        <select name="category_id" id="category_id">
+                            <option value="">Semua Category</option>
+                            @foreach(($categories ?? collect()) as $category)
+                                <option value="{{ $category->id }}" @selected((string) ($filters['category_id'] ?? '') === (string) $category->id)>
+                                    {{ $category->name }}
+                                </option>
                             @endforeach
-                        </tbody>
-                    </table>
-                </div>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-orange">Filter</button>
+                    <a href="{{ route('backoffice.products.index') }}" class="btn btn-dark">Reset</a>
+                </form>
+            </div>
+
+            @if($products->count())
+                @foreach(($productGroups ?? collect()) as $categoryName => $categoryProducts)
+                    <div class="product-category-section {{ $loop->first ? '' : 'collapsed' }}" data-product-category-section>
+                        <div class="product-category-head" data-product-category-toggle>
+                            <div class="product-category-title">{{ $categoryName }}</div>
+                            <div class="product-category-meta">
+                                <div class="product-category-count">{{ $categoryProducts->count() }} product</div>
+                                <div class="product-category-toggle">⌄</div>
+                            </div>
+                        </div>
+
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Brand</th>
+                                        <th>Category</th>
+                                        <th>Product</th>
+                                        <th>Variants</th>
+                                        <th>Status</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($categoryProducts as $product)
+                                        <tr>
+                                            <td>{{ $product->brand->name ?? '-' }}</td>
+                                            <td>{{ $product->category->name ?? '-' }}</td>
+                                            <td>
+                                                <div class="product-name">{{ $product->name }}</div>
+                                                @if($product->code)
+                                                    <div style="margin-top:4px; color:#6b7280; font-size:12px; font-weight:700;">{{ $product->code }}</div>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <div class="variants-wrap">
+                                                    @forelse($product->variants as $variant)
+                                                        <span class="variant-pill">
+                                                            {{ $variant->name }} - Rp {{ number_format((float) ($variant->price_dine_in ?? $variant->price), 0, ',', '.') }}
+                                                        </span>
+                                                    @empty
+                                                        -
+                                                    @endforelse
+                                                </div>
+                                            </td>
+                                            <td>
+                                                @if($product->is_active)
+                                                    <span class="status-badge status-active">Active</span>
+                                                @else
+                                                    <span class="status-badge status-inactive">Inactive</span>
+                                                @endif
+                                            </td>
+                                            <td>
+                                                <div class="action-stack">
+                                                    <a href="{{ route('backoffice.products.edit', $product->id) }}" class="btn btn-small btn-small-blue">Edit</a>
+
+                                                    <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form" onsubmit="return confirm('Yakin mau hapus product ini?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-small btn-small-red">Hapus</button>
+                                                    </form>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @endforeach
             @else
                 <div class="empty">
-                    Belum ada product tersimpan.
+                    Belum ada product yang cocok dengan filter aktif.
                 </div>
             @endif
         </div>
     </div>
+
+    <script>
+        document.querySelectorAll('[data-product-category-toggle]').forEach(function (header) {
+            header.addEventListener('click', function () {
+                const section = header.closest('[data-product-category-section]');
+
+                if (!section) {
+                    return;
+                }
+
+                section.classList.toggle('collapsed');
+            });
+        });
+    </script>
+
 @endsection

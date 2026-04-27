@@ -29,18 +29,54 @@ class ProductViewController extends Controller
         return $user;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
+        $categories = ProductCategory::orderBy('name')->get();
+
         $products = Product::with(['brand', 'category', 'variants'])
-            ->latest()
+            ->when($request->filled('category_id'), function ($query) use ($request) {
+                $query->where('product_category_id', $request->category_id);
+            })
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $keyword = trim((string) $request->search);
+
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('name', 'like', '%' . $keyword . '%')
+                        ->orWhere('code', 'like', '%' . $keyword . '%')
+                        ->orWhereHas('brand', function ($brandQuery) use ($keyword) {
+                            $brandQuery->where('name', 'like', '%' . $keyword . '%');
+                        })
+                        ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
+                            $categoryQuery->where('name', 'like', '%' . $keyword . '%');
+                        })
+                        ->orWhereHas('variants', function ($variantQuery) use ($keyword) {
+                            $variantQuery->where('name', 'like', '%' . $keyword . '%')
+                                ->orWhere('code', 'like', '%' . $keyword . '%');
+                        });
+                });
+            })
+            ->orderBy('product_category_id')
+            ->orderBy('name')
             ->get();
+
+        $productGroups = $products
+            ->groupBy(function ($product) {
+                return $product->category->name ?? 'Uncategorized';
+            })
+            ->sortKeys();
 
         return view('backoffice.products.index', [
             'user' => $user,
             'products' => $products,
+            'productGroups' => $productGroups,
+            'categories' => $categories,
+            'filters' => [
+                'search' => $request->search,
+                'category_id' => $request->category_id,
+            ],
         ]);
     }
 
