@@ -5,7 +5,7 @@
   "start_url": "/cashier",
   "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "landscape",
   "theme_color": "#111827",
   "background_color": "#f8fafc",
   "icons": [
