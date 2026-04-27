@@ -223,7 +223,7 @@
         }
 
         thead th {
-            text-align: left;
+            text-align: center;
             font-size: 12px;
             color: #6b7280;
             text-transform: uppercase;
@@ -237,7 +237,7 @@
         tbody td {
             padding: 16px 14px;
             border-bottom: 1px solid #edf1f6;
-            vertical-align: top;
+            vertical-align: middle;
             font-size: 14px;
             color: #111827;
         }
@@ -337,6 +337,83 @@
             font-weight: 700;
             border: 1px solid #dbe3ff;
             line-height: 1.7;
+        }
+
+
+        .recipe-filter-card {
+            margin: 20px 24px 0;
+            padding: 18px;
+            border: 1px solid #e8edf4;
+            border-radius: 22px;
+            background: #ffffff;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
+        }
+
+        .recipe-filter-form {
+            display: grid;
+            grid-template-columns: 1.4fr 0.8fr 0.9fr auto auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .filter-field label {
+            display: block;
+            font-size: 11px;
+            font-weight: 900;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 8px;
+        }
+
+        .filter-field input,
+        .filter-field select {
+            width: 100%;
+            min-height: 46px;
+            box-sizing: border-box;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: #ffffff;
+            padding: 0 14px;
+            font-size: 14px;
+            color: #111827;
+            outline: none;
+        }
+
+        .filter-field input:focus,
+        .filter-field select:focus {
+            border-color: rgba(232,106,58,0.70);
+            box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
+        }
+
+        .recipe-table th,
+        .recipe-table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .recipe-items-cell {
+            text-align: center;
+        }
+
+        .recipe-item-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        @media (max-width: 980px) {
+            .recipe-filter-form {
+                grid-template-columns: 1fr;
+            }
+
+            .recipe-filter-card {
+                margin-left: 18px;
+                margin-right: 18px;
+            }
         }
 
         @media (max-width: 1280px) {
@@ -450,9 +527,45 @@
                 </div>
             </div>
 
+            <div class="recipe-filter-card">
+                <form method="GET" action="{{ route('backoffice.recipes.index') }}" class="recipe-filter-form">
+                    <div class="filter-field">
+                        <label for="search">Search</label>
+                        <input
+                            type="text"
+                            name="search"
+                            id="search"
+                            value="{{ $filters['search'] ?? '' }}"
+                            placeholder="Cari recipe / product / variant / ingredient"
+                        >
+                    </div>
+
+                    <div class="filter-field">
+                        <label for="status">Status</label>
+                        <select name="status" id="status">
+                            <option value="">Semua Status</option>
+                            <option value="active" @selected(($filters['status'] ?? '') === 'active')>Active</option>
+                            <option value="inactive" @selected(($filters['status'] ?? '') === 'inactive')>Inactive</option>
+                        </select>
+                    </div>
+
+                    <div class="filter-field">
+                        <label for="ingredient_type">Ingredient Type</label>
+                        <select name="ingredient_type" id="ingredient_type">
+                            <option value="">Semua Type</option>
+                            <option value="{{ \App\Models\Ingredient::TYPE_RAW }}" @selected(($filters['ingredient_type'] ?? '') === \App\Models\Ingredient::TYPE_RAW)>Mentah</option>
+                            <option value="{{ \App\Models\Ingredient::TYPE_SEMI_FINISHED }}" @selected(($filters['ingredient_type'] ?? '') === \App\Models\Ingredient::TYPE_SEMI_FINISHED)>Setengah Jadi</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-orange">Filter</button>
+                    <a href="{{ route('backoffice.recipes.index') }}" class="btn btn-dark">Reset</a>
+                </form>
+            </div>
+
             @if($recipes->count())
                 <div class="table-wrap">
-                    <table>
+                    <table class="recipe-table">
                         <thead>
                             <tr>
                                 <th>Recipe Name</th>
@@ -471,14 +584,14 @@
                                     </td>
                                     <td>{{ $recipe->variant->product->name ?? '-' }}</td>
                                     <td>{{ $recipe->variant->name ?? '-' }}</td>
-                                    <td>
+                                    <td class="recipe-items-cell">
                                         @forelse($recipe->items as $item)
                                             @php
                                                 $ingredientType = $item->ingredient?->ingredient_type;
                                                 $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
                                             @endphp
 
-                                            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+                                            <div class="recipe-item-row">
                                                 <span class="item-pill">
                                                     {{ $item->ingredient->name ?? '-' }}
                                                     - {{ number_format((float) $item->qty, 2, ',', '.') }}
@@ -512,13 +625,10 @@
                 </div>
             @else
                 <div class="empty">
-                    Belum ada recipe tersimpan.
+                    Belum ada recipe yang cocok dengan filter aktif.
                 </div>
             @endif
 
-            <div class="note">
-                Recipe sekarang sudah punya Import dan Export CSV supaya lebih gampang buat backup, review, dan cek susunan item recipe, sekaligus tetap konsisten dengan layout sidebar back office.
-            </div>
         </div>
     </div>
 @endsection

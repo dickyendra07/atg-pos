@@ -32,7 +32,7 @@ class RecipeViewController extends Controller
         return $user;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
@@ -41,12 +41,51 @@ class RecipeViewController extends Controller
             'variant.product',
             'items.ingredient.category',
         ])
+            ->when($request->filled('status'), function ($query) use ($request) {
+                if ($request->status === 'active') {
+                    $query->where('is_active', true);
+                }
+
+                if ($request->status === 'inactive') {
+                    $query->where('is_active', false);
+                }
+            })
+            ->when($request->filled('ingredient_type'), function ($query) use ($request) {
+                $query->whereHas('items.ingredient', function ($ingredientQuery) use ($request) {
+                    $ingredientQuery->where('ingredient_type', $request->ingredient_type);
+                });
+            })
+            ->when($request->filled('search'), function ($query) use ($request) {
+                $keyword = trim((string) $request->search);
+
+                $query->where(function ($q) use ($keyword) {
+                    $q->where('name', 'like', '%' . $keyword . '%')
+                        ->orWhereHas('variant', function ($variantQuery) use ($keyword) {
+                            $variantQuery->where('name', 'like', '%' . $keyword . '%')
+                                ->orWhere('code', 'like', '%' . $keyword . '%')
+                                ->orWhereHas('product', function ($productQuery) use ($keyword) {
+                                    $productQuery->where('name', 'like', '%' . $keyword . '%');
+                                });
+                        })
+                        ->orWhereHas('items.ingredient', function ($ingredientQuery) use ($keyword) {
+                            $ingredientQuery->where('name', 'like', '%' . $keyword . '%')
+                                ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
+                                    $categoryQuery->where('name', 'like', '%' . $keyword . '%');
+                                });
+                        });
+                });
+            })
             ->latest()
             ->get();
 
         return view('backoffice.recipes.index', [
             'user' => $user,
             'recipes' => $recipes,
+            'filters' => [
+                'search' => $request->search,
+                'status' => $request->status,
+                'ingredient_type' => $request->ingredient_type,
+            ],
         ]);
     }
 
