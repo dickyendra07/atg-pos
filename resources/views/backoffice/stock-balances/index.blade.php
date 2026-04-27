@@ -723,7 +723,7 @@
                 <div class="inventory-kicker">Inventory Workspace</div>
                 <h1 class="inventory-title">Back Office - Inventory Control</h1>
                 <p class="inventory-subtitle">
-                    Pusat kontrol stok seluruh lokasi untuk purchase order, import opening stock, adjustment, opname, dan pembacaan stock summary operasional dalam satu halaman yang konsisten dengan sidebar back office.
+                    Pusat kontrol stok seluruh lokasi untuk purchase order, import opening stock, adjustment, opname, dan stock summary operasional.
                 </p>
             </div>
 
@@ -782,7 +782,7 @@
                 <div class="stat-card red">
                     <div class="stat-label">Zero Stock</div>
                     <div class="stat-value">{{ $summary['zero_stock'] ?? 0 }}</div>
-                    <div class="stat-desc">Baris stok bernilai 0 yang sekarang ditandai merah agar cepat terlihat.</div>
+                    <div class="stat-desc">Baris stok bernilai 0.</div>
                 </div>
             </div>
 
@@ -1083,7 +1083,7 @@
                 <div class="section-head">
                     <h2 class="section-title">Rule Reminder</h2>
                     <p class="section-subtitle">
-                        Gunakan rule ini supaya user dan client tidak bingung membedakan inventory action dengan transfer internal.
+                        Ringkasan rule inventory action dan transfer internal.
                     </p>
                 </div>
 
@@ -1125,7 +1125,7 @@
             <div>
                 <h2 class="section-title">Need Action List</h2>
                 <p class="section-subtitle">
-                    Daftar item yang sedang perlu tindakan dari sistem, supaya tim bisa langsung tahu mana yang harus direstock, ditransfer, atau disesuaikan.
+                    Daftar item yang perlu direstock, ditransfer, atau disesuaikan.
                 </p>
             </div>
 

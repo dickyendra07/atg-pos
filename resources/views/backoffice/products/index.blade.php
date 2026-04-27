@@ -507,7 +507,7 @@
                 <div class="products-kicker">Products Workspace</div>
                 <h1 class="products-title">Back Office - Products</h1>
                 <p class="products-subtitle">
-                    Kelola product utama, category, brand, status aktif, serta akses import dan export CSV dalam satu halaman yang lebih rapi dan konsisten dengan sidebar back office.
+                    Kelola product utama, category, brand, status aktif, serta akses import dan export CSV.
                 </p>
             </div>
 

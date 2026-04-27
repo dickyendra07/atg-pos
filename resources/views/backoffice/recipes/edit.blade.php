@@ -348,10 +348,6 @@
                             Recipe ini belum punya bahan sama sekali.
                         </div>
                     @endif
-
-                    <div class="note">
-                        Daftar recipe items sekarang diletakkan di kanan atas supaya lebih cepat dicek sebelum tambah bahan baru.
-                    </div>
                 </div>
 
                 <div class="card">
@@ -384,10 +380,6 @@
                             <button type="submit" class="btn btn-success">Tambah Recipe Item</button>
                         </div>
                     </form>
-
-                    <div class="note">
-                        Batch 4 aktif: 1 recipe sekarang aman untuk campur bahan mentah dan bahan setengah jadi sekaligus.
-                    </div>
                 </div>
             </div>
         </div>

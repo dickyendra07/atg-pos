@@ -396,7 +396,7 @@
                 <div class="outlets-kicker">Outlets Workspace</div>
                 <h1 class="outlets-title">Back Office - Outlets</h1>
                 <p class="outlets-subtitle">
-                    Kelola outlet aktif sebagai lokasi operasional penjualan dan inventory dengan tampilan yang sekarang sudah konsisten dengan sidebar back office.
+                    Kelola outlet aktif sebagai lokasi operasional penjualan dan inventory.
                 </p>
             </div>
 

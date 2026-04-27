@@ -429,7 +429,7 @@
                 <div class="production-recipes-kicker">Production Recipes Workspace</div>
                 <h1 class="production-recipes-title">Back Office - Production Recipes</h1>
                 <p class="production-recipes-subtitle">
-                    Kelola resep internal untuk bahan setengah jadi tanpa mengganggu recipe produk jual yang sudah ada, dengan tampilan yang sekarang sudah konsisten dengan sidebar back office.
+                    Kelola resep internal untuk bahan setengah jadi.
                 </p>
             </div>
 
@@ -449,10 +449,10 @@
 
         <div class="card">
             <div class="hero-card">
-                <div class="hero-kicker">Batch 2 · Production Recipe</div>
+                <div class="hero-kicker">Production Recipe</div>
                 <h2 class="hero-heading">Definisikan bahan setengah jadi beserta komposisi mentahnya.</h2>
                 <p class="hero-text">
-                    Batch 2 ini khusus untuk master recipe internal. Belum ada eksekusi produksi stok, tapi struktur output dan bahan inputnya sudah bisa dikelola dari back office.
+                    Master recipe internal untuk mengelola output bahan setengah jadi dan bahan input.
                 </p>
             </div>
 
@@ -486,7 +486,7 @@
                 <div class="table-head">
                     <h2 class="table-title">All Production Recipes</h2>
                     <p class="table-subtitle">
-                        Output ingredient harus bertipe setengah jadi, sedangkan bahan input pada Batch 2 dibatasi ke ingredient mentah.
+                        Output ingredient harus bertipe setengah jadi, sedangkan bahan input dibatasi ke ingredient mentah.
                     </p>
                 </div>
 
@@ -547,10 +547,6 @@
                         Belum ada production recipe tersimpan.
                     </div>
                 @endif
-
-                <div class="note">
-                    Batch 2 aktif: sekarang kamu sudah bisa bikin recipe internal untuk bahan setengah jadi, tapi belum masuk eksekusi produksi stok.
-                </div>
             </div>
         </div>
     </div>

@@ -436,7 +436,7 @@
                 <div class="shifts-kicker">Shifts Workspace</div>
                 <h1 class="shifts-title">Back Office - Cashier Shifts</h1>
                 <p class="shifts-subtitle">
-                    Pantau shift kasir, opening cash, expected cash, closing cash actual, dan performa transaksi per shift dengan tampilan yang sekarang konsisten dengan sidebar back office.
+                    Pantau shift kasir, opening cash, expected cash, closing cash actual, dan performa transaksi per shift.
                 </p>
             </div>
 

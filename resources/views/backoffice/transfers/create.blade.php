@@ -219,7 +219,7 @@
 <div class="wrap">
         <div class="title">Buat Transfer</div>
         <div class="subtitle">
-            Transfer barang dari warehouse atau outlet ke lokasi lain. Sekarang kamu bisa input banyak item sekaligus dalam satu submit dengan status awal <strong>in transit</strong>.
+            Transfer barang dari warehouse atau outlet ke lokasi lain dengan status awal <strong>in transit</strong>.
         </div>
 
         @if($errors->any())

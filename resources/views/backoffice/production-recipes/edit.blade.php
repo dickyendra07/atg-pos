@@ -418,7 +418,7 @@
                     <div class="card-head">
                         <h2 class="card-title">Tambah Bahan Input</h2>
                         <p class="card-subtitle">
-                            Pada Batch 2, bahan input dibatasi ke ingredient mentah supaya fondasinya tetap bersih dan mudah diaudit.
+                            Bahan input dibatasi ke ingredient mentah.
                         </p>
                     </div>
 
@@ -436,7 +436,7 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="helper">Output ingredient tidak akan muncul di daftar ini. Batch 2 hanya menerima input ingredient mentah.</div>
+                                <div class="helper">Output ingredient tidak akan muncul di daftar input. Hanya ingredient mentah yang bisa dipilih.</div>
                             </div>
 
                             <div class="field">
@@ -450,7 +450,7 @@
                         </form>
 
                         <div class="note">
-                            Batch 2 belum mengeksekusi produksi stok. Halaman ini baru membentuk master recipe internal.
+                            Halaman ini membentuk master recipe internal.
                         </div>
                     </div>
                 </div>
@@ -503,10 +503,6 @@
                             Production recipe ini belum punya bahan input sama sekali.
                         </div>
                     @endif
-
-                    <div class="note">
-                        Kalau header sudah benar dan bahan input sudah lengkap, berarti Batch 2 untuk master production recipe sudah aman.
-                    </div>
                 </div>
             </div>
         </div>

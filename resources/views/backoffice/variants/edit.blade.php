@@ -289,7 +289,7 @@
                 <div class="variant-form-kicker">Variants Workspace</div>
                 <h1 class="variant-form-title">Edit Group Variant</h1>
                 <p class="variant-form-subtitle">
-                    Kamu sedang edit semua variant untuk product <strong>{{ $variant->product->name ?? '-' }}</strong>. Di sini bisa sekaligus tambah row baru, ubah harga dine in / delivery, atau hapus row yang belum dipakai transaksi / recipe.
+                    Edit variant untuk product <strong>{{ $variant->product->name ?? '-' }}</strong>.
                 </p>
             </div>
 

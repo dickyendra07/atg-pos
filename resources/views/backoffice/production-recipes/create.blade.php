@@ -251,7 +251,7 @@
             @endif
 
             <div class="hero-card">
-                <div class="hero-kicker">Batch 2 · Create Header</div>
+                <div class="hero-kicker">Create Production Recipe</div>
                 <h2 class="hero-heading">Bikin output recipe setengah jadi dulu dengan struktur yang rapi.</h2>
                 <p class="hero-text">
                     Output ingredient harus bertipe setengah jadi. Setelah header dibuat, bahan input mentah bisa ditambahkan dari halaman edit.
@@ -262,7 +262,7 @@
                 <div class="card-head">
                     <h2 class="card-title">Form Production Recipe</h2>
                     <p class="card-subtitle">
-                        Di Batch 2, satu output ingredient hanya boleh punya satu production recipe aktif sebagai fondasi yang bersih.
+                        Satu output ingredient hanya boleh punya satu production recipe aktif.
                     </p>
                 </div>
 

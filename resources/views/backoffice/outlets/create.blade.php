@@ -211,10 +211,6 @@
                     <a href="{{ route('backoffice.outlets.index') }}" class="btn btn-dark">Batal</a>
                 </div>
             </form>
-
-            <div class="note">
-                Setelah outlet berhasil dibuat, kamu bisa pakai outlet ini untuk transaksi cashier, inventory control, transfer antar lokasi, dan referensi <strong>location_id</strong> di import opening stock.
-            </div>
         </div>
     </div>
 </body>

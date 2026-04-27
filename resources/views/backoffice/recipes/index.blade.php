@@ -457,7 +457,7 @@
                 <div class="recipes-kicker">Recipes Workspace</div>
                 <h1 class="recipes-title">Back Office - Recipes</h1>
                 <p class="recipes-subtitle">
-                    Kelola recipe produk jual, susunan ingredient, import dan export CSV, serta cek bahan mentah dan bahan setengah jadi dalam satu tampilan yang konsisten dengan sidebar back office.
+                    Kelola recipe produk jual, susunan ingredient, import dan export CSV, serta bahan mentah dan setengah jadi.
                 </p>
             </div>
 

@@ -398,7 +398,7 @@
                 <div class="warehouses-kicker">Warehouses Workspace</div>
                 <h1 class="warehouses-title">Back Office - Warehouses</h1>
                 <p class="warehouses-subtitle">
-                    Kelola daftar warehouse aktif sebagai lokasi gudang utama di sistem dengan tampilan yang sekarang sudah konsisten dengan sidebar back office.
+                    Kelola daftar warehouse aktif sebagai lokasi gudang utama di sistem.
                 </p>
             </div>
 

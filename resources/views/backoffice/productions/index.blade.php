@@ -389,7 +389,7 @@
                 <div class="productions-kicker">Productions Workspace</div>
                 <h1 class="productions-title">Back Office - Productions</h1>
                 <p class="productions-subtitle">
-                    Histori produksi stok bahan mentah menjadi bahan setengah jadi. Semua transaksi di sini langsung memengaruhi stock balance dan stock movement, dengan tampilan yang sekarang sudah menyatu dengan sidebar back office.
+                    Histori produksi stok bahan mentah menjadi bahan setengah jadi.
                 </p>
             </div>
 
@@ -405,7 +405,7 @@
 
         <div class="card">
             <div class="hero-card">
-                <div class="hero-kicker">Batch 3 · Productions</div>
+                <div class="hero-kicker">Productions</div>
                 <h2 class="hero-heading">Eksekusi produksi stok raw ke semi-finished dalam satu flow.</h2>
                 <p class="hero-text">
                     Saat produksi disimpan, stok bahan mentah akan berkurang, stok output setengah jadi akan bertambah, dan movement produksi akan langsung tercatat.

@@ -396,7 +396,7 @@
                 <div class="users-kicker">Users Workspace</div>
                 <h1 class="users-title">Back Office - User Management</h1>
                 <p class="users-subtitle">
-                    Tambah dan atur user kasir maupun admin beserta role dan outlet akses utamanya, dengan tampilan yang sekarang sudah konsisten dengan sidebar back office.
+                    Tambah dan atur user kasir maupun admin beserta role dan outlet akses utama.
                 </p>
             </div>
 
@@ -501,10 +501,6 @@
                         Belum ada user.
                     </div>
                 @endif
-
-                <div class="note">
-                    User management sekarang sudah mengikuti layout sidebar back office supaya navigasi antar halaman master data lebih konsisten dan enak dipresentasikan ke client.
-                </div>
             </div>
         </div>
     </div>

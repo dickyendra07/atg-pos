@@ -301,7 +301,7 @@
             @endif
 
             <div class="hero-card">
-                <div class="hero-kicker">Batch 3 · Execute Production</div>
+                <div class="hero-kicker">Execute Production</div>
                 <h2 class="hero-heading">Jalankan produksi stok dari recipe semi-finished yang sudah dibuat.</h2>
                 <p class="hero-text">
                     Setelah submit, sistem akan mengurangi stok bahan input mentah dan menambah stok output setengah jadi pada lokasi yang dipilih.

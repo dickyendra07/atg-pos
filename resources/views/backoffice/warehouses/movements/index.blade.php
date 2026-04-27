@@ -232,10 +232,6 @@
             @else
                 <div class="empty">Belum ada riwayat stock movement untuk warehouse ini.</div>
             @endif
-
-            <div class="note">
-                Warehouse / Pergudangan 1C aktif: riwayat pergerakan stok gudang sekarang sudah bisa dipantau dari halaman ini.
-            </div>
         </div>
     </div>
 </body>

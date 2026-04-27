@@ -570,10 +570,6 @@
                         Belum ada ingredient tersimpan.
                     </div>
                 @endif
-
-                <div class="note">
-                    Batch 1 aktif: ingredient sekarang sudah dibedakan antara bahan mentah dan bahan setengah jadi sebagai fondasi sebelum masuk flow produksi internal.
-                </div>
             </div>
         </div>
     </div>

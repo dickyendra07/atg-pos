@@ -201,10 +201,6 @@
             @else
                 <div class="empty">Belum ada stok ingredient di warehouse ini.</div>
             @endif
-
-            <div class="note">
-                UX update aktif: tombol Transfer dari halaman stok warehouse sekarang langsung masuk ke transfer general dengan asal warehouse otomatis terisi.
-            </div>
         </div>
     </div>
 </body>

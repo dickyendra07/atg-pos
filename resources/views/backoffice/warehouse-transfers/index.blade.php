@@ -296,10 +296,6 @@
             @else
                 <div class="empty">Belum ada riwayat transfer gudang ke outlet.</div>
             @endif
-
-            <div class="note">
-                Warehouse 2B aktif: transfer gudang ke outlet sekarang sudah lebih rapi dengan nomor transfer dan filter list.
-            </div>
         </div>
     </div>
 </body>

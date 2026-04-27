@@ -394,7 +394,7 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div class="helper">Batch 1: mentah untuk bahan dasar, setengah jadi untuk bahan hasil olahan internal.</div>
+                                    <div class="helper">Mentah untuk bahan dasar, setengah jadi untuk bahan hasil olahan internal.</div>
                                 </div>
 
                                 <div class="field">
@@ -421,10 +421,6 @@
                                 <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Batal</a>
                             </div>
                         </form>
-
-                        <div class="note">
-                            Batch 1 aktif: halaman ingredient sekarang sudah mendukung klasifikasi mentah vs setengah jadi sebagai fondasi sebelum flow produksi internal.
-                        </div>
                     </div>
                 </div>
             </div>

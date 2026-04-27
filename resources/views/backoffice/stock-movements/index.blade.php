@@ -436,7 +436,7 @@
                 <div class="movement-kicker">Inventory Audit</div>
                 <h1 class="movement-title">Back Office - Stock Movements</h1>
                 <p class="movement-subtitle">
-                    Audit semua histori pergerakan stok dalam satu halaman yang konsisten dengan sidebar back office, mulai dari stock in, transfer, adjustment, opname, produksi, sampai sales usage warning.
+                    Audit histori pergerakan stok: stock in, transfer, adjustment, opname, produksi, dan sales usage warning.
                 </p>
             </div>
 
@@ -588,7 +588,7 @@
             </div>
 
             <div class="bottom-bar">
-                Stock Movements sekarang sudah ikut layout sidebar back office, jadi navigasi tetap ada di kiri saat pindah halaman dan audit movement jadi lebih konsisten dibaca.
+                
             </div>
         </div>
     </div>

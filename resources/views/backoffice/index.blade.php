@@ -740,7 +740,7 @@
                 <div class="dashboard-kicker">Back Office Dashboard</div>
                 <h1 class="dashboard-title">Dashboard summary yang lebih premium, lebih rapih, dan lebih dekat ke referensi client.</h1>
                 <p class="dashboard-subtitle">
-                    Batch D fokus ke KPI cards yang lebih clean, area chart yang lebih halus, serta tabel ringkasan transaksi per hari dan per outlet supaya client bisa baca angka utama lebih cepat.
+                    Ringkasan performa transaksi, outlet, product terlaris, dan indikator operasional utama.
                 </p>
             </div>
 
@@ -864,7 +864,7 @@
                 <div class="premium-card violet">
                     <div class="premium-label">Average Order</div>
                     <div class="premium-value">Rp {{ number_format((float) ($stats['average_order'] ?? 0), 0, ',', '.') }}</div>
-                    <div class="premium-desc">Rata-rata nilai order supaya client cepat membaca kualitas ticket size.</div>
+                    <div class="premium-desc">Rata-rata nilai order untuk membaca kualitas ticket size.</div>
                 </div>
             </div>
         </div>
@@ -1271,7 +1271,7 @@
         </div>
 
         <div class="bottom-bar">
-            Dashboard Batch D aktif: KPI cards lebih premium, chart lebih halus, dan sudah ada tabel daily transaction summary, outlet transaction summary, top products, serta tombol print summary.
+            
         </div>
     </div>
 @endsection

@@ -669,7 +669,7 @@
                 <div class="transfer-kicker">Internal Stock Transfer</div>
                 <h1 class="transfer-title">Back Office - Transfers</h1>
                 <p class="transfer-subtitle">
-                    Pantau seluruh perpindahan stok antar lokasi internal dalam satu tampilan yang lebih rapi, konsisten dengan sidebar back office, dan tetap enak dibaca untuk audit harian.
+                    Pantau perpindahan stok antar lokasi internal untuk kebutuhan audit harian.
                 </p>
             </div>
 
@@ -686,7 +686,7 @@
                     <div class="hero-kicker">Transfer Monitoring</div>
                     <h2 class="hero-heading">Read item-based transfer flow with clearer stock rollback control.</h2>
                     <p class="hero-text">
-                        Semua transfer sekarang dibaca per item, jadi kamu bisa monitor status pengiriman, penerimaan, pembatalan, dan aktivasi ulang tanpa kehilangan histori stok yang terkait.
+                        Monitor status pengiriman, penerimaan, pembatalan, dan aktivasi ulang per transfer.
                     </p>
                 </div>
 

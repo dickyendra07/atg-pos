@@ -544,7 +544,7 @@
                 <div class="transactions-kicker">Transactions Workspace</div>
                 <h1 class="transactions-title">Back Office - Transactions</h1>
                 <p class="transactions-subtitle">
-                    Monitor transaksi cashier dengan tampilan yang lebih clean dan valid untuk audit, operasional, dan presentasi client, sekaligus tetap konsisten dengan sidebar back office.
+                    Monitor transaksi cashier untuk audit dan operasional.
                 </p>
             </div>
 
