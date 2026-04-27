@@ -294,6 +294,7 @@
     @php
         $source = $source ?? request('source', 'backoffice');
         $autoprint = (bool) ($autoprint ?? request('autoprint'));
+        $autoClose = (bool) request('autoclose', false);
         $transactionNumber = $transaction->transaction_number ?? ('TRX-' . $transaction->id);
         $outletName = $transaction->outlet->name ?? 'ATG POS';
         $cashierName = $transaction->user->name ?? '-';
@@ -506,8 +507,16 @@
             });
 
             window.addEventListener('afterprint', function () {
-                // Biarkan tetap di halaman receipt setelah print
+                if (@json($autoClose)) {
+                    window.close();
+                }
             });
+
+            setTimeout(function () {
+                if (@json($autoClose)) {
+                    window.close();
+                }
+            }, 3000);
         })();
     </script>
 </body>
