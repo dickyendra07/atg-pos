@@ -587,7 +587,6 @@
                                     <tr>
                                         <th>Outlet</th>
                                         <th>Variant</th>
-                                        <th>Code</th>
                                         <th>Price Dine In</th>
                                         <th>Price Delivery</th>
                                         <th>Status</th>
@@ -599,9 +598,6 @@
                                         <tr>
                                             <td>{{ $variant->outlet->name ?? 'Semua Outlet' }}</td>
                                             <td>{{ $variant->name }}</td>
-                                            <td>
-                                                <span class="code-pill">{{ $variant->code }}</span>
-                                            </td>
                                             <td class="price-text">
                                                 Rp {{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}
                                             </td>
