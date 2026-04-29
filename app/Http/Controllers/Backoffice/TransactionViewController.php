@@ -285,9 +285,11 @@ class TransactionViewController extends Controller
 
             foreach ($items as $index => $item) {
                 $productName = trim((string) ($item->product_name ?? '-'));
-                $variantName = trim((string) ($item->variant_name ?? ''));
+                $variantName = trim((string) (preg_replace('/\s*\[(DINE IN|DELIVERY)\]$/i', '', (string) ($item->variant_name ?? ''))));
 
                 $itemName = $productName;
+                    $itemName = preg_replace('/\s*\[(PROMO FREE ITEM)\]/i', '', (string) $itemName);
+                    $itemName = preg_replace('/\s*\[(DINE IN|DELIVERY)\]/i', '', (string) $itemName);
                 if ($variantName !== '') {
                     $itemName .= ' - ' . $variantName;
                 }
@@ -371,7 +373,6 @@ class TransactionViewController extends Controller
 
             fputcsv($handle, [
                 'outlet',
-                'business_name',
                 'date',
                 'no',
                 'item_name',
