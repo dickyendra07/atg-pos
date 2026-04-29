@@ -45,11 +45,24 @@ class PromoViewController extends Controller
             ->values();
     }
 
+    protected function normalizeOutletIds(array $validated): array
+    {
+        return collect($validated['outlet_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     protected function validatePromo(Request $request): array
     {
         return $request->validate([
             'outlet_id' => 'nullable|exists:outlets,id',
+            'outlet_ids' => 'nullable|array',
+            'outlet_ids.*' => 'nullable|exists:outlets,id',
             'name' => 'required|string|max:255',
+            'requirement_logic' => 'required|in:and,or',
 
             'requirements' => 'nullable|array',
             'requirements.*.product_variant_id' => 'nullable|exists:product_variants,id',
@@ -71,6 +84,7 @@ class PromoViewController extends Controller
             'is_active' => 'nullable|boolean',
         ], [
             'name.required' => 'Nama promo wajib diisi.',
+            'requirement_logic.required' => 'Logic requirement wajib dipilih.',
             'end_date.after_or_equal' => 'Tanggal akhir promo tidak boleh lebih awal dari tanggal mulai.',
             'status.required' => 'Status promo wajib dipilih.',
         ]);
@@ -79,8 +93,9 @@ class PromoViewController extends Controller
     protected function normalizePromoData(array $validated, Request $request): array
     {
         return [
-            'outlet_id' => $validated['outlet_id'] ?? null,
+            'outlet_id' => null,
             'name' => $validated['name'],
+            'requirement_logic' => $validated['requirement_logic'] ?? 'and',
             'start_date' => $validated['start_date'] ?? null,
             'end_date' => $validated['end_date'] ?? null,
             'start_time' => $validated['start_time'] ?? null,
@@ -173,6 +188,7 @@ class PromoViewController extends Controller
 
         $query = Promo::with([
             'outlet',
+            'outlets',
             'requirements.variant.product',
             'rewards.variant.product',
             'requirementVariant.product',
@@ -184,7 +200,12 @@ class PromoViewController extends Controller
         }
 
         if ($request->filled('outlet_id')) {
-            $query->where('outlet_id', $request->outlet_id);
+            $query->where(function ($outletQuery) use ($request) {
+                $outletQuery->where('outlet_id', $request->outlet_id)
+                    ->orWhereHas('outlets', function ($pivotQuery) use ($request) {
+                        $pivotQuery->where('outlets.id', $request->outlet_id);
+                    });
+            });
         }
 
         if ($request->filled('status')) {
@@ -235,6 +256,7 @@ class PromoViewController extends Controller
         DB::transaction(function () use ($validated, $request) {
             $promo = Promo::create($this->normalizePromoData($validated, $request));
 
+            $promo->outlets()->sync($this->normalizeOutletIds($validated));
             $this->syncPromoRules($promo, $validated);
         });
 
@@ -257,6 +279,7 @@ class PromoViewController extends Controller
             'user' => $user,
             'promo' => $promo->load([
                 'outlet',
+                'outlets',
                 'requirements.variant.product',
                 'rewards.variant.product',
                 'requirementVariant.product',
@@ -281,6 +304,7 @@ class PromoViewController extends Controller
         DB::transaction(function () use ($promo, $validated, $request) {
             $promo->update($this->normalizePromoData($validated, $request));
 
+            $promo->outlets()->sync($this->normalizeOutletIds($validated));
             $this->syncPromoRules($promo, $validated);
         });
 

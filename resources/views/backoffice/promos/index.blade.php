@@ -163,6 +163,7 @@
                         <tr>
                             <th>Promo Name</th>
                             <th>Outlet</th>
+                            <th>Logic</th>
                             <th>Purchase Requirements</th>
                             <th>Rewards</th>
                             <th>Time Period</th>
@@ -181,7 +182,16 @@
                             @endphp
                             <tr>
                                 <td class="name">{{ $promo->name }}</td>
-                                <td>{{ $promo->outlet->name ?? 'All Outlets' }}</td>
+                                <td>
+                                    @if($promo->outlets->count())
+                                        {{ $promo->outlets->pluck('name')->implode(', ') }}
+                                    @else
+                                        All Outlets
+                                    @endif
+                                </td>
+                                <td>
+                                    <span class="badge badge-draft">{{ strtoupper($promo->requirement_logic ?? 'and') }}</span>
+                                </td>
                                 <td>
                                     <div class="rule-box">
                                         <div class="rule-label">Buy</div>
@@ -248,7 +258,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="empty">Belum ada promo.</td>
+                                <td colspan="10" class="empty">Belum ada promo.</td>
                             </tr>
                         @endforelse
                     </tbody>

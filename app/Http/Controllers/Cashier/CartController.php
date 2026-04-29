@@ -389,14 +389,16 @@ class CartController extends Controller
         }
 
         if ($promoId) {
-            $promo = Promo::with(['requirements', 'rewards'])
+            $promo = Promo::with(['requirements', 'rewards', 'outlets'])
                 ->where('is_active', true)
                 ->where('status', 'active')
                 ->where(function ($query) use ($user) {
-                    $query->whereNull('outlet_id');
+                    $query->whereDoesntHave('outlets');
 
                     if (! empty($user->outlet_id)) {
-                        $query->orWhere('outlet_id', $user->outlet_id);
+                        $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                            $outletQuery->where('outlets.id', $user->outlet_id);
+                        });
                     }
                 })
                 ->find($promoId);
@@ -473,19 +475,23 @@ class CartController extends Controller
             return false;
         }
 
-        foreach ($promo->requirements as $requirement) {
+        $logic = strtolower((string) ($promo->requirement_logic ?? 'and'));
+
+        $matches = $promo->requirements->map(function ($requirement) use ($cart) {
             $cartQty = collect($cart)
                 ->where('variant_id', (int) $requirement->product_variant_id)
                 ->sum(function ($item) {
                     return (float) ($item['qty'] ?? 0);
                 });
 
-            if ($cartQty < (float) $requirement->qty) {
-                return false;
-            }
+            return $cartQty >= (float) $requirement->qty;
+        });
+
+        if ($logic === 'or') {
+            return $matches->contains(true);
         }
 
-        return true;
+        return $matches->every(fn ($matched) => $matched === true);
     }
 
     public function checkout(Request $request, StockDeductionService $stockDeductionService)

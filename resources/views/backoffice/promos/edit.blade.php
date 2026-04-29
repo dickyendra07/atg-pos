@@ -81,6 +81,78 @@
         }
         .btn-brand { background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%); }
         .btn-soft { background: #f3f4f6; color: #374151; box-shadow: none; }
+
+        .promo-outlet-dropdown {
+            position: relative;
+        }
+
+        .promo-outlet-button {
+            width: 100%;
+            min-height: 52px;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: white;
+            padding: 0 44px 0 14px;
+            font-size: 14px;
+            color: #111827;
+            text-align: left;
+            cursor: pointer;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .promo-outlet-button::after {
+            content: "▾";
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .promo-outlet-panel {
+            display: none;
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: calc(100% + 8px);
+            z-index: 30;
+            max-height: 260px;
+            overflow: auto;
+            background: white;
+            border: 1px solid #d7dce5;
+            border-radius: 16px;
+            box-shadow: 0 18px 34px rgba(15,23,42,0.14);
+            padding: 8px;
+        }
+
+        .promo-outlet-dropdown.is-open .promo-outlet-panel {
+            display: grid;
+            gap: 6px;
+        }
+
+        .promo-outlet-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 11px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+        }
+
+        .promo-outlet-option:hover {
+            background: #f8fafc;
+        }
+
+        .promo-outlet-option input {
+            width: 16px;
+            height: 16px;
+            min-height: 16px;
+        }
         @media (max-width: 1100px) {
             .form-grid, .days-grid, .rule-row, .reward-row { grid-template-columns: 1fr; }
         }
@@ -113,14 +185,40 @@
                         </div>
 
                         <div class="field">
-                            <label for="outlet_id">Outlet</label>
-                            <select name="outlet_id" id="outlet_id">
-                                <option value="">All Outlets</option>
-                                @foreach($outletOptions as $outlet)
-                                    <option value="{{ $outlet->id }}" @selected((string) old('outlet_id', $promo->outlet_id) === (string) $outlet->id)>{{ $outlet->name }}</option>
-                                @endforeach
-                            </select>
+                            <label>Outlet</label>
+                            @php
+                                $selectedOutletIds = collect(old('outlet_ids', $promo->outlets->pluck('id')->all()))
+                                    ->map(fn ($id) => (int) $id)
+                                    ->all();
+                            @endphp
 
+                            <div class="promo-outlet-dropdown" data-promo-outlet-dropdown>
+                                <button type="button" class="promo-outlet-button" data-promo-outlet-button>
+                                    Semua Outlet
+                                </button>
+
+                                <div class="promo-outlet-panel">
+                                    @foreach($outletOptions as $outlet)
+                                        <label class="promo-outlet-option">
+                                            <input
+                                                type="checkbox"
+                                                name="outlet_ids[]"
+                                                value="{{ $outlet->id }}"
+                                                @checked(in_array((int) $outlet->id, $selectedOutletIds, true))
+                                            >
+                                            <span>{{ $outlet->name }}</span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="field">
+                            <label for="requirement_logic">Requirement Logic</label>
+                            <select name="requirement_logic" id="requirement_logic" required>
+                                <option value="and" @selected(old('requirement_logic', $promo->requirement_logic ?? 'and') === 'and')>AND - Semua requirement wajib terpenuhi</option>
+                                <option value="or" @selected(old('requirement_logic', $promo->requirement_logic ?? 'and') === 'or')>OR - Salah satu requirement cukup terpenuhi</option>
+                            </select>
                         </div>
 
                         <div class="field">
@@ -324,4 +422,43 @@
             addReward();
         }
     </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-promo-outlet-dropdown]').forEach(function (dropdown) {
+                const button = dropdown.querySelector('[data-promo-outlet-button]');
+                const checkboxes = dropdown.querySelectorAll('input[type="checkbox"]');
+
+                function refreshLabel() {
+                    const selected = Array.from(checkboxes).filter((checkbox) => checkbox.checked);
+
+                    if (selected.length === 0) {
+                        button.textContent = 'Semua Outlet';
+                    } else if (selected.length === 1) {
+                        button.textContent = selected[0].closest('label').querySelector('span').textContent.trim();
+                    } else {
+                        button.textContent = selected.length + ' outlet dipilih';
+                    }
+                }
+
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+                    dropdown.classList.toggle('is-open');
+                });
+
+                checkboxes.forEach(function (checkbox) {
+                    checkbox.addEventListener('change', refreshLabel);
+                });
+
+                document.addEventListener('click', function (event) {
+                    if (!dropdown.contains(event.target)) {
+                        dropdown.classList.remove('is-open');
+                    }
+                });
+
+                refreshLabel();
+            });
+        });
+    </script>
+
 @endsection

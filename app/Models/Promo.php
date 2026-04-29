@@ -5,12 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Promo extends Model
 {
     protected $fillable = [
         'outlet_id',
         'name',
+        'requirement_logic',
         'requirement_product_variant_id',
         'requirement_qty',
         'reward_type',
@@ -39,6 +41,11 @@ class Promo extends Model
     public function outlet(): BelongsTo
     {
         return $this->belongsTo(Outlet::class);
+    }
+
+    public function outlets(): BelongsToMany
+    {
+        return $this->belongsToMany(Outlet::class)->withTimestamps();
     }
 
     public function requirementVariant(): BelongsTo
