@@ -1898,9 +1898,7 @@
             <div class="hero">
                 <div class="hero-main">
                     <h1 class="hero-title">Fast selling flow with a cleaner frontliner experience.</h1>
-                    <p class="hero-subtitle">
-                        Fokus ke transaksi yang cepat, nyaman, dan lebih presentable dengan tampilan cashier yang selaras dengan sistem ATG POS.
-                    </p>
+
 
                     <div class="hero-pills">
                         <div class="hero-pill">Quick checkout</div>
@@ -1928,7 +1926,7 @@
                     <div class="section-card">
                         <div class="section-head">
                             <h2 class="section-title">Cashier Workspace</h2>
-                            <p class="section-subtitle">Transaksi, history, dan shift dipisah tab supaya area kerja lebih lega.</p>
+
                         </div>
 
                         <div id="cashier-alert-success" class="alert alert-success {{ session('success') ? '' : 'hidden' }}">
@@ -2016,9 +2014,7 @@
                                         <button type="button" class="order-type-btn {{ ($orderType ?? 'dine_in') === 'dine_in' ? 'active' : '' }}" data-order-type-btn data-order-type="dine_in">Dine In</button>
                                         <button type="button" class="order-type-btn {{ ($orderType ?? 'dine_in') === 'delivery' ? 'active' : '' }}" data-order-type-btn data-order-type="delivery">Delivery</button>
                                     </div>
-                                    <div class="order-type-note">
-                                        Kalau order type diganti saat cart masih ada isi, cart akan otomatis dikosongkan supaya harga tetap konsisten.
-                                    </div>
+
                                 </div>
                             </div>
 
@@ -2110,7 +2106,7 @@
                             <div class="history-panel-wrap">
                                 <div class="history-panel-box">
                                     <div class="section-title" style="font-size:22px; margin-bottom:6px;">History Transaksi Cashier</div>
-                                    <div class="section-subtitle">Riwayat transaksi terbaru dari cashier dan outlet aktif.</div>
+
 
                                     @if($recentReceipts->count())
                                         <div class="receipt-history-list">
@@ -2204,9 +2200,7 @@
                         <div id="tab-panel-shift" class="tab-panel hidden">
                             <div id="shift-start-box" class="shift-box start {{ $activeShift ? 'hidden' : '' }}">
                                 <div class="shift-title">Shift belum dibuka</div>
-                                <div class="shift-subtitle">
-                                    Kasir harus mulai shift dulu sebelum bisa tambah item, clear cart, dan checkout.
-                                </div>
+
 
                                 <form id="start-shift-form" class="shift-form">
                                     <div class="shift-field">
@@ -2222,9 +2216,7 @@
 
                             <div id="shift-active-box" class="shift-box {{ $activeShift ? '' : 'hidden' }}">
                                 <div class="shift-title">Shift aktif</div>
-                                <div class="shift-subtitle">
-                                    Ringkasan transaksi aktif selama shift berjalan.
-                                </div>
+
 
                                 <div class="shift-grid">
                                     <div class="shift-stat">
@@ -2399,9 +2391,7 @@
                                     <div class="payment-section-head">
                                         <div>
                                             <div class="payment-section-title">Payment & Checkout</div>
-                                            <div class="payment-section-subtitle">
-                                                Dibuat lebih nyaman untuk tap flow di tablet.
-                                            </div>
+
                                         </div>
                                     </div>
 
@@ -2415,9 +2405,7 @@
                                             <div class="promo-discount-head">
                                                 <div>
                                                     <div class="promo-discount-title">Discount & Promo</div>
-                                                    <div class="promo-discount-subtitle">
-                                                        Pilih potongan manual atau promo aktif dari Backoffice sebelum checkout.
-                                                    </div>
+
                                                 </div>
                                                 <div class="promo-discount-pill">Optional</div>
                                             </div>
@@ -2546,9 +2534,7 @@
                                                 <div class="payment-live-value" id="live-change-value">Rp 0</div>
                                             </div>
 
-                                            <div class="payment-helper ok" id="payment-helper-text">
-                                                Nominal pembayaran sudah aman untuk checkout.
-                                            </div>
+
                                         </div>
 
                                         <div class="checkout-actions">
@@ -2616,7 +2602,7 @@
         <div class="variant-modal-head">
             <div>
                 <h3 class="variant-modal-title" id="variant-modal-title">Pilih Variant</h3>
-                <p class="variant-modal-subtitle" id="variant-modal-subtitle">Pilih salah satu variant untuk ditambahkan ke cart.</p>
+
             </div>
             <button type="button" class="variant-modal-close" id="variant-modal-close">&times;</button>
         </div>

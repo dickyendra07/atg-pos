@@ -152,9 +152,7 @@
         <div class="topbar">
             <div>
                 <div class="title">Edit Warehouse</div>
-                <div class="subtitle">
-                    Gunakan form ini untuk memperbarui data warehouse aktif. Perubahan di halaman ini akan memengaruhi referensi lokasi untuk inventory control, transfer, stock movement, dan opening stock import.
-                </div>
+
             </div>
             <a href="{{ route('backoffice.warehouses.index') }}" class="btn btn-dark">Kembali</a>
         </div>
@@ -171,9 +169,7 @@
         @endif
 
         <div class="card">
-            <div class="helper">
-                Edit Warehouse dipakai untuk memperbarui nama, kode, alamat, nomor telepon, dan status warehouse. <strong>ID warehouse tetap dibuat oleh sistem</strong> dan tidak diubah dari halaman ini.
-            </div>
+
 
             <form method="POST" action="{{ route('backoffice.warehouses.update', $warehouse) }}">
                 @csrf

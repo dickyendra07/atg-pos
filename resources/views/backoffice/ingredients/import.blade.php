@@ -369,9 +369,7 @@
             <div class="topbar">
                 <div class="title-wrap">
                     <h1 class="title">Import Ingredients CSV</h1>
-                    <div class="subtitle">
-                        Upload bahan baku dari sistem lama ke master ingredients yang baru. Halaman ini sudah disiapkan supaya proses migrasi lebih cepat dan lebih rapi.
-                    </div>
+
                 </div>
 
                 <div class="actions">
@@ -397,21 +395,12 @@
                     </div>
                 @endif
 
-                <div class="hero-card">
-                    <div class="hero-kicker">Ingredients Import</div>
-                    <h2 class="hero-heading">Pastikan master bahan rapi dulu sebelum lanjut ke opening stock.</h2>
-                    <p class="hero-text">
-                        Urutan yang paling aman adalah import ingredients lebih dulu, baru setelah itu import opening stock. Dengan begitu nama bahan, kategori, unit, dan stock awal akan tetap sinkron.
-                    </p>
-                </div>
 
                 <div class="grid">
                     <div class="card">
                         <div class="card-head">
                             <h2 class="card-title">Upload CSV</h2>
-                            <p class="card-subtitle">
-                                Pilih file CSV sesuai template. Sistem akan skip baris yang ingredient-nya sudah ada.
-                            </p>
+
                         </div>
 
                         <div class="card-body">
@@ -438,9 +427,7 @@
                     <div class="card">
                         <div class="card-head">
                             <h2 class="card-title">Template & Format</h2>
-                            <p class="card-subtitle">
-                                Pakai format ini supaya file selalu sesuai dengan sistem import ingredients yang sekarang.
-                            </p>
+
                         </div>
 
                         <div class="card-body">
@@ -448,15 +435,12 @@
                                 <div class="template-title">Header CSV wajib:</div>
                                 <code>name,category_name,unit,minimum_stock,cost_per_unit,is_active</code>
 
-                                <div class="template-subtitle">Contoh isi:</div>
+
                                 <code>Fresh Milk,Milk,ml,2000,18000,1
 Liquid Sugar,Sweetener,ml,1000,12000,1
 Black Tea,Tea Base,gram,500,800,1</code>
 
-                                <div class="helper">
-                                    `is_active` gunakan nilai <strong>1</strong> untuk aktif dan <strong>0</strong> untuk nonaktif.  
-                                    Kalau category belum ada, sistem akan membuat category baru otomatis.
-                                </div>
+
                             </div>
                         </div>
                     </div>
@@ -466,9 +450,7 @@ Black Tea,Tea Base,gram,500,800,1</code>
                     <div class="card" style="margin-top:22px;">
                         <div class="card-head">
                             <h2 class="card-title" style="color:#9b1c1c;">Detail Baris yang Dilewati</h2>
-                            <p class="card-subtitle">
-                                Beberapa baris tidak masuk karena sudah ada sebelumnya atau ada data yang tidak valid.
-                            </p>
+
                         </div>
 
                         <div class="card-body">

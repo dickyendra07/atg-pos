@@ -435,11 +435,9 @@
     <div class="ingredients-shell">
         <div class="ingredients-topbar">
             <div class="ingredients-title-block">
-                <div class="ingredients-kicker">Ingredients Workspace</div>
+
                 <h1 class="ingredients-title">Back Office - Ingredients</h1>
-                <p class="ingredients-subtitle">
-                    Kelola seluruh bahan baku operasional dalam satu halaman yang lebih rapi, bersih, dan mudah dicek sebelum dipakai ke inventory, recipe, dan transfer.
-                </p>
+
             </div>
 
             <div class="ingredients-actions">
@@ -474,13 +472,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-card">
-                <div class="hero-kicker">Ingredients Master</div>
-                <h2 class="hero-heading">Raw material list yang siap dipakai ke seluruh flow operasional.</h2>
-                <p class="hero-text">
-                    Semua bahan yang ada di halaman ini bisa dipakai untuk stock in, adjustment, transfer, recipe, dan summary inventory. Sekarang ingredient juga sudah bisa dibedakan antara bahan mentah dan bahan setengah jadi.
-                </p>
-            </div>
+
 
             <div class="filter-card">
                 <form method="GET" action="{{ route('backoffice.ingredients.index') }}" class="filter-form">
@@ -505,9 +497,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h2 class="table-title">All Ingredients</h2>
-                    <p class="table-subtitle">
-                        Lihat kategori, tipe bahan, unit, minimum stock, harga dasar, dan status aktif setiap ingredient dalam satu tabel yang lebih enak dibaca.
-                    </p>
+
                 </div>
 
                 @if($ingredients->count())

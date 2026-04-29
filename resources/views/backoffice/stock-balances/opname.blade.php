@@ -373,11 +373,9 @@
     <div class="opname-shell">
         <div class="opname-topbar">
             <div class="opname-title-block">
-                <div class="opname-kicker">Warehouse Opname</div>
+
                 <h1 class="opname-title">Opname Gudang</h1>
-                <p class="opname-subtitle">
-                    Halaman ini dipakai untuk stock opname formal khusus warehouse. Pilih gudang dulu, lalu sesuaikan stok sistem ke hasil hitung fisik di gudang.
-                </p>
+
             </div>
 
             <div class="opname-actions">
@@ -397,18 +395,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-wrap">
-                <div class="hero-card">
-                    <div class="hero-kicker">Stock Opname</div>
-                    <h2 class="hero-heading">Sesuaikan stok gudang berdasarkan hasil hitung fisik.</h2>
-                    <p class="hero-text">
-                        Opname gudang dipakai saat ada pengecekan stok formal di warehouse. Sistem akan menyesuaikan stok saat ini menjadi qty fisik hasil hitung, lalu otomatis mencatat movement adjustment jika ada selisih.
-                    </p>
-                </div>
 
-                <div class="rule-card">
-                    <h3 class="rule-title">Rule Opname</h3>
-                    <div class="rule-line"><strong>Hanya untuk:</strong> warehouse</div>
                     <div class="rule-line"><strong>Bukan untuk:</strong> outlet</div>
                     <div class="rule-line"><strong>Qty sistem:</strong> stok sebelum opname</div>
                     <div class="rule-line"><strong>Qty fisik:</strong> hasil hitung aktual di gudang</div>
@@ -418,21 +405,9 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Form Opname Gudang</h2>
-                    <p class="section-subtitle">
-                        Pilih warehouse dulu supaya item stok gudang yang tersedia muncul. Setelah itu pilih item, isi qty fisik, lalu simpan opname.
-                    </p>
+
                 </div>
 
-                <div class="info-box">
-                    <strong>User:</strong> {{ $user->name }}<br>
-                    <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                    <strong>Outlet Login:</strong> {{ $user->outlet->name ?? '-' }}<br>
-                    <strong>Rule:</strong> opname formal hanya berlaku untuk stock warehouse
-                </div>
-
-                <div class="helper-box">
-                    Langkah 1: pilih warehouse dulu untuk memunculkan daftar stock item yang sesuai. Langkah 2: pilih item warehouse, isi qty fisik hasil hitung, lalu simpan.
-                </div>
 
                 <div class="form-wrap">
                     <form method="GET" action="{{ route('backoffice.stock-balances.opname.create') }}" class="warehouse-picker-form">

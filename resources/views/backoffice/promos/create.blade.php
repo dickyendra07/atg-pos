@@ -73,11 +73,9 @@
     <div class="page-shell">
         <div class="topbar">
             <div>
-                <div class="kicker">Create Promo</div>
+
                 <h1 class="page-title">Create Promo</h1>
-                <p class="page-subtitle">
-                    Buat promo dengan beberapa product requirement dan beberapa reward seperti POS lama.
-                </p>
+
             </div>
 
             <a href="{{ route('backoffice.promos.index') }}" class="btn btn-soft">Back to Promos</a>
@@ -89,7 +87,7 @@
 
                 <div class="section-card">
                     <h2 class="section-title">1. Promo Basic</h2>
-                    <p class="section-subtitle">Nama promo, outlet, dan status promo.</p>
+
 
                     <div class="form-grid">
                         <div class="field full">
@@ -106,7 +104,7 @@
                                     <option value="{{ $outlet->id }}" @selected((string) old('outlet_id') === (string) $outlet->id)>{{ $outlet->name }}</option>
                                 @endforeach
                             </select>
-                            <div class="helper">Kosongkan untuk berlaku di semua outlet.</div>
+
                         </div>
 
                         <div class="field">
@@ -122,7 +120,7 @@
 
                 <div class="section-card">
                     <h2 class="section-title">2. Purchase Requirements</h2>
-                    <p class="section-subtitle">Tambahkan satu atau lebih product/variant yang wajib dibeli customer.</p>
+
 
                     <div id="requirementsList" class="rule-list"></div>
 
@@ -133,7 +131,7 @@
 
                 <div class="section-card">
                     <h2 class="section-title">3. Rewards</h2>
-                    <p class="section-subtitle">Tambahkan reward discount nominal, discount persen, atau free item.</p>
+
 
                     <div id="rewardsList" class="rule-list"></div>
 
@@ -144,7 +142,7 @@
 
                 <div class="section-card">
                     <h2 class="section-title">4. Promo Schedule</h2>
-                    <p class="section-subtitle">Periode, jam, dan hari aktif promo.</p>
+
 
                     <div class="form-grid">
                         <div class="field">
@@ -177,7 +175,7 @@
                                     </label>
                                 @endforeach
                             </div>
-                            <div class="helper">Kosongkan jika promo berlaku setiap hari.</div>
+
                         </div>
 
                         <div class="field">

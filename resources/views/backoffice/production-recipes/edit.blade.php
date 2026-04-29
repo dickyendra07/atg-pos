@@ -323,9 +323,7 @@
         <div class="topbar">
             <div>
                 <h1 class="title">Kelola Production Recipe</h1>
-                <div class="subtitle">
-                    Update header recipe internal dan kelola bahan input mentah untuk menghasilkan satu ingredient setengah jadi.
-                </div>
+
             </div>
 
             <a href="{{ route('backoffice.production-recipes.index') }}" class="btn btn-dark">Kembali</a>
@@ -354,9 +352,7 @@
                 <div class="card">
                     <div class="card-head">
                         <h2 class="card-title">Header Production Recipe</h2>
-                        <p class="card-subtitle">
-                            Output ingredient wajib bertipe setengah jadi. Output qty adalah hasil per 1 batch recipe.
-                        </p>
+
                     </div>
 
                     <div class="card-body">
@@ -417,9 +413,7 @@
                 <div class="card">
                     <div class="card-head">
                         <h2 class="card-title">Tambah Bahan Input</h2>
-                        <p class="card-subtitle">
-                            Bahan input dibatasi ke ingredient mentah.
-                        </p>
+
                     </div>
 
                     <div class="card-body">
@@ -436,7 +430,7 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="helper">Output ingredient tidak akan muncul di daftar input. Hanya ingredient mentah yang bisa dipilih.</div>
+
                             </div>
 
                             <div class="field">
@@ -459,9 +453,7 @@
             <div class="card">
                 <div class="card-head">
                     <h2 class="card-title">Daftar Bahan Input</h2>
-                    <p class="card-subtitle">
-                        Ini adalah komposisi mentah yang nantinya akan dipakai sebagai dasar saat fitur produksi batch dikerjakan.
-                    </p>
+
                 </div>
 
                 <div class="card-body">

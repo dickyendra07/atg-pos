@@ -281,9 +281,7 @@
         <div class="topbar">
             <div>
                 <h1 class="title">Buat Produksi</h1>
-                <div class="subtitle">
-                    Pilih recipe, lokasi produksi, dan jumlah batch. Sistem akan menghitung kebutuhan bahan mentah secara otomatis.
-                </div>
+
             </div>
 
             <a href="{{ route('backoffice.productions.index') }}" class="btn btn-dark">Kembali</a>
@@ -300,21 +298,12 @@
                 </div>
             @endif
 
-            <div class="hero-card">
-                <div class="hero-kicker">Execute Production</div>
-                <h2 class="hero-heading">Jalankan produksi stok dari recipe semi-finished yang sudah dibuat.</h2>
-                <p class="hero-text">
-                    Setelah submit, sistem akan mengurangi stok bahan input mentah dan menambah stok output setengah jadi pada lokasi yang dipilih.
-                </p>
-            </div>
 
             <div class="grid-2">
                 <div class="card">
                     <div class="card-head">
                         <h2 class="card-title">Form Produksi</h2>
-                        <p class="card-subtitle">
-                            Pilih lokasi produksi dan recipe aktif. Batch qty akan dikalikan ke semua bahan input.
-                        </p>
+
                     </div>
 
                     <div class="card-body">
@@ -370,9 +359,7 @@
                 <div class="card">
                     <div class="card-head">
                         <h2 class="card-title">Preview Recipe</h2>
-                        <p class="card-subtitle">
-                            Preview ini akan berubah mengikuti recipe dan batch qty yang dipilih.
-                        </p>
+
                     </div>
 
                     <div class="card-body">

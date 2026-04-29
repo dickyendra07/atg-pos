@@ -301,9 +301,7 @@
         <div class="topbar">
             <div class="title-block">
                 <div class="title">Transaction Detail</div>
-                <div class="subtitle">
-                    Detail transaksi kasir lengkap dengan item, pembayaran, dan aksi void untuk koreksi transaksi yang sudah terlanjur tersimpan.
-                </div>
+
             </div>
 
             <div class="top-actions">
@@ -353,28 +351,23 @@
             <div class="section-title">Informasi Transaksi</div>
 
             <div class="info-grid">
-                <div class="info-box">
-                    <div class="label">Transaction Number</div>
+
                     <div class="value">{{ $transaction->transaction_number }}</div>
                 </div>
 
-                <div class="info-box">
-                    <div class="label">Tanggal</div>
+
                     <div class="value">{{ $transaction->created_at?->format('Y-m-d H:i:s') }}</div>
                 </div>
 
-                <div class="info-box">
-                    <div class="label">Kasir</div>
+
                     <div class="value">{{ $transaction->user->name ?? '-' }}</div>
                 </div>
 
-                <div class="info-box">
-                    <div class="label">Outlet</div>
+
                     <div class="value">{{ $transaction->outlet->name ?? '-' }}</div>
                 </div>
 
-                <div class="info-box">
-                    <div class="label">Member</div>
+
                     <div class="value">
                         @if($transaction->member)
                             {{ $transaction->member->name }}<br>
@@ -385,8 +378,7 @@
                     </div>
                 </div>
 
-                <div class="info-box">
-                    <div class="label">Status</div>
+
                     <div class="value">
                         @php
                             $status = strtolower((string) $transaction->status);
@@ -402,13 +394,11 @@
                     </div>
                 </div>
 
-                <div class="info-box">
-                    <div class="label">Payment Method</div>
+
                     <div class="value">{{ strtoupper($transaction->payment_method ?? '-') }}</div>
                 </div>
 
-                <div class="info-box">
-                    <div class="label">Amount Paid / Change</div>
+
                     <div class="value">
                         Rp{{ number_format((float) $transaction->amount_paid, 0, ',', '.') }}
                         / Rp{{ number_format((float) $transaction->change_amount, 0, ',', '.') }}
@@ -468,9 +458,7 @@
                 </div>
             </div>
 
-            <div class="note">
-                Detail transaksi ini sekarang siap dipakai juga untuk flow void. Saat transaksi di-void, stok bahan akan dikembalikan ke outlet asal transaksi.
-            </div>
+
         </div>
 
         @if(strtolower((string) $transaction->status) !== 'void')
@@ -494,9 +482,7 @@
                         <div class="field">
                             <label>Alasan Void</label>
                             <textarea name="void_reason" placeholder="Contoh: salah input pesanan / transaksi dobel / customer batal" required>{{ old('void_reason') }}</textarea>
-                            <div class="helper">
-                                Isi alasan void dengan jelas supaya mudah ditelusuri saat audit atau review transaksi.
-                            </div>
+
                         </div>
                     </div>
 

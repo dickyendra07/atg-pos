@@ -150,7 +150,7 @@
         <div class="topbar">
             <div>
                 <div class="title">Warehouse Stock - {{ $warehouse->name }}</div>
-                <div class="subtitle">Monitoring stok ingredient per gudang.</div>
+
             </div>
 
             <div class="actions">

@@ -126,7 +126,7 @@
 <body>
     <div class="wrap">
         <div class="title">Transfer Gudang ke Outlet</div>
-        <div class="subtitle">Versi basic yang dirapikan: stok gudang langsung berkurang dan stok outlet langsung bertambah.</div>
+
 
         @if($errors->any())
             <div class="error">
@@ -180,9 +180,6 @@
                     <textarea name="note" placeholder="Contoh: kirim stok untuk outlet Bintaro">{{ old('note') }}</textarea>
                 </div>
 
-                <div class="stock-note">
-                    Hanya ingredient yang punya stok di warehouse ini yang ditampilkan, lengkap dengan stok tersedia saat ini.
-                </div>
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Simpan Transfer</button>

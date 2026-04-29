@@ -152,9 +152,7 @@
         <div class="topbar">
             <div>
                 <div class="title">Tambah Outlet</div>
-                <div class="subtitle">
-                    Gunakan form ini untuk menambahkan outlet operasional baru ke sistem. Data ini akan dipakai sebagai lokasi aktif untuk transaksi, inventory, transfer, dan stock movement.
-                </div>
+
             </div>
             <a href="{{ route('backoffice.outlets.index') }}" class="btn btn-dark">Kembali</a>
         </div>
@@ -171,9 +169,7 @@
         @endif
 
         <div class="card">
-            <div class="helper">
-                Tambah Outlet dipakai untuk membuat lokasi outlet baru. Setelah outlet dibuat, sistem akan memberikan <strong>ID outlet otomatis</strong> yang bisa dipakai untuk kebutuhan referensi inventory dan import opening stock.
-            </div>
+
 
             <form method="POST" action="{{ route('backoffice.outlets.store') }}">
                 @csrf

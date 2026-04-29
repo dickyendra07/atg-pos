@@ -281,11 +281,9 @@
     <div class="variant-form-shell">
         <div class="variant-form-topbar">
             <div class="variant-form-title-block">
-                <div class="variant-form-kicker">Variants Workspace</div>
+
                 <h1 class="variant-form-title">Tambah Multi Variant</h1>
-                <p class="variant-form-subtitle">
-                    Sekali input untuk banyak variant per product. Cocok untuk format seperti R = Regular, L = Large, lalu masing-masing punya harga dine in dan delivery.
-                </p>
+
             </div>
 
             <div class="variant-form-actions">
@@ -306,9 +304,7 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="info-box">
-                    Buat variant langsung dalam 1 group product. Setiap row variant akan tersimpan sebagai data terpisah, jadi cashier tetap aman membaca harga berdasarkan variant ID.
-                </div>
+
 
                 <form method="POST" action="{{ route('backoffice.variants.store') }}" id="variant-form">
                     @csrf

@@ -737,11 +737,8 @@
     <div class="dashboard-shell">
         <div class="dashboard-topbar">
             <div>
-                <div class="dashboard-kicker">Back Office Dashboard</div>
-                <h1 class="dashboard-title">Dashboard summary yang lebih premium, lebih rapih, dan lebih dekat ke referensi client.</h1>
-                <p class="dashboard-subtitle">
-                    Ringkasan performa transaksi, outlet, product terlaris, dan indikator operasional utama.
-                </p>
+                <h1 class="dashboard-title">Back Office Dashboard</h1>
+
             </div>
 
             <div class="dashboard-user-pill">
@@ -751,9 +748,7 @@
 
         <div class="filter-card">
             <h2 class="filter-title">Filter Dashboard</h2>
-            <p class="filter-subtitle">
-                Filter outlet dan tanggal akan mempengaruhi transaction summary, area chart, tabel daily summary, tabel outlet summary, dan inventory movement summary.
-            </p>
+
 
             <form method="GET" action="{{ route('backoffice.index') }}" class="filter-grid">
                 <div class="field">
@@ -789,9 +784,7 @@
             <div class="notification-head">
                 <div>
                     <h2 class="notification-title">Need Action / Notifications</h2>
-                    <p class="notification-subtitle">
-                        Tanda pesan dari aktivitas kasir seperti void transaksi dan reprint receipt.
-                    </p>
+
                 </div>
                 <div class="notification-count">
                     {{ number_format((int) ($unreadNotificationCount ?? 0), 0, ',', '.') }} unread
@@ -872,9 +865,7 @@
         <div class="summary-section">
             <div class="summary-head">
                 <h2 class="summary-title">Transaction Summary</h2>
-                <p class="summary-subtitle">
-                    Ringkasan transaksi utama berdasarkan outlet <strong>{{ $selectedOutletName }}</strong> dan periode <strong>{{ $filters['date_from'] }}</strong> sampai <strong>{{ $filters['date_to'] }}</strong>.
-                </p>
+
             </div>
 
             <div class="stats-grid">
@@ -956,9 +947,7 @@
 
             <div class="chart-card">
                 <h3 class="chart-title">Daily Sales Area Chart</h3>
-                <p class="chart-subtitle">
-                    Visual transaksi harian dibuat lebih halus supaya lebih mirip area chart referensi client walaupun masih tanpa chart library eksternal.
-                </p>
+
 
                 @if(collect($dailyTransactionSummary)->count())
                     @php
@@ -1030,9 +1019,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h3 class="table-title">Daily Transaction Summary</h3>
-                    <p class="table-subtitle">
-                        Tabel ringkas performa transaksi per hari untuk memudahkan client membaca pola penjualan harian.
-                    </p>
+
                 </div>
 
                 <div class="table-wrap">
@@ -1068,9 +1055,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h3 class="table-title">Outlet Transaction Summary</h3>
-                    <p class="table-subtitle">
-                        Tabel ringkasan penjualan per outlet. Saat filter outlet dipilih, tabel ini tetap menampilkan scope outlet yang aktif.
-                    </p>
+
                 </div>
 
                 <div class="table-wrap">
@@ -1106,9 +1091,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h3 class="table-title">Top Products</h3>
-                    <p class="table-subtitle">
-                        Produk terlaris pada periode aktif untuk membantu client membaca produk mana yang paling mendorong sales.
-                    </p>
+
                 </div>
 
                 <div class="table-wrap">
@@ -1150,9 +1133,7 @@
         <div class="summary-section">
             <div class="summary-head">
                 <h2 class="summary-title">Inventory Summary</h2>
-                <p class="summary-subtitle">
-                    Current stock summary mengikuti outlet yang dipilih. Movement summary mengikuti outlet dan custom tanggal.
-                </p>
+
             </div>
 
             <div class="stats-grid">
@@ -1238,9 +1219,7 @@
         <div class="summary-section">
             <div class="summary-head">
                 <h2 class="summary-title">Operational Snapshot</h2>
-                <p class="summary-subtitle">
-                    Snapshot tambahan untuk monitoring shift dan area master data utama.
-                </p>
+
             </div>
 
             <div class="stats-grid" style="padding-bottom:24px;">

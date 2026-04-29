@@ -251,13 +251,7 @@
 
         <div class="print-info">
             <h1 class="print-title">Print Semua Struk Shift</h1>
-            <p class="print-subtitle">
-                Halaman ini mencetak semua struk transaksi dalam shift kasir ini.
-                Outlet: <strong>{{ $shift->outlet->name ?? '-' }}</strong>,
-                Kasir: <strong>{{ $shift->user->name ?? '-' }}</strong>,
-                Shift: <strong>{{ $shift->started_at?->format('d M Y H:i') ?? '-' }}</strong>
-                sampai <strong>{{ $shift->ended_at?->format('d M Y H:i') ?? '-' }}</strong>.
-            </p>
+
         </div>
 
         @if($transactions->isEmpty())

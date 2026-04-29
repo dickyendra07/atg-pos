@@ -231,9 +231,7 @@
         <div class="topbar">
             <div>
                 <h1 class="title">Tambah Production Recipe</h1>
-                <div class="subtitle">
-                    Buat header recipe internal untuk ingredient setengah jadi. Bahan inputnya nanti dikelola di halaman edit.
-                </div>
+
             </div>
 
             <a href="{{ route('backoffice.production-recipes.index') }}" class="btn btn-dark">Kembali</a>
@@ -250,20 +248,11 @@
                 </div>
             @endif
 
-            <div class="hero-card">
-                <div class="hero-kicker">Create Production Recipe</div>
-                <h2 class="hero-heading">Bikin output recipe setengah jadi dulu dengan struktur yang rapi.</h2>
-                <p class="hero-text">
-                    Output ingredient harus bertipe setengah jadi. Setelah header dibuat, bahan input mentah bisa ditambahkan dari halaman edit.
-                </p>
-            </div>
 
             <div class="card">
                 <div class="card-head">
                     <h2 class="card-title">Form Production Recipe</h2>
-                    <p class="card-subtitle">
-                        Satu output ingredient hanya boleh punya satu production recipe aktif.
-                    </p>
+
                 </div>
 
                 <div class="card-body">
@@ -281,7 +270,7 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                <div class="helper">Hanya ingredient bertipe Setengah Jadi yang boleh jadi output recipe produksi.</div>
+
                             </div>
 
                             <div class="field full">

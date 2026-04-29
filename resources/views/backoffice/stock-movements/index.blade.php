@@ -433,11 +433,9 @@
     <div class="movement-shell">
         <div class="movement-topbar">
             <div class="movement-title-block">
-                <div class="movement-kicker">Inventory Audit</div>
+
                 <h1 class="movement-title">Back Office - Stock Movements</h1>
-                <p class="movement-subtitle">
-                    Audit histori pergerakan stok: stock in, transfer, adjustment, opname, produksi, dan sales usage warning.
-                </p>
+
             </div>
 
             <div class="movement-actions">
@@ -447,30 +445,20 @@
         </div>
 
         <div class="card">
-            <div class="hero-wrap">
-                <div class="hero-card">
-                    <div class="hero-kicker">Stock Movement Audit</div>
-                    <h2 class="hero-heading">Read every stock movement in one cleaner operational timeline.</h2>
-                    <p class="hero-text">
-                        Halaman ini dipakai untuk membaca histori stok per ingredient, lokasi, dan reference transaksi. Semua movement penting sekarang bisa diaudit dari satu tempat dengan tampilan yang lebih rapi.
-                    </p>
-                </div>
 
-                <div class="info-card">
-                    <h3 class="info-title">Movement Scope</h3>
-                    <div class="info-line"><strong>Stock masuk:</strong> opening balance, stock in, transfer in, production in</div>
-                    <div class="info-line"><strong>Stock keluar:</strong> transfer out, production out, sales usage</div>
-                    <div class="info-line"><strong>Koreksi:</strong> stock adjustment, sales usage warning</div>
-                    <div class="info-line"><strong>Audit detail:</strong> note, reference type, reference id, tanggal, dan lokasi</div>
+                    <div class="info-line">
+</div>
+                    <div class="info-line">
+</div>
+                    <div class="info-line">
+</div>
                 </div>
             </div>
 
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Filter Stock Movements</h2>
-                    <p class="section-subtitle">
-                        Filter histori movement berdasarkan ingredient, tipe movement, rentang tanggal, dan keyword note atau reference.
-                    </p>
+
                 </div>
 
                 <form method="GET" action="{{ route('backoffice.stock-movements.index') }}" class="filter-form">
@@ -529,9 +517,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Movement Timeline</h2>
-                    <p class="section-subtitle">
-                        Seluruh stock movement yang cocok dengan filter aktif, lengkap dengan qty masuk, qty keluar, lokasi, reference, dan note audit.
-                    </p>
+
                 </div>
 
                 @if($stockMovements->count())

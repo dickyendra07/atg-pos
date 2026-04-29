@@ -160,9 +160,7 @@
     <div class="topbar">
         <div>
             <div class="title">Sales Summary Report</div>
-            <div class="subtitle">
-                Report valid sales untuk kebutuhan monitoring internal, presentasi, dan pengiriman ke client.
-            </div>
+
         </div>
 
         <div class="actions">
@@ -171,16 +169,6 @@
         </div>
     </div>
 
-    <div class="info-box">
-        <strong>User:</strong> {{ $user->name }}<br>
-        <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-        <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}<br>
-        <strong>Date From:</strong> {{ $filters['date_from'] ?: '-' }}<br>
-        <strong>Date To:</strong> {{ $filters['date_to'] ?: '-' }}<br>
-        <strong>Payment Method:</strong> {{ $filters['payment_method'] ?: 'ALL' }}<br>
-        <strong>Status:</strong> {{ $filters['status'] ?: 'ALL' }}<br>
-        <strong>Outlet Filter:</strong> {{ $filters['outlet_id'] ?: 'ALL' }}
-    </div>
 
     <div class="summary-grid">
         <div class="summary-card">

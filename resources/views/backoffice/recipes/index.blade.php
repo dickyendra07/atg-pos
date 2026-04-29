@@ -454,11 +454,9 @@
     <div class="recipes-shell">
         <div class="recipes-topbar">
             <div class="recipes-title-block">
-                <div class="recipes-kicker">Recipes Workspace</div>
+
                 <h1 class="recipes-title">Back Office - Recipes</h1>
-                <p class="recipes-subtitle">
-                    Kelola recipe produk jual, susunan ingredient, import dan export CSV, serta bahan mentah dan setengah jadi.
-                </p>
+
             </div>
 
             <div class="recipes-actions">
@@ -494,11 +492,7 @@
 
         <div class="card">
             <div class="card-head">
-                <div class="info-box">
-                    <strong>User:</strong> {{ $user->name }}<br>
-                    <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                    <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
-                </div>
+
             </div>
 
             <div class="summary-grid">

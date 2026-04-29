@@ -549,11 +549,9 @@
             <div class="content">
                 <div class="hero">
                     <div class="hero-main">
-                        <div class="hero-kicker">Shift Monitoring</div>
+
                         <h1 class="hero-title">Detail shift kasir dalam satu tampilan yang lebih clean.</h1>
-                        <p class="hero-subtitle">
-                            Lihat siapa yang buka shift, kapan shift dimulai dan ditutup, berapa expected cash, closing actual, selisih, dan transaksi yang tercatat dalam shift tersebut.
-                        </p>
+
                     </div>
 
                     <div class="session-card">
@@ -660,39 +658,31 @@
                 <div class="section-card">
                     <div class="section-head">
                         <h2 class="section-title">Shift Information</h2>
-                        <p class="section-subtitle">
-                            Informasi identitas shift, user yang menjalankan, outlet, serta waktu mulai dan selesai.
-                        </p>
+
                     </div>
 
                     <div class="info-grid">
-                        <div class="info-box">
-                            <div class="info-label">Kasir</div>
+
                             <div class="info-value">{{ $shift->user->name ?? '-' }}</div>
                         </div>
 
-                        <div class="info-box">
-                            <div class="info-label">Role</div>
+
                             <div class="info-value">{{ $shift->user->role->name ?? '-' }}</div>
                         </div>
 
-                        <div class="info-box">
-                            <div class="info-label">Outlet</div>
+
                             <div class="info-value">{{ $shift->outlet->name ?? '-' }}</div>
                         </div>
 
-                        <div class="info-box">
-                            <div class="info-label">Started At</div>
+
                             <div class="info-value">{{ $shift->started_at?->format('Y-m-d H:i:s') ?? '-' }}</div>
                         </div>
 
-                        <div class="info-box">
-                            <div class="info-label">Ended At</div>
+
                             <div class="info-value">{{ $shift->ended_at?->format('Y-m-d H:i:s') ?? '-' }}</div>
                         </div>
 
-                        <div class="info-box">
-                            <div class="info-label">Status</div>
+
                             <div class="info-value">
                                 @if($shift->status === 'open')
                                     <span class="status-badge status-open">Open</span>
@@ -714,9 +704,7 @@
                 <div class="section-card">
                     <div class="section-head">
                         <h2 class="section-title">Transactions in This Shift</h2>
-                        <p class="section-subtitle">
-                            Daftar transaksi yang tercatat dalam shift ini, termasuk payment method, total, change, item, dan status transaksi.
-                        </p>
+
                     </div>
 
                     @if($shift->salesTransactions->isEmpty())

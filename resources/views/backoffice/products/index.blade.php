@@ -504,11 +504,9 @@
     <div class="products-shell">
         <div class="products-topbar">
             <div class="products-title-block">
-                <div class="products-kicker">Products Workspace</div>
+
                 <h1 class="products-title">Back Office - Products</h1>
-                <p class="products-subtitle">
-                    Kelola product utama, category, brand, status aktif, serta akses import dan export CSV.
-                </p>
+
             </div>
 
             <div class="products-actions">
@@ -544,11 +542,7 @@
 
         <div class="card">
             <div class="card-head">
-                <div class="info-box">
-                    <strong>User:</strong> {{ $user->name }}<br>
-                    <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                    <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
-                </div>
+
             </div>
 
             <div class="summary-grid">

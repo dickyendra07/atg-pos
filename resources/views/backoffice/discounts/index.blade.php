@@ -224,11 +224,9 @@
     <div class="page-shell">
         <div class="topbar">
             <div>
-                <div class="kicker">Backoffice Discounts</div>
+
                 <h1 class="page-title">Discounts</h1>
-                <p class="page-subtitle">
-                    Master discount untuk potongan nominal dan persen. Setting dibuat di Backoffice, lalu nanti bisa dipakai di Cashier.
-                </p>
+
             </div>
 
             <a href="{{ route('backoffice.discounts.create') }}" class="btn btn-brand">Create Discount</a>

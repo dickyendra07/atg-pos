@@ -426,11 +426,9 @@
     <div class="production-recipes-shell">
         <div class="production-recipes-topbar">
             <div class="production-recipes-title-block">
-                <div class="production-recipes-kicker">Production Recipes Workspace</div>
+
                 <h1 class="production-recipes-title">Back Office - Production Recipes</h1>
-                <p class="production-recipes-subtitle">
-                    Kelola resep internal untuk bahan setengah jadi.
-                </p>
+
             </div>
 
             <div class="production-recipes-actions">
@@ -448,13 +446,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-card">
-                <div class="hero-kicker">Production Recipe</div>
-                <h2 class="hero-heading">Definisikan bahan setengah jadi beserta komposisi mentahnya.</h2>
-                <p class="hero-text">
-                    Master recipe internal untuk mengelola output bahan setengah jadi dan bahan input.
-                </p>
-            </div>
+
 
             <div class="summary-grid">
                 <div class="summary-card orange">
@@ -485,9 +477,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h2 class="table-title">All Production Recipes</h2>
-                    <p class="table-subtitle">
-                        Output ingredient harus bertipe setengah jadi, sedangkan bahan input dibatasi ke ingredient mentah.
-                    </p>
+
                 </div>
 
                 @if($recipes->count())

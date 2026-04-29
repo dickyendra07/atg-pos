@@ -279,9 +279,7 @@
     <div class="topbar">
         <div>
             <h1 class="title">Dashboard Summary Print</h1>
-            <p class="subtitle">
-                Ringkasan transaksi, inventory, dan top products berdasarkan filter aktif.
-            </p>
+
         </div>
 
         <div class="meta">
@@ -295,7 +293,7 @@
     <div class="section">
         <div class="section-head">
             <h2 class="section-title">Transaction Summary</h2>
-            <p class="section-subtitle">Ringkasan angka utama transaksi pada periode aktif.</p>
+
         </div>
 
         <div class="stats-grid">
@@ -326,25 +324,14 @@
 
         <div class="content-pad">
             <div class="info-grid">
-                <div class="info-box">
-                    <h3 class="info-title">Status Breakdown</h3>
-                    <div class="info-row">
-                        <span>Completed</span>
-                        <strong>{{ number_format((int) ($stats['completed_transaction_count'] ?? 0), 0, ',', '.') }}</strong>
-                    </div>
+
                     <div class="info-row">
                         <span>Void</span>
                         <strong>{{ number_format((int) ($stats['void_transaction_count'] ?? 0), 0, ',', '.') }}</strong>
                     </div>
                 </div>
 
-                <div class="info-box">
-                    <h3 class="info-title">Payment Summary</h3>
-                    @foreach(($stats['payment_summary'] ?? []) as $method => $row)
-                        <div class="info-row">
-                            <span>{{ strtoupper($method) }}</span>
-                            <strong>Rp {{ number_format((float) ($row['total'] ?? 0), 0, ',', '.') }}</strong>
-                        </div>
+
                     @endforeach
                 </div>
             </div>
@@ -354,7 +341,7 @@
     <div class="section">
         <div class="section-head">
             <h2 class="section-title">Top Products Table</h2>
-            <p class="section-subtitle">Product / variant dengan sales tertinggi pada periode aktif.</p>
+
         </div>
 
         <div class="content-pad">
@@ -390,7 +377,7 @@
     <div class="section">
         <div class="section-head">
             <h2 class="section-title">Inventory Summary</h2>
-            <p class="section-subtitle">Ringkasan inventory pada scope lokasi aktif.</p>
+
         </div>
 
         <div class="stats-grid">
@@ -421,12 +408,7 @@
 
         <div class="content-pad">
             <div class="info-grid">
-                <div class="info-box">
-                    <h3 class="info-title">Movement Summary</h3>
-                    <div class="info-row">
-                        <span>Movement Logs</span>
-                        <strong>{{ number_format((int) ($stats['stock_movement_count'] ?? 0), 0, ',', '.') }}</strong>
-                    </div>
+
                     <div class="info-row">
                         <span>Total Qty In</span>
                         <strong>{{ number_format((float) ($stats['total_qty_in'] ?? 0), 0, ',', '.') }}</strong>
@@ -437,14 +419,7 @@
                     </div>
                 </div>
 
-                <div class="info-box">
-                    <h3 class="info-title">Low Stock Focus</h3>
-                    @if($lowStockFocus->count())
-                        @foreach($lowStockFocus->take(8) as $stock)
-                            <div class="info-row">
-                                <span>{{ $stock->ingredient->name ?? '-' }}</span>
-                                <strong>{{ number_format((float) ($stock->qty_on_hand ?? 0), 0, ',', '.') }}</strong>
-                            </div>
+
                         @endforeach
                     @else
                         <div>Tidak ada low stock / out of stock.</div>

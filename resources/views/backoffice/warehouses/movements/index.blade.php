@@ -167,7 +167,7 @@
         <div class="topbar">
             <div>
                 <div class="title">Warehouse Movements - {{ $warehouse->name }}</div>
-                <div class="subtitle">Riwayat pergerakan stok khusus warehouse ini.</div>
+
             </div>
 
             <div class="actions">

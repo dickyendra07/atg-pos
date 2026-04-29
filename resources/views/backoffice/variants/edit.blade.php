@@ -286,11 +286,9 @@
     <div class="variant-form-shell">
         <div class="variant-form-topbar">
             <div class="variant-form-title-block">
-                <div class="variant-form-kicker">Variants Workspace</div>
+
                 <h1 class="variant-form-title">Edit Group Variant</h1>
-                <p class="variant-form-subtitle">
-                    Edit variant untuk product <strong>{{ $variant->product->name ?? '-' }}</strong>.
-                </p>
+
             </div>
 
             <div class="variant-form-actions">
@@ -311,11 +309,7 @@
 
         <div class="card">
             <div class="card-body">
-                <div class="info-box">
-                    Product saat ini: <strong>{{ $variant->product->name ?? '-' }}</strong><br>
-                    Brand: <strong>{{ $variant->product->brand->name ?? '-' }}</strong><br>
-                    Category: <strong>{{ $variant->product->category->name ?? '-' }}</strong>
-                </div>
+
 
                 <form method="POST" action="{{ route('backoffice.variants.update', $variant->id) }}" id="variant-form">
                     @csrf
@@ -384,9 +378,7 @@
                     </div>
                 </form>
 
-                <div class="note">
-                    Kalau row lama dihapus saat update, sistem akan mencoba menghapus variant tersebut. Tapi kalau variant itu sudah dipakai di recipe atau transaksi, penghapusan akan diblok supaya data operasional tetap aman.
-                </div>
+
             </div>
         </div>
     </div>

@@ -176,11 +176,9 @@
     <div class="page-shell">
         <div class="topbar">
             <div>
-                <div class="kicker">Edit Discount</div>
+
                 <h1 class="page-title">Edit Discount</h1>
-                <p class="page-subtitle">
-                    Update master discount dari Backoffice.
-                </p>
+
             </div>
 
             <a href="{{ route('backoffice.discounts.index') }}" class="btn btn-soft">Back to Discounts</a>
@@ -210,7 +208,7 @@
                                 </option>
                             @endforeach
                         </select>
-                        <div class="helper">Kosongkan untuk berlaku di semua outlet.</div>
+
                         @error('outlet_id')
                             <div class="field-error">{{ $message }}</div>
                         @enderror
@@ -230,7 +228,7 @@
                     <div class="field">
                         <label for="value">Value</label>
                         <input type="number" name="value" id="value" value="{{ old('value', $discount->value) }}" min="0" step="0.01" placeholder="Contoh: 20000 atau 10" required>
-                        <div class="helper">Untuk nominal isi angka Rupiah. Untuk percent isi angka persen, contoh 10.</div>
+
                         @error('value')
                             <div class="field-error">{{ $message }}</div>
                         @enderror
@@ -242,7 +240,7 @@
                             <input type="checkbox" name="is_active" value="1" @checked(old('is_active', $discount->is_active))>
                             Active
                         </label>
-                        <div class="helper">Nonaktifkan jika discount belum ingin dipakai.</div>
+
                     </div>
                 </div>
 

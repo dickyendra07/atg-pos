@@ -211,9 +211,7 @@
         <div class="topbar">
             <div class="title-block">
                 <div class="title">Tambah Recipe</div>
-                <div class="subtitle">
-                    Buat header recipe jual dulu, lalu lanjut isi komponen bahan di halaman edit recipe.
-                </div>
+
             </div>
 
             <a href="{{ route('backoffice.recipes.index') }}" class="btn">Kembali</a>
@@ -230,15 +228,6 @@
             </div>
         @endif
 
-        <div class="card hero-card">
-            <div class="hero-kicker">Batch 4 Recipe Hybrid</div>
-            <h2 class="hero-title">Recipe jual sekarang bisa disiapkan untuk campuran raw dan semi-finished.</h2>
-            <p class="hero-text">
-                Di langkah ini kamu buat dulu header recipe untuk variant yang dijual. Setelah recipe tersimpan,
-                kamu akan lanjut ke halaman edit untuk menambahkan item bahan yang bisa berupa bahan mentah,
-                bahan setengah jadi, atau campuran keduanya.
-            </p>
-        </div>
 
         <div class="card">
             <div class="info">
@@ -260,17 +249,13 @@
                             </option>
                         @endforeach
                     </select>
-                    <div class="helper">
-                        Satu variant hanya boleh punya satu recipe aktif utama.
-                    </div>
+
                 </div>
 
                 <div class="field">
                     <label>Recipe Name</label>
                     <input type="text" name="name" value="{{ old('name') }}" placeholder="Contoh: Waffle Coklat / Es Teh Cream Base" required>
-                    <div class="helper">
-                        Pakai nama recipe yang jelas supaya gampang dibedakan saat nanti dikelola dan dicek deduction-nya.
-                    </div>
+
                 </div>
 
                 <div class="field">
@@ -287,15 +272,7 @@
                 </div>
             </form>
 
-            <div class="note">
-                Setelah header recipe berhasil dibuat, langkah berikutnya adalah masuk ke halaman <strong>Edit Recipe</strong> untuk menambahkan item bahan.
-                <ul class="tip-list">
-                    <li>Recipe boleh isi <strong>raw</strong> saja.</li>
-                    <li>Recipe boleh isi <strong>semi-finished</strong> saja.</li>
-                    <li>Recipe juga boleh <strong>campuran raw + semi-finished</strong> dalam satu recipe.</li>
-                    <li>Saat checkout, sistem akan deduction berdasarkan item recipe yang kamu susun di halaman edit.</li>
-                </ul>
-            </div>
+
         </div>
     </div>
 </body>

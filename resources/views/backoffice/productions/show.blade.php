@@ -198,9 +198,7 @@
         <div class="topbar">
             <div>
                 <h1 class="title">Detail Produksi</h1>
-                <div class="subtitle">
-                    Detail transaksi produksi yang sudah menambah stok output dan mengurangi stok bahan input.
-                </div>
+
             </div>
 
             <a href="{{ route('backoffice.productions.index') }}" class="btn btn-dark">Kembali</a>
@@ -215,7 +213,7 @@
                 <div class="card">
                     <div class="card-head">
                         <h2 class="card-title">Header Produksi</h2>
-                        <p class="card-subtitle">Informasi utama transaksi produksi.</p>
+
                     </div>
 
                     <div class="card-body">
@@ -233,7 +231,7 @@
                 <div class="card">
                     <div class="card-head">
                         <h2 class="card-title">Output Produksi</h2>
-                        <p class="card-subtitle">Ringkasan hasil produksi yang masuk ke stok.</p>
+
                     </div>
 
                     <div class="card-body">
@@ -251,7 +249,7 @@
             <div class="card">
                 <div class="card-head">
                     <h2 class="card-title">Production Items</h2>
-                    <p class="card-subtitle">Semua bahan input dan output yang tercatat dalam transaksi ini.</p>
+
                 </div>
 
                 <div class="card-body">

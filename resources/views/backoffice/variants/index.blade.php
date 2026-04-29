@@ -470,11 +470,9 @@
     <div class="variants-shell">
         <div class="variants-topbar">
             <div class="variants-title-block">
-                <div class="variants-kicker">Variants Workspace</div>
+
                 <h1 class="variants-title">Variants Group Management</h1>
-                <p class="variants-subtitle">
-                    Variant sekarang ditata per product, jadi lebih gampang cari product dulu, lalu buka detail variant hanya saat dibutuhkan.
-                </p>
+
             </div>
 
             <div class="variants-actions">

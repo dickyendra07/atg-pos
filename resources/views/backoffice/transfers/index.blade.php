@@ -666,11 +666,9 @@
     <div class="transfer-shell">
         <div class="transfer-topbar">
             <div class="transfer-title-block">
-                <div class="transfer-kicker">Internal Stock Transfer</div>
+
                 <h1 class="transfer-title">Back Office - Transfers</h1>
-                <p class="transfer-subtitle">
-                    Pantau perpindahan stok antar lokasi internal untuk kebutuhan audit harian.
-                </p>
+
             </div>
 
             <div class="transfer-actions">
@@ -681,21 +679,13 @@
         </div>
 
         <div class="card">
-            <div class="hero-wrap">
-                <div class="hero-card">
-                    <div class="hero-kicker">Transfer Monitoring</div>
-                    <h2 class="hero-heading">Read item-based transfer flow with clearer stock rollback control.</h2>
-                    <p class="hero-text">
-                        Monitor status pengiriman, penerimaan, pembatalan, dan aktivasi ulang per transfer.
-                    </p>
-                </div>
 
-                <div class="info-card">
-                    <h3 class="info-title">Transfer Rule</h3>
-                    <div class="info-line"><strong>In transit:</strong> stok sudah bergerak, item masih dalam pengiriman</div>
-                    <div class="info-line"><strong>Received:</strong> item sudah diterima di lokasi tujuan</div>
-                    <div class="info-line"><strong>Cancelled:</strong> stok item otomatis rollback</div>
-                    <div class="info-line"><strong>Reactivated:</strong> item dipindahkan lagi dari asal ke tujuan</div>
+                    <div class="info-line">
+</div>
+                    <div class="info-line">
+</div>
+                    <div class="info-line">
+</div>
                 </div>
             </div>
 
@@ -736,9 +726,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Filter Transfer</h2>
-                    <p class="section-subtitle">
-                        Filter item transfer berdasarkan tipe lokasi asal, tipe lokasi tujuan, dan status transfer.
-                    </p>
+
                 </div>
 
                 <form method="GET" action="{{ route('backoffice.transfers.index') }}" class="filter-form">
@@ -779,9 +767,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Transfer List</h2>
-                    <p class="section-subtitle">
-                        Transfer ditampilkan per nomor transaksi. Klik detail untuk melihat ingredient yang dikirim dalam transfer tersebut.
-                    </p>
+
                 </div>
 
                 @if(($transferGroups ?? collect())->count())

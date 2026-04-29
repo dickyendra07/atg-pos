@@ -720,11 +720,9 @@
     <div class="inventory-shell">
         <div class="inventory-topbar">
             <div class="inventory-title-block">
-                <div class="inventory-kicker">Inventory Workspace</div>
+
                 <h1 class="inventory-title">Back Office - Inventory Control</h1>
-                <p class="inventory-subtitle">
-                    Pusat kontrol stok seluruh lokasi untuk purchase order, import opening stock, adjustment, opname, dan stock summary operasional.
-                </p>
+
             </div>
 
             <div class="inventory-actions">
@@ -734,21 +732,12 @@
         </div>
 
         <div class="card">
-            <div class="hero-wrap">
-                <div class="hero-card">
-                    <div class="hero-kicker">Inventory Control</div>
-                    <h2 class="hero-heading">Control stock actions and read stock summary in one place.</h2>
-                    <p class="hero-text">
-                        Halaman ini adalah pusat kontrol stok seluruh lokasi. Pakai area ini untuk purchase order dari luar, adjustment stok, import opening stock, dan membaca summary stok model operasional.
-                    </p>
-                </div>
 
-                <div class="rule-card">
-                    <h3 class="rule-title">Inventory Rule</h3>
-                    <div class="rule-line"><strong>Barang dari luar:</strong> Purchase Order</div>
                     <div class="rule-line"><strong>Barang antar lokasi:</strong> Transfer Barang</div>
-                    <div class="rule-line"><strong>Selisih stok:</strong> Adjustment</div>
-                    <div class="rule-line"><strong>Opname formal:</strong> Warehouse saja</div>
+                    <div class="rule-line">
+</div>
+                    <div class="rule-line">
+</div>
                 </div>
             </div>
 
@@ -835,9 +824,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Stock Summary</h2>
-                    <p class="section-subtitle">
-                        Summary ini mengikuti cara baca stok operasional: saldo awal, purchase order, transfer, produksi, adjustment, lalu stok akhir per bahan.
-                    </p>
+
                 </div>
 
                                 <form method="GET" action="{{ route('backoffice.stock-balances.index') }}" class="summary-filter-form">
@@ -968,9 +955,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">All Stock Balances</h2>
-                    <p class="section-subtitle">
-                        Monitor seluruh stok lintas lokasi. Stok bernilai 0 otomatis ditandai merah supaya lebih cepat terlihat.
-                    </p>
+
                 </div>
 
                 <form method="GET" action="{{ route('backoffice.stock-balances.index') }}" class="filter-form">
@@ -1082,35 +1067,28 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Rule Reminder</h2>
-                    <p class="section-subtitle">
-                        Ringkasan rule inventory action dan transfer internal.
-                    </p>
+
                 </div>
 
-                <div class="note-list">
-                    <div class="note-card">
-                        <div class="note-title">Purchasing Order</div>
+
                         <div class="note-desc">
                             Dipakai saat barang datang dari <span class="note-highlight">luar sistem internal</span>, misalnya supplier, vendor, atau pembelian darurat outlet.
                         </div>
                     </div>
 
-                    <div class="note-card">
-                        <div class="note-title">Transfer Barang</div>
+
                         <div class="note-desc">
                             Dipakai saat barang berpindah dari <span class="note-highlight">lokasi internal ke lokasi internal lain</span>, misalnya warehouse ke outlet atau outlet ke outlet.
                         </div>
                     </div>
 
-                    <div class="note-card">
-                        <div class="note-title">Adjustment</div>
+
                         <div class="note-desc">
                             Dipakai untuk <span class="note-highlight">koreksi stok</span>, baik di warehouse maupun di outlet, misalnya karena selisih hitung, rusak, atau salah input.
                         </div>
                     </div>
 
-                    <div class="note-card">
-                        <div class="note-title">Opname Gudang</div>
+
                         <div class="note-desc">
                             Dipakai untuk <span class="note-highlight">stock opname formal khusus warehouse</span>. Outlet tidak perlu opname formal, cukup gunakan adjustment jika ada selisih stok.
                         </div>
@@ -1124,9 +1102,7 @@
         <div class="section-head need-action-head">
             <div>
                 <h2 class="section-title">Need Action List</h2>
-                <p class="section-subtitle">
-                    Daftar item yang perlu direstock, ditransfer, atau disesuaikan.
-                </p>
+
             </div>
 
             <form method="GET" action="{{ route('backoffice.stock-balances.index') }}#need-action-list" class="need-action-filter-form">

@@ -108,11 +108,9 @@
     <div class="page-shell">
         <div class="topbar">
             <div>
-                <div class="kicker">Backoffice Promos</div>
+
                 <h1 class="page-title">Promos</h1>
-                <p class="page-subtitle">
-                    Master promo untuk campaign bulanan, promo khusus product, purchase requirements, rewards, periode promo, jam aktif, hari aktif, dan outlet.
-                </p>
+
             </div>
 
             <a href="{{ route('backoffice.promos.create') }}" class="btn btn-brand">Create Promo</a>

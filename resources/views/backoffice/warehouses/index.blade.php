@@ -395,11 +395,9 @@
     <div class="warehouses-shell">
         <div class="warehouses-topbar">
             <div class="warehouses-title-block">
-                <div class="warehouses-kicker">Warehouses Workspace</div>
+
                 <h1 class="warehouses-title">Back Office - Warehouses</h1>
-                <p class="warehouses-subtitle">
-                    Kelola daftar warehouse aktif sebagai lokasi gudang utama di sistem.
-                </p>
+
             </div>
 
             <div class="warehouses-actions">
@@ -414,13 +412,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-card">
-                <div class="hero-kicker">Warehouse Master</div>
-                <h2 class="hero-heading">Kelola gudang utama untuk inventory dan transfer operasional.</h2>
-                <p class="hero-text">
-                    Data warehouse di halaman ini dipakai untuk inventory control, stock movement, transfer antar lokasi, dan referensi opening stock import.
-                </p>
-            </div>
+
 
             <div class="summary-grid">
                 <div class="summary-card orange">
@@ -451,9 +443,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h2 class="table-title">All Warehouses</h2>
-                    <p class="table-subtitle">
-                        Lihat ID warehouse, kode, alamat, phone, status aktif, dan shortcut aksi operasional dalam satu tabel.
-                    </p>
+
                 </div>
 
                 @if($warehouses->count())

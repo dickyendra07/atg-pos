@@ -450,11 +450,9 @@
     <div class="import-shell">
         <div class="import-topbar">
             <div class="import-title-block">
-                <div class="import-kicker">Opening Stock Import</div>
+
                 <h1 class="import-title">Import Opening Stock</h1>
-                <p class="import-subtitle">
-                    Gunakan halaman ini untuk input stok awal massal ke banyak lokasi sekaligus. Cocok dipakai saat setup awal sistem atau saat migrasi data stok lama ke Inventory Control.
-                </p>
+
             </div>
 
             <div class="import-actions">
@@ -501,18 +499,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-wrap">
-                <div class="hero-card">
-                    <div class="hero-kicker">Bulk Import</div>
-                    <h2 class="hero-heading">Masukkan stok awal massal dengan template CSV yang rapi.</h2>
-                    <p class="hero-text">
-                        Import opening stock dipakai untuk membuat stok awal di warehouse atau outlet. Setelah sistem berjalan, stok dari luar sebaiknya masuk lewat Penerimaan Barang, dan perpindahan antar lokasi tetap lewat Transfers.
-                    </p>
-                </div>
 
-                <div class="rule-card">
-                    <h3 class="rule-title">Rule Import</h3>
-                    <div class="rule-line"><strong>Dipakai untuk:</strong> opening stock awal</div>
                     <div class="rule-line"><strong>Bukan untuk:</strong> penerimaan barang harian</div>
                     <div class="rule-line"><strong>Bukan untuk:</strong> transfer antar lokasi</div>
                     <div class="rule-line"><strong>Format file:</strong> CSV sesuai template</div>
@@ -522,14 +509,9 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Form Import Opening Stock</h2>
-                    <p class="section-subtitle">
-                        Upload file CSV sesuai template. Sistem akan membaca setiap baris dan membuat stock balance awal beserta movement opening balance.
-                    </p>
+
                 </div>
 
-                <div class="helper-box">
-                    Import Opening Stock dipakai untuk membuat stok awal secara massal. Kalau stok datang dari luar setelah sistem berjalan, gunakan <strong>Penerimaan Barang</strong>. Kalau barang pindah antar lokasi, gunakan <strong>Transfers</strong>.
-                </div>
 
                 <div class="content-grid">
                     <div class="upload-card">

@@ -218,9 +218,7 @@
 
 <div class="wrap">
         <div class="title">Buat Transfer</div>
-        <div class="subtitle">
-            Transfer barang dari warehouse atau outlet ke lokasi lain dengan status awal <strong>in transit</strong>.
-        </div>
+
 
         @if($errors->any())
             <div class="error-box">
@@ -291,7 +289,7 @@
                 <div class="items-head">
                     <div>
                         <div class="items-title">Daftar Item Transfer</div>
-                        <div class="items-subtitle">Bisa tambah banyak bahan sekaligus, edit row sebelum submit, dan hapus row yang salah.</div>
+
                     </div>
                     <button type="button" class="btn btn-add" id="add-item-btn">Tambah Baris</button>
                 </div>

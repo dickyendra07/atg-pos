@@ -445,11 +445,9 @@
     <div class="adjustment-shell">
         <div class="adjustment-topbar">
             <div class="adjustment-title-block">
-                <div class="adjustment-kicker">Inventory Adjustment</div>
+
                 <h1 class="adjustment-title">Adjustment Stok</h1>
-                <p class="adjustment-subtitle">
-                    Gunakan halaman ini untuk koreksi stok warehouse atau outlet berdasarkan kondisi aktual di lapangan. Isi stok aktual, lalu sistem otomatis menghitung selisih terhadap stok sistem.
-                </p>
+
             </div>
 
             <div class="adjustment-actions">
@@ -469,18 +467,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-wrap">
-                <div class="hero-card">
-                    <div class="hero-kicker">Stock Correction</div>
-                    <h2 class="hero-heading">Samakan stok sistem dengan stok aktual.</h2>
-                    <p class="hero-text">
-                        Halaman ini dipakai saat ada selisih stok, bahan rusak, kesalahan input, atau hasil hitung lapangan berbeda dari stok sistem. Pilih lokasi, pilih bahan, lalu isi stok aktual yang benar.
-                    </p>
-                </div>
 
-                <div class="rule-card">
-                    <h3 class="rule-title">Rule Adjustment</h3>
-                    <div class="rule-line"><strong>Warehouse:</strong> boleh adjustment</div>
                     <div class="rule-line"><strong>Outlet:</strong> boleh adjustment</div>
                     <div class="rule-line"><strong>Selisih positif:</strong> sistem tambah stok</div>
                     <div class="rule-line"><strong>Selisih negatif:</strong> sistem kurangi stok</div>
@@ -490,14 +477,9 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Form Adjustment</h2>
-                    <p class="section-subtitle">
-                        Pilih lokasi dulu, lalu tambahkan item-item yang ingin dikoreksi. Sistem akan menampilkan stok sistem saat ini dan selisih otomatis.
-                    </p>
+
                 </div>
 
-                <div class="helper-box">
-                    Adjustment dipakai untuk <strong>koreksi stok</strong>, bukan untuk barang masuk dari supplier dan bukan untuk perpindahan antar lokasi. Kalau barang datang dari luar, gunakan <strong>Penerimaan Barang</strong>. Kalau barang pindah antar lokasi, gunakan <strong>Transfers</strong>.
-                </div>
 
                 <div class="form-wrap">
                     <form method="POST" action="{{ route('backoffice.stock-balances.adjustment.store') }}">
@@ -547,7 +529,7 @@
                         <div class="items-head">
                             <div>
                                 <div class="items-title">Daftar Item Adjustment</div>
-                                <div class="items-subtitle">Bisa input banyak bahan sekaligus dalam satu submit.</div>
+
                             </div>
                             <button type="button" class="btn btn-add" id="add-item-btn">Tambah Baris</button>
                         </div>

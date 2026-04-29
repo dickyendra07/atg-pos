@@ -393,11 +393,9 @@
     <div class="users-shell">
         <div class="users-topbar">
             <div class="users-title-block">
-                <div class="users-kicker">Users Workspace</div>
+
                 <h1 class="users-title">Back Office - User Management</h1>
-                <p class="users-subtitle">
-                    Tambah dan atur user kasir maupun admin beserta role dan outlet akses utama.
-                </p>
+
             </div>
 
             <div class="users-actions">
@@ -415,13 +413,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-card">
-                <div class="hero-kicker">User Access</div>
-                <h2 class="hero-heading">Kelola akun operasional dan akses role dalam satu halaman yang lebih rapi.</h2>
-                <p class="hero-text">
-                    Halaman ini dipakai untuk mengatur user aktif, role, outlet utama, dan memastikan akses operasional tetap terstruktur antara kasir, admin outlet, admin pusat, owner, dan staff gudang.
-                </p>
-            </div>
+
 
             <div class="summary-grid">
                 <div class="summary-card orange">
@@ -452,9 +444,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h2 class="table-title">All Users</h2>
-                    <p class="table-subtitle">
-                        Lihat nama, email, phone, role, outlet, status aktif, dan waktu dibuat dalam satu tabel yang lebih nyaman dibaca.
-                    </p>
+
                 </div>
 
                 @if($users->count())

@@ -116,7 +116,7 @@
 <body>
     <div class="wrap">
         <div class="title">Stock In Warehouse</div>
-        <div class="subtitle">Tambah stok ingredient ke warehouse {{ $warehouse->name }}.</div>
+
 
         @if($errors->any())
             <div class="error">

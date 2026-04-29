@@ -393,11 +393,9 @@
     <div class="outlets-shell">
         <div class="outlets-topbar">
             <div class="outlets-title-block">
-                <div class="outlets-kicker">Outlets Workspace</div>
+
                 <h1 class="outlets-title">Back Office - Outlets</h1>
-                <p class="outlets-subtitle">
-                    Kelola outlet aktif sebagai lokasi operasional penjualan dan inventory.
-                </p>
+
             </div>
 
             <div class="outlets-actions">
@@ -419,13 +417,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-card">
-                <div class="hero-kicker">Outlet Master</div>
-                <h2 class="hero-heading">Kelola lokasi outlet operasional dalam satu halaman yang lebih rapi.</h2>
-                <p class="hero-text">
-                    Data outlet di halaman ini dipakai untuk cashier, stock movement, transfer antar lokasi, dan referensi operasional outlet.
-                </p>
-            </div>
+
 
             <div class="summary-grid">
                 <div class="summary-card orange">
@@ -456,9 +448,7 @@
             <div class="table-card">
                 <div class="table-head">
                     <h2 class="table-title">All Outlets</h2>
-                    <p class="table-subtitle">
-                        Lihat nama outlet, kode, alamat, phone, dan status aktif dalam satu tabel yang lebih nyaman dibaca.
-                    </p>
+
                 </div>
 
                 @if($outlets->count())

@@ -541,11 +541,9 @@
     <div class="transactions-shell">
         <div class="transactions-topbar">
             <div class="transactions-title-block">
-                <div class="transactions-kicker">Transactions Workspace</div>
+
                 <h1 class="transactions-title">Back Office - Transactions</h1>
-                <p class="transactions-subtitle">
-                    Monitor transaksi cashier untuk audit dan operasional.
-                </p>
+
             </div>
 
             <div class="transactions-actions">
@@ -571,19 +569,7 @@
         @endif
 
         <div class="card">
-            <div class="hero-card">
-                <div class="hero-kicker">Sales Summary</div>
-                <h2 class="hero-heading">Monitor transaksi cashier dengan tampilan yang lebih clean dan valid.</h2>
-                <p class="hero-text">
-                    Dashboard ringkas penjualan yang sudah dibersihkan dari transaksi bermasalah agar summary lebih valid untuk monitoring operasional, audit, dan presentasi ke client.
-                </p>
-            </div>
 
-            <div class="info-box">
-                <strong>User:</strong> {{ $user->name }}<br>
-                <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
-            </div>
 
             <div class="stats-grid">
                 <div class="stat-card orange">
@@ -634,9 +620,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Filter Sales Summary</h2>
-                    <p class="section-subtitle">
-                        Filter transaksi berdasarkan periode, payment method, status, dan outlet untuk mendapatkan summary yang lebih fokus.
-                    </p>
+
                 </div>
 
                 <form method="GET" action="{{ route('backoffice.transactions.index') }}" class="filter-grid">
@@ -693,9 +677,7 @@
                 <div class="section-card" style="margin:0;">
                     <div class="section-head">
                         <h2 class="section-title">Payment Method Summary</h2>
-                        <p class="section-subtitle">
-                            Breakdown transaksi valid berdasarkan metode pembayaran.
-                        </p>
+
                     </div>
 
                     @if($paymentSummary->isEmpty())
@@ -720,9 +702,7 @@
                 <div class="section-card" style="margin:0;">
                     <div class="section-head">
                         <h2 class="section-title">Top Selling Products</h2>
-                        <p class="section-subtitle">
-                            Produk dengan quantity terjual tertinggi dari transaksi valid.
-                        </p>
+
                     </div>
 
                     @if($topProducts->isEmpty())
@@ -748,9 +728,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Transactions Table</h2>
-                    <p class="section-subtitle">
-                        Seluruh transaksi berdasarkan filter aktif, termasuk transaksi valid dan problem rows untuk kebutuhan audit.
-                    </p>
+
                 </div>
 
                 @if($transactions->isEmpty())

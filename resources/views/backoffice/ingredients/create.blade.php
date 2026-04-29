@@ -320,9 +320,7 @@
             <div class="topbar">
                 <div class="title-wrap">
                     <h1 class="title">Tambah Ingredient</h1>
-                    <div class="subtitle">
-                        Buat bahan baku baru yang nanti bisa dipakai untuk inventory, recipe, transfer, dan seluruh flow operasional di back office.
-                    </div>
+
                 </div>
 
                 <div class="actions">
@@ -341,20 +339,11 @@
                     </div>
                 @endif
 
-                <div class="hero-card">
-                    <div class="hero-kicker">Create Ingredient</div>
-                    <h2 class="hero-heading">Masukkan master bahan dengan struktur yang rapi sejak awal.</h2>
-                    <p class="hero-text">
-                        Category, unit, tipe bahan, minimum stock, dan cost per unit akan sangat berpengaruh ke inventory control dan pembacaan data operasional.
-                    </p>
-                </div>
 
                 <div class="card">
                     <div class="card-head">
                         <h2 class="card-title">Form Ingredient</h2>
-                        <p class="card-subtitle">
-                            Isi data dasar ingredient sesuai kebutuhan operasional. Nama ingredient harus unik supaya tidak bentrok saat import dan stock movement.
-                        </p>
+
                     </div>
 
                     <div class="card-body">
@@ -382,7 +371,7 @@
                                 <div class="field full">
                                     <label>Ingredient Name</label>
                                     <input type="text" name="name" value="{{ old('name') }}" placeholder="contoh: Fresh Milk" required>
-                                    <div class="helper">Nama ingredient harus unik dan sebaiknya konsisten dengan file import / stock movement.</div>
+
                                 </div>
 
                                 <div class="field">
@@ -394,7 +383,7 @@
                                             </option>
                                         @endforeach
                                     </select>
-                                    <div class="helper">Mentah untuk bahan dasar, setengah jadi untuk bahan hasil olahan internal.</div>
+
                                 </div>
 
                                 <div class="field">

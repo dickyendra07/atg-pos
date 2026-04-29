@@ -417,11 +417,9 @@
     <div class="receive-shell">
         <div class="receive-topbar">
             <div class="receive-title-block">
-                <div class="receive-kicker">Inventory Action</div>
+
                 <h1 class="receive-title">Purchase Order</h1>
-                <p class="receive-subtitle">
-                    Gunakan halaman ini untuk mencatat purchase order dari supplier atau vendor ke warehouse maupun outlet, lengkap dengan qty, harga satuan, dan total harga.
-                </p>
+
             </div>
 
             <div class="receive-actions">
@@ -447,14 +445,7 @@
         @endif
 
         <div class="page-card">
-            <div class="hero-wrap">
-                <div class="hero-card">
-                    <div class="hero-chip">Purchase order</div>
-                    <h2 class="hero-heading"><h2 class="hero-heading">Catat purchase order dengan lebih rapi, lengkap, dan jelas per lokasi.</h2></h2>
-                    <p class="hero-text">
-                        Form ini dipakai khusus untuk purchase order dari luar alur transfer internal. Jadi stok masuk akan langsung menambah stok lokasi tujuan dan tercatat lengkap bersama qty, harga satuan, dan total harga.
-                    </p>
-                </div>
+
 
                 <div class="rule-card">
                     <h3 class="rule-title">Rule Penggunaan</h3>
@@ -468,9 +459,7 @@
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">Form Purchase Order</h2>
-                    <p class="section-subtitle">
-                        Isi lokasi tujuan dulu, lalu tambahkan satu atau beberapa item bahan yang masuk dalam sekali submit.
-                    </p>
+
                 </div>
 
                 <div class="form-wrap">
@@ -517,7 +506,7 @@
                         <div class="items-head">
                             <div>
                                 <div class="items-title">Daftar Item Penerimaan</div>
-                                <div class="items-subtitle">Sekarang sudah ada harga satuan, qty, dan total harga per baris.</div>
+
                             </div>
                             <button type="button" class="btn btn-blue" id="add-item-btn">Tambah Baris</button>
                         </div>

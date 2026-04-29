@@ -433,11 +433,9 @@
     <div class="shifts-shell">
         <div class="shifts-topbar">
             <div class="shifts-title-block">
-                <div class="shifts-kicker">Shifts Workspace</div>
+
                 <h1 class="shifts-title">Back Office - Cashier Shifts</h1>
-                <p class="shifts-subtitle">
-                    Pantau shift kasir, opening cash, expected cash, closing cash actual, dan performa transaksi per shift.
-                </p>
+
             </div>
 
             <div class="shifts-actions">
@@ -447,20 +445,12 @@
         </div>
 
         <div class="card">
-            <div class="hero-card">
-                <div class="hero-kicker">Shift Monitoring</div>
-                <h2 class="hero-heading">Lihat performa shift cashier dengan format yang lebih rapi dan gampang diaudit.</h2>
-                <p class="hero-text">
-                    Halaman ini dipakai untuk membaca aktivitas shift per kasir, total transaksi, expected cash, selisih closing, dan histori shift yang masih open atau sudah closed.
-                </p>
-            </div>
+
 
             <div class="filter-card">
                 <div class="section-head">
                     <h2 class="section-title">Filter Shifts</h2>
-                    <p class="section-subtitle">
-                        Gunakan filter ini untuk fokus ke periode tertentu, status shift, outlet, atau nama kasir.
-                    </p>
+
                 </div>
 
                 <form method="GET" action="{{ route('backoffice.shifts.index') }}">
@@ -553,9 +543,7 @@
             <div class="table-card">
                 <div class="section-head">
                     <h2 class="section-title">Shift List</h2>
-                    <p class="section-subtitle">
-                        Lihat detail shift kasir berdasarkan filter aktif, termasuk selisih closing dan jumlah transaksi per shift.
-                    </p>
+
                 </div>
 
                 @if($shiftRows->isEmpty())
