@@ -68,6 +68,9 @@ class CartController extends Controller
                     'qty' => (float) ($item['qty'] ?? 0),
                     'price' => (float) ($item['price'] ?? 0),
                     'line_total' => (float) ($item['line_total'] ?? 0),
+                    'is_promo_reward' => (bool) ($item['is_promo_reward'] ?? false),
+                    'promo_id' => $item['promo_id'] ?? null,
+                    'promo_name' => $item['promo_name'] ?? null,
                 ];
             })->values()->all(),
         ];
@@ -359,6 +362,160 @@ class CartController extends Controller
     }
 
 
+
+    protected function promoAppliesToUserOutlet(Promo $promo, $user): bool
+    {
+        $promo->loadMissing(['outlets']);
+
+        if ($promo->outlets->isEmpty()) {
+            return true;
+        }
+
+        if (empty($user->outlet_id)) {
+            return false;
+        }
+
+        return $promo->outlets->contains('id', (int) $user->outlet_id);
+    }
+
+    protected function upsertPromoCartItem(array $cart, ProductVariant $variant, float $qty, string $orderType, ?Promo $promo = null, bool $isReward = false): array
+    {
+        $variant->loadMissing(['product.brand', 'product.category']);
+
+        $cartKey = ($isReward ? 'promo_reward_' : 'variant_') . $variant->id . '_' . $orderType . ($isReward && $promo ? '_promo_' . $promo->id : '');
+
+        $price = $isReward
+            ? 0
+            : (method_exists($variant, 'getPriceByOrderType')
+                ? $variant->getPriceByOrderType($orderType)
+                : (float) ($orderType === 'delivery'
+                    ? ($variant->price_delivery ?? $variant->price)
+                    : ($variant->price_dine_in ?? $variant->price)));
+
+        if (isset($cart[$cartKey])) {
+            $cart[$cartKey]['qty'] = (float) ($cart[$cartKey]['qty'] ?? 0) + $qty;
+            $cart[$cartKey]['line_total'] = (float) $cart[$cartKey]['qty'] * (float) $cart[$cartKey]['price'];
+            return $cart;
+        }
+
+        $cart[$cartKey] = [
+            'cart_key' => $cartKey,
+            'variant_id' => $variant->id,
+            'product_id' => $variant->product?->id,
+            'product_name' => $variant->product?->name,
+            'brand_name' => $variant->product?->brand?->name,
+            'category_name' => $variant->product?->category?->name,
+            'variant_name' => $variant->name . ($isReward ? ' [PROMO FREE ITEM]' : ''),
+            'order_type' => $orderType,
+            'less_sugar' => false,
+            'less_ice' => false,
+            'qty' => $qty,
+            'price' => (float) $price,
+            'line_total' => (float) $price * $qty,
+            'is_promo_reward' => $isReward,
+            'promo_id' => $promo?->id,
+            'promo_name' => $promo?->name,
+        ];
+
+        return $cart;
+    }
+
+    public function applyPromo(Request $request, Promo $promo)
+    {
+        $user = $this->authorizeCashierAccess();
+
+        if (! $this->getActiveShift($user)) {
+            return $this->shiftBlockedResponse(
+                $request,
+                'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.'
+            );
+        }
+
+        $promo->load(['requirements.variant.product.brand', 'rewards.variant.product.brand', 'outlets']);
+
+        if (! $promo->is_active || $promo->status !== 'active' || ! $this->promoIsCurrentlyActive($promo) || ! $this->promoAppliesToUserOutlet($promo, $user)) {
+            $message = 'Promo tidak aktif atau tidak berlaku untuk outlet ini.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()->route('cashier.index')->with('error', $message);
+        }
+
+        if ($promo->requirements->isEmpty() && $promo->rewards->where('reward_type', 'free_item')->isEmpty()) {
+            $message = 'Promo belum punya item yang bisa dimasukkan otomatis.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()->route('cashier.index')->with('error', $message);
+        }
+
+        $orderType = $this->resolveOrderType($request->input('order_type', session('cashier_order_type', 'dine_in')));
+        session(['cashier_order_type' => $orderType]);
+
+        $cart = session('cashier_cart', []);
+
+        foreach ($promo->requirements as $requirement) {
+            if (! $requirement->variant) {
+                continue;
+            }
+
+            $cart = $this->upsertPromoCartItem(
+                cart: $cart,
+                variant: $requirement->variant,
+                qty: max(1, (float) $requirement->qty),
+                orderType: $orderType,
+                promo: $promo,
+                isReward: false
+            );
+        }
+
+        foreach ($promo->rewards as $reward) {
+            if ($reward->reward_type !== 'free_item' || ! $reward->variant) {
+                continue;
+            }
+
+            $cart = $this->upsertPromoCartItem(
+                cart: $cart,
+                variant: $reward->variant,
+                qty: max(1, (float) $reward->qty),
+                orderType: $orderType,
+                promo: $promo,
+                isReward: true
+            );
+        }
+
+        session([
+            'cashier_cart' => $cart,
+            'cashier_quick_promo_id' => $promo->id,
+        ]);
+
+        $payload = $this->buildCartPayload($cart, session('cashier_member'), $orderType);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Promo ' . $promo->name . ' berhasil dimasukkan ke cart.',
+                'cart' => $payload,
+                'promo_id' => $promo->id,
+            ]);
+        }
+
+        return redirect()
+            ->route('cashier.index')
+            ->with('success', 'Promo ' . $promo->name . ' berhasil dimasukkan ke cart.');
+    }
+
+
     protected function calculateDiscountAmount(array $cart, float $subtotal, $user, ?int $discountId, ?int $promoId): array
     {
         $discountAmount = 0;
@@ -415,15 +572,8 @@ class CartController extends Controller
                         $discountAmount += (float) $reward->reward_value;
                     }
 
-                    if ($reward->reward_type === 'free_item' && ! empty($reward->product_variant_id)) {
-                        $matchingCartItem = collect($cart)->first(function ($item) use ($reward) {
-                            return (int) ($item['variant_id'] ?? 0) === (int) $reward->product_variant_id;
-                        });
-
-                        if ($matchingCartItem) {
-                            $freeQty = min((float) $reward->qty, (float) ($matchingCartItem['qty'] ?? 0));
-                            $discountAmount += $freeQty * (float) ($matchingCartItem['price'] ?? 0);
-                        }
+                    if ($reward->reward_type === 'free_item') {
+                        continue;
                     }
                 }
 

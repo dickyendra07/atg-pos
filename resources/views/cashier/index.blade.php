@@ -1699,6 +1699,74 @@
             }
         }
 
+        .quick-promo-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .quick-promo-card {
+            border: 1px solid #e8edf4;
+            background: linear-gradient(180deg, #ffffff 0%, #fff8f3 100%);
+            border-radius: 16px;
+            padding: 12px;
+            text-align: left;
+            cursor: pointer;
+            box-shadow: 0 10px 20px rgba(15, 23, 42, 0.06);
+        }
+
+        .quick-promo-card:hover {
+            transform: translateY(-1px);
+        }
+
+        .quick-promo-name {
+            font-size: 13px;
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 5px;
+        }
+
+        .quick-promo-meta {
+            font-size: 11px;
+            color: #6b7280;
+            font-weight: 800;
+            line-height: 1.5;
+        }
+
+        .quick-promo-empty {
+            grid-column: 1 / -1;
+            padding: 12px;
+            border-radius: 14px;
+            background: #f9fafb;
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .promo-reward-pill {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 6px;
+            padding: 4px 8px;
+            border-radius: 999px;
+            background: #e8fff1;
+            color: #166534;
+            font-size: 10px;
+            font-weight: 900;
+        }
+
+        .promo-item-label {
+            display: inline-flex;
+            margin-left: 6px;
+            padding: 3px 7px;
+            border-radius: 999px;
+            background: #fff7ed;
+            color: #c2410c;
+            font-size: 10px;
+            font-weight: 900;
+        }
+
         .promo-discount-box {
             border: 1px solid #e8edf4;
             background: linear-gradient(180deg, #ffffff 0%, #fffaf7 100%);
@@ -1870,7 +1938,7 @@
     $oldPaymentMethod = old('payment_method', 'cash');
     $oldAmountPaid = old('amount_paid', (float) $subtotal);
     $oldDiscountId = old('discount_id');
-    $oldPromoId = old('promo_id');
+    $oldPromoId = old('promo_id', session('cashier_quick_promo_id'));
 @endphp
 
 <div class="page">
@@ -2341,6 +2409,10 @@
                                                     • Price: Rp {{ number_format((float) ($item['price'] ?? 0), 0, ',', '.') }}
                                                     • Line Total: Rp {{ number_format((float) ($item['line_total'] ?? 0), 0, ',', '.') }}
 
+                                                    @if(!empty($item['is_promo_reward']))
+                                                        <span class="promo-item-label">PROMO FREE ITEM</span>
+                                                    @endif
+
                                                     @if(!empty($item['less_sugar']) || !empty($item['less_ice']))
                                                         <br>
                                                         Modifier:
@@ -2408,6 +2480,41 @@
 
                                                 </div>
                                                 <div class="promo-discount-pill">Optional</div>
+                                            </div>
+
+
+                                            <div class="quick-promo-grid">
+                                                @forelse($promoOptions ?? [] as $promo)
+                                                    @php
+                                                        $requirementText = $promo->requirements->map(function ($requirement) {
+                                                            return number_format((float) $requirement->qty, 0, ',', '.') . 'x ' . ($requirement->variant?->product?->name ?? 'Product') . ' - ' . ($requirement->variant?->name ?? 'Variant');
+                                                        })->implode(' + ');
+
+                                                        $freeRewardCount = $promo->rewards->where('reward_type', 'free_item')->count();
+                                                    @endphp
+                                                    <button
+                                                        type="button"
+                                                        class="quick-promo-card"
+                                                        data-quick-promo
+                                                        data-url="{{ route('cashier.promo.apply', $promo) }}"
+                                                        data-promo-id="{{ $promo->id }}"
+                                                    >
+                                                        <div class="quick-promo-name">{{ $promo->name }}</div>
+                                                        <div class="quick-promo-meta">
+                                                            {{ $requirementText ?: 'Promo aktif' }}
+                                                            @if(($promo->requirement_logic ?? 'and') === 'or')
+                                                                <br>Logic: OR
+                                                            @else
+                                                                <br>Logic: AND
+                                                            @endif
+                                                        </div>
+                                                        @if($freeRewardCount > 0)
+                                                            <span class="promo-reward-pill">Free item otomatis</span>
+                                                        @endif
+                                                    </button>
+                                                @empty
+                                                    <div class="quick-promo-empty">Belum ada promo aktif untuk outlet ini.</div>
+                                                @endforelse
                                             </div>
 
                                             <div class="promo-discount-grid">
@@ -3040,6 +3147,46 @@
         }
     }
 
+
+    async function handleQuickPromoButton(button) {
+        if (!button || !button.dataset.url) {
+            return;
+        }
+
+        if (!isShiftOpen()) {
+            showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
+            return;
+        }
+
+        const originalHtml = button.innerHTML;
+        button.disabled = true;
+        button.style.opacity = '0.65';
+
+        try {
+            const result = await postJson(button.dataset.url, {
+                order_type: cashierState.orderType || 'dine_in',
+            });
+
+            if (result.cart) {
+                applyCartPayload(result.cart);
+            }
+
+            const promoSelect = document.getElementById('promo_id');
+            if (promoSelect && result.promo_id) {
+                promoSelect.value = String(result.promo_id);
+                promoSelect.dispatchEvent(new Event('change'));
+            }
+
+            showAlert('success', result.message || 'Promo berhasil dimasukkan ke cart.');
+        } catch (error) {
+            showAlert('error', error.message || 'Promo gagal diterapkan.');
+        } finally {
+            button.disabled = false;
+            button.style.opacity = '';
+            button.innerHTML = originalHtml;
+        }
+    }
+
     async function handleAddToCart(button) {
         const url = button.dataset.url;
         const originalText = button.textContent;
@@ -3369,6 +3516,13 @@
         const orderTypeButton = event.target.closest('[data-order-type-btn]');
         if (orderTypeButton) {
             await handleOrderTypeChange(orderTypeButton.dataset.orderType, orderTypeButton);
+            return;
+        }
+
+        const quickPromoButton = event.target.closest('[data-quick-promo]');
+        if (quickPromoButton) {
+            event.preventDefault();
+            await handleQuickPromoButton(quickPromoButton);
             return;
         }
 

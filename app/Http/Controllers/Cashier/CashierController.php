@@ -105,13 +105,15 @@ class CashierController extends Controller
 
     protected function getAvailableDiscounts($user)
     {
-        return Discount::with('outlet')
+        return Discount::with(['outlet', 'outlets'])
             ->where('is_active', true)
             ->where(function ($query) use ($user) {
-                $query->whereNull('outlet_id');
+                $query->whereDoesntHave('outlets');
 
                 if (! empty($user->outlet_id)) {
-                    $query->orWhere('outlet_id', $user->outlet_id);
+                    $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                        $outletQuery->where('outlets.id', $user->outlet_id);
+                    });
                 }
             })
             ->orderBy('name')
@@ -126,16 +128,19 @@ class CashierController extends Controller
 
         return Promo::with([
                 'outlet',
+                'outlets',
                 'requirements.variant.product',
                 'rewards.variant.product',
             ])
             ->where('is_active', true)
             ->where('status', 'active')
             ->where(function ($query) use ($user) {
-                $query->whereNull('outlet_id');
+                $query->whereDoesntHave('outlets');
 
                 if (! empty($user->outlet_id)) {
-                    $query->orWhere('outlet_id', $user->outlet_id);
+                    $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                        $outletQuery->where('outlets.id', $user->outlet_id);
+                    });
                 }
             })
             ->where(function ($query) use ($today) {

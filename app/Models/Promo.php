@@ -45,7 +45,8 @@ class Promo extends Model
 
     public function outlets(): BelongsToMany
     {
-        return $this->belongsToMany(Outlet::class)->withTimestamps();
+        return $this->belongsToMany(Outlet::class, 'promo_outlet', 'promo_id', 'outlet_id')
+            ->withTimestamps();
     }
 
     public function requirementVariant(): BelongsTo

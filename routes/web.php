@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/cashier/cart/remove/{cartKey}', [CartController::class, 'remove'])->name('cashier.cart.remove');
     Route::post('/cashier/cart/toggle-modifier/{cartKey}', [CartController::class, 'toggleModifier'])->name('cashier.cart.toggle-modifier');
     Route::post('/cashier/cart/clear', [CartController::class, 'clear'])->name('cashier.cart.clear');
+    Route::post('/cashier/promos/{promo}/apply', [CartController::class, 'applyPromo'])->name('cashier.promo.apply');
     Route::post('/cashier/checkout', [CartController::class, 'checkout'])->name('cashier.checkout');
 
     Route::post('/cashier/member/attach', [MemberCartController::class, 'attach'])->name('cashier.member.attach');
