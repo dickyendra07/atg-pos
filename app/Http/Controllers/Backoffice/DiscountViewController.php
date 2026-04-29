@@ -10,6 +10,16 @@ use Illuminate\Support\Facades\Auth;
 
 class DiscountViewController extends Controller
 {
+    protected function normalizeOutletIds(array $validated): array
+    {
+        return collect($validated['outlet_ids'] ?? [])
+            ->filter(fn ($id) => ! empty($id))
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
     protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role', 'outlet']);
@@ -26,6 +36,8 @@ class DiscountViewController extends Controller
     {
         return $request->validate([
             'outlet_id' => 'nullable|exists:outlets,id',
+            'outlet_ids' => 'nullable|array',
+            'outlet_ids.*' => 'nullable|exists:outlets,id',
             'name' => 'required|string|max:255',
             'type' => 'required|in:amount,percent',
             'value' => 'required|numeric|min:0',
@@ -55,7 +67,12 @@ class DiscountViewController extends Controller
         }
 
         if ($request->filled('outlet_id')) {
-            $query->where('outlet_id', $request->outlet_id);
+            $query->where(function ($outletQuery) use ($request) {
+                $outletQuery->where('outlet_id', $request->outlet_id)
+                    ->orWhereHas('outlets', function ($pivotQuery) use ($request) {
+                        $pivotQuery->where('outlets.id', $request->outlet_id);
+                    });
+            });
         }
 
         if ($request->filled('type')) {
@@ -106,7 +123,11 @@ class DiscountViewController extends Controller
         $validated = $this->validateDiscount($request);
         $validated['is_active'] = $request->boolean('is_active');
 
-        Discount::create($validated);
+        $outletIds = $this->normalizeOutletIds($validated);
+        unset($validated['outlet_ids']);
+
+        $discount = Discount::create($validated);
+        $discount->outlets()->sync($outletIds);
 
         return redirect()
             ->route('backoffice.discounts.index')
@@ -141,7 +162,11 @@ class DiscountViewController extends Controller
         $validated = $this->validateDiscount($request);
         $validated['is_active'] = $request->boolean('is_active');
 
+        $outletIds = $this->normalizeOutletIds($validated);
+        unset($validated['outlet_ids']);
+
         $discount->update($validated);
+        $discount->outlets()->sync($outletIds);
 
         return redirect()
             ->route('backoffice.discounts.index')

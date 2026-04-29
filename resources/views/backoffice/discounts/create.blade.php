@@ -198,17 +198,34 @@
                     </div>
 
                     <div class="field">
-                        <label for="outlet_id">Outlet</label>
-                        <select name="outlet_id" id="outlet_id">
-                            <option value="">All Outlets</option>
-                            @foreach($outletOptions as $outlet)
-                                <option value="{{ $outlet->id }}" @selected((string) old('outlet_id') === (string) $outlet->id)>
-                                    {{ $outlet->name }}
-                                </option>
-                            @endforeach
-                        </select>
+                        <label>Outlet</label>
+                        @php
+                            $selectedOutletIds = collect(old('outlet_ids', []))
+                                ->map(fn ($id) => (int) $id)
+                                ->all();
+                        @endphp
+                        <div class="outlet-dropdown" data-outlet-dropdown>
+                            <button type="button" class="outlet-dropdown-button" data-outlet-dropdown-button>
+                                Semua Outlet
+                            </button>
 
-                        @error('outlet_id')
+                            <div class="outlet-dropdown-panel">
+                                @foreach($outletOptions as $outlet)
+                                    <label class="outlet-option">
+                                        <input
+                                            type="checkbox"
+                                            name="outlet_ids[]"
+                                            value="{{ $outlet->id }}"
+                                            @checked(in_array((int) $outlet->id, $selectedOutletIds, true))
+                                            data-outlet-checkbox
+                                        >
+                                        <span>{{ $outlet->name }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                        </div>
+                        <div class="helper">Kosongkan jika discount berlaku untuk semua outlet.</div>
+                        @error('outlet_ids')
                             <div class="field-error">{{ $message }}</div>
                         @enderror
                     </div>
@@ -250,4 +267,40 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-outlet-dropdown]').forEach(function (dropdown) {
+                const button = dropdown.querySelector('[data-outlet-dropdown-button]');
+                const checkboxes = dropdown.querySelectorAll('[data-outlet-checkbox]');
+
+                function refreshLabel() {
+                    const selected = Array.from(checkboxes).filter(function (checkbox) {
+                        return checkbox.checked;
+                    });
+
+                    button.textContent = selected.length > 0
+                        ? selected.length + ' outlet dipilih'
+                        : 'Semua Outlet';
+                }
+
+                button.addEventListener('click', function () {
+                    dropdown.classList.toggle('is-open');
+                });
+
+                checkboxes.forEach(function (checkbox) {
+                    checkbox.addEventListener('change', refreshLabel);
+                });
+
+                document.addEventListener('click', function (event) {
+                    if (!dropdown.contains(event.target)) {
+                        dropdown.classList.remove('is-open');
+                    }
+                });
+
+                refreshLabel();
+            });
+        });
+    </script>
+
 @endsection

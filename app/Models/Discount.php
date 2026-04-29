@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Discount extends Model
 {
@@ -23,6 +24,11 @@ class Discount extends Model
     public function outlet(): BelongsTo
     {
         return $this->belongsTo(Outlet::class);
+    }
+
+    public function outlets(): BelongsToMany
+    {
+        return $this->belongsToMany(Outlet::class)->withTimestamps();
     }
 
     public function isPercent(): bool

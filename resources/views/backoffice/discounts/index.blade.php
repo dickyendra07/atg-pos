@@ -298,7 +298,11 @@
                         @forelse($discounts as $discount)
                             <tr>
                                 <td class="name">{{ $discount->name }}</td>
-                                <td>{{ $discount->outlet->name ?? 'All Outlets' }}</td>
+                                <td>@if($discount->outlets->count())
+                                            {{ $discount->outlets->pluck('name')->implode(', ') }}
+                                        @else
+                                            All Outlets
+                                        @endif</td>
                                 <td>{{ $discount->type === 'percent' ? 'Percent' : 'Nominal Rp' }}</td>
                                 <td>
                                     @if($discount->type === 'percent')

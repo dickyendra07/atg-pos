@@ -366,13 +366,15 @@ class CartController extends Controller
         $promoLabel = null;
 
         if ($discountId) {
-            $discount = Discount::query()
+            $discount = Discount::with(['outlets'])
                 ->where('is_active', true)
                 ->where(function ($query) use ($user) {
-                    $query->whereNull('outlet_id');
+                    $query->whereDoesntHave('outlets');
 
                     if (! empty($user->outlet_id)) {
-                        $query->orWhere('outlet_id', $user->outlet_id);
+                        $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                            $outletQuery->where('outlets.id', $user->outlet_id);
+                        });
                     }
                 })
                 ->find($discountId);
