@@ -147,7 +147,7 @@
                 <div class="field">
                     <label>Outlet</label>
                     <select name="outlet_id">
-                        <option value="">Tanpa outlet / global</option>
+                        <option value="">Semua Outlet / Global</option>
                         @foreach($outlets as $outlet)
                             <option value="{{ $outlet->id }}" @selected(old('outlet_id') == $outlet->id)>
                                 {{ $outlet->name }}

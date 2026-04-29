@@ -419,25 +419,25 @@
                 <div class="summary-card orange">
                     <div class="summary-label">Total Users</div>
                     <div class="summary-value">{{ $users->count() }}</div>
-                    <div class="summary-desc">Jumlah seluruh user yang tersimpan di sistem.</div>
+                    <div class="summary-desc">Total user terdaftar.</div>
                 </div>
 
                 <div class="summary-card green">
                     <div class="summary-label">Active Users</div>
                     <div class="summary-value">{{ $users->where('is_active', true)->count() }}</div>
-                    <div class="summary-desc">User aktif yang masih bisa login dan dipakai operasional.</div>
+                    <div class="summary-desc">User aktif.</div>
                 </div>
 
                 <div class="summary-card blue">
                     <div class="summary-label">Inactive Users</div>
                     <div class="summary-value">{{ $users->where('is_active', false)->count() }}</div>
-                    <div class="summary-desc">User nonaktif yang masih tersimpan sebagai histori data.</div>
+                    <div class="summary-desc">User nonaktif.</div>
                 </div>
 
                 <div class="summary-card violet">
                     <div class="summary-label">With Outlet</div>
                     <div class="summary-value">{{ $users->filter(fn($managedUser) => !is_null($managedUser->outlet_id))->count() }}</div>
-                    <div class="summary-desc">User yang sudah terhubung ke outlet utama untuk operasional.</div>
+                    <div class="summary-desc">User dengan outlet.</div>
                 </div>
             </div>
 
@@ -469,7 +469,7 @@
                                         <td>{{ $managedUser->email }}</td>
                                         <td>{{ $managedUser->phone ?? '-' }}</td>
                                         <td>{{ $managedUser->role->name ?? '-' }}</td>
-                                        <td>{{ $managedUser->outlet->name ?? '-' }}</td>
+                                        <td>{{ $managedUser->outlet->name ?? 'Semua Outlet' }}</td>
                                         <td>
                                             @if($managedUser->is_active)
                                                 <span class="status-badge status-active">Active</span>
