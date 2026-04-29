@@ -14,7 +14,7 @@ class UserManagementController extends Controller
 {
     protected function authorizeAccess()
     {
-        $user = Auth::user()->load(['role', 'outlet']);
+        $user = Auth::user()->load(['role', 'outlet', 'outlets']);
 
         $allowedRoles = [
             'owner',
@@ -51,6 +51,8 @@ class UserManagementController extends Controller
             'phone' => ['nullable', 'string', 'max:255'],
             'role_id' => ['required', 'exists:roles,id'],
             'outlet_id' => ['nullable', 'exists:outlets,id'],
+            'outlet_ids' => ['nullable', 'array'],
+            'outlet_ids.*' => ['nullable', 'exists:outlets,id'],
             'is_active' => ['required', 'boolean'],
             'password' => [
                 $user ? 'nullable' : 'required',
@@ -62,16 +64,28 @@ class UserManagementController extends Controller
         $role = Role::find($validated['role_id']);
         $roleCode = $role?->code;
 
-        if (in_array($roleCode, ['admin_outlet', 'kasir']) && empty($validated['outlet_id'])) {
+        $outletIds = collect($validated['outlet_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if (in_array($roleCode, ['admin_outlet', 'kasir']) && count($outletIds) === 0) {
             return back()
-                ->withErrors(['outlet_id' => 'Outlet wajib dipilih untuk admin outlet / kasir.'])
+                ->withErrors(['outlet_ids' => 'Minimal pilih 1 outlet untuk admin outlet / kasir.'])
                 ->withInput()
                 ->throwResponse();
         }
 
         if (in_array($roleCode, ['owner', 'admin_pusat'])) {
             $validated['outlet_id'] = null;
+            $outletIds = [];
+        } else {
+            $validated['outlet_id'] = $outletIds[0] ?? null;
         }
+
+        $validated['outlet_ids'] = $outletIds;
 
         if (empty($validated['password'])) {
             unset($validated['password']);
@@ -90,7 +104,7 @@ class UserManagementController extends Controller
                 ->with('error', 'Role kamu tidak punya akses ke User Management.');
         }
 
-        $users = User::with(['role', 'outlet'])
+        $users = User::with(['role', 'outlet', 'outlets'])
             ->latest()
             ->get();
 
@@ -129,7 +143,11 @@ class UserManagementController extends Controller
 
         $validated = $this->validateUser($request);
 
-        User::create($validated);
+        $outletIds = $validated['outlet_ids'] ?? [];
+        unset($validated['outlet_ids']);
+
+        $createdUser = User::create($validated);
+        $createdUser->outlets()->sync($outletIds);
 
         return redirect()
             ->route('backoffice.users.index')
@@ -148,7 +166,7 @@ class UserManagementController extends Controller
 
         return view('backoffice.users.edit', [
             'user' => $authUser,
-            'managedUser' => $managedUser->load(['role', 'outlet']),
+            'managedUser' => $managedUser->load(['role', 'outlet', 'outlets']),
             'roles' => $this->getRoles(),
             'outlets' => $this->getOutlets(),
         ]);
@@ -166,7 +184,11 @@ class UserManagementController extends Controller
 
         $validated = $this->validateUser($request, $managedUser);
 
+        $outletIds = $validated['outlet_ids'] ?? [];
+        unset($validated['outlet_ids']);
+
         $managedUser->update($validated);
+        $managedUser->outlets()->sync($outletIds);
 
         return redirect()
             ->route('backoffice.users.index')

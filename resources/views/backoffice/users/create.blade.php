@@ -74,6 +74,82 @@
             font-size: 14px;
         }
 
+        .outlet-dropdown {
+            position: relative;
+        }
+
+        .outlet-dropdown-button {
+            width: 100%;
+            min-height: 46px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            background: #fff;
+            padding: 12px;
+            font-size: 14px;
+            color: #111827;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .outlet-dropdown-button::after {
+            content: "⌄";
+            font-size: 16px;
+            color: #6b7280;
+            margin-left: 12px;
+        }
+
+        .outlet-dropdown-panel {
+            display: none;
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 0;
+            right: 0;
+            z-index: 20;
+            background: #fff;
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            box-shadow: 0 18px 38px rgba(15, 23, 42, 0.16);
+            padding: 10px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .outlet-dropdown.is-open .outlet-dropdown-panel {
+            display: block;
+        }
+
+        .outlet-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 9px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+            cursor: pointer;
+        }
+
+        .outlet-option:hover {
+            background: #f3f4f6;
+        }
+
+        .outlet-option input {
+            width: auto;
+            margin: 0;
+        }
+
+        .field-help {
+            display: block;
+            margin-top: 6px;
+            color: #6b7280;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
         .error-box {
             margin-bottom: 18px;
             background: #ffe8e8;
@@ -146,14 +222,33 @@
 
                 <div class="field">
                     <label>Outlet</label>
-                    <select name="outlet_id">
-                        <option value="">Semua Outlet / Global</option>
-                        @foreach($outlets as $outlet)
-                            <option value="{{ $outlet->id }}" @selected(old('outlet_id') == $outlet->id)>
-                                {{ $outlet->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    @php
+                    $selectedOutletIds = collect(old('outlet_ids', []))
+                        ->map(fn ($id) => (int) $id)
+                        ->all();
+                @endphp
+                    <div class="outlet-dropdown" data-outlet-dropdown>
+                        <button type="button" class="outlet-dropdown-button" data-outlet-dropdown-button>
+                            Pilih Outlet
+                        </button>
+
+                        <div class="outlet-dropdown-panel">
+                            @foreach($outlets as $outlet)
+                                <label class="outlet-option">
+                                    <input
+                                        type="checkbox"
+                                        name="outlet_ids[]"
+                                        value="{{ $outlet->id }}"
+                                        data-outlet-checkbox
+                                        data-outlet-name="{{ $outlet->name }}"
+                                        @checked(in_array((int) $outlet->id, $selectedOutletIds, true))
+                                    >
+                                    <span>{{ $outlet->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                    <small class="field-help">Bisa pilih lebih dari 1 outlet. Kosongkan hanya untuk user global.</small>
                 </div>
 
                 <div class="field">
@@ -171,5 +266,45 @@
             </form>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('[data-outlet-dropdown]').forEach(function (dropdown) {
+                const button = dropdown.querySelector('[data-outlet-dropdown-button]');
+                const checkboxes = dropdown.querySelectorAll('[data-outlet-checkbox]');
+
+                function refreshLabel() {
+                    const selected = Array.from(checkboxes)
+                        .filter(function (checkbox) { return checkbox.checked; })
+                        .map(function (checkbox) { return checkbox.getAttribute('data-outlet-name'); });
+
+                    if (selected.length === 0) {
+                        button.textContent = 'Pilih Outlet';
+                    } else if (selected.length === 1) {
+                        button.textContent = selected[0];
+                    } else {
+                        button.textContent = selected.length + ' outlet dipilih';
+                    }
+                }
+
+                button.addEventListener('click', function () {
+                    dropdown.classList.toggle('is-open');
+                });
+
+                checkboxes.forEach(function (checkbox) {
+                    checkbox.addEventListener('change', refreshLabel);
+                });
+
+                document.addEventListener('click', function (event) {
+                    if (!dropdown.contains(event.target)) {
+                        dropdown.classList.remove('is-open');
+                    }
+                });
+
+                refreshLabel();
+            });
+        });
+    </script>
+
 </body>
 </html>

@@ -436,7 +436,7 @@
 
                 <div class="summary-card violet">
                     <div class="summary-label">With Outlet</div>
-                    <div class="summary-value">{{ $users->filter(fn($managedUser) => !is_null($managedUser->outlet_id))->count() }}</div>
+                    <div class="summary-value">{{ $users->filter(fn($managedUser) => $managedUser->outlets->count() > 0)->count() }}</div>
                     <div class="summary-desc">User dengan outlet.</div>
                 </div>
             </div>
@@ -469,7 +469,11 @@
                                         <td>{{ $managedUser->email }}</td>
                                         <td>{{ $managedUser->phone ?? '-' }}</td>
                                         <td>{{ $managedUser->role->name ?? '-' }}</td>
-                                        <td>{{ $managedUser->outlet->name ?? 'Semua Outlet' }}</td>
+                                        <td>@if($managedUser->outlets->count())
+                                                {{ $managedUser->outlets->pluck('name')->implode(', ') }}
+                                            @else
+                                                Semua Outlet
+                                            @endif</td>
                                         <td>
                                             @if($managedUser->is_active)
                                                 <span class="status-badge status-active">Active</span>
