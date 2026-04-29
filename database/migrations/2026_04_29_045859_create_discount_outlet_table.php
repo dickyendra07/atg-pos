@@ -6,20 +6,18 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('discount_outlet', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('discount_id')->constrained('discounts')->cascadeOnDelete();
+            $table->foreignId('outlet_id')->constrained('outlets')->cascadeOnDelete();
             $table->timestamps();
+
+            $table->unique(['discount_id', 'outlet_id']);
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('discount_outlet');

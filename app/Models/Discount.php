@@ -28,7 +28,8 @@ class Discount extends Model
 
     public function outlets(): BelongsToMany
     {
-        return $this->belongsToMany(Outlet::class)->withTimestamps();
+        return $this->belongsToMany(Outlet::class, 'discount_outlet', 'discount_id', 'outlet_id')
+            ->withTimestamps();
     }
 
     public function isPercent(): bool
