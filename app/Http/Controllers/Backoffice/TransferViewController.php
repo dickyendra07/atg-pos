@@ -255,6 +255,14 @@ class TransferViewController extends Controller
             $query->where('status', $request->status);
         }
 
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
         $transfers = $query->get()->map(function ($transfer) {
             $transfer->from_location_name = $this->getLocationName(
                 (string) $transfer->from_location_type,
@@ -312,6 +320,8 @@ class TransferViewController extends Controller
                 'from_location_type' => $request->from_location_type,
                 'to_location_type' => $request->to_location_type,
                 'status' => $request->status,
+                'date_from' => $request->date_from,
+                'date_to' => $request->date_to,
             ],
         ]);
     }
@@ -333,6 +343,14 @@ class TransferViewController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
         $transfers = $query->get()->map(function ($transfer) {
@@ -477,10 +495,10 @@ class TransferViewController extends Controller
             'sender_name' => 'required|string|max:100',
             'receiver_name' => 'nullable|string|max:100',
             'sent_at' => 'nullable|date',
+            'note' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.ingredient_id' => 'required|exists:ingredients,id',
             'items.*.qty' => 'required|numeric|min:0.01',
-            'items.*.note' => 'nullable|string|max:255',
         ], [
             'items.required' => 'Minimal harus ada 1 item transfer.',
             'items.*.ingredient_id.required' => 'Ingredient wajib dipilih di setiap baris.',
@@ -581,6 +599,7 @@ class TransferViewController extends Controller
         }
 
         DB::transaction(function () use ($validated, $from, $to, $user, $items, $fromName, $toName) {
+            $globalNote = trim((string) ($validated['note'] ?? ''));
             $sentAt = ! empty($validated['sent_at'])
                 ? Carbon::parse($validated['sent_at'])
                 : now();
@@ -629,7 +648,7 @@ class TransferViewController extends Controller
                     'qty' => $transferQty,
                     'transferred_by_user_id' => $user->id,
                     'status' => 'in_transit',
-                    'note' => $item['note'] ?? null,
+                    'note' => $globalNote !== '' ? $globalNote : null,
                     'from_location_type' => $from['type'],
                     'from_location_id' => $from['id'],
                     'to_location_type' => $to['type'],
@@ -655,7 +674,7 @@ class TransferViewController extends Controller
                     'qty_out' => $transferQty,
                     'reference_type' => 'general_transfer',
                     'reference_id' => $transfer->id,
-                    'note' => 'Transfer #' . $transfer->transfer_number . ' keluar dari ' . $fromName . ' ke ' . $toName . $movementExtra . (! empty($item['note']) ? ' | ' . $item['note'] : ''),
+                    'note' => 'Transfer #' . $transfer->transfer_number . ' keluar dari ' . $fromName . ' ke ' . $toName . $movementExtra . ($globalNote !== '' ? ' | ' . $globalNote : ''),
                 ]);
 
                 StockMovement::create([
@@ -667,7 +686,7 @@ class TransferViewController extends Controller
                     'qty_out' => 0,
                     'reference_type' => 'general_transfer',
                     'reference_id' => $transfer->id,
-                    'note' => 'Transfer #' . $transfer->transfer_number . ' masuk ke ' . $toName . ' dari ' . $fromName . $movementExtra . (! empty($item['note']) ? ' | ' . $item['note'] : ''),
+                    'note' => 'Transfer #' . $transfer->transfer_number . ' masuk ke ' . $toName . ' dari ' . $fromName . $movementExtra . ($globalNote !== '' ? ' | ' . $globalNote : ''),
                 ]);
             }
         });

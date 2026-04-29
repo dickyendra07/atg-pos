@@ -661,6 +661,115 @@
                 margin-right: 18px;
             }
         }
+    
+        .filter-form {
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            align-items: end;
+        }
+
+        .filter-form .field input[type="date"] {
+            width: 100%;
+            min-height: 52px;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: white;
+            padding: 0 14px;
+            font-size: 14px;
+            color: #111827;
+            outline: none;
+            box-sizing: border-box;
+            font-family: inherit;
+            appearance: auto;
+            -webkit-appearance: auto;
+        }
+
+        .filter-form .btn {
+            width: 100%;
+            min-height: 52px;
+        }
+
+        .transfer-master-detail {
+            display: grid;
+            grid-template-columns: minmax(0, 0.95fr) minmax(480px, 1.05fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .transfer-master-panel,
+        .transfer-side-panel {
+            min-width: 0;
+        }
+
+        .transfer-side-panel {
+            position: sticky;
+            top: 18px;
+            align-self: start;
+        }
+
+        .transfer-side-placeholder {
+            border: 1px dashed #d7dce5;
+            background: #fbfcfe;
+            border-radius: 22px;
+            padding: 28px;
+            color: #6b7280;
+            font-weight: 800;
+            line-height: 1.7;
+        }
+
+        .transfer-side-card {
+            display: none;
+            border: 1px solid #e8edf4;
+            background: #ffffff;
+            border-radius: 22px;
+            padding: 18px;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+        }
+
+        .transfer-side-card.is-active {
+            display: block;
+        }
+
+        .transfer-side-card .table-wrap {
+            padding: 0;
+            overflow-x: auto;
+        }
+
+        .transfer-side-card .detail-table {
+            min-width: 900px;
+        }
+
+        .transfer-group-row {
+            cursor: pointer;
+        }
+
+        .transfer-group-row.is-active {
+            background: #f8faff;
+        }
+
+        .group-detail-row {
+            display: none !important;
+        }
+
+        @media (max-width: 1280px) {
+            .filter-form {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .transfer-master-detail {
+                grid-template-columns: 1fr;
+            }
+
+            .transfer-side-panel {
+                position: static;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .filter-form {
+                grid-template-columns: 1fr;
+            }
+        }
+
     </style>
 
     <div class="transfer-shell">
@@ -746,6 +855,16 @@
                             <option value="warehouse" @selected(($filters['to_location_type'] ?? '') === 'warehouse')>warehouse</option>
                             <option value="outlet" @selected(($filters['to_location_type'] ?? '') === 'outlet')>outlet</option>
                         </select>
+                    </div>
+
+                    <div class="field">
+                        <label>Dari Tanggal</label>
+                        <input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                    </div>
+
+                    <div class="field">
+                        <label>Sampai Tanggal</label>
+                        <input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
                     </div>
 
                     <div class="field">
@@ -946,6 +1065,147 @@
 
             if (target) {
                 target.classList.toggle('open');
+            }
+        });
+    </script>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const title = Array.from(document.querySelectorAll('.section-title')).find(function (item) {
+                return item.textContent.trim() === 'Transfer List';
+            });
+
+            if (!title) {
+                return;
+            }
+
+            const section = title.closest('.section-card');
+
+            if (!section) {
+                return;
+            }
+
+            let tableWrap = section.querySelector(':scope > .table-wrap');
+            let masterDetail = section.querySelector('.transfer-master-detail');
+            let masterPanel = section.querySelector('.transfer-master-panel');
+            let sidePanel = section.querySelector('.transfer-side-panel');
+            let placeholder = section.querySelector('#transfer-side-placeholder');
+
+            if (!masterDetail && tableWrap) {
+                masterDetail = document.createElement('div');
+                masterDetail.className = 'transfer-master-detail';
+
+                masterPanel = document.createElement('div');
+                masterPanel.className = 'transfer-master-panel';
+
+                sidePanel = document.createElement('div');
+                sidePanel.className = 'transfer-side-panel';
+
+                placeholder = document.createElement('div');
+                placeholder.className = 'transfer-side-placeholder';
+                placeholder.id = 'transfer-side-placeholder';
+                placeholder.textContent = 'Pilih salah satu transfer di kiri untuk melihat detail item transfer.';
+
+                sidePanel.appendChild(placeholder);
+
+                section.insertBefore(masterDetail, tableWrap);
+                masterPanel.appendChild(tableWrap);
+                masterDetail.appendChild(masterPanel);
+                masterDetail.appendChild(sidePanel);
+            }
+
+            if (!sidePanel) {
+                return;
+            }
+
+            if (!placeholder) {
+                placeholder = document.createElement('div');
+                placeholder.className = 'transfer-side-placeholder';
+                placeholder.id = 'transfer-side-placeholder';
+                placeholder.textContent = 'Pilih salah satu transfer di kiri untuk melihat detail item transfer.';
+                sidePanel.prepend(placeholder);
+            }
+
+            section.querySelectorAll('.group-detail-row').forEach(function (detailRow) {
+                const detailId = detailRow.id;
+                const detailBox = detailRow.querySelector('.group-detail-box');
+
+                if (!detailId || !detailBox) {
+                    detailRow.remove();
+                    return;
+                }
+
+                let card = sidePanel.querySelector('#' + CSS.escape(detailId));
+
+                if (!card) {
+                    card = document.createElement('div');
+                    card.className = 'transfer-side-card';
+                    card.id = detailId;
+                    card.setAttribute('data-transfer-side-card', '1');
+                    sidePanel.appendChild(card);
+                }
+
+                card.innerHTML = '';
+                card.appendChild(detailBox);
+                detailRow.remove();
+            });
+
+            function openTransferDetail(targetId) {
+                if (!targetId) {
+                    return;
+                }
+
+                const target = sidePanel.querySelector('#' + CSS.escape(targetId));
+
+                sidePanel.querySelectorAll('[data-transfer-side-card]').forEach(function (card) {
+                    card.classList.remove('is-active');
+                });
+
+                section.querySelectorAll('.transfer-group-row').forEach(function (row) {
+                    row.classList.remove('is-active');
+                });
+
+                if (target) {
+                    target.classList.add('is-active');
+                    placeholder.style.display = 'none';
+                }
+
+                const activeRow = section.querySelector('.transfer-group-row[data-transfer-toggle="' + targetId + '"]');
+
+                if (activeRow) {
+                    activeRow.classList.add('is-active');
+                }
+            }
+
+            section.addEventListener('click', function (event) {
+                const trigger = event.target.closest('[data-transfer-toggle]');
+
+                if (!trigger || !section.contains(trigger)) {
+                    return;
+                }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                openTransferDetail(trigger.getAttribute('data-transfer-toggle'));
+            });
+
+            section.querySelectorAll('.transfer-group-row[data-transfer-toggle]').forEach(function (row) {
+                row.setAttribute('tabindex', '0');
+
+                row.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        openTransferDetail(row.getAttribute('data-transfer-toggle'));
+                    }
+                });
+            });
+
+            const firstRow = section.querySelector('.transfer-group-row[data-transfer-toggle]');
+
+            if (firstRow) {
+                openTransferDetail(firstRow.getAttribute('data-transfer-toggle'));
             }
         });
     </script>

@@ -286,6 +286,14 @@
                     @enderror
                 </div>
 
+                <div class="field full">
+                    <label>Note Transfer</label>
+                    <input type="text" name="note" value="{{ old('note') }}" placeholder="Contoh: pindah stok cabang / kirim bahan">
+                    @error('note')
+                        <div class="field-error">{{ $message }}</div>
+                    @enderror
+                </div>
+
                 <div class="items-head">
                     <div>
                         <div class="items-title">Daftar Item Transfer</div>
@@ -324,11 +332,6 @@
                 <div class="field" style="margin-bottom:0;">
                     <label>Qty Transfer</label>
                     <input type="number" class="qty-input" min="0.01" step="0.01" required>
-                </div>
-
-                <div class="field" style="margin-bottom:0;">
-                    <label>Note</label>
-                    <input type="text" class="note-input" placeholder="Contoh: pindah stok cabang / kirim bahan">
                 </div>
 
                 <div class="field" style="margin-bottom:0;">
@@ -417,7 +420,6 @@
                 row.querySelector('.item-number').textContent = index + 1;
                 row.querySelector('.ingredient-select').name = 'items[' + index + '][ingredient_id]';
                 row.querySelector('.qty-input').name = 'items[' + index + '][qty]';
-                row.querySelector('.note-input').name = 'items[' + index + '][note]';
             });
         }
 
@@ -432,12 +434,10 @@
             const row = fragment.querySelector('.item-row');
             const ingredientSelect = row.querySelector('.ingredient-select');
             const qtyInput = row.querySelector('.qty-input');
-            const noteInput = row.querySelector('.note-input');
             const removeBtn = row.querySelector('.remove-item-btn');
 
             populateIngredientSelect(ingredientSelect, data.ingredient_id || '');
             qtyInput.value = data.qty || '';
-            noteInput.value = data.note || '';
 
             ingredientSelect.addEventListener('change', function () {
                 updateStockBadge(row);
