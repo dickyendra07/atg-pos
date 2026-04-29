@@ -174,7 +174,21 @@ class CashierController extends Controller
                 ->with('error', 'Role kamu tidak punya akses ke Cashier.');
         }
 
-        $products = Product::with(['brand', 'category', 'variants'])
+        $products = Product::with([
+                'brand',
+                'category',
+                'variants' => function ($query) use ($user) {
+                    $query->where('is_active', true)
+                        ->where(function ($variantQuery) use ($user) {
+                            $variantQuery
+                                ->doesntHave('outlets')
+                                ->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                                    $outletQuery->where('outlets.id', $user->outlet_id);
+                                });
+                        })
+                        ->orderBy('name');
+                },
+            ])
             ->where('is_active', true)
             ->orderBy('name')
             ->get();

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
@@ -11,6 +12,7 @@ class ProductVariant extends Model
 {
     protected $fillable = [
         'product_id',
+        'outlet_id',
         'name',
         'code',
         'price',
@@ -29,6 +31,16 @@ class ProductVariant extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function outlet(): BelongsTo
+    {
+        return $this->belongsTo(Outlet::class);
+    }
+
+    public function outlets(): BelongsToMany
+    {
+        return $this->belongsToMany(Outlet::class, 'product_variant_outlet')->withTimestamps();
     }
 
     public function recipe(): HasOne

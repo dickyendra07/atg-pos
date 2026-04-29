@@ -564,6 +564,7 @@
                                 <div class="group-meta group-meta-inline">
                                     <span>Brand: {{ $group['product']->brand->name ?? '-' }}</span>
                                     <span>Category: {{ $group['product']->category->name ?? '-' }}</span>
+                                    <span>Outlet: {{ $group['variants']->pluck('outlet.name')->filter()->unique()->implode(', ') ?: 'Semua Outlet' }}</span>
                                     <span>Total Variant: {{ $group['variants']->count() }}</span>
                                     <span>Active: {{ $group['active_count'] }}</span>
                                 </div>
@@ -584,6 +585,7 @@
                             <table>
                                 <thead>
                                     <tr>
+                                        <th>Outlet</th>
                                         <th>Variant</th>
                                         <th>Code</th>
                                         <th>Price Dine In</th>
@@ -595,6 +597,7 @@
                                 <tbody>
                                     @foreach($group['variants'] as $variant)
                                         <tr>
+                                            <td>{{ $variant->outlet->name ?? 'Semua Outlet' }}</td>
                                             <td>{{ $variant->name }}</td>
                                             <td>
                                                 <span class="code-pill">{{ $variant->code }}</span>

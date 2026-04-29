@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
+use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Http\Request;
@@ -37,6 +38,14 @@ class ProductVariantViewController extends Controller
             $name = trim((string) ($row['name'] ?? ''));
             $code = strtoupper(trim((string) ($row['code'] ?? '')));
 
+            $outletIds = collect($row['outlet_ids'] ?? [])
+                ->filter(fn ($id) => $id !== null && $id !== '')
+                ->map(fn ($id) => (int) $id)
+                ->filter(fn ($id) => $id > 0)
+                ->unique()
+                ->values()
+                ->all();
+
             $isCompletelyEmpty =
                 $name === '' &&
                 $code === '' &&
@@ -49,8 +58,10 @@ class ProductVariantViewController extends Controller
 
             $normalized[] = [
                 'id' => ! empty($row['id']) ? (int) $row['id'] : null,
+                'outlet_id' => ! empty($row['outlet_id']) ? (int) $row['outlet_id'] : null,
                 'name' => $name,
                 'code' => $code,
+                'outlet_ids' => $outletIds,
                 'price_dine_in' => (float) ($row['price_dine_in'] ?? 0),
                 'price_delivery' => (float) ($row['price_delivery'] ?? 0),
                 'is_active' => isset($row['is_active']) ? (bool) $row['is_active'] : true,
@@ -83,7 +94,7 @@ class ProductVariantViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        $variants = ProductVariant::with(['product.brand', 'product.category'])
+        $variants = ProductVariant::with(['product.brand', 'product.category', 'outlet'])
             ->orderBy('product_id')
             ->orderBy('name')
             ->get();
@@ -118,9 +129,12 @@ class ProductVariantViewController extends Controller
             ->orderBy('name')
             ->get();
 
+        $outlets = Outlet::orderBy('name')->get();
+
         return view('backoffice.variants.create', [
             'user' => $user,
             'products' => $products,
+            'outlets' => $outlets,
         ]);
     }
 
@@ -131,8 +145,11 @@ class ProductVariantViewController extends Controller
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'variants' => 'required|array|min:1',
+            'variants.*.outlet_id' => 'nullable|exists:outlets,id',
             'variants.*.name' => 'required|string|max:255',
             'variants.*.code' => 'required|string|max:50',
+            'variants.*.outlet_ids' => 'nullable|array',
+            'variants.*.outlet_ids.*' => 'nullable|exists:outlets,id',
             'variants.*.price_dine_in' => 'required|numeric|min:0',
             'variants.*.price_delivery' => 'required|numeric|min:0',
             'variants.*.is_active' => 'nullable|boolean',
@@ -152,13 +169,17 @@ class ProductVariantViewController extends Controller
                 ->withInput();
         }
 
-        $codes = collect($rows)->pluck('code')->all();
+        $duplicateKeys = collect($rows)
+            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL') . '|' . strtoupper(trim((string) $row['code'])))
+            ->values();
 
-        $duplicateCodes = collect($codes)
-            ->map(fn ($code) => strtoupper(trim((string) $code)))
+        $duplicateCodes = $duplicateKeys
             ->duplicates()
             ->unique()
+            ->map(fn ($key) => explode('|', $key)[1] ?? $key)
             ->values();
+
+        $codes = collect($rows)->pluck('code')->all();
 
         if ($duplicateCodes->isNotEmpty()) {
             return back()
@@ -168,8 +189,13 @@ class ProductVariantViewController extends Controller
                 ->withInput();
         }
 
-        $existingCodes = ProductVariant::where('product_id', $validated['product_id'])
-            ->whereIn(DB::raw('UPPER(code)'), collect($codes)->map(fn ($code) => strtoupper($code))->all())
+        $existingCodes = collect($rows)
+            ->filter(function ($row) use ($validated) {
+                return ProductVariant::where('product_id', $validated['product_id'])
+                    ->where('outlet_id', $row['outlet_id'])
+                    ->whereRaw('UPPER(code) = ?', [strtoupper($row['code'])])
+                    ->exists();
+            })
             ->pluck('code')
             ->map(fn ($code) => strtoupper(trim((string) $code)))
             ->unique()
@@ -187,6 +213,7 @@ class ProductVariantViewController extends Controller
             foreach ($rows as $row) {
                 ProductVariant::create([
                     'product_id' => $validated['product_id'],
+                    'outlet_id' => $row['outlet_id'],
                     'name' => $row['name'],
                     'code' => $row['code'],
                     'price' => $row['price_dine_in'],
@@ -211,9 +238,11 @@ class ProductVariantViewController extends Controller
             ->orderBy('name')
             ->get();
 
-        $variant->load(['product.brand', 'product.category']);
+        $outlets = Outlet::orderBy('name')->get();
 
-        $productVariants = ProductVariant::with(['product.brand', 'product.category'])
+        $variant->load(['product.brand', 'product.category', 'outlet']);
+
+        $productVariants = ProductVariant::with(['product.brand', 'product.category', 'outlet'])
             ->where('product_id', $variant->product_id)
             ->orderBy('name')
             ->get();
@@ -222,6 +251,7 @@ class ProductVariantViewController extends Controller
             'user' => $user,
             'variant' => $variant,
             'products' => $products,
+            'outlets' => $outlets,
             'productVariants' => $productVariants,
         ]);
     }
@@ -237,9 +267,13 @@ class ProductVariantViewController extends Controller
         $validated = $request->validate([
             'product_id' => 'required|exists:products,id',
             'variants' => 'required|array|min:1',
+            'variants.*.outlet_id' => 'nullable|exists:outlets,id',
             'variants.*.id' => 'nullable|integer',
+            'variants.*.outlet_id' => 'nullable|exists:outlets,id',
             'variants.*.name' => 'required|string|max:255',
             'variants.*.code' => 'required|string|max:50',
+            'variants.*.outlet_ids' => 'nullable|array',
+            'variants.*.outlet_ids.*' => 'nullable|exists:outlets,id',
             'variants.*.price_dine_in' => 'required|numeric|min:0',
             'variants.*.price_delivery' => 'required|numeric|min:0',
             'variants.*.is_active' => 'nullable|boolean',
@@ -264,14 +298,19 @@ class ProductVariantViewController extends Controller
             ->filter()
             ->values();
 
+        $duplicateKeys = collect($rows)
+            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL') . '|' . strtoupper(trim((string) $row['code'])))
+            ->values();
+
+        $duplicateCodes = $duplicateKeys
+            ->duplicates()
+            ->unique()
+            ->map(fn ($key) => explode('|', $key)[1] ?? $key)
+            ->values();
+
         $codes = collect($rows)
             ->pluck('code')
             ->map(fn ($code) => strtoupper(trim((string) $code)))
-            ->values();
-
-        $duplicateCodes = $codes
-            ->duplicates()
-            ->unique()
             ->values();
 
         if ($duplicateCodes->isNotEmpty()) {
@@ -282,14 +321,16 @@ class ProductVariantViewController extends Controller
                 ->withInput();
         }
 
-        $conflictingCodes = ProductVariant::query()
-            ->where('product_id', $validated['product_id'])
-            ->when($submittedIds->isNotEmpty(), function ($query) use ($submittedIds) {
-                $query->whereNotIn('id', $submittedIds->all());
-            })
-            ->get()
-            ->filter(function ($item) use ($codes) {
-                return $codes->contains(strtoupper(trim((string) $item->code)));
+        $conflictingCodes = collect($rows)
+            ->filter(function ($row) use ($validated, $submittedIds) {
+                return ProductVariant::query()
+                    ->where('product_id', $validated['product_id'])
+                    ->where('outlet_id', $row['outlet_id'])
+                    ->whereRaw('UPPER(code) = ?', [strtoupper($row['code'])])
+                    ->when($submittedIds->isNotEmpty(), function ($query) use ($submittedIds) {
+                        $query->whereNotIn('id', $submittedIds->all());
+                    })
+                    ->exists();
             })
             ->pluck('code')
             ->map(fn ($code) => strtoupper(trim((string) $code)))
@@ -340,6 +381,7 @@ class ProductVariantViewController extends Controller
                 if (! empty($row['id']) && $existingGroup->has($row['id'])) {
                     $existingGroup[$row['id']]->update([
                         'product_id' => $validated['product_id'],
+                        'outlet_id' => $row['outlet_id'],
                         'name' => $row['name'],
                         'code' => $row['code'],
                         'price' => $row['price_dine_in'],
@@ -350,6 +392,7 @@ class ProductVariantViewController extends Controller
                 } else {
                     ProductVariant::create([
                         'product_id' => $validated['product_id'],
+                        'outlet_id' => $row['outlet_id'],
                         'name' => $row['name'],
                         'code' => $row['code'],
                         'price' => $row['price_dine_in'],
@@ -413,9 +456,9 @@ class ProductVariantViewController extends Controller
         return response()->stream(function () {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, ['product_code', 'name', 'code', 'price_dine_in', 'price_delivery', 'is_active']);
-            fputcsv($handle, ['black_tea', 'Regular', 'R', '14000', '14000', '1']);
-            fputcsv($handle, ['black_tea', 'Large', 'L', '16000', '16000', '1']);
+            fputcsv($handle, ['product_code', 'outlet_code', 'name', 'code', 'price_dine_in', 'price_delivery', 'is_active']);
+            fputcsv($handle, ['black_tea', '', 'Regular', 'R', '14000', '14000', '1']);
+            fputcsv($handle, ['black_tea', 'outlet_bintaro', 'Large', 'L', '16000', '16000', '1']);
 
             fclose($handle);
         }, 200, $headers);
@@ -435,9 +478,9 @@ class ProductVariantViewController extends Controller
         return response()->stream(function () {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, ['product_code', 'product_name', 'name', 'code', 'price_dine_in', 'price_delivery', 'is_active']);
+            fputcsv($handle, ['product_code', 'product_name', 'outlet_code', 'outlet_name', 'name', 'code', 'price_dine_in', 'price_delivery', 'is_active']);
 
-            ProductVariant::with(['product'])
+            ProductVariant::with(['product', 'outlet'])
                 ->orderBy('product_id')
                 ->orderBy('name')
                 ->chunk(200, function ($variants) use ($handle) {
@@ -445,6 +488,8 @@ class ProductVariantViewController extends Controller
                         fputcsv($handle, [
                             $variant->product->code ?? '',
                             $variant->product->name ?? '',
+                            $variant->outlet->code ?? '',
+                            $variant->outlet->name ?? 'Semua Outlet',
                             $variant->name,
                             $variant->code,
                             (float) ($variant->price_dine_in ?? $variant->price ?? 0),
@@ -502,6 +547,7 @@ class ProductVariantViewController extends Controller
 
         $expectedHeader = [
             'product_code',
+            'outlet_code',
             'name',
             'code',
             'price_dine_in',
@@ -512,7 +558,7 @@ class ProductVariantViewController extends Controller
         if ($header !== $expectedHeader) {
             return redirect()
                 ->route('backoffice.variants.import')
-                ->with('error', 'Header CSV tidak sesuai template. Urutannya harus: product_code,name,code,price_dine_in,price_delivery,is_active');
+                ->with('error', 'Header CSV tidak sesuai template. Urutannya harus: product_code,outlet_code,name,code,price_dine_in,price_delivery,is_active');
         }
 
         $imported = 0;
@@ -531,18 +577,19 @@ class ProductVariantViewController extends Controller
 
             $row = str_getcsv($line, $delimiter);
 
-            if (count($row) < 6) {
+            if (count($row) < 7) {
                 $skipped++;
-                $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 6.";
+                $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 7.";
                 continue;
             }
 
             $productCode = trim($row[0] ?? '');
-            $name = trim($row[1] ?? '');
-            $code = strtoupper(trim($row[2] ?? ''));
-            $priceDineInRaw = trim($row[3] ?? '');
-            $priceDeliveryRaw = trim($row[4] ?? '');
-            $isActiveRaw = trim($row[5] ?? '');
+            $outletCode = trim($row[1] ?? '');
+            $name = trim($row[2] ?? '');
+            $code = strtoupper(trim($row[3] ?? ''));
+            $priceDineInRaw = trim($row[4] ?? '');
+            $priceDeliveryRaw = trim($row[5] ?? '');
+            $isActiveRaw = trim($row[6] ?? '');
 
             if ($productCode === '' || $name === '' || $code === '') {
                 $skipped++;
@@ -573,9 +620,24 @@ class ProductVariantViewController extends Controller
                 continue;
             }
 
+            $outletId = null;
+
+            if ($outletCode !== '') {
+                $outlet = Outlet::whereRaw('LOWER(code) = ?', [mb_strtolower($outletCode)])->first();
+
+                if (! $outlet) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: outlet code '{$outletCode}' tidak ditemukan.";
+                    continue;
+                }
+
+                $outletId = $outlet->id;
+            }
+
             $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
 
             $variant = ProductVariant::where('product_id', $product->id)
+                ->where('outlet_id', $outletId)
                 ->whereRaw('UPPER(code) = ?', [strtoupper($code)])
                 ->first();
 
@@ -591,6 +653,7 @@ class ProductVariantViewController extends Controller
             } else {
                 ProductVariant::create([
                     'product_id' => $product->id,
+                    'outlet_id' => null,
                     'name' => $name,
                     'code' => $code,
                     'price' => $priceDineIn,

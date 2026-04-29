@@ -264,13 +264,109 @@
                 padding: 18px;
             }
         }
+        .variant-outlet-dropdown {
+            position: relative;
+        }
+
+        .variant-outlet-button {
+            width: 100%;
+            min-height: 42px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #ffffff;
+            color: #111827;
+            padding: 0 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 800;
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .variant-outlet-button::after {
+            content: "⌄";
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+        .variant-outlet-menu {
+            display: none;
+            position: absolute;
+            z-index: 30;
+            top: calc(100% + 8px);
+            left: 0;
+            width: 100%;
+            max-height: 230px;
+            overflow: auto;
+            padding: 8px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #ffffff;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.16);
+        }
+
+        .variant-outlet-dropdown.is-open .variant-outlet-menu {
+            display: block;
+        }
+
+        .variant-outlet-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 10px;
+            border-radius: 10px;
+            color: #111827;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .variant-outlet-option:hover {
+            background: #f3f4f6;
+        }
+
+        .variant-outlet-option input {
+            width: 14px;
+            height: 14px;
+            margin: 0;
+        }
+
+        .variant-outlet-help {
+            display: block;
+            margin-top: 7px;
+            color: #6b7280;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .variant-status-field {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .variant-status-field .checkbox-wrap {
+            justify-content: center;
+            min-height: 46px;
+            width: 100%;
+        }
+
     </style>
 
     @php
         $oldRows = old('variants', [
             [
+                'outlet_id' => null,
                 'name' => 'Regular',
                 'code' => 'R',
+                'outlet_ids' => [],
                 'price_dine_in' => 0,
                 'price_delivery' => 0,
                 'is_active' => 1,
@@ -323,6 +419,10 @@
 
                     <div class="rows-shell" id="variant-rows">
                         @foreach($oldRows as $index => $row)
+                            @php
+                                $selectedOutletIds = collect($row['outlet_ids'] ?? [])->map(fn ($id) => (int) $id)->all();
+                            @endphp
+
                             <div class="variant-row" data-variant-row>
                                 <div class="variant-row-top">
                                     <div class="variant-row-title">Variant Row</div>
@@ -330,6 +430,31 @@
                                 </div>
 
                                 <div class="variant-grid">
+                                    <div class="field outlet-field">
+                                        <label>Outlet</label>
+                                        <div class="variant-outlet-dropdown" data-outlet-dropdown>
+                                            <button type="button" class="variant-outlet-button" data-outlet-toggle>
+                                                <span data-outlet-label>Pilih Outlet</span>
+                                            </button>
+
+                                            <div class="variant-outlet-menu">
+                                                @foreach($outlets as $outlet)
+                                                    <label class="variant-outlet-option">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="variants[{{ $index }}][outlet_ids][]"
+                                                            value="{{ $outlet->id }}"
+                                                            data-outlet-checkbox
+                                                            @checked(in_array((int) $outlet->id, $selectedOutletIds, true))
+                                                        >
+                                                        <span>{{ $outlet->name }}</span>
+                                                    </label>
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                        <small class="variant-outlet-help">Kosongkan jika berlaku untuk semua outlet.</small>
+                                    </div>
+
                                     <div class="field">
                                         <label>Nama Variant</label>
                                         <input type="text" name="variants[{{ $index }}][name]" value="{{ $row['name'] ?? '' }}" placeholder="Regular / Large" required>
@@ -342,15 +467,15 @@
 
                                     <div class="field">
                                         <label>Harga Dine In</label>
-                                        <input type="number" name="variants[{{ $index }}][price_dine_in]" min="0" step="0.01" value="{{ $row['price_dine_in'] ?? 0 }}" required>
+                                        <input class="rupiah-input" type="text" name="variants[{{ $index }}][price_dine_in]" value="{{ $row['price_dine_in'] ?? 0 }}" required>
                                     </div>
 
                                     <div class="field">
                                         <label>Harga Delivery</label>
-                                        <input type="number" name="variants[{{ $index }}][price_delivery]" min="0" step="0.01" value="{{ $row['price_delivery'] ?? 0 }}" required>
+                                        <input class="rupiah-input" type="text" name="variants[{{ $index }}][price_delivery]" value="{{ $row['price_delivery'] ?? 0 }}" required>
                                     </div>
 
-                                    <div class="field">
+                                    <div class="field variant-status-field">
                                         <label>Status</label>
                                         <label class="checkbox-wrap">
                                             <input type="hidden" name="variants[{{ $index }}][is_active]" value="0">
@@ -385,6 +510,30 @@
             </div>
 
             <div class="variant-grid">
+                <div class="field outlet-field">
+                    <label>Outlet</label>
+                    <div class="variant-outlet-dropdown" data-outlet-dropdown>
+                        <button type="button" class="variant-outlet-button" data-outlet-toggle>
+                            <span data-outlet-label>Pilih Outlet</span>
+                        </button>
+
+                        <div class="variant-outlet-menu">
+                            @foreach($outlets as $outlet)
+                                <label class="variant-outlet-option">
+                                    <input
+                                        type="checkbox"
+                                        data-name="outlet_ids"
+                                        value="{{ $outlet->id }}"
+                                        data-outlet-checkbox
+                                    >
+                                    <span>{{ $outlet->name }}</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </div>
+                    <small class="variant-outlet-help">Kosongkan jika berlaku untuk semua outlet.</small>
+                </div>
+
                 <div class="field">
                     <label>Nama Variant</label>
                     <input type="text" data-name="name" placeholder="Regular / Large" required>
@@ -397,15 +546,15 @@
 
                 <div class="field">
                     <label>Harga Dine In</label>
-                    <input type="number" data-name="price_dine_in" min="0" step="0.01" value="0" required>
+                    <input class="rupiah-input" type="text" data-name="price_dine_in" value="0" required>
                 </div>
 
                 <div class="field">
                     <label>Harga Delivery</label>
-                    <input type="number" data-name="price_delivery" min="0" step="0.01" value="0" required>
+                    <input class="rupiah-input" type="text" data-name="price_delivery" value="0" required>
                 </div>
 
-                <div class="field">
+                <div class="field variant-status-field">
                     <label>Status</label>
                     <label class="checkbox-wrap">
                         <input type="hidden" data-name-hidden="is_active" value="0">
@@ -423,13 +572,40 @@
             const addRowButton = document.getElementById('add-row-button');
             const template = document.getElementById('variant-row-template');
 
+            function refreshOutletDropdowns() {
+                rowsContainer.querySelectorAll('[data-outlet-dropdown]').forEach(function (dropdown) {
+                    const label = dropdown.querySelector('[data-outlet-label]');
+                    const checked = Array.from(dropdown.querySelectorAll('[data-outlet-checkbox]:checked'))
+                        .map(function (checkbox) {
+                            const optionLabel = checkbox.closest('.variant-outlet-option')?.querySelector('span');
+                            return optionLabel ? optionLabel.textContent.trim() : '';
+                        })
+                        .filter(Boolean);
+
+                    if (!label) return;
+
+                    if (checked.length === 0) {
+                        label.textContent = 'Semua Outlet';
+                    } else if (checked.length === 1) {
+                        label.textContent = checked[0];
+                    } else {
+                        label.textContent = checked.length + ' outlet dipilih';
+                    }
+                });
+            }
+
             function refreshIndexes() {
                 const rows = rowsContainer.querySelectorAll('[data-variant-row]');
 
                 rows.forEach((row, index) => {
                     row.querySelectorAll('[data-name]').forEach((field) => {
                         const key = field.getAttribute('data-name');
-                        field.setAttribute('name', `variants[${index}][${key}]`);
+
+                        if (key === 'outlet_ids') {
+                            field.setAttribute('name', `variants[${index}][outlet_ids][]`);
+                        } else {
+                            field.setAttribute('name', `variants[${index}][${key}]`);
+                        }
                     });
 
                     row.querySelectorAll('[data-name-hidden]').forEach((field) => {
@@ -437,6 +613,8 @@
                         field.setAttribute('name', `variants[${index}][${key}]`);
                     });
                 });
+
+                refreshOutletDropdowns();
             }
 
             function addRow() {
@@ -444,6 +622,36 @@
                 rowsContainer.appendChild(clone);
                 refreshIndexes();
             }
+
+            rowsContainer.addEventListener('click', function (event) {
+                const toggle = event.target.closest('[data-outlet-toggle]');
+
+                if (toggle) {
+                    event.preventDefault();
+                    const dropdown = toggle.closest('[data-outlet-dropdown]');
+
+                    rowsContainer.querySelectorAll('[data-outlet-dropdown].is-open').forEach(function (opened) {
+                        if (opened !== dropdown) {
+                            opened.classList.remove('is-open');
+                        }
+                    });
+
+                    dropdown.classList.toggle('is-open');
+                    return;
+                }
+
+                if (event.target.matches('[data-outlet-checkbox]')) {
+                    refreshOutletDropdowns();
+                }
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!event.target.closest('[data-outlet-dropdown]')) {
+                    rowsContainer.querySelectorAll('[data-outlet-dropdown].is-open').forEach(function (dropdown) {
+                        dropdown.classList.remove('is-open');
+                    });
+                }
+            });
 
             addRowButton.addEventListener('click', addRow);
 
