@@ -733,7 +733,24 @@
                                     @foreach($shift->salesTransactions->sortByDesc('created_at') as $transaction)
                                         <tr>
                                             <td>{{ $transaction->created_at?->format('Y-m-d H:i:s') ?? '-' }}</td>
-                                            <td><strong>{{ $transaction->transaction_number }}</strong></td>
+                                            <td>
+                                                    @php
+                                                        $rawTransactionNumber = $transaction->transaction_number ?? null;
+                                                        $displayTransactionNumber = '-';
+
+                                                        if (! empty($rawTransactionNumber)) {
+                                                            $parts = explode('-', $rawTransactionNumber);
+                                                            $lastPart = end($parts);
+
+                                                            if (is_numeric($lastPart)) {
+                                                                $displayTransactionNumber = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
+                                                            } else {
+                                                                $displayTransactionNumber = $rawTransactionNumber;
+                                                            }
+                                                        }
+                                                    @endphp
+                                                    <strong>{{ $displayTransactionNumber }}</strong>
+                                                </td>
                                             <td>{{ $transaction->member->name ?? '-' }}</td>
                                             <td>{{ strtoupper($transaction->payment_method ?? '-') }}</td>
                                             <td>

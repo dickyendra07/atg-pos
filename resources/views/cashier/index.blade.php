@@ -2020,7 +2020,22 @@
                                 <div class="checkout-success-meta">
                                     <div class="checkout-success-item">
                                         <div class="checkout-success-label">Transaction Number</div>
-                                        <div class="checkout-success-value">{{ session('last_checkout.transaction_number') }}</div>
+                                        @php
+                                                $rawLastCheckoutNumber = session('last_checkout.transaction_number');
+                                                $displayLastCheckoutNumber = '-';
+
+                                                if (! empty($rawLastCheckoutNumber)) {
+                                                    $parts = explode('-', $rawLastCheckoutNumber);
+                                                    $lastPart = end($parts);
+
+                                                    if (is_numeric($lastPart)) {
+                                                        $displayLastCheckoutNumber = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
+                                                    } else {
+                                                        $displayLastCheckoutNumber = $rawLastCheckoutNumber;
+                                                    }
+                                                }
+                                            @endphp
+                                            <div class="checkout-success-value">{{ $displayLastCheckoutNumber }}</div>
                                     </div>
 
                                     <div class="checkout-success-item">
@@ -2180,14 +2195,14 @@
                                         <div class="receipt-history-list">
                                             @foreach($recentReceipts as $receipt)
                                                 @php
-                                                    $displayReceiptNumber = 'ATG-0001';
+                                                    $displayReceiptNumber = 'ATG 001';
 
                                                     if (! empty($receipt->transaction_number)) {
                                                         $parts = explode('-', $receipt->transaction_number);
                                                         $lastPart = end($parts);
 
                                                         if (is_numeric($lastPart)) {
-                                                            $displayReceiptNumber = 'ATG-' . str_pad((string) ((int) $lastPart), 4, '0', STR_PAD_LEFT);
+                                                            $displayReceiptNumber = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
                                                         }
                                                     }
                                                 @endphp

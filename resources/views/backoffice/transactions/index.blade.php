@@ -772,7 +772,22 @@
                                             </div>
                                         </td>
                                         <td>
-                                            <strong>{{ $transaction->transaction_number ?? '-' }}</strong>
+                                            @php
+                                                $rawTransactionNumber = $transaction->transaction_number ?? null;
+                                                $displayTransactionNumber = '-';
+
+                                                if (! empty($rawTransactionNumber)) {
+                                                    $parts = explode('-', $rawTransactionNumber);
+                                                    $lastPart = end($parts);
+
+                                                    if (is_numeric($lastPart)) {
+                                                        $displayTransactionNumber = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
+                                                    } else {
+                                                        $displayTransactionNumber = $rawTransactionNumber;
+                                                    }
+                                                }
+                                            @endphp
+                                            <strong>{{ $displayTransactionNumber }}</strong>
                                         </td>
                                         <td class="money">
                                             Rp {{ number_format((float) $transaction->grand_total, 0, ',', '.') }}

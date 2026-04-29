@@ -449,6 +449,38 @@
                 margin-right: 18px;
             }
         }
+    
+        .ingredient-type-pill {
+            display: inline-flex;
+            align-items: center;
+            width: fit-content;
+            padding: 7px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 800;
+            margin: 3px;
+            white-space: nowrap;
+        }
+
+        .ingredient-type-pill.raw {
+            background: #fff7ed;
+            color: #c2410c;
+            border: 1px solid #fed7aa;
+        }
+
+        .ingredient-type-pill.semi {
+            background: #eef2ff;
+            color: #3730a3;
+            border: 1px solid #dbe3ff;
+        }
+
+        .recipe-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            align-items: center;
+        }
+
     </style>
 
     <div class="recipes-shell">
@@ -566,6 +598,7 @@
                                 <th>Product</th>
                                 <th>Variant</th>
                                 <th>Recipe Items</th>
+                                <th>Ingredient Type</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
@@ -580,18 +613,25 @@
                                     <td>{{ $recipe->variant->name ?? '-' }}</td>
                                     <td class="recipe-items-cell">
                                         @forelse($recipe->items as $item)
-                                            @php
-                                                $ingredientType = $item->ingredient?->ingredient_type;
-                                                $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
-                                            @endphp
-
                                             <div class="recipe-item-row">
                                                 <span class="item-pill">
                                                     {{ $item->ingredient->name ?? '-' }}
                                                     - {{ number_format((float) $item->qty, 2, ',', '.') }}
                                                     {{ $item->unit ?? $item->ingredient->unit ?? '' }}
                                                 </span>
+                                            </div>
+                                        @empty
+                                            -
+                                        @endforelse
+                                    </td>
+                                    <td class="recipe-items-cell">
+                                        @forelse($recipe->items as $item)
+                                            @php
+                                                $ingredientType = $item->ingredient?->ingredient_type;
+                                                $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
+                                            @endphp
 
+                                            <div class="recipe-item-row">
                                                 @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
                                                     <span class="type-badge badge-semi">{{ $ingredientTypeLabel }}</span>
                                                 @else

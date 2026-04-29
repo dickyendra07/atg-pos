@@ -153,7 +153,17 @@
     $autoprint = (bool) ($autoprint ?? request('autoprint'));
     $autoClose = (bool) request('autoclose', false);
 
-    $transactionNumber = $transaction->transaction_number ?? ('TRX-' . $transaction->id);
+    $rawTransactionNumber = $transaction->transaction_number ?? ('TRX-' . $transaction->id);
+    $transactionNumber = $rawTransactionNumber;
+
+    if (! empty($rawTransactionNumber)) {
+        $parts = explode('-', $rawTransactionNumber);
+        $lastPart = end($parts);
+
+        if (is_numeric($lastPart)) {
+            $transactionNumber = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
+        }
+    }
     $outletName = $transaction->outlet->name ?? 'ATG POS';
     $cashierName = $transaction->user->name ?? '-';
     $memberName = $transaction->member->name ?? null;
