@@ -166,6 +166,91 @@
             box-shadow: none;
         }
 
+
+        .outlet-dropdown {
+            position: relative;
+            width: 100%;
+        }
+
+        .outlet-dropdown-button {
+            width: 100%;
+            min-height: 52px;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: #fff;
+            padding: 0 42px 0 14px;
+            font-size: 14px;
+            color: #111827;
+            font-weight: 800;
+            text-align: left;
+            cursor: pointer;
+            position: relative;
+            box-sizing: border-box;
+            display: flex;
+            align-items: center;
+        }
+
+        .outlet-dropdown-button::after {
+            content: "▾";
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            font-size: 13px;
+        }
+
+        .outlet-dropdown-panel {
+            display: none;
+            position: absolute;
+            z-index: 50;
+            left: 0;
+            right: 0;
+            top: calc(100% + 8px);
+            background: #fff;
+            border: 1px solid #d7dce5;
+            border-radius: 16px;
+            box-shadow: 0 18px 38px rgba(15, 23, 42, 0.16);
+            padding: 8px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+
+        .outlet-dropdown.is-open .outlet-dropdown-panel {
+            display: grid;
+            gap: 4px;
+        }
+
+        .outlet-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 38px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #111827;
+            cursor: pointer;
+            text-transform: none;
+            letter-spacing: 0;
+            margin: 0;
+        }
+
+        .outlet-option:hover {
+            background: #f8fafc;
+        }
+
+        .outlet-option input[type="checkbox"] {
+            width: 16px !important;
+            height: 16px !important;
+            min-height: 16px !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            flex: 0 0 16px;
+            accent-color: #2563eb;
+        }
+
         @media (max-width: 900px) {
             .form-grid {
                 grid-template-columns: 1fr;
@@ -198,7 +283,7 @@
                         @enderror
                     </div>
 
-                    <div class="field">
+                    <div class="field full">
                         <label>Outlet</label>
                         @php
                             $selectedOutletIds = collect(old('outlet_ids', $discount->outlets->pluck('id')->all()))
@@ -225,7 +310,7 @@
                                 @endforeach
                             </div>
                         </div>
-                        <div class="helper">Kosongkan jika discount berlaku untuk semua outlet.</div>
+                        <div class="helper">Kosongkan jika discount berlaku untuk semua outlet. Klik dropdown untuk pilih lebih dari satu outlet.</div>
                         @error('outlet_ids')
                             <div class="field-error">{{ $message }}</div>
                         @enderror
