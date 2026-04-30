@@ -249,9 +249,20 @@ class TransactionViewController extends Controller
 
         foreach ($transactions as $transaction) {
             $outletName = $transaction->outlet->name ?? '-';
-            $businessName = $transaction->outlet->name ?? 'ATG POS';
             $date = $transaction->created_at?->format('Y-m-d H:i:s') ?? '-';
-            $transactionNo = $transaction->transaction_number ?? '-';
+            $rawTransactionNo = $transaction->transaction_number ?? null;
+            $transactionNo = '-';
+
+            if (! empty($rawTransactionNo)) {
+                $parts = explode('-', $rawTransactionNo);
+                $lastPart = end($parts);
+
+                if (is_numeric($lastPart)) {
+                    $transactionNo = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
+                } else {
+                    $transactionNo = $rawTransactionNo;
+                }
+            }
 
             $payment = strtoupper(trim((string) ($transaction->payment_method ?? '')));
             if ($payment === '' || $payment === '-') {
@@ -288,8 +299,9 @@ class TransactionViewController extends Controller
                 $variantName = trim((string) (preg_replace('/\s*\[(DINE IN|DELIVERY)\]$/i', '', (string) ($item->variant_name ?? ''))));
 
                 $itemName = $productName;
-                    $itemName = preg_replace('/\s*\[(PROMO FREE ITEM)\]/i', '', (string) $itemName);
-                    $itemName = preg_replace('/\s*\[(DINE IN|DELIVERY)\]/i', '', (string) $itemName);
+                $itemName = preg_replace('/\s*\[(PROMO FREE ITEM)\]/i', '', (string) $itemName);
+                $itemName = preg_replace('/\s*\[(DINE IN|DELIVERY)\]/i', '', (string) $itemName);
+
                 if ($variantName !== '') {
                     $itemName .= ' - ' . $variantName;
                 }
@@ -310,7 +322,6 @@ class TransactionViewController extends Controller
 
                 $rows[] = [
                     'outlet' => $isFirstRow ? $outletName : '',
-                    'business_name' => $isFirstRow ? $businessName : '',
                     'date' => $isFirstRow ? $date : '',
                     'no' => $isFirstRow ? $transactionNo : '',
                     'item_name' => $itemName,
@@ -392,7 +403,6 @@ class TransactionViewController extends Controller
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row['outlet'],
-                    $row['business_name'],
                     $row['date'],
                     $row['no'],
                     $row['item_name'],
