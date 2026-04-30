@@ -613,11 +613,9 @@
                         </div>
 
                         <div class="table-wrap">
-                            <table>
+                            <table class="products-clean-table">
                                 <thead>
                                     <tr>
-                                        <th>Brand</th>
-                                        <th>Category</th>
                                         <th>Product</th>
                                         <th>Variants</th>
                                         <th>Status</th>
@@ -627,13 +625,8 @@
                                 <tbody>
                                     @foreach($categoryProducts as $product)
                                         <tr>
-                                            <td>{{ $product->brand->name ?? '-' }}</td>
-                                            <td>{{ $product->category->name ?? '-' }}</td>
                                             <td>
                                                 <div class="product-name">{{ $product->name }}</div>
-                                                @if($product->code)
-                                                    <div style="margin-top:4px; color:#6b7280; font-size:12px; font-weight:700;">{{ $product->code }}</div>
-                                                @endif
                                             </td>
                                             <td>
                                                 <div class="variants-wrap">
