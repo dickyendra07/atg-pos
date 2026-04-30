@@ -256,6 +256,27 @@
             overflow: hidden;
         }
 
+
+        .group-body table th,
+        .group-body table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .group-body .price-text {
+            text-align: center;
+        }
+
+        .group-body .inline-form {
+            display: flex;
+            justify-content: center;
+        }
+
+        .group-body .status-badge {
+            margin-left: auto;
+            margin-right: auto;
+        }
+
         .group-head {
             padding: 16px 18px;
             display: flex;
@@ -582,7 +603,7 @@
                         </div>
 
                         <div class="group-body">
-                            <table>
+                            <table class="table-center">
                                 <thead>
                                     <tr>
                                         <th>Outlet</th>

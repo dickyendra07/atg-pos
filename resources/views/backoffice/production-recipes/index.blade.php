@@ -482,7 +482,7 @@
 
                 @if($recipes->count())
                     <div class="table-wrap">
-                        <table>
+                        <table class="table-center">
                             <thead>
                                 <tr>
                                     <th>Recipe Name</th>

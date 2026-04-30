@@ -260,6 +260,35 @@
                 padding: 16px 14px;
             }
         }
+    
+        .table-center th,
+        .table-center td,
+        .inventory-table-center th,
+        .inventory-table-center td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .table-center .text-left,
+        .inventory-table-center .text-left,
+        .table-center .recommended-action-cell,
+        .inventory-table-center .recommended-action-cell,
+        .table-center .note-text,
+        .inventory-table-center .note-text {
+            text-align: left;
+        }
+
+        .table-center .action-stack,
+        .inventory-table-center .action-stack {
+            justify-content: center;
+            align-items: center;
+        }
+
+        .table-center form,
+        .inventory-table-center form {
+            justify-content: center;
+        }
+
     </style>
 </head>
 <body>

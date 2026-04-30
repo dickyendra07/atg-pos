@@ -591,7 +591,7 @@
 
             @if($recipes->count())
                 <div class="table-wrap">
-                    <table class="recipe-table">
+                    <table class="recipe-table table-center">
                         <thead>
                             <tr>
                                 <th>Recipe Name</th>

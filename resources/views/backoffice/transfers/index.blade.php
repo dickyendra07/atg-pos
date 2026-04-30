@@ -897,7 +897,7 @@
 
                 @if(($transferGroups ?? collect())->count())
                     <div class="table-wrap">
-                        <table>
+                        <table class="table-center">
                             <thead>
                                 <tr>
                                     <th>Transfer No</th>
@@ -958,7 +958,7 @@
                                                 <h3 class="group-detail-title">Detail Item Transfer</h3>
 
                                                 <div class="table-wrap" style="padding:0;">
-                                                    <table class="detail-table">
+                                                    <table class="detail-table table-center">
                                                         <thead>
                                                             <tr>
                                                                                                                                 <th>Category</th>

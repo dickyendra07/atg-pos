@@ -613,7 +613,7 @@
                         </div>
 
                         <div class="table-wrap">
-                            <table class="products-clean-table">
+                            <table class="products-clean-table table-center">
                                 <thead>
                                     <tr>
                                         <th>Product</th>
