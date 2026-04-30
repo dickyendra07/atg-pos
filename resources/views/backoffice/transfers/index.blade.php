@@ -840,20 +840,26 @@
 
                 <form method="GET" action="{{ route('backoffice.transfers.index') }}" class="filter-form">
                     <div class="field">
-                        <label>Dari Tipe</label>
-                        <select name="from_location_type">
+                        <label>Dari Lokasi</label>
+                        <select name="from_location">
                             <option value="">Semua asal</option>
-                            <option value="warehouse" @selected(($filters['from_location_type'] ?? '') === 'warehouse')>warehouse</option>
-                            <option value="outlet" @selected(($filters['from_location_type'] ?? '') === 'outlet')>outlet</option>
+                            @foreach(($locationOptions ?? []) as $option)
+                                <option value="{{ $option['value'] }}" @selected(($filters['from_location'] ?? '') === $option['value'])>
+                                    {{ $option['label'] }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
 
                     <div class="field">
-                        <label>Ke Tipe</label>
-                        <select name="to_location_type">
+                        <label>Ke Lokasi</label>
+                        <select name="to_location">
                             <option value="">Semua tujuan</option>
-                            <option value="warehouse" @selected(($filters['to_location_type'] ?? '') === 'warehouse')>warehouse</option>
-                            <option value="outlet" @selected(($filters['to_location_type'] ?? '') === 'outlet')>outlet</option>
+                            @foreach(($locationOptions ?? []) as $option)
+                                <option value="{{ $option['value'] }}" @selected(($filters['to_location'] ?? '') === $option['value'])>
+                                    {{ $option['label'] }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
 
@@ -955,10 +961,9 @@
                                                     <table class="detail-table">
                                                         <thead>
                                                             <tr>
-                                                                <th>Transfer Item No</th>
-                                                                <th>Category</th>
+                                                                                                                                <th>Category</th>
                                                                 <th>Ingredient</th>
-                                                                <th>Qty</th>
+                                                                <th>Qty Transfer</th>
                                                                 <th>Status</th>
                                                                 <th>Diterima Oleh</th>
                                                                 <th>Tanggal Dikirim</th>
@@ -979,8 +984,7 @@
                                                                 @endphp
 
                                                                 <tr>
-                                                                    <td class="number">{{ $transfer->transfer_number ?? '-' }}</td>
-                                                                    <td>{{ $transfer->ingredient->category->name ?? '-' }}</td>
+                                                                                                                                        <td>{{ $transfer->ingredient->category->name ?? '-' }}</td>
                                                                     <td>{{ $transfer->ingredient->name ?? '-' }}</td>
                                                                     <td class="qty">{{ number_format((float) $transfer->qty, 0, ',', '.') }}</td>
                                                                     <td>

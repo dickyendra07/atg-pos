@@ -243,11 +243,19 @@ class TransferViewController extends Controller
         $query = StockTransfer::with(['ingredient.category', 'warehouse', 'outlet', 'transferredBy'])
             ->latest();
 
-        if ($request->filled('from_location_type')) {
+        if ($request->filled('from_location')) {
+            $fromFilter = $this->parseLocation($request->from_location);
+            $query->where('from_location_type', $fromFilter['type'])
+                ->where('from_location_id', $fromFilter['id']);
+        } elseif ($request->filled('from_location_type')) {
             $query->where('from_location_type', $request->from_location_type);
         }
 
-        if ($request->filled('to_location_type')) {
+        if ($request->filled('to_location')) {
+            $toFilter = $this->parseLocation($request->to_location);
+            $query->where('to_location_type', $toFilter['type'])
+                ->where('to_location_id', $toFilter['id']);
+        } elseif ($request->filled('to_location_type')) {
             $query->where('to_location_type', $request->to_location_type);
         }
 
@@ -316,9 +324,12 @@ class TransferViewController extends Controller
             'transfers' => $transfers,
             'transferGroups' => $transferGroups,
             'summary' => $summary,
+            'locationOptions' => $this->buildLocationOptions(),
             'filters' => [
                 'from_location_type' => $request->from_location_type,
                 'to_location_type' => $request->to_location_type,
+                'from_location' => $request->from_location,
+                'to_location' => $request->to_location,
                 'status' => $request->status,
                 'date_from' => $request->date_from,
                 'date_to' => $request->date_to,
@@ -333,11 +344,19 @@ class TransferViewController extends Controller
         $query = StockTransfer::with(['ingredient.category', 'transferredBy'])
             ->latest();
 
-        if ($request->filled('from_location_type')) {
+        if ($request->filled('from_location')) {
+            $fromFilter = $this->parseLocation($request->from_location);
+            $query->where('from_location_type', $fromFilter['type'])
+                ->where('from_location_id', $fromFilter['id']);
+        } elseif ($request->filled('from_location_type')) {
             $query->where('from_location_type', $request->from_location_type);
         }
 
-        if ($request->filled('to_location_type')) {
+        if ($request->filled('to_location')) {
+            $toFilter = $this->parseLocation($request->to_location);
+            $query->where('to_location_type', $toFilter['type'])
+                ->where('to_location_id', $toFilter['id']);
+        } elseif ($request->filled('to_location_type')) {
             $query->where('to_location_type', $request->to_location_type);
         }
 
@@ -494,7 +513,6 @@ class TransferViewController extends Controller
             'to_location' => 'required|string',
             'sender_name' => 'required|string|max:100',
             'receiver_name' => 'nullable|string|max:100',
-            'sent_at' => 'nullable|date',
             'note' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
             'items.*.ingredient_id' => 'required|exists:ingredients,id',
@@ -600,9 +618,7 @@ class TransferViewController extends Controller
 
         DB::transaction(function () use ($validated, $from, $to, $user, $items, $fromName, $toName) {
             $globalNote = trim((string) ($validated['note'] ?? ''));
-            $sentAt = ! empty($validated['sent_at'])
-                ? Carbon::parse($validated['sent_at'])
-                : now();
+            $sentAt = now();
 
             foreach ($items as $item) {
                 $lockedSourceStock = StockBalance::where('location_type', $from['type'])

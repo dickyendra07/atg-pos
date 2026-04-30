@@ -145,7 +145,7 @@
 
         .item-grid {
             display: grid;
-            grid-template-columns: 1.3fr 0.8fr 1.1fr auto;
+            grid-template-columns: minmax(0, 1.7fr) minmax(180px, 0.45fr) 120px;
             gap: 12px;
             align-items: end;
         }
@@ -278,14 +278,6 @@
                     @enderror
                 </div>
 
-                <div class="field">
-                    <label>Tanggal Dikirim</label>
-                    <input type="datetime-local" name="sent_at" value="{{ old('sent_at') }}">
-                    @error('sent_at')
-                        <div class="field-error">{{ $message }}</div>
-                    @enderror
-                </div>
-
                 <div class="field full">
                     <label>Note Transfer</label>
                     <input type="text" name="note" value="{{ old('note') }}" placeholder="Contoh: pindah stok cabang / kirim bahan">
@@ -321,20 +313,19 @@
             <div class="row-index">Item <span class="item-number"></span></div>
 
             <div class="item-grid">
-                <div class="field" style="margin-bottom:0;">
+                <div class="field item-field ingredient-field" style="margin-bottom:0;">
                     <label>Ingredient</label>
                     <select class="ingredient-select" required disabled>
                         <option value="">Pilih lokasi asal dulu</option>
                     </select>
-                    <div class="stock-badge"></div>
                 </div>
 
-                <div class="field" style="margin-bottom:0;">
+                <div class="field item-field qty-field" style="margin-bottom:0;">
                     <label>Qty Transfer</label>
                     <input type="number" class="qty-input" min="0.01" step="0.01" required>
                 </div>
 
-                <div class="field" style="margin-bottom:0;">
+                <div class="field item-field action-field" style="margin-bottom:0;">
                     <label>&nbsp;</label>
                     <button type="button" class="btn btn-danger-lite remove-item-btn">Hapus</button>
                 </div>
@@ -396,22 +387,7 @@
         }
 
         function updateStockBadge(row) {
-            const selectEl = row.querySelector('.ingredient-select');
-            const badgeEl = row.querySelector('.stock-badge');
-            const selectedOption = selectEl.options[selectEl.selectedIndex];
-
-            if (!selectedOption || !selectedOption.value) {
-                badgeEl.style.display = 'none';
-                badgeEl.textContent = '';
-                return;
-            }
-
-            const stock = selectedOption.getAttribute('data-stock') || 0;
-            const unit = selectedOption.getAttribute('data-unit') || '';
-            const name = selectedOption.getAttribute('data-name') || 'Ingredient';
-
-            badgeEl.style.display = 'block';
-            badgeEl.textContent = name + ' tersedia di lokasi asal: ' + stock + ' ' + unit;
+            return;
         }
 
         function refreshRowNames() {
