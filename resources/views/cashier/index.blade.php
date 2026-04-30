@@ -3413,18 +3413,6 @@
 
     function switchTab(tabName) {
     
-    document.querySelectorAll('[data-product-category-toggle]').forEach((header) => {
-        header.addEventListener('click', function () {
-            const section = header.closest('[data-product-category-section]');
-
-            if (!section) {
-                return;
-            }
-
-            section.classList.toggle('collapsed');
-        });
-    });
-
     document.querySelectorAll('[data-tab-btn]').forEach((button) => {
             button.classList.toggle('active', button.dataset.tabBtn === tabName);
         });
@@ -3708,6 +3696,19 @@
                 });
             });
         }
+
+    document.querySelectorAll('[data-product-category-toggle]').forEach((header) => {
+        header.addEventListener('click', function () {
+            const section = header.closest('[data-product-category-section]');
+
+            if (!section) {
+                return;
+            }
+
+            section.classList.toggle('collapsed');
+        });
+    });
+
     </script>
 
 </body>
