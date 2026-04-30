@@ -692,10 +692,26 @@
         .need-action-table td:last-child {
             text-align: left;
         }
+        .need-action-table {
+            min-width: 980px;
+        }
+
+        .need-action-table th,
+        .need-action-table td {
+            vertical-align: middle;
+            white-space: nowrap;
+        }
 
         .need-action-table .recommended-action-cell {
-            max-width: 280px;
+            min-width: 320px;
+            max-width: 420px;
+            white-space: normal;
+            text-align: left;
             line-height: 1.5;
+        }
+
+        .need-action-table th:last-child {
+            text-align: left;
         }
 
 
@@ -1008,8 +1024,7 @@
                                 <th>Category</th>
                                 <th>Ingredient</th>
                                 <th>Minimum Stock</th>
-                                <th>Location Type</th>
-                                <th>Location</th>
+                                        <th>Location</th>
                                 <th>Qty On Hand</th>
                                 <th>Status</th>
                             </tr>
@@ -1064,39 +1079,6 @@
                 </div>
             </div>
 
-            <div class="section-card">
-                <div class="section-head">
-                    <h2 class="section-title">Rule Reminder</h2>
-
-                </div>
-
-
-                        <div class="note-desc">
-                            Dipakai saat barang datang dari <span class="note-highlight">luar sistem internal</span>, misalnya supplier, vendor, atau pembelian darurat outlet.
-                        </div>
-                    </div>
-
-
-                        <div class="note-desc">
-                            Dipakai saat barang berpindah dari <span class="note-highlight">lokasi internal ke lokasi internal lain</span>, misalnya warehouse ke outlet atau outlet ke outlet.
-                        </div>
-                    </div>
-
-
-                        <div class="note-desc">
-                            Dipakai untuk <span class="note-highlight">koreksi stok</span>, baik di warehouse maupun di outlet, misalnya karena selisih hitung, rusak, atau salah input.
-                        </div>
-                    </div>
-
-
-                        <div class="note-desc">
-                            Dipakai untuk <span class="note-highlight">stock opname formal khusus warehouse</span>. Outlet tidak perlu opname formal, cukup gunakan adjustment jika ada selisih stok.
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <div class="section-card" id="need-action-list">
         <div class="section-head need-action-head">
@@ -1141,7 +1123,6 @@
                         <th>Category</th>
                         <th>Ingredient</th>
                         <th>Unit</th>
-                        <th>Location Type</th>
                         <th>Location</th>
                         <th>Qty Saat Ini</th>
                         <th>Minimum Stock</th>
@@ -1155,7 +1136,6 @@
                             <td>{{ $item['category_name'] ?? '-' }}</td>
                             <td>{{ $item['ingredient_name'] ?? '-' }}</td>
                             <td>{{ $item['unit'] ?? '-' }}</td>
-                            <td>{{ $item['location_type'] ?? '-' }}</td>
                             <td>{{ $item['location_name'] ?? '-' }}</td>
                             <td>
                                 @if(((float) ($item['qty_on_hand'] ?? 0)) <= 0)
@@ -1174,7 +1154,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9">Belum ada item yang masuk kategori need action.</td>
+                            <td colspan="8">Belum ada item yang masuk kategori need action.</td>
                         </tr>
                     @endforelse
                 </tbody>
