@@ -468,7 +468,17 @@
                                         <td><span class="user-name">{{ $managedUser->name }}</span></td>
                                         <td>{{ $managedUser->email }}</td>
                                         <td>{{ $managedUser->phone ?? '-' }}</td>
-                                        <td>{{ $managedUser->role->name ?? '-' }}</td>
+                                        <td>
+                                            @php
+                                                $roleNames = $managedUser->roles->pluck('name');
+
+                                                if ($roleNames->isEmpty() && $managedUser->role) {
+                                                    $roleNames = collect([$managedUser->role->name]);
+                                                }
+                                            @endphp
+
+                                            {{ $roleNames->unique()->implode(', ') ?: '-' }}
+                                        </td>
                                         <td>@if($managedUser->outlets->count())
                                                 {{ $managedUser->outlets->pluck('name')->implode(', ') }}
                                             @else

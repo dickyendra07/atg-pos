@@ -173,6 +173,77 @@
             border-radius: 12px;
             font-weight: bold;
         }
+
+        .role-picker summary,
+        .outlet-picker summary {
+            width: 100%;
+            min-height: 46px;
+            box-sizing: border-box;
+            border: 1px solid #d7dce5;
+            border-radius: 12px;
+            background: #ffffff;
+            padding: 12px 14px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+            cursor: pointer;
+            list-style: none;
+        }
+
+        .role-picker summary::-webkit-details-marker,
+        .outlet-picker summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .role-picker summary::after,
+        .outlet-picker summary::after {
+            content: '⌄';
+            float: right;
+            color: #6b7280;
+        }
+
+        .role-picker[open] summary::after,
+        .outlet-picker[open] summary::after {
+            content: '⌃';
+        }
+
+        .role-options,
+        .outlet-options {
+            margin-top: 8px;
+            border: 1px solid #e5e7eb;
+            border-radius: 14px;
+            background: #ffffff;
+            box-shadow: 0 18px 40px rgba(15,23,42,0.14);
+            padding: 8px;
+            display: grid;
+            gap: 6px;
+        }
+
+        .role-option,
+        .outlet-option {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 40px;
+            padding: 8px 10px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            color: #111827;
+            cursor: pointer;
+        }
+
+        .role-option:hover,
+        .outlet-option:hover {
+            background: #f3f4f6;
+        }
+
+        .role-option input,
+        .outlet-option input {
+            width: auto;
+            margin: 0;
+        }
+
     </style>
 </head>
 <body>
@@ -224,14 +295,38 @@
 
                 <div class="field">
                     <label>Role</label>
-                    <select name="role_id" required>
-                        <option value="">Pilih role</option>
-                        @foreach($roles as $role)
-                            <option value="{{ $role->id }}" @selected(old('role_id', $managedUser->role_id) == $role->id)>
-                                {{ $role->name }} ({{ $role->code }})
-                            </option>
-                        @endforeach
-                    </select>
+                    @php
+                        $selectedRoleIds = collect(old('role_ids', $managedUser->roles->pluck('id')->push($managedUser->role_id)->filter()->unique()->values()->all()))
+                            ->filter()
+                            ->map(fn($id) => (string) $id)
+                            ->unique()
+                            ->values();
+                    @endphp
+
+                    <details class="outlet-picker role-picker">
+                        <summary>
+                            @if($selectedRoleIds->count())
+                                {{ $selectedRoleIds->count() }} role dipilih
+                            @else
+                                Pilih role
+                            @endif
+                        </summary>
+
+                        <div class="outlet-options role-options">
+                            @foreach($roles as $role)
+                                <label class="outlet-option role-option">
+                                    <input
+                                        type="checkbox"
+                                        name="role_ids[]"
+                                        value="{{ $role->id }}"
+                                        @checked($selectedRoleIds->contains((string) $role->id))
+                                    >
+                                    <span>{{ $role->name }} ({{ $role->code }})</span>
+                                </label>
+                            @endforeach
+                        </div>
+                    </details>
+                    <span class="field-help">Bisa pilih lebih dari 1 role. Role pertama akan dipakai sebagai role utama untuk kompatibilitas sistem.</span>
                 </div>
 
                 <div class="field">

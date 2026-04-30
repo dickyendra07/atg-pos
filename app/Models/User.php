@@ -41,6 +41,11 @@ class User extends Authenticatable
         return $this->belongsTo(Role::class);
     }
 
+    public function roles(): BelongsToMany
+    {
+        return $this->belongsToMany(Role::class)->withTimestamps();
+    }
+
     public function outlet(): BelongsTo
     {
         return $this->belongsTo(Outlet::class);
@@ -56,20 +61,38 @@ class User extends Authenticatable
         return $this->role?->code;
     }
 
+    public function roleCodes(): array
+    {
+        $codes = $this->relationLoaded('roles')
+            ? $this->roles->pluck('code')->all()
+            : $this->roles()->pluck('code')->all();
+
+        if ($this->role?->code) {
+            $codes[] = $this->role->code;
+        }
+
+        return array_values(array_unique(array_filter($codes)));
+    }
+
+    public function hasRoleCode(string $code): bool
+    {
+        return in_array($code, $this->roleCodes(), true);
+    }
+
     public function isFullAccessUser(): bool
     {
-        return in_array($this->roleCode(), [
+        return ! empty(array_intersect($this->roleCodes(), [
             'owner',
             'admin_pusat',
-        ], true);
+        ]));
     }
 
     public function isLimitedAccessUser(): bool
     {
-        return in_array($this->roleCode(), [
+        return ! empty(array_intersect($this->roleCodes(), [
             'admin_outlet',
             'kasir',
-        ], true);
+        ]));
     }
 
     public function canAccessCashier(): bool

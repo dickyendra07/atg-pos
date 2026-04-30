@@ -49,7 +49,8 @@ class UserManagementController extends Controller
                 Rule::unique('users', 'email')->ignore($user?->id),
             ],
             'phone' => ['nullable', 'string', 'max:255'],
-            'role_id' => ['required', 'exists:roles,id'],
+            'role_ids' => ['required', 'array', 'min:1'],
+            'role_ids.*' => ['required', 'exists:roles,id'],
             'outlet_id' => ['nullable', 'exists:outlets,id'],
             'outlet_ids' => ['nullable', 'array'],
             'outlet_ids.*' => ['nullable', 'exists:outlets,id'],
@@ -61,7 +62,14 @@ class UserManagementController extends Controller
             ],
         ]);
 
-        $role = Role::find($validated['role_id']);
+        $roleIds = collect($validated['role_ids'] ?? [])
+            ->filter()
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        $primaryRoleId = $roleIds->first();
+        $role = Role::find($primaryRoleId);
         $roleCode = $role?->code;
 
         $outletIds = collect($validated['outlet_ids'] ?? [])
@@ -104,7 +112,7 @@ class UserManagementController extends Controller
                 ->with('error', 'Role kamu tidak punya akses ke User Management.');
         }
 
-        $users = User::with(['role', 'outlet', 'outlets'])
+        $users = User::with(['role', 'roles', 'outlet', 'outlets'])
             ->latest()
             ->get();
 
@@ -166,7 +174,7 @@ class UserManagementController extends Controller
 
         return view('backoffice.users.edit', [
             'user' => $authUser,
-            'managedUser' => $managedUser->load(['role', 'outlet', 'outlets']),
+            'managedUser' => $managedUser->load(['role', 'roles', 'outlet', 'outlets']),
             'roles' => $this->getRoles(),
             'outlets' => $this->getOutlets(),
         ]);
@@ -184,10 +192,12 @@ class UserManagementController extends Controller
 
         $validated = $this->validateUser($request, $managedUser);
 
+        $roleIds = $validated['role_ids'] ?? [];
         $outletIds = $validated['outlet_ids'] ?? [];
-        unset($validated['outlet_ids']);
+        unset($validated['role_ids'], $validated['outlet_ids']);
 
         $managedUser->update($validated);
+        $managedUser->roles()->sync($roleIds);
         $managedUser->outlets()->sync($outletIds);
 
         return redirect()
