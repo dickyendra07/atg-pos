@@ -164,7 +164,8 @@
             $transactionNumber = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
         }
     }
-    $outletName = $transaction->outlet->name ?? 'ATG POS';
+    $receiptBrandName = "Lee Ong's Tea x Waspffle";
+    $receiptAddress = 'Alamat outlet / cabang';
     $cashierName = $transaction->user->name ?? '-';
     $memberName = $transaction->member->name ?? null;
     $memberPhone = $transaction->member->phone ?? null;
@@ -192,7 +193,7 @@
 
         return [
             'product_name' => $item->product_name ?? '-',
-            'variant_name' => $item->variant_name ?? '',
+            'variant_name' => trim(preg_replace('/\s*\[(DINE IN|DELIVERY|PROMO FREE ITEM)\]\s*/i', ' ', (string) ($item->variant_name ?? ''))),
             'modifiers' => $modifiers,
             'qty' => (float) ($item->qty ?? 0),
             'price' => (float) ($item->price ?? 0),
@@ -201,7 +202,8 @@
     })->values();
 
     $receiptPayload = [
-        'outlet_name' => $outletName,
+        'brand_name' => $receiptBrandName,
+        'address' => $receiptAddress,
         'transaction_number' => $transactionNumber,
         'cashier_name' => $cashierName,
         'member_name' => $memberName,
@@ -362,19 +364,20 @@
                 });
             }
 
-            pushWrapped(receipt.outlet_name || 'ATG POS', {
+            pushWrapped(receipt.brand_name || "Lee Ong's Tea x Waspffle", {
                 size: 28,
                 weight: '700',
                 align: 'center',
                 gap: 4,
             });
 
-            push('text', 'ATG POS RECEIPT', {
-                size: 20,
-                weight: '700',
-                align: 'center',
-                gap: 4,
-            });
+            if (receipt.address) {
+                pushWrapped(receipt.address, {
+                    size: 18,
+                    align: 'center',
+                    gap: 4,
+                });
+            }
 
             push('text', receipt.created_at || '-', {
                 size: 20,
@@ -502,13 +505,13 @@
                 gap: 4,
             });
 
-            push('text', 'Simpan struk ini sebagai bukti transaksi', {
+            push('text', '', {
                 size: 18,
                 align: 'center',
                 gap: 4,
             });
 
-            push('text', 'Powered by ATG POS', {
+            push('text', '', {
                 size: 18,
                 align: 'center',
                 gap: 4,

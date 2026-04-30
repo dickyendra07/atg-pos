@@ -2724,6 +2724,7 @@
         <div class="variant-modal-head">
             <div>
                 <h3 class="variant-modal-title" id="variant-modal-title">Pilih Variant</h3>
+                <div class="variant-modal-subtitle" id="variant-modal-subtitle">Pilih variant menu</div>
 
             </div>
             <button type="button" class="variant-modal-close" id="variant-modal-close">&times;</button>
@@ -3011,7 +3012,8 @@
         paymentMethod.disabled = !isShiftOpen();
 
         document.querySelectorAll('[data-open-variant-modal]').forEach((button) => {
-            button.disabled = !isShiftOpen();
+            button.disabled = false;
+            button.removeAttribute('disabled');
         });
 
         document.querySelectorAll('[data-cart-action]').forEach((button) => {
@@ -3446,9 +3448,9 @@
     const activeOrderType = cashierState.orderType === 'delivery' ? 'delivery' : 'dine_in';
     const activeOrderTypeLabel = activeOrderType === 'delivery' ? 'Delivery' : 'Dine In';
 
-    variantModalTitle.textContent = productName;
-    variantModalSubtitle.textContent = productMeta;
-    variantModalOrderType.textContent = formatOrderType(activeOrderType);
+    if (variantModalTitle) variantModalTitle.textContent = productName;
+    if (variantModalSubtitle) variantModalSubtitle.textContent = productMeta;
+    if (variantModalOrderType) variantModalOrderType.textContent = formatOrderType(activeOrderType);
 
     if (!sourceItems.length) {
         variantModalGrid.innerHTML = `
@@ -3543,12 +3545,13 @@
 
         const openVariantButton = event.target.closest('[data-open-variant-modal]');
         if (openVariantButton) {
+            event.preventDefault();
+            openVariantModal(openVariantButton);
+
             if (!isShiftOpen()) {
-                showAlert('error', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
-                return;
+                showAlert('error', 'Shift belum dibuka. Kamu bisa lihat variant, tapi Start Shift dulu untuk tambah item.');
             }
 
-            openVariantModal(openVariantButton);
             return;
         }
 
