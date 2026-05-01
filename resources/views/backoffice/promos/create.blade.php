@@ -140,6 +140,27 @@
         @media (max-width: 1100px) {
             .form-grid, .days-grid, .rule-row, .reward-row { grid-template-columns: 1fr; }
         }
+
+        .check-card {
+            min-height: 46px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid #d7dce5;
+            border-radius: 14px;
+            background: #ffffff;
+            padding: 0 14px;
+            font-size: 14px;
+            font-weight: 800;
+            color: #111827;
+            box-sizing: border-box;
+        }
+
+        .check-card input {
+            width: auto;
+            margin: 0;
+        }
+
     </style>
 
     <div class="page-shell">
@@ -261,6 +282,20 @@
                         <div class="field">
                             <label for="end_time">End Hour</label>
                             <input type="time" name="end_time" id="end_time" value="{{ old('end_time') }}">
+                        </div>
+
+                        <div class="field">
+                            <label>All Day</label>
+                            <label class="check-card">
+                                <input
+                                    type="checkbox"
+                                    name="all_day"
+                                    value="1"
+                                    id="all_day"
+                                    @checked(old('all_day'))
+                                >
+                                <span>Aktif sepanjang hari tanpa batas jam</span>
+                            </label>
                         </div>
 
                         <div class="field full">
@@ -430,6 +465,30 @@
 
                 refreshLabel();
             });
+        });
+    </script>
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const allDay = document.getElementById('all_day');
+            const startTime = document.querySelector('[name="start_time"]');
+            const endTime = document.querySelector('[name="end_time"]');
+
+            function syncAllDay() {
+                if (!allDay || !startTime || !endTime) return;
+
+                startTime.disabled = allDay.checked;
+                endTime.disabled = allDay.checked;
+
+                if (allDay.checked) {
+                    startTime.value = '';
+                    endTime.value = '';
+                }
+            }
+
+            allDay?.addEventListener('change', syncAllDay);
+            syncAllDay();
         });
     </script>
 

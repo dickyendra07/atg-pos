@@ -103,6 +103,28 @@
             color: #3730a3; font-size: 11px; font-weight: 800;
         }
         @media (max-width: 1100px) { .filter-grid { grid-template-columns: 1fr 1fr; } }
+
+        .actions form {
+            margin: 0;
+        }
+
+        td .actions .btn,
+        td .actions button {
+            width: 76px;
+            min-width: 76px;
+            height: 38px;
+            min-height: 38px;
+            padding: 0 12px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 800;
+            box-sizing: border-box;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+
     </style>
 
     <div class="page-shell">

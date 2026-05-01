@@ -78,6 +78,7 @@ class PromoViewController extends Controller
             'end_date' => 'nullable|date|after_or_equal:start_date',
             'start_time' => 'nullable|date_format:H:i',
             'end_time' => 'nullable|date_format:H:i',
+            'all_day' => 'nullable|boolean',
             'active_days' => 'nullable|array',
             'active_days.*' => 'in:sunday,monday,tuesday,wednesday,thursday,friday,saturday',
             'status' => 'required|in:draft,active,discontinued',
@@ -92,14 +93,16 @@ class PromoViewController extends Controller
 
     protected function normalizePromoData(array $validated, Request $request): array
     {
+        $allDay = $request->boolean('all_day');
+
         return [
             'outlet_id' => null,
             'name' => $validated['name'],
             'requirement_logic' => $validated['requirement_logic'] ?? 'and',
             'start_date' => $validated['start_date'] ?? null,
             'end_date' => $validated['end_date'] ?? null,
-            'start_time' => $validated['start_time'] ?? null,
-            'end_time' => $validated['end_time'] ?? null,
+            'start_time' => $allDay ? null : ($validated['start_time'] ?? null),
+            'end_time' => $allDay ? null : ($validated['end_time'] ?? null),
             'active_days' => $validated['active_days'] ?? [],
             'status' => $validated['status'],
             'is_active' => $request->boolean('is_active'),
