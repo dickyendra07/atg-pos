@@ -355,10 +355,13 @@
         }
 
         .btn-small {
+            width: 68px;
+            min-width: 68px;
+            height: 38px;
             min-height: 38px;
-            padding: 0 14px;
-            border-radius: 12px;
-            font-size: 13px;
+            padding: 0 12px;
+            border-radius: 10px;
+            font-size: 12px;
             font-weight: 800;
             color: white;
             text-decoration: none;
@@ -368,6 +371,8 @@
             align-items: center;
             justify-content: center;
             box-shadow: none;
+            box-sizing: border-box;
+            line-height: 1;
         }
 
         .btn-edit {
@@ -380,6 +385,9 @@
 
         .delete-form {
             margin: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .empty {
@@ -430,6 +438,7 @@
                 margin-right: 18px;
             }
         }
+
     </style>
 
     <div class="ingredients-shell">
