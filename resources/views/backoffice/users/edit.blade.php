@@ -1,24 +1,19 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit User - Back Office ATG POS</title>
+@extends('backoffice.layouts.app')
+
+@php
+    $pageTitle = 'Edit User - Back Office ATG POS';
+@endphp
+
+@section('content')
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
-            color: #222;
-        }
 
-        .wrap {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
+        .users-form-shell {
+            max-width: 980px;
+            margin: 0 auto;
+            display: grid;
+            gap: 18px;
         }
-
-        .topbar {
+.topbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -243,11 +238,9 @@
             width: auto;
             margin: 0;
         }
-
     </style>
-</head>
-<body>
-    <div class="wrap">
+
+<div class="users-form-shell">
         <div class="topbar">
             <div class="title">Edit User</div>
             <a href="{{ route('backoffice.users.index') }}" class="btn">Kembali</a>
@@ -303,7 +296,7 @@
                             ->values();
                     @endphp
 
-                    <details class="outlet-picker role-picker">
+                    <details class="outlet-picker role-picker" data-multiselect-picker data-label="role">
                         <summary>
                             @if($selectedRoleIds->count())
                                 {{ $selectedRoleIds->count() }} role dipilih
@@ -376,44 +369,27 @@
         </div>
     </div>
 
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('[data-outlet-dropdown]').forEach(function (dropdown) {
-                const button = dropdown.querySelector('[data-outlet-dropdown-button]');
-                const checkboxes = dropdown.querySelectorAll('[data-outlet-checkbox]');
+            document.querySelectorAll('[data-multiselect-picker]').forEach(function (picker) {
+                const summary = picker.querySelector('summary');
+                const label = picker.dataset.label || 'item';
 
-                function refreshLabel() {
-                    const selected = Array.from(checkboxes)
-                        .filter(function (checkbox) { return checkbox.checked; })
-                        .map(function (checkbox) { return checkbox.getAttribute('data-outlet-name'); });
-
-                    if (selected.length === 0) {
-                        button.textContent = 'Pilih Outlet';
-                    } else if (selected.length === 1) {
-                        button.textContent = selected[0];
-                    } else {
-                        button.textContent = selected.length + ' outlet dipilih';
-                    }
+                function updateSummary() {
+                    const checkedCount = picker.querySelectorAll('input[type="checkbox"]:checked').length;
+                    summary.textContent = checkedCount > 0
+                        ? checkedCount + ' ' + label + ' dipilih'
+                        : 'Pilih ' + label;
                 }
 
-                button.addEventListener('click', function () {
-                    dropdown.classList.toggle('is-open');
+                picker.querySelectorAll('input[type="checkbox"]').forEach(function (checkbox) {
+                    checkbox.addEventListener('change', updateSummary);
                 });
 
-                checkboxes.forEach(function (checkbox) {
-                    checkbox.addEventListener('change', refreshLabel);
-                });
-
-                document.addEventListener('click', function (event) {
-                    if (!dropdown.contains(event.target)) {
-                        dropdown.classList.remove('is-open');
-                    }
-                });
-
-                refreshLabel();
+                updateSummary();
             });
         });
     </script>
 
-</body>
-</html>
+@endsection
