@@ -367,6 +367,13 @@
                             <strong>Rp {{ number_format((float) ($transaction->subtotal ?? 0), 0, ',', '.') }}</strong>
                         </div>
 
+                        @if(!empty($transaction->promo_name))
+                            <div class="receipt-row">
+                                <span>Promo</span>
+                                <strong>{{ $transaction->promo_name }}</strong>
+                            </div>
+                        @endif
+
                         @if((float) ($transaction->discount_amount ?? 0) > 0)
                             <div class="receipt-row">
                                 <span>Discount</span>

@@ -690,6 +690,7 @@ class CartController extends Controller
         );
 
         $discountAmount = (float) $discountResult['discount_amount'];
+        $promoLabel = $discountResult['promo_label'] ?? null;
         $grandTotal = max(0, (float) $subtotal - $discountAmount);
 
         $paymentMethod = strtolower((string) $request->input('payment_method'));
@@ -726,6 +727,7 @@ class CartController extends Controller
                 $cart,
                 $subtotal,
                 $discountAmount,
+                $promoLabel,
                 $grandTotal,
                 $paymentMethod,
                 $amountPaid,
@@ -741,6 +743,7 @@ class CartController extends Controller
                     'member_id' => $memberSession['id'] ?? null,
                     'subtotal' => $subtotal,
                     'discount_amount' => $discountAmount,
+                    'promo_name' => $promoLabel,
                     'tax_amount' => 0,
                     'grand_total' => $grandTotal,
                     'payment_method' => $paymentMethod,

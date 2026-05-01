@@ -1963,32 +1963,6 @@
         </div>
 
         <div class="content">
-            <div class="hero">
-                <div class="hero-main">
-                    <h1 class="hero-title">Fast selling flow with a cleaner frontliner experience.</h1>
-
-
-                    <div class="hero-pills">
-                        <div class="hero-pill">Quick checkout</div>
-                        <div class="hero-pill">Tablet ready</div>
-                        <div class="hero-pill">Sticky cart</div>
-                        <div class="hero-pill">Thermal receipt</div>
-                    </div>
-                </div>
-
-                <div class="session-card">
-                    <div class="session-title">Cashier Session</div>
-                    <div class="session-line"><span class="label">User:</span>{{ $user->name ?? '-' }}</div>
-                    <div class="session-line"><span class="label">Role:</span>{{ $user->role->name ?? '-' }}</div>
-                    <div class="session-line"><span class="label">Outlet:</span>{{ $user->outlet->name ?? '-' }}</div>
-                    <div class="session-line"><span class="label">Order Type:</span><span id="session-order-type-text">{{ strtoupper(str_replace('_', ' ', $orderType ?? 'dine_in')) }}</span></div>
-                    <div class="toolbar">
-                        <div class="toolbar-pill">{{ $activeShift ? 'Shift active' : 'Shift not started' }}</div>
-                        <div class="toolbar-pill">POS ready</div>
-                    </div>
-                </div>
-            </div>
-
             <div class="layout">
                 <div class="cashier-main-column">
                     <div class="section-card">
@@ -2579,7 +2553,7 @@
                                                             @endphp
                                                             <option
                                                                 value="{{ $promo->id }}"
-                                                                data-promo='@json(["requirements" => $requirementsPayload, "rewards" => $rewardsPayload])'
+                                                                data-promo='@json(["requirements" => $requirementsPayload, "rewards" => $rewardsPayload, "logic" => $promo->requirement_logic ?? "and"])'
                                                                 @selected((string) $oldPromoId === (string) $promo->id)
                                                             >
                                                                 {{ $promo->name }}
@@ -2644,6 +2618,16 @@
                                             <div class="payment-live-row">
                                                 <div class="payment-live-label">Subtotal Transaksi</div>
                                                 <div class="payment-live-value" id="live-subtotal-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
+                                            </div>
+
+                                            <div class="payment-live-row">
+                                                <div class="payment-live-label">Discount / Promo</div>
+                                                <div class="payment-live-value" id="live-discount-value">Rp 0</div>
+                                            </div>
+
+                                            <div class="payment-live-row">
+                                                <div class="payment-live-label">Total Setelah Discount</div>
+                                                <div class="payment-live-value" id="live-grand-total-value">Rp {{ number_format((float) $subtotal, 0, ',', '.') }}</div>
                                             </div>
 
                                             <div class="payment-live-row">
@@ -2780,8 +2764,14 @@
     const searchInput = document.getElementById('cashier-search-input');
     const clearCartButton = document.getElementById('clear-cart-button');
     const liveSubtotalValue = document.getElementById('live-subtotal-value');
+    const liveDiscountValue = document.getElementById('live-discount-value');
+    const liveGrandTotalValue = document.getElementById('live-grand-total-value');
     const livePaidValue = document.getElementById('live-paid-value');
     const liveChangeValue = document.getElementById('live-change-value');
+    const cartDiscountBottom = document.getElementById('cart-discount-bottom');
+    const cartGrandTotalBottom = document.getElementById('cart-grand-total-bottom');
+    const discountSelect = document.getElementById('discount_id');
+    const promoSelect = document.getElementById('promo_id');
     const paymentHelperText = document.getElementById('payment-helper-text');
     const checkoutButton = document.getElementById('checkout-button');
     const changeHighlightRow = document.getElementById('change-highlight-row');
@@ -2984,19 +2974,130 @@
         }).join('');
     }
 
+
+    function getCartItemsForPreview() {
+        const rawItems = cashierState.cart.items || [];
+
+        if (Array.isArray(rawItems)) {
+            return rawItems;
+        }
+
+        if (rawItems && typeof rawItems === 'object') {
+            return Object.values(rawItems);
+        }
+
+        return [];
+    }
+
+    function getCartQtyByVariantId(variantId) {
+        const id = Number(variantId || 0);
+
+        return getCartItemsForPreview().reduce((total, item) => {
+            const itemVariantId = Number(item.variant_id || item.product_variant_id || 0);
+
+            if (itemVariantId !== id) {
+                return total;
+            }
+
+            return total + Number(item.qty || 0);
+        }, 0);
+    }
+
+    function parsePromoPayload() {
+        if (!promoSelect || !promoSelect.selectedOptions || !promoSelect.selectedOptions.length) {
+            return null;
+        }
+
+        const raw = promoSelect.selectedOptions[0].dataset.promo || '{}';
+
+        try {
+            return JSON.parse(raw);
+        } catch (error) {
+            return null;
+        }
+    }
+
+    function promoRequirementMatched(promoPayload) {
+        const requirements = Array.isArray(promoPayload?.requirements) ? promoPayload.requirements : [];
+
+        if (!requirements.length) {
+            return true;
+        }
+
+        const logic = String(promoPayload?.logic || 'and').toLowerCase();
+
+        const matches = requirements.map((requirement) => {
+            const neededQty = Number(requirement.qty || 1);
+            const cartQty = getCartQtyByVariantId(requirement.variant_id);
+
+            return cartQty >= neededQty;
+        });
+
+        return logic === 'or'
+            ? matches.some(Boolean)
+            : matches.every(Boolean);
+    }
+
+    function calculateDiscountPreview(subtotalValue) {
+        let discountValue = 0;
+
+        if (discountSelect && discountSelect.selectedOptions && discountSelect.selectedOptions.length) {
+            const selected = discountSelect.selectedOptions[0];
+            const type = selected.dataset.type || '';
+            const value = Number(selected.dataset.value || 0);
+
+            if (type === 'percent') {
+                discountValue += subtotalValue * (value / 100);
+            } else if (type) {
+                discountValue += value;
+            }
+        }
+
+        const promoPayload = parsePromoPayload();
+
+        if (promoPayload && promoRequirementMatched(promoPayload)) {
+            const rewards = Array.isArray(promoPayload.rewards) ? promoPayload.rewards : [];
+
+            rewards.forEach((reward) => {
+                const type = reward.type || '';
+                const value = Number(reward.value || 0);
+
+                if (type === 'discount_percent') {
+                    discountValue += subtotalValue * (value / 100);
+                } else if (type === 'discount_amount') {
+                    discountValue += value;
+                }
+            });
+        }
+
+        return Math.min(subtotalValue, Math.max(0, Math.round(discountValue)));
+    }
+
+    function calculateCheckoutPreview() {
+        const subtotalValue = Number(cashierState.cart.subtotal || 0);
+        const discountValue = calculateDiscountPreview(subtotalValue);
+        const grandTotalValue = Math.max(0, subtotalValue - discountValue);
+
+        return {
+            subtotalValue,
+            discountValue,
+            grandTotalValue,
+        };
+    }
+
     function syncAmountPaid() {
         if (!paymentMethod) return;
 
-        const subtotalValue = Number(cashierState.cart.subtotal || 0);
+        const grandTotalValue = calculateCheckoutPreview().grandTotalValue;
 
         if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
-            setAmountPaidValue(subtotalValue);
+            setAmountPaidValue(grandTotalValue);
             amountPaidDisplay.readOnly = true;
         } else {
             amountPaidDisplay.readOnly = false;
 
-            if (getAmountPaidValue() <= 0 && subtotalValue > 0) {
-                setAmountPaidValue(subtotalValue);
+            if (getAmountPaidValue() <= 0 && grandTotalValue > 0) {
+                setAmountPaidValue(grandTotalValue);
             } else {
                 setAmountPaidValue(getAmountPaidValue());
             }
@@ -3034,12 +3135,17 @@
     }
 
     function updateLivePaymentSummary() {
-        const subtotalValue = Number(cashierState.cart.subtotal || 0);
+        const { subtotalValue, discountValue, grandTotalValue } = calculateCheckoutPreview();
         const paidValue = getAmountPaidValue();
         const currentPaymentMethod = paymentMethod?.value || 'cash';
 
-        liveSubtotalValue.textContent = formatCurrency(subtotalValue);
-        livePaidValue.textContent = formatCurrency(paidValue);
+        if (liveSubtotalValue) liveSubtotalValue.textContent = formatCurrency(subtotalValue);
+        if (liveDiscountValue) liveDiscountValue.textContent = discountValue > 0 ? '- ' + formatCurrency(discountValue) : formatCurrency(0);
+        if (liveGrandTotalValue) liveGrandTotalValue.textContent = formatCurrency(grandTotalValue);
+        if (livePaidValue) livePaidValue.textContent = formatCurrency(paidValue);
+
+        if (cartDiscountBottom) cartDiscountBottom.textContent = discountValue > 0 ? '- ' + formatCurrency(discountValue) : formatCurrency(0);
+        if (cartGrandTotalBottom) cartGrandTotalBottom.textContent = formatCurrency(grandTotalValue);
 
         let delta = 0;
         let helperText = 'Nominal pembayaran sudah aman untuk checkout.';
@@ -3052,14 +3158,14 @@
             helperClass = 'warn';
             canCheckout = false;
         } else if (currentPaymentMethod === 'cash') {
-            delta = paidValue - subtotalValue;
+            delta = paidValue - grandTotalValue;
 
             if (delta < 0) {
                 helperText = 'Nominal cash masih kurang. Tambahkan pembayaran dulu sebelum checkout.';
                 helperClass = 'warn';
                 valueClass = 'change-minus';
                 canCheckout = false;
-            } else if (subtotalValue <= 0) {
+            } else if (grandTotalValue <= 0) {
                 helperText = 'Cart masih kosong. Tambahkan item dulu sebelum checkout.';
                 helperClass = 'warn';
                 canCheckout = false;
@@ -3067,29 +3173,40 @@
         } else {
             delta = 0;
 
-            if (subtotalValue <= 0) {
+            if (grandTotalValue <= 0) {
                 helperText = 'Cart masih kosong. Tambahkan item dulu sebelum checkout.';
                 helperClass = 'warn';
                 canCheckout = false;
             } else {
-                helperText = 'Pembayaran non-cash akan mengikuti subtotal transaksi.';
+                helperText = 'Pembayaran non-cash akan mengikuti total setelah discount.';
             }
         }
 
-        liveChangeValue.textContent = formatCurrency(Math.abs(delta));
-        liveChangeValue.classList.remove('change-ok', 'change-minus');
-        liveChangeValue.classList.add(valueClass);
-
-        changeHighlightRow.classList.remove('minus');
-
-        if (currentPaymentMethod === 'cash' && delta < 0) {
-            liveChangeValue.textContent = '- ' + formatCurrency(Math.abs(delta));
-            changeHighlightRow.classList.add('minus');
+        if (liveChangeValue) {
+            liveChangeValue.textContent = formatCurrency(Math.abs(delta));
+            liveChangeValue.classList.remove('change-ok', 'change-minus');
+            liveChangeValue.classList.add(valueClass);
         }
 
-        paymentHelperText.textContent = helperText;
-        paymentHelperText.classList.remove('ok', 'warn');
-        paymentHelperText.classList.add(helperClass);
+        if (changeHighlightRow) {
+            changeHighlightRow.classList.remove('minus');
+        }
+
+        if (currentPaymentMethod === 'cash' && delta < 0) {
+            if (liveChangeValue) {
+                liveChangeValue.textContent = '- ' + formatCurrency(Math.abs(delta));
+            }
+
+            if (changeHighlightRow) {
+                changeHighlightRow.classList.add('minus');
+            }
+        }
+
+        if (paymentHelperText) {
+            paymentHelperText.textContent = helperText;
+            paymentHelperText.classList.remove('ok', 'warn');
+            paymentHelperText.classList.add(helperClass);
+        }
 
         updateCheckoutAvailability(canCheckout);
     }
@@ -3098,15 +3215,31 @@
         cashierState.cart = cartPayload;
         cashierState.orderType = cartPayload.order_type || cashierState.orderType;
 
-        summaryCartCount.textContent = cartPayload.cart_count ?? 0;
-        summarySubtotal.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
-        cartSubtotalBottom.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
-        summaryMemberName.textContent = (cartPayload.member && (cartPayload.member.name || cartPayload.member.phone))
-            ? (cartPayload.member.name || cartPayload.member.phone)
-            : 'Belum ada member';
+        if (summaryCartCount) {
+            summaryCartCount.textContent = cartPayload.cart_count ?? 0;
+        }
 
-        sessionOrderTypeText.textContent = formatOrderType(cashierState.orderType);
-        checkoutOrderType.value = cashierState.orderType;
+        if (summarySubtotal) {
+            summarySubtotal.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
+        }
+
+        if (cartSubtotalBottom) {
+            cartSubtotalBottom.textContent = cartPayload.subtotal_formatted ?? formatCurrency(cartPayload.subtotal ?? 0);
+        }
+
+        if (summaryMemberName) {
+            summaryMemberName.textContent = (cartPayload.member && (cartPayload.member.name || cartPayload.member.phone))
+                ? (cartPayload.member.name || cartPayload.member.phone)
+                : 'Belum ada member';
+        }
+
+        if (sessionOrderTypeText) {
+            sessionOrderTypeText.textContent = formatOrderType(cashierState.orderType);
+        }
+
+        if (checkoutOrderType) {
+            checkoutOrderType.value = cashierState.orderType;
+        }
 
         updateOrderTypeButtons();
         renderCartItems(cartPayload.items || []);
@@ -3652,6 +3785,16 @@
     });
 
     paymentMethod?.addEventListener('change', syncAmountPaid);
+
+    discountSelect?.addEventListener('change', function () {
+        syncAmountPaid();
+        updateLivePaymentSummary();
+    });
+
+    promoSelect?.addEventListener('change', function () {
+        syncAmountPaid();
+        updateLivePaymentSummary();
+    });
 
     amountPaidDisplay?.addEventListener('input', function () {
         if (this.readOnly) return;

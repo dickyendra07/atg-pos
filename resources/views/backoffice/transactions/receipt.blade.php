@@ -174,6 +174,7 @@
     $status = strtoupper((string) ($transaction->status ?? '-'));
     $subtotal = (float) ($transaction->subtotal ?? 0);
     $discountAmount = (float) ($transaction->discount_amount ?? 0);
+    $promoName = $transaction->promo_name ?? null;
     $taxAmount = (float) ($transaction->tax_amount ?? 0);
     $grandTotal = (float) ($transaction->grand_total ?? 0);
     $amountPaid = (float) ($transaction->amount_paid ?? 0);
@@ -214,6 +215,7 @@
         'is_void' => $isVoid,
         'subtotal' => $subtotal,
         'discount_amount' => $discountAmount,
+        'promo_name' => $promoName,
         'tax_amount' => $taxAmount,
         'grand_total' => $grandTotal,
         'amount_paid' => $amountPaid,
@@ -364,8 +366,8 @@
                 });
             }
 
-            pushWrapped(receipt.brand_name || "Lee Ong's Tea x Waspffle", {
-                size: 28,
+            push('text', receipt.brand_name || "Lee Ong's Tea x Waspffle", {
+                size: 23,
                 weight: '700',
                 align: 'center',
                 gap: 4,
@@ -451,6 +453,10 @@
 
             row('Subtotal', money(receipt.subtotal), { size: 21 });
 
+            if (receipt.promo_name) {
+                row('Promo', receipt.promo_name, { size: 20 });
+            }
+
             if (Number(receipt.discount_amount || 0) > 0) {
                 row('Discount', `-${money(receipt.discount_amount)}`, { size: 21 });
             }
@@ -501,6 +507,12 @@
             push('text', 'Terima kasih', {
                 size: 22,
                 weight: '700',
+                align: 'center',
+                gap: 4,
+            });
+
+            pushWrapped('Simpan struk ini sebagai bukti transaksi', {
+                size: 18,
                 align: 'center',
                 gap: 4,
             });

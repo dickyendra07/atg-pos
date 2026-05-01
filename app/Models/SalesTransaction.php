@@ -16,6 +16,7 @@ class SalesTransaction extends Model
         'cashier_shift_id',
         'subtotal',
         'discount_amount',
+        'promo_name',
         'tax_amount',
         'grand_total',
         'payment_method',
