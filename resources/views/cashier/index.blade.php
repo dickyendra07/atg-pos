@@ -1707,6 +1707,9 @@
         }
 
         .quick-promo-card {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
             border: 1px solid #e8edf4;
             background: linear-gradient(180deg, #ffffff 0%, #fff8f3 100%);
             border-radius: 16px;
@@ -1721,6 +1724,9 @@
         }
 
         .quick-promo-name {
+            min-height: 34px;
+            display: flex;
+            align-items: flex-start;
             font-size: 13px;
             font-weight: 900;
             color: #111827;
