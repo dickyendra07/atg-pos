@@ -49,12 +49,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/cashier/cart/clear', [CartController::class, 'clear'])->name('cashier.cart.clear');
     Route::post('/cashier/promos/{promo}/apply', [CartController::class, 'applyPromo'])->name('cashier.promo.apply');
     Route::post('/cashier/checkout', [CartController::class, 'checkout'])->name('cashier.checkout');
+    Route::get('/cashier/transactions/{transaction}/receipt', [CartController::class, 'cashierReceipt'])->name('cashier.transactions.receipt');
+    Route::post('/cashier/transactions/{transaction}/void', [CartController::class, 'cashierVoid'])->name('cashier.transactions.void');
 
     Route::post('/cashier/member/attach', [MemberCartController::class, 'attach'])->name('cashier.member.attach');
     Route::post('/cashier/member/quick-register', [MemberCartController::class, 'quickRegister'])->name('cashier.member.quick-register');
     Route::post('/cashier/member/detach', [MemberCartController::class, 'detach'])->name('cashier.member.detach');
 
     Route::get('/backoffice', BackofficeController::class)->name('backoffice.index');
+    Route::post('/backoffice/approval-pins/generate', [BackofficeController::class, 'generateApprovalPin'])->name('backoffice.approval-pins.generate');
     Route::get('/backoffice/print-summary', [BackofficeController::class, 'printSummary'])->name('backoffice.print-summary');
 
     Route::get('/backoffice/users', [UserManagementController::class, 'index'])->name('backoffice.users.index');

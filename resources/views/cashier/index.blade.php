@@ -2043,7 +2043,7 @@
 
                                 <div class="checkout-success-actions">
                                     <a
-                                        href="{{ route('backoffice.transactions.receipt', ['transaction' => session('last_checkout.transaction_id'), 'source' => 'cashier']) }}"
+                                        href="{{ route('cashier.transactions.receipt', ['transaction' => session('last_checkout.transaction_id')]) }}"
                                         target="_blank"
                                         class="btn btn-green"
                                     >
@@ -2228,18 +2228,16 @@
                                                     </div>
 
                                                     <div class="receipt-history-actions">
-                                                        <a
-                                                            href="{{ route('backoffice.transactions.receipt', ['transaction' => $receipt->id, 'source' => 'cashier']) }}"
-                                                            target="_blank"
-                                                            class="receipt-action-btn green"
-                                                        >
-                                                            Print Receipt
-                                                        </a>
+                                                        <form method="GET" action="{{ route('cashier.transactions.receipt', ['transaction' => $receipt->id]) }}" target="_blank" class="cashier-reprint-form" data-print-count="{{ (int) ($receipt->receipt_print_count ?? 0) }}">
+                                                            <input type="hidden" name="approval_pin" value="">
+                                                            <button type="submit" class="receipt-action-btn green">Print Receipt</button>
+                                                        </form>
 
                                                         @if($receipt->status === 'completed')
-                                                            <form method="POST" action="{{ route('backoffice.transactions.void', $receipt) }}" class="cashier-void-form">
+                                                            <form method="POST" action="{{ route('cashier.transactions.void', $receipt) }}" class="cashier-void-form">
                                                                 @csrf
                                                                 <input type="hidden" name="void_reason" value="">
+                                                                <input type="hidden" name="approval_pin" value="">
                                                                 <button type="submit" class="receipt-action-btn red">Void</button>
                                                             </form>
                                                         @endif
@@ -3855,6 +3853,31 @@
             }
 
             section.classList.toggle('collapsed');
+        });
+    });
+
+
+    document.querySelectorAll('.cashier-reprint-form').forEach((form) => {
+        form.addEventListener('submit', function (event) {
+            const printCount = Number(form.dataset.printCount || 0);
+
+            if (printCount <= 0) {
+                return;
+            }
+
+            const approvalPin = window.prompt('Reprint kedua dan seterusnya butuh PIN approval dari Back Office:');
+
+            if (!approvalPin || !approvalPin.trim()) {
+                event.preventDefault();
+                showAlert('error', 'PIN approval wajib diisi untuk reprint.');
+                return;
+            }
+
+            const pinInput = form.querySelector('input[name="approval_pin"]');
+
+            if (pinInput) {
+                pinInput.value = approvalPin.trim();
+            }
         });
     });
 

@@ -17,6 +17,7 @@ class SalesTransaction extends Model
         'subtotal',
         'discount_amount',
         'promo_name',
+        'receipt_print_count',
         'tax_amount',
         'grand_total',
         'payment_method',
@@ -37,6 +38,7 @@ class SalesTransaction extends Model
         'amount_paid' => 'decimal:2',
         'change_amount' => 'decimal:2',
         'void_at' => 'datetime',
+        'receipt_print_count' => 'integer',
     ];
 
     public function user(): BelongsTo

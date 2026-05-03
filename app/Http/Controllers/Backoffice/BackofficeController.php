@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
 use App\Models\BackofficeNotification;
+use App\Models\ApprovalPin;
 use App\Models\CashierShift;
 use App\Models\Ingredient;
 use App\Models\Outlet;
@@ -368,4 +369,36 @@ class BackofficeController extends Controller
 
         return view('backoffice.print-summary', $response->getData(true));
     }
+
+    public function generateApprovalPin(Request $request)
+    {
+        $user = Auth::user()?->load(['role']);
+
+        if (! $user || ! $user->isFullAccessUser()) {
+            abort(403, 'Role kamu tidak punya akses generate PIN approval.');
+        }
+
+        $validated = $request->validate([
+            'purpose' => 'required|in:all,void,reprint',
+        ]);
+
+        $pinCode = (string) random_int(100000, 999999);
+
+        $approvalPin = ApprovalPin::create([
+            'pin_code' => $pinCode,
+            'purpose' => $validated['purpose'],
+            'expires_at' => now()->addMinutes(10),
+            'created_by_user_id' => $user->id,
+        ]);
+
+        return redirect()
+            ->route('backoffice.index')
+            ->with('approval_pin', [
+                'pin_code' => $approvalPin->pin_code,
+                'purpose' => $approvalPin->purpose,
+                'expires_at' => $approvalPin->expires_at?->format('Y-m-d H:i:s'),
+            ])
+            ->with('success', 'PIN approval berhasil dibuat. PIN berlaku 10 menit dan hanya bisa dipakai sekali.');
+    }
+
 }

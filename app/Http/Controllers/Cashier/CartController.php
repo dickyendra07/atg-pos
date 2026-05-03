@@ -8,6 +8,8 @@ use App\Models\Discount;
 use App\Models\Member;
 use App\Models\ProductVariant;
 use App\Models\Promo;
+use App\Models\BackofficeNotification;
+use App\Models\ApprovalPin;
 use App\Models\SalesTransaction;
 use App\Services\StockDeductionService;
 use Illuminate\Http\Request;
@@ -822,4 +824,171 @@ class CartController extends Controller
             ->route('cashier.index')
             ->with('success', $message);
     }
+
+
+    protected function consumeApprovalPin(string $pinCode, string $purpose, $user, ?SalesTransaction $transaction = null): ApprovalPin
+    {
+        $pinCode = trim($pinCode);
+
+        if ($pinCode === '') {
+            throw new RuntimeException('PIN approval wajib diisi.');
+        }
+
+        $approvalPin = ApprovalPin::where('pin_code', $pinCode)
+            ->whereNull('used_at')
+            ->where(function ($query) use ($purpose) {
+                $query->where('purpose', $purpose)
+                    ->orWhere('purpose', 'all');
+            })
+            ->where(function ($query) {
+                $query->whereNull('expires_at')
+                    ->orWhere('expires_at', '>=', now());
+            })
+            ->latest()
+            ->lockForUpdate()
+            ->first();
+
+        if (! $approvalPin) {
+            throw new RuntimeException('PIN approval tidak valid, sudah dipakai, atau sudah expired.');
+        }
+
+        $approvalPin->update([
+            'used_at' => now(),
+            'used_by_user_id' => $user->id,
+            'sales_transaction_id' => $transaction?->id,
+        ]);
+
+        return $approvalPin;
+    }
+
+    protected function authorizeCashierTransactionAccess(SalesTransaction $transaction)
+    {
+        $user = Auth::user()?->load(['role', 'outlet']);
+
+        if (! $user) {
+            return null;
+        }
+
+        if (! $user->canAccessCashier()) {
+            return null;
+        }
+
+        if ($user->isFullAccessUser()) {
+            return $user;
+        }
+
+        if ((int) ($transaction->outlet_id ?? 0) !== (int) ($user->outlet_id ?? 0)) {
+            return null;
+        }
+
+        return $user;
+    }
+
+    public function cashierReceipt(Request $request, SalesTransaction $transaction)
+    {
+        $user = $this->authorizeCashierTransactionAccess($transaction);
+
+        if (! $user) {
+            abort(403, 'Role kamu tidak punya akses receipt transaksi ini.');
+        }
+
+        $transaction->load(['user', 'outlet', 'member', 'items', 'voidBy']);
+
+        $currentPrintCount = (int) ($transaction->receipt_print_count ?? 0);
+
+        if ($currentPrintCount >= 1) {
+            try {
+                DB::transaction(function () use ($request, $user, $transaction) {
+                    $this->consumeApprovalPin((string) $request->input('approval_pin'), 'reprint', $user, $transaction);
+                });
+            } catch (\Throwable $e) {
+                return redirect()
+                    ->route('cashier.index')
+                    ->with('error', 'Reprint butuh approval PIN: ' . $e->getMessage());
+            }
+        }
+
+        $transaction->increment('receipt_print_count');
+
+        if ($currentPrintCount >= 1) {
+            BackofficeNotification::create([
+                'type' => 'receipt_reprint',
+                'title' => 'Receipt di-reprint',
+                'message' => 'Receipt transaksi ' . ($transaction->transaction_number ?? '-') . ' di-reprint dari kasir oleh ' . ($user->name ?? 'user') . '.',
+                'sales_transaction_id' => $transaction->id,
+                'outlet_id' => $transaction->outlet_id,
+                'created_by_user_id' => $user->id,
+            ]);
+        }
+
+        return view('backoffice.transactions.receipt', [
+            'transaction' => $transaction->fresh(['user', 'outlet', 'member', 'items', 'voidBy']),
+            'source' => 'cashier',
+            'autoprint' => true,
+        ]);
+    }
+
+    public function cashierVoid(Request $request, SalesTransaction $transaction, StockDeductionService $stockDeductionService)
+    {
+        $user = $this->authorizeCashierTransactionAccess($transaction);
+
+        if (! $user) {
+            abort(403, 'Role kamu tidak punya akses void transaksi ini.');
+        }
+
+        $validated = $request->validate([
+            'void_reason' => 'required|string|max:1000',
+            'approval_pin' => 'required|string|max:20',
+        ], [
+            'void_reason.required' => 'Alasan void wajib diisi.',
+            'approval_pin.required' => 'PIN approval wajib diisi.',
+        ]);
+
+        if (strtolower((string) $transaction->status) === 'void') {
+            return redirect()
+                ->route('cashier.index')
+                ->with('error', 'Transaksi ini sudah berstatus void.');
+        }
+
+        try {
+            DB::transaction(function () use ($transaction, $validated, $user, $stockDeductionService) {
+                $lockedTransaction = SalesTransaction::whereKey($transaction->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if (strtolower((string) $lockedTransaction->status) === 'void') {
+                    throw new RuntimeException('Transaksi ini sudah void.');
+                }
+
+                $this->consumeApprovalPin((string) $validated['approval_pin'], 'void', $user, $lockedTransaction);
+
+                $lockedTransaction->update([
+                    'status' => 'void',
+                    'void_at' => now(),
+                    'void_reason' => $validated['void_reason'],
+                    'void_by_user_id' => $user->id,
+                ]);
+
+                $stockDeductionService->restoreFromVoidedTransaction($lockedTransaction);
+
+                BackofficeNotification::create([
+                    'type' => 'transaction_void',
+                    'title' => 'Transaksi di-void',
+                    'message' => 'Transaksi ' . ($lockedTransaction->transaction_number ?? '-') . ' di-void dari kasir oleh ' . ($user->name ?? 'user') . '. Alasan: ' . $validated['void_reason'],
+                    'sales_transaction_id' => $lockedTransaction->id,
+                    'outlet_id' => $lockedTransaction->outlet_id,
+                    'created_by_user_id' => $user->id,
+                ]);
+            });
+        } catch (\Throwable $e) {
+            return redirect()
+                ->route('cashier.index')
+                ->with('error', 'Void gagal diproses: ' . $e->getMessage());
+        }
+
+        return redirect()
+            ->route('cashier.index')
+            ->with('success', 'Transaksi berhasil di-void dari kasir dan notifikasi sudah masuk back office.');
+    }
+
 }

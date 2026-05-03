@@ -732,6 +732,56 @@
                 padding-right: 18px;
             }
         }
+
+        .approval-pin-card {
+            border-radius: 22px;
+            background: rgba(255,255,255,0.94);
+            border: 1px solid #e8edf4;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.05);
+            padding: 18px;
+            margin-bottom: 18px;
+        }
+
+        .approval-pin-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .approval-pin-title {
+            font-size: 18px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .approval-pin-form {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 12px;
+            align-items: end;
+        }
+
+        .approval-pin-result {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: #ecfdf5;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+            font-weight: 900;
+            display: grid;
+            gap: 4px;
+        }
+
+        .approval-pin-code {
+            font-size: 30px;
+            letter-spacing: 0.18em;
+            color: #111827;
+        }
+
     </style>
 
     <div class="dashboard-shell">
@@ -779,6 +829,46 @@
                 </div>
             </form>
         </div>
+
+
+        @if(($user ?? auth()->user())?->isFullAccessUser())
+            <div class="approval-pin-card">
+                <div class="approval-pin-head">
+                    <div>
+                        <div class="approval-pin-title">Approval PIN Cashier</div>
+                        <div style="color:#6b7280; font-size:13px; font-weight:700; margin-top:4px;">
+                            Generate PIN untuk approve void atau reprint kedua dari halaman cashier. PIN berlaku 10 menit dan sekali pakai.
+                        </div>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ route('backoffice.approval-pins.generate') }}" class="approval-pin-form">
+                    @csrf
+
+                    <div class="field">
+                        <label for="approval_pin_purpose">Purpose</label>
+                        <select name="purpose" id="approval_pin_purpose" required>
+                            <option value="all">Void & Reprint</option>
+                            <option value="void">Void Only</option>
+                            <option value="reprint">Reprint Only</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-dark">Generate PIN</button>
+                </form>
+
+                @if(session('approval_pin'))
+                    <div class="approval-pin-result">
+                        <div>PIN Approval</div>
+                        <div class="approval-pin-code">{{ session('approval_pin.pin_code') }}</div>
+                        <div>
+                            Purpose: {{ strtoupper(session('approval_pin.purpose')) }}
+                            • Expired: {{ session('approval_pin.expires_at') }}
+                        </div>
+                    </div>
+                @endif
+            </div>
+        @endif
 
         <div class="notification-card">
             <div class="notification-head">
