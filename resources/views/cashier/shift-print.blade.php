@@ -1,15 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <meta name="theme-color" content="#111827">
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="ATG POS">
-
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Print All Receipts - Shift {{ $shift->id }}</title>
+    <title>Shift Receipt - ATG POS</title>
     <style>
         * {
             box-sizing: border-box;
@@ -17,426 +11,421 @@
 
         body {
             margin: 0;
-            font-family: Arial, sans-serif;
             background: #f3f4f6;
             color: #111827;
+            font-family: "Courier New", monospace;
+            font-size: 12px;
         }
 
         .page {
-            max-width: 960px;
-            margin: 0 auto;
-            padding: 24px;
+            min-height: 100vh;
+            padding: 18px;
         }
 
         .print-actions {
+            max-width: 320px;
+            margin: 0 auto 14px;
             display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-            margin-bottom: 20px;
+            gap: 8px;
         }
 
         .btn {
-            min-height: 42px;
-            padding: 0 16px;
-            border-radius: 12px;
             border: 0;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 800;
-            color: white;
+            border-radius: 10px;
+            padding: 10px 12px;
+            color: #fff;
             text-decoration: none;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
             display: inline-flex;
             align-items: center;
             justify-content: center;
+            flex: 1;
         }
 
-        .btn-green {
-            background: #166534;
-        }
-
-        .btn-dark {
-            background: #111827;
-        }
-
-        .print-info {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 18px;
-            padding: 18px;
-            margin-bottom: 18px;
-        }
-
-        .print-title {
-            margin: 0 0 8px;
-            font-size: 24px;
-            font-weight: 800;
-        }
-
-        .print-subtitle {
-            margin: 0;
-            color: #6b7280;
-            font-size: 14px;
-            line-height: 1.7;
-        }
-
-        .receipt-list {
-            display: grid;
-            gap: 18px;
-        }
+        .btn-green { background: #166534; }
+        .btn-dark { background: #111827; }
 
         .receipt {
             width: 80mm;
             max-width: 100%;
             margin: 0 auto;
-            background: white;
-            color: #111827;
-            padding: 14px;
-            border: 1px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 12px;
-            line-height: 1.45;
+            background: #fff;
+            padding: 14px 12px;
+            box-shadow: 0 12px 30px rgba(15,23,42,0.14);
         }
 
-        .receipt-header {
+        .center {
             text-align: center;
-            border-bottom: 1px dashed #9ca3af;
-            padding-bottom: 10px;
-            margin-bottom: 10px;
         }
 
         .brand {
-            font-size: 17px;
-            font-weight: 800;
-            letter-spacing: 0.03em;
-            margin-bottom: 4px;
+            font-size: 15px;
+            font-weight: 900;
+            line-height: 1.2;
+            margin-bottom: 3px;
         }
 
-        .outlet {
-            font-size: 12px;
-            font-weight: 700;
+        .title {
+            font-size: 13px;
+            font-weight: 900;
             margin-bottom: 4px;
         }
 
         .muted {
-            color: #6b7280;
-        }
-
-        .receipt-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 4px;
-        }
-
-        .receipt-row strong {
-            font-weight: 800;
+            color: #374151;
+            font-size: 11px;
+            line-height: 1.35;
         }
 
         .divider {
-            border-top: 1px dashed #9ca3af;
-            margin: 10px 0;
+            border-top: 1px dashed #111827;
+            margin: 8px 0;
+        }
+
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            line-height: 1.45;
+        }
+
+        .row span:first-child {
+            flex: 1;
+        }
+
+        .row span:last-child {
+            text-align: right;
+            font-weight: 700;
+        }
+
+        .trx {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            margin-bottom: 10px;
+        }
+
+        .trx-head {
+            font-weight: 900;
+            line-height: 1.45;
+        }
+
+        .status-void {
+            color: #b91c1c;
+            font-weight: 900;
         }
 
         .item {
-            margin-bottom: 8px;
+            margin-top: 5px;
+            line-height: 1.35;
         }
 
         .item-name {
             font-weight: 700;
-            margin-bottom: 3px;
         }
 
         .item-meta {
             display: flex;
             justify-content: space-between;
-            gap: 10px;
-            color: #374151;
+            gap: 8px;
+            padding-left: 8px;
         }
 
-        .modifiers {
-            margin-top: 2px;
-            font-size: 11px;
-            color: #6b7280;
+        .item-meta span:last-child {
+            text-align: right;
+            white-space: nowrap;
         }
 
-        .total-row {
-            display: flex;
-            justify-content: space-between;
-            gap: 10px;
-            font-size: 13px;
-            font-weight: 800;
-            margin-top: 4px;
+        .trx-total {
+            margin-top: 5px;
+            font-weight: 900;
         }
 
-        .grand-total {
-            font-size: 15px;
+        .grand {
+            font-size: 14px;
+            font-weight: 900;
         }
 
-        .void-badge {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 5px 10px;
-            border-radius: 999px;
-            background: #fee2e2;
-            color: #b91c1c;
-            font-size: 11px;
-            font-weight: 800;
-            text-transform: uppercase;
-            margin-top: 8px;
-        }
-
-        .receipt-footer {
-            text-align: center;
-            border-top: 1px dashed #9ca3af;
-            padding-top: 10px;
+        .footer {
             margin-top: 10px;
-            font-size: 11px;
-            color: #6b7280;
-        }
-
-        .empty-state {
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 18px;
-            padding: 24px;
             text-align: center;
-            font-weight: 700;
-            color: #6b7280;
+            font-size: 11px;
+            line-height: 1.45;
         }
 
         @media print {
-            body {
-                background: white;
-            }
-
-            .page {
-                max-width: none;
-                padding: 0;
+            @page {
+                size: 80mm auto;
                 margin: 0;
             }
 
-            .print-actions,
-            .print-info {
-                display: none !important;
+            body {
+                background: #fff;
+                margin: 0;
+                font-size: 11px;
             }
 
-            .receipt-list {
-                display: block;
+            .page {
+                min-height: 0;
+                padding: 0;
+            }
+
+            .print-actions {
+                display: none;
             }
 
             .receipt {
                 width: 80mm;
-                margin: 0 auto;
-                border: 0;
-                border-radius: 0;
-                page-break-after: always;
-                break-after: page;
-            }
-
-            .receipt:last-child {
-                page-break-after: auto;
-                break-after: auto;
+                margin: 0;
+                padding: 10px 8px;
+                box-shadow: none;
             }
         }
     </style>
 </head>
 <body>
+@php
+    $completedTransactions = $transactions->where('status', 'completed')->values();
+    $voidTransactions = $transactions->where('status', 'void')->values();
+
+    $grossSales = (float) $completedTransactions->sum('subtotal');
+    $totalDiscount = (float) $completedTransactions->sum('discount_amount');
+    $netSales = (float) $completedTransactions->sum('grand_total');
+
+    $paymentRows = [
+        'Cash' => (float) ($summary['cash_sales'] ?? 0),
+        'QRIS' => (float) ($summary['qris_sales'] ?? 0),
+        'Transfer' => (float) ($summary['transfer_sales'] ?? 0),
+        'Debit' => (float) ($summary['debit_sales'] ?? 0),
+        'Credit' => (float) ($summary['credit_sales'] ?? 0),
+    ];
+
+    $formatTransactionNumber = function ($transactionNumber) {
+        if (empty($transactionNumber)) {
+            return '-';
+        }
+
+        $parts = explode('-', $transactionNumber);
+        $lastPart = end($parts);
+
+        if (is_numeric($lastPart)) {
+            return 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
+        }
+
+        return $transactionNumber;
+    };
+@endphp
+
     <div class="page">
         <div class="print-actions">
-            <button type="button" class="btn btn-green" onclick="window.print()">Print Semua Struk</button>
-            <a href="{{ route('cashier.index') }}" class="btn btn-dark">Kembali ke Cashier</a>
+            <button type="button" class="btn btn-green" onclick="window.print()">Print Shift</button>
+            <a href="{{ route('cashier.index') }}" class="btn btn-dark">Kembali</a>
         </div>
 
-        <div class="print-info">
-            <h1 class="print-title">Print Semua Struk Shift</h1>
-
-        </div>
-
-        @if($transactions->isEmpty())
-            <div class="empty-state">
-                Belum ada transaksi dalam shift ini.
+        <div class="receipt">
+            <div class="center">
+                <div class="brand">ATG POS</div>
+                <div class="title">SHIFT TRANSACTION RECEIPT</div>
+                <div class="muted">{{ $shift->outlet->name ?? '-' }}</div>
+                <div class="muted">{{ now()->format('Y-m-d H:i:s') }}</div>
             </div>
-        @else
-            <div class="receipt-list">
-                @foreach($transactions as $transaction)
-                    @php
-                        $status = strtolower((string) ($transaction->status ?? '-'));
-                        $paymentMethod = strtoupper(trim((string) ($transaction->payment_method ?? '-')));
-                        if ($paymentMethod === '') {
-                            $paymentMethod = '-';
-                        }
-                    @endphp
 
-                    <div class="receipt">
-                        <div class="receipt-header">
-                            <div class="brand">ATG POS</div>
-                            <div class="outlet">{{ $transaction->outlet->name ?? $shift->outlet->name ?? '-' }}</div>
-                            <div class="muted">Receipt</div>
+            <div class="divider"></div>
 
-                            @if($status === 'void')
-                                <div class="void-badge">Void</div>
-                            @endif
-                        </div>
+            <div class="row">
+                <span>Shift</span>
+                <span>#{{ $shift->id }}</span>
+            </div>
+            <div class="row">
+                <span>Cashier</span>
+                <span>{{ $shift->user->name ?? '-' }}</span>
+            </div>
+            <div class="row">
+                <span>Start</span>
+                <span>{{ $shift->started_at?->format('Y-m-d H:i') ?? '-' }}</span>
+            </div>
+            <div class="row">
+                <span>End</span>
+                <span>{{ $shift->ended_at?->format('Y-m-d H:i') ?? '-' }}</span>
+            </div>
+            <div class="row">
+                <span>Opening Cash</span>
+                <span>Rp {{ number_format((float) ($shift->opening_cash ?? 0), 0, ',', '.') }}</span>
+            </div>
+            <div class="row">
+                <span>Closing Cash</span>
+                <span>
+                    @if($shift->closing_cash_actual !== null)
+                        Rp {{ number_format((float) $shift->closing_cash_actual, 0, ',', '.') }}
+                    @else
+                        -
+                    @endif
+                </span>
+            </div>
 
-                        <div class="receipt-row">
-                            <span>No</span>
-                            @php
-                                $rawTransactionNumber = $transaction->transaction_number ?? null;
-                                $displayTransactionNumber = '-';
+            <div class="divider"></div>
 
-                                if (! empty($rawTransactionNumber)) {
-                                    $parts = explode('-', $rawTransactionNumber);
-                                    $lastPart = end($parts);
+            <div class="row">
+                <span>Total Trx</span>
+                <span>{{ number_format((int) $transactions->count(), 0, ',', '.') }}</span>
+            </div>
+            <div class="row">
+                <span>Completed</span>
+                <span>{{ number_format((int) $completedTransactions->count(), 0, ',', '.') }}</span>
+            </div>
+            <div class="row">
+                <span>Void</span>
+                <span>{{ number_format((int) $voidTransactions->count(), 0, ',', '.') }}</span>
+            </div>
+            <div class="row">
+                <span>Gross Sales</span>
+                <span>Rp {{ number_format($grossSales, 0, ',', '.') }}</span>
+            </div>
+            <div class="row">
+                <span>Discount</span>
+                <span>- Rp {{ number_format($totalDiscount, 0, ',', '.') }}</span>
+            </div>
+            <div class="row grand">
+                <span>Net Sales</span>
+                <span>Rp {{ number_format($netSales, 0, ',', '.') }}</span>
+            </div>
 
-                                    if (is_numeric($lastPart)) {
-                                        $displayTransactionNumber = 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
-                                    } else {
-                                        $displayTransactionNumber = $rawTransactionNumber;
-                                    }
-                                }
-                            @endphp
-                            <strong>{{ $displayTransactionNumber }}</strong>
-                        </div>
+            <div class="divider"></div>
 
-                        <div class="receipt-row">
-                            <span>Date</span>
-                            <strong>{{ $transaction->created_at?->format('d M Y H:i') ?? '-' }}</strong>
-                        </div>
+            <div class="center title">TRANSAKSI SHIFT</div>
 
-                        <div class="receipt-row">
-                            <span>Cashier</span>
-                            <strong>{{ $transaction->user->name ?? $shift->user->name ?? '-' }}</strong>
-                        </div>
+            @forelse($transactions as $transaction)
+                @php
+                    $status = strtolower((string) ($transaction->status ?? '-'));
+                    $isVoid = $status === 'void';
+                    $paymentMethod = strtoupper(trim((string) ($transaction->payment_method ?? '-'))) ?: '-';
+                    $displayTransactionNumber = $formatTransactionNumber($transaction->transaction_number ?? null);
+                @endphp
 
-                        @if($transaction->member)
-                            <div class="receipt-row">
-                                <span>Member</span>
-                                <strong>{{ $transaction->member->name }}</strong>
-                            </div>
+                <div class="trx">
+                    <div class="divider"></div>
+
+                    <div class="trx-head">
+                        {{ $loop->iteration }}. {{ $displayTransactionNumber }}
+                        @if($isVoid)
+                            <span class="status-void">[VOID]</span>
                         @endif
+                    </div>
 
-                        <div class="divider"></div>
+                    <div class="muted">
+                        {{ $transaction->created_at?->format('Y-m-d H:i:s') ?? '-' }} | {{ $paymentMethod }}
+                    </div>
 
-                        @forelse($transaction->items as $item)
-                            <div class="item">
-                                <div class="item-name">
-                                    {{ $item->product_name ?? '-' }}
-                                    @if($item->variant_name)
-                                        - {{ $item->variant_name }}
+                    @if($transaction->member)
+                        <div class="muted">Member: {{ $transaction->member->name }}</div>
+                    @endif
+
+                    @forelse($transaction->items as $item)
+                        <div class="item">
+                            <div class="item-name">
+                                {{ $item->product_name ?? '-' }}
+                                @if($item->variant_name)
+                                    - {{ $item->variant_name }}
+                                @endif
+                            </div>
+
+                            @if($item->less_sugar || $item->less_ice)
+                                <div class="muted">
+                                    @if($item->less_sugar)
+                                        Less Sugar
+                                    @endif
+                                    @if($item->less_sugar && $item->less_ice)
+                                        /
+                                    @endif
+                                    @if($item->less_ice)
+                                        Less Ice
                                     @endif
                                 </div>
+                            @endif
 
-                                @if($item->less_sugar || $item->less_ice)
-                                    <div class="modifiers">
-                                        @if($item->less_sugar)
-                                            Less Sugar
-                                        @endif
-
-                                        @if($item->less_sugar && $item->less_ice)
-                                            ,
-                                        @endif
-
-                                        @if($item->less_ice)
-                                            Less Ice
-                                        @endif
-                                    </div>
-                                @endif
-
-                                <div class="item-meta">
-                                    <span>
-                                        {{ number_format((float) $item->qty, 0, ',', '.') }}
-                                        x Rp {{ number_format((float) $item->price, 0, ',', '.') }}
-                                    </span>
-                                    <strong>
-                                        Rp {{ number_format((float) $item->line_total, 0, ',', '.') }}
-                                    </strong>
-                                </div>
+                            <div class="item-meta">
+                                <span>
+                                    {{ number_format((float) $item->qty, 0, ',', '.') }}
+                                    x Rp {{ number_format((float) $item->price, 0, ',', '.') }}
+                                </span>
+                                <span>
+                                    Rp {{ number_format((float) $item->line_total, 0, ',', '.') }}
+                                </span>
                             </div>
-                        @empty
-                            <div class="item">
-                                <div class="item-name">-</div>
-                            </div>
-                        @endforelse
-
-                        <div class="divider"></div>
-
-                        <div class="receipt-row">
-                            <span>Subtotal</span>
-                            <strong>Rp {{ number_format((float) ($transaction->subtotal ?? 0), 0, ',', '.') }}</strong>
                         </div>
+                    @empty
+                        <div class="item">Tidak ada item.</div>
+                    @endforelse
 
-                        @if(!empty($transaction->promo_name))
-                            <div class="receipt-row">
-                                <span>Promo</span>
-                                <strong>{{ $transaction->promo_name }}</strong>
-                            </div>
-                        @endif
-
-                        @if((float) ($transaction->discount_amount ?? 0) > 0)
-                            <div class="receipt-row">
-                                <span>Discount</span>
-                                <strong>- Rp {{ number_format((float) $transaction->discount_amount, 0, ',', '.') }}</strong>
-                            </div>
-                        @endif
-
-                        @if((float) ($transaction->tax_amount ?? 0) > 0)
-                            <div class="receipt-row">
-                                <span>Tax</span>
-                                <strong>Rp {{ number_format((float) $transaction->tax_amount, 0, ',', '.') }}</strong>
-                            </div>
-                        @endif
-
-                        <div class="total-row grand-total">
-                            <span>Grand Total</span>
-                            <span>Rp {{ number_format((float) ($transaction->grand_total ?? 0), 0, ',', '.') }}</span>
+                    @if(!empty($transaction->promo_name))
+                        <div class="row">
+                            <span>Promo</span>
+                            <span>{{ $transaction->promo_name }}</span>
                         </div>
+                    @endif
 
-                        <div class="divider"></div>
-
-                        <div class="receipt-row">
-                            <span>Payment</span>
-                            <strong>{{ $paymentMethod }}</strong>
+                    @if((float) ($transaction->discount_amount ?? 0) > 0)
+                        <div class="row">
+                            <span>Discount</span>
+                            <span>- Rp {{ number_format((float) $transaction->discount_amount, 0, ',', '.') }}</span>
                         </div>
+                    @endif
 
-                        <div class="receipt-row">
-                            <span>Paid</span>
-                            <strong>Rp {{ number_format((float) ($transaction->amount_paid ?? 0), 0, ',', '.') }}</strong>
-                        </div>
-
-                        <div class="receipt-row">
-                            <span>Change</span>
-                            <strong>Rp {{ number_format((float) ($transaction->change_amount ?? 0), 0, ',', '.') }}</strong>
-                        </div>
-
-                        @if($status === 'void')
-                            <div class="divider"></div>
-
-                            <div class="receipt-row">
-                                <span>Void At</span>
-                                <strong>{{ $transaction->void_at?->format('d M Y H:i') ?? '-' }}</strong>
-                            </div>
-
-                            <div class="receipt-row">
-                                <span>Void By</span>
-                                <strong>{{ $transaction->voidBy->name ?? '-' }}</strong>
-                            </div>
-
-                            <div style="margin-top:6px;">
-                                <strong>Void Reason:</strong><br>
-                                {{ $transaction->void_reason ?? '-' }}
-                            </div>
-                        @endif
-
-                        <div class="receipt-footer">
-                            Terima kasih.<br>
-                            Printed from shift #{{ $shift->id }}
-                        </div>
+                    <div class="row trx-total">
+                        <span>Total</span>
+                        <span>Rp {{ number_format((float) ($transaction->grand_total ?? 0), 0, ',', '.') }}</span>
                     </div>
-                @endforeach
+
+                    @if($isVoid)
+                        <div class="muted">
+                            Void reason: {{ $transaction->void_reason ?? '-' }}
+                        </div>
+                    @endif
+                </div>
+            @empty
+                <div class="divider"></div>
+                <div class="center muted">Belum ada transaksi dalam shift ini.</div>
+            @endforelse
+
+            <div class="divider"></div>
+
+            <div class="center title">PAYMENT SUMMARY</div>
+            @foreach($paymentRows as $paymentLabel => $paymentTotal)
+                @if($paymentTotal > 0)
+                    <div class="row">
+                        <span>{{ $paymentLabel }}</span>
+                        <span>Rp {{ number_format($paymentTotal, 0, ',', '.') }}</span>
+                    </div>
+                @endif
+            @endforeach
+
+            <div class="divider"></div>
+
+            <div class="row">
+                <span>Expected Cash</span>
+                <span>Rp {{ number_format((float) ($summary['expected_cash'] ?? 0), 0, ',', '.') }}</span>
             </div>
-        @endif
+            <div class="row">
+                <span>Difference</span>
+                <span>Rp {{ number_format((float) ($summary['difference'] ?? 0), 0, ',', '.') }}</span>
+            </div>
+
+            @if(!empty($shift->closing_note))
+                <div class="divider"></div>
+                <div class="muted">
+                    Note: {{ $shift->closing_note }}
+                </div>
+            @endif
+
+            <div class="divider"></div>
+
+            <div class="footer">
+                End of shift report<br>
+                Simpan print ini sebagai bukti tutup shift
+            </div>
+        </div>
     </div>
 
     <script>
@@ -448,15 +437,5 @@
             }
         });
     </script>
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/service-worker.js').catch(function () {
-                    // Silent fail supaya tidak ganggu POS flow.
-                });
-            });
-        }
-    </script>
-
 </body>
 </html>
