@@ -53,7 +53,7 @@ class User extends Authenticatable
 
     public function outlets(): BelongsToMany
     {
-        return $this->belongsToMany(Outlet::class)->withTimestamps();
+        return $this->belongsToMany(Outlet::class, 'user_outlet', 'user_id', 'outlet_id')->withTimestamps();
     }
 
     public function roleCode(): ?string
