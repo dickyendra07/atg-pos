@@ -354,6 +354,36 @@
                 font-size: 28px;
             }
         }
+
+        .password-wrap {
+            position: relative;
+        }
+
+        .password-wrap .form-input {
+            padding-right: 72px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            border: 0;
+            background: #fff4ed;
+            color: var(--brand-dark);
+            border-radius: 999px;
+            padding: 7px 11px;
+            font-size: 12px;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: inset 0 0 0 1px #f4d6c8;
+        }
+
+        .password-toggle:hover {
+            background: #ffe9db;
+            color: #111827;
+        }
+
     </style>
 </head>
 <body>
@@ -423,14 +453,17 @@
 
                         <div class="form-group">
                             <label class="form-label" for="password">Password</label>
-                            <input
-                                id="password"
-                                type="password"
-                                name="password"
-                                class="form-input"
-                                placeholder="Enter your password"
-                                required
-                            >
+                            <div class="password-wrap">
+                                <input
+                                    id="password"
+                                    type="password"
+                                    name="password"
+                                    class="form-input"
+                                    placeholder="Enter your password"
+                                    required
+                                >
+                                <button type="button" class="password-toggle" id="password-toggle" aria-label="Show password">Show</button>
+                            </div>
                             @error('password')
                                 <div class="error-text">{{ $message }}</div>
                             @enderror
@@ -453,5 +486,23 @@
             </div>
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const passwordInput = document.getElementById('password');
+            const passwordToggle = document.getElementById('password-toggle');
+
+            if (!passwordInput || !passwordToggle) return;
+
+            passwordToggle.addEventListener('click', function () {
+                const isHidden = passwordInput.type === 'password';
+
+                passwordInput.type = isHidden ? 'text' : 'password';
+                passwordToggle.textContent = isHidden ? 'Hide' : 'Show';
+                passwordToggle.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+            });
+        });
+    </script>
+
 </body>
 </html>
