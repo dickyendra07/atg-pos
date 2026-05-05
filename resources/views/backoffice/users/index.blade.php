@@ -388,6 +388,23 @@
                 margin-right: 18px;
             }
         }
+
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .delete-form {
+            margin: 0;
+        }
+
+        .btn-red {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            color: #fff;
+        }
+
     </style>
 
     <div class="users-shell">
@@ -493,7 +510,17 @@
                                         </td>
                                         <td>{{ $managedUser->created_at?->format('Y-m-d H:i') ?? '-' }}</td>
                                         <td>
-                                            <a href="{{ route('backoffice.users.edit', $managedUser->id) }}" class="btn btn-blue">Edit</a>
+                                            <div class="action-buttons">
+                                                <a href="{{ route('backoffice.users.edit', $managedUser->id) }}" class="btn btn-blue">Edit</a>
+
+                                                @if((int) $managedUser->id !== (int) auth()->id())
+                                                    <form method="POST" action="{{ route('backoffice.users.destroy', $managedUser->id) }}" class="delete-form" onsubmit="return confirm('Yakin hapus user ini?')">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-red">Delete</button>
+                                                    </form>
+                                                @endif
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach

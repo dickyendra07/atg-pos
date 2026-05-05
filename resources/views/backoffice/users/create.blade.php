@@ -315,27 +315,29 @@
                         ->map(fn ($id) => (int) $id)
                         ->all();
                 @endphp
-                    <div class="outlet-dropdown" data-outlet-dropdown>
-                        <button type="button" class="outlet-dropdown-button" data-outlet-dropdown-button>
-                            Pilih Outlet
-                        </button>
+                    <details class="outlet-picker" data-multiselect-picker data-label="outlet">
+                        <summary>
+                            @if(count($selectedOutletIds))
+                                {{ count($selectedOutletIds) }} outlet dipilih
+                            @else
+                                Pilih Outlet
+                            @endif
+                        </summary>
 
-                        <div class="outlet-dropdown-panel">
+                        <div class="outlet-options">
                             @foreach($outlets as $outlet)
                                 <label class="outlet-option">
                                     <input
                                         type="checkbox"
                                         name="outlet_ids[]"
                                         value="{{ $outlet->id }}"
-                                        data-outlet-checkbox
-                                        data-outlet-name="{{ $outlet->name }}"
                                         @checked(in_array((int) $outlet->id, $selectedOutletIds, true))
                                     >
                                     <span>{{ $outlet->name }}</span>
                                 </label>
                             @endforeach
                         </div>
-                    </div>
+                    </details>
                     <small class="field-help">Bisa pilih lebih dari 1 outlet. Kosongkan hanya untuk user global.</small>
                 </div>
 

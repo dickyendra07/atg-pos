@@ -65,6 +65,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/backoffice/users', [UserManagementController::class, 'store'])->name('backoffice.users.store');
     Route::get('/backoffice/users/{managedUser}/edit', [UserManagementController::class, 'edit'])->name('backoffice.users.edit');
     Route::put('/backoffice/users/{managedUser}', [UserManagementController::class, 'update'])->name('backoffice.users.update');
+    Route::delete('/backoffice/users/{managedUser}', [UserManagementController::class, 'destroy'])->name('backoffice.users.destroy');
 
     Route::get('/backoffice/outlets', [OutletViewController::class, 'index'])->name('backoffice.outlets.index');
     Route::get('/backoffice/outlets/create', [OutletViewController::class, 'create'])->name('backoffice.outlets.create');

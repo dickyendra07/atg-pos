@@ -30,7 +30,9 @@ class UserManagementController extends Controller
 
     protected function getRoles()
     {
-        return Role::orderBy('name')->get();
+        return Role::whereNotIn('code', ['admin_outlet', 'staff_gudang'])
+            ->orderBy('name')
+            ->get();
     }
 
     protected function getOutlets()
@@ -204,4 +206,30 @@ class UserManagementController extends Controller
             ->route('backoffice.users.index')
             ->with('success', 'User berhasil diupdate.');
     }
+
+    public function destroy(User $managedUser)
+    {
+        $authUser = $this->authorizeAccess();
+
+        if (! $authUser) {
+            return redirect()
+                ->route('backoffice.index')
+                ->with('error', 'Role kamu tidak punya akses ke delete user.');
+        }
+
+        if ((int) $managedUser->id === (int) $authUser->id) {
+            return redirect()
+                ->route('backoffice.users.index')
+                ->with('error', 'User yang sedang login tidak bisa menghapus akun sendiri.');
+        }
+
+        $managedUser->roles()->detach();
+        $managedUser->outlets()->detach();
+        $managedUser->delete();
+
+        return redirect()
+            ->route('backoffice.users.index')
+            ->with('success', 'User berhasil dihapus.');
+    }
+
 }
