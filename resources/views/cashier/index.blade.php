@@ -3758,14 +3758,26 @@
                 return;
             }
 
+            const pin = window.prompt('Masukkan PIN approval dari back office. Kalau belum ada PIN, kosongkan lalu OK untuk request PIN:');
+
+            if (pin === null) {
+                return;
+            }
+
             const confirmed = window.confirm('Yakin void transaksi ini? Stock akan dikembalikan.');
             if (!confirmed) {
                 return;
             }
 
-            const hiddenInput = form.querySelector('input[name="void_reason"]');
-            if (hiddenInput) {
-                hiddenInput.value = String(reason).trim();
+            const hiddenReasonInput = form.querySelector('input[name="void_reason"]');
+            const hiddenPinInput = form.querySelector('input[name="approval_pin"]');
+
+            if (hiddenReasonInput) {
+                hiddenReasonInput.value = String(reason).trim();
+            }
+
+            if (hiddenPinInput) {
+                hiddenPinInput.value = String(pin).trim();
             }
 
             form.submit();

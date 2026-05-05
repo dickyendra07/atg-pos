@@ -15,6 +15,7 @@ class ApprovalPin extends Model
         'created_by_user_id',
         'used_by_user_id',
         'sales_transaction_id',
+        'outlet_id',
     ];
 
     protected $casts = [
@@ -37,7 +38,12 @@ class ApprovalPin extends Model
         return $this->belongsTo(SalesTransaction::class, 'sales_transaction_id');
     }
 
-    public function isUsableFor(string $purpose): bool
+    public function outlet(): BelongsTo
+    {
+        return $this->belongsTo(Outlet::class);
+    }
+
+    public function isUsableFor(string $purpose, ?int $outletId = null, ?int $transactionId = null): bool
     {
         if ($this->used_at) {
             return false;
@@ -47,6 +53,18 @@ class ApprovalPin extends Model
             return false;
         }
 
-        return $this->purpose === 'all' || $this->purpose === $purpose;
+        if (! in_array($this->purpose, [$purpose, 'all'], true)) {
+            return false;
+        }
+
+        if ($outletId !== null && (int) ($this->outlet_id ?? 0) !== (int) $outletId) {
+            return false;
+        }
+
+        if ($transactionId !== null && (int) ($this->sales_transaction_id ?? 0) !== (int) $transactionId) {
+            return false;
+        }
+
+        return true;
     }
 }

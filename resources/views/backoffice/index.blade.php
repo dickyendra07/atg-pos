@@ -831,42 +831,16 @@
         </div>
 
 
-        @if(($user ?? auth()->user())?->isFullAccessUser())
+        @if(session('approval_pin'))
             <div class="approval-pin-card">
-                <div class="approval-pin-head">
-                    <div>
-                        <div class="approval-pin-title">Approval PIN Cashier</div>
-                        <div style="color:#6b7280; font-size:13px; font-weight:700; margin-top:4px;">
-                            Generate PIN untuk approve void atau reprint kedua dari halaman cashier. PIN berlaku 10 menit dan sekali pakai.
-                        </div>
-                    </div>
+                <div class="approval-pin-title">PIN Approval</div>
+                <div class="approval-pin-code">{{ session('approval_pin.pin_code') }}</div>
+                <div style="color:#6b7280; font-size:13px; font-weight:800;">
+                    {{ strtoupper(session('approval_pin.purpose')) }}
+                    • {{ session('approval_pin.transaction_number') }}
+                    • {{ session('approval_pin.outlet_name') }}
+                    • Expired: {{ session('approval_pin.expires_at') }}
                 </div>
-
-                <form method="POST" action="{{ route('backoffice.approval-pins.generate') }}" class="approval-pin-form">
-                    @csrf
-
-                    <div class="field">
-                        <label for="approval_pin_purpose">Purpose</label>
-                        <select name="purpose" id="approval_pin_purpose" required>
-                            <option value="all">Void & Reprint</option>
-                            <option value="void">Void Only</option>
-                            <option value="reprint">Reprint Only</option>
-                        </select>
-                    </div>
-
-                    <button type="submit" class="btn btn-dark">Generate PIN</button>
-                </form>
-
-                @if(session('approval_pin'))
-                    <div class="approval-pin-result">
-                        <div>PIN Approval</div>
-                        <div class="approval-pin-code">{{ session('approval_pin.pin_code') }}</div>
-                        <div>
-                            Purpose: {{ strtoupper(session('approval_pin.purpose')) }}
-                            • Expired: {{ session('approval_pin.expires_at') }}
-                        </div>
-                    </div>
-                @endif
             </div>
         @endif
 
@@ -914,6 +888,23 @@
                             </div>
 
                             @if($notification->sales_transaction_id)
+                                @php
+                                    $pinPurpose = str_contains((string) $notification->type, 'void') ? 'void' : 'reprint';
+                                @endphp
+                                @if(($user ?? auth()->user())?->isFullAccessUser())
+                                    @php
+                                        $pinPurpose = str_contains((string) $notification->type, 'void') ? 'void' : 'reprint';
+                                    @endphp
+
+                                    <form method="POST" action="{{ route('backoffice.approval-pins.generate') }}" style="display:inline-flex; margin-right:8px;">
+                                        @csrf
+                                        <input type="hidden" name="notification_id" value="{{ $notification->id }}">
+                                        <input type="hidden" name="sales_transaction_id" value="{{ $notification->sales_transaction_id }}">
+                                        <input type="hidden" name="purpose" value="{{ $pinPurpose }}">
+                                        <button type="submit" class="btn btn-brand">Generate PIN</button>
+                                    </form>
+                                @endif
+
                                 <a href="{{ route('backoffice.transactions.show', $notification->sales_transaction_id) }}" class="btn btn-dark">
                                     Lihat Transaksi
                                 </a>

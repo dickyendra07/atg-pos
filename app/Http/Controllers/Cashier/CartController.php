@@ -844,21 +844,40 @@ class CartController extends Controller
                 $query->whereNull('expires_at')
                     ->orWhere('expires_at', '>=', now());
             })
+            ->when($transaction, function ($query) use ($transaction) {
+                $query->where('sales_transaction_id', $transaction->id)
+                    ->where('outlet_id', $transaction->outlet_id);
+            })
             ->latest()
             ->lockForUpdate()
             ->first();
 
-        if (! $approvalPin) {
-            throw new RuntimeException('PIN approval tidak valid, sudah dipakai, atau sudah expired.');
+        if (! $approvalPin || ! $approvalPin->isUsableFor($purpose, $transaction?->outlet_id, $transaction?->id)) {
+            throw new RuntimeException('PIN approval tidak valid untuk transaksi/outlet ini, sudah dipakai, atau sudah expired.');
         }
 
         $approvalPin->update([
             'used_at' => now(),
             'used_by_user_id' => $user->id,
-            'sales_transaction_id' => $transaction?->id,
         ]);
 
         return $approvalPin;
+    }
+
+    protected function createApprovalRequestNotification(SalesTransaction $transaction, $user, string $purpose, ?string $reason = null): void
+    {
+        $type = $purpose === 'void' ? 'transaction_void_request' : 'receipt_reprint_request';
+        $title = $purpose === 'void' ? 'Request PIN Void' : 'Request PIN Reprint';
+        $actionLabel = $purpose === 'void' ? 'void' : 'reprint ke-3';
+
+        BackofficeNotification::create([
+            'type' => $type,
+            'title' => $title,
+            'message' => 'Kasir ' . ($user->name ?? 'user') . ' meminta PIN untuk ' . $actionLabel . ' transaksi ' . ($transaction->transaction_number ?? '-') . ($reason ? '. Alasan: ' . $reason : ''),
+            'sales_transaction_id' => $transaction->id,
+            'outlet_id' => $transaction->outlet_id,
+            'created_by_user_id' => $user->id,
+        ]);
     }
 
     protected function authorizeCashierTransactionAccess(SalesTransaction $transaction)
@@ -896,21 +915,23 @@ class CartController extends Controller
 
         $currentPrintCount = (int) ($transaction->receipt_print_count ?? 0);
 
-        if ($currentPrintCount >= 1) {
+        if ($currentPrintCount >= 2) {
             try {
                 DB::transaction(function () use ($request, $user, $transaction) {
                     $this->consumeApprovalPin((string) $request->input('approval_pin'), 'reprint', $user, $transaction);
                 });
             } catch (\Throwable $e) {
+                $this->createApprovalRequestNotification($transaction, $user, 'reprint');
+
                 return redirect()
                     ->route('cashier.index')
-                    ->with('error', 'Reprint butuh approval PIN: ' . $e->getMessage());
+                    ->with('error', 'Reprint ke-3 butuh approval PIN. Request sudah masuk ke back office.');
             }
         }
 
         $transaction->increment('receipt_print_count');
 
-        if ($currentPrintCount >= 1) {
+        if ($currentPrintCount >= 2) {
             BackofficeNotification::create([
                 'type' => 'receipt_reprint',
                 'title' => 'Receipt di-reprint',
@@ -938,16 +959,23 @@ class CartController extends Controller
 
         $validated = $request->validate([
             'void_reason' => 'required|string|max:1000',
-            'approval_pin' => 'required|string|max:20',
+            'approval_pin' => 'nullable|string|max:20',
         ], [
             'void_reason.required' => 'Alasan void wajib diisi.',
-            'approval_pin.required' => 'PIN approval wajib diisi.',
         ]);
 
         if (strtolower((string) $transaction->status) === 'void') {
             return redirect()
                 ->route('cashier.index')
                 ->with('error', 'Transaksi ini sudah berstatus void.');
+        }
+
+        if (empty(trim((string) ($validated['approval_pin'] ?? '')))) {
+            $this->createApprovalRequestNotification($transaction, $user, 'void', $validated['void_reason']);
+
+            return redirect()
+                ->route('cashier.index')
+                ->with('error', 'Void butuh approval PIN. Request sudah masuk ke back office.');
         }
 
         try {
@@ -960,7 +988,12 @@ class CartController extends Controller
                     throw new RuntimeException('Transaksi ini sudah void.');
                 }
 
-                $this->consumeApprovalPin((string) $validated['approval_pin'], 'void', $user, $lockedTransaction);
+                try {
+                    $this->consumeApprovalPin((string) ($validated['approval_pin'] ?? ''), 'void', $user, $lockedTransaction);
+                } catch (\Throwable $e) {
+                    $this->createApprovalRequestNotification($lockedTransaction, $user, 'void', $validated['void_reason']);
+                    throw new RuntimeException('Void butuh approval PIN. Request sudah masuk ke back office.');
+                }
 
                 $lockedTransaction->update([
                     'status' => 'void',
