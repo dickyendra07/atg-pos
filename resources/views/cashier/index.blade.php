@@ -1884,6 +1884,116 @@
             color: #ffffff;
         }
 
+
+        /* Safe payment popup: no DOM moving */
+        .open-payment-modal-btn {
+            width: 100%;
+            border: 0;
+            border-radius: 16px;
+            background: #15803d;
+            color: #ffffff;
+            padding: 15px 16px;
+            font-size: 15px;
+            font-weight: 900;
+            cursor: pointer;
+            margin-top: 12px;
+            box-shadow: 0 14px 30px rgba(21, 128, 61, 0.18);
+        }
+
+        .open-payment-modal-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .payment-section.payment-modal-panel {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 90;
+            width: auto;
+            height: auto;
+            margin: 0;
+            padding: 18px;
+            overflow: auto;
+            background: rgba(15, 23, 42, 0.48);
+            border: 0;
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .payment-section.payment-modal-panel.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .payment-section.payment-modal-panel > form,
+        .payment-section.payment-modal-panel .payment-form {
+            width: min(520px, 100%);
+            max-height: calc(100vh - 36px);
+            overflow-y: auto;
+            background: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 24px;
+            box-shadow: 0 26px 80px rgba(15, 23, 42, 0.25);
+            padding: 18px;
+        }
+
+        .payment-section.payment-modal-panel .payment-section-head {
+            position: sticky;
+            top: -18px;
+            z-index: 2;
+            background: #ffffff;
+            border-bottom: 1px solid #edf1f6;
+            margin: -18px -18px 16px;
+            padding: 18px;
+            border-radius: 24px 24px 0 0;
+        }
+
+        .payment-modal-close-btn {
+            width: 34px;
+            height: 34px;
+            border: 0;
+            border-radius: 999px;
+            background: #f3f4f6;
+            color: #111827;
+            font-size: 20px;
+            font-weight: 900;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .payment-section.payment-modal-panel .checkout-actions {
+            position: sticky;
+            bottom: -18px;
+            background: #ffffff;
+            padding-top: 12px;
+            padding-bottom: 2px;
+        }
+
+        .promo-total-box {
+            display: none !important;
+        }
+
+        @media (max-width: 640px) {
+            .payment-section.payment-modal-panel {
+                align-items: flex-end;
+                padding: 0;
+            }
+
+            .payment-section.payment-modal-panel.active {
+                align-items: flex-end;
+            }
+
+            .payment-section.payment-modal-panel > form,
+            .payment-section.payment-modal-panel .payment-form {
+                width: 100%;
+                max-height: 92vh;
+                border-radius: 24px 24px 0 0;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -2452,12 +2562,17 @@
                                     </div>
                                 </div>
 
-                                <div class="payment-section">
+                                <button type="button" class="open-payment-modal-btn" id="open-payment-modal-btn">
+                                    Bayar
+                                </button>
+
+                                <div class="payment-section payment-modal-panel" id="payment-modal-panel">
                                     <div class="payment-section-head">
                                         <div>
                                             <div class="payment-section-title">Payment & Checkout</div>
 
                                         </div>
+                                        <button type="button" class="payment-modal-close-btn" id="close-payment-modal-btn">×</button>
                                     </div>
 
                                     <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
@@ -3783,6 +3898,33 @@
             form.submit();
         });
     });
+
+
+    const paymentModalPanel = document.getElementById('payment-modal-panel');
+    const openPaymentModalBtn = document.getElementById('open-payment-modal-btn');
+    const closePaymentModalBtn = document.getElementById('close-payment-modal-btn');
+
+    openPaymentModalBtn?.addEventListener('click', function () {
+        paymentModalPanel?.classList.add('active');
+        updateLivePaymentSummary();
+    });
+
+    closePaymentModalBtn?.addEventListener('click', function () {
+        paymentModalPanel?.classList.remove('active');
+    });
+
+    paymentModalPanel?.addEventListener('click', function (event) {
+        if (event.target === paymentModalPanel) {
+            paymentModalPanel.classList.remove('active');
+        }
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+            paymentModalPanel?.classList.remove('active');
+        }
+    });
+
 
     startShiftForm?.addEventListener('submit', async function (event) {
         event.preventDefault();
