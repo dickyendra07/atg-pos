@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shift Receipt - ATG POS</title>
+    <title>Shift Print - ATG POS</title>
     <style>
         * {
             box-sizing: border-box;
@@ -14,47 +14,46 @@
             background: #f3f4f6;
             color: #111827;
             font-family: "Courier New", monospace;
-            font-size: 12px;
-        }
-
-        .page {
-            min-height: 100vh;
-            padding: 18px;
         }
 
         .print-actions {
-            max-width: 320px;
-            margin: 0 auto 14px;
+            width: 320px;
+            margin: 18px auto 10px;
             display: flex;
             gap: 8px;
         }
 
         .btn {
             border: 0;
-            border-radius: 10px;
-            padding: 10px 12px;
-            color: #fff;
-            text-decoration: none;
-            font-family: Arial, sans-serif;
-            font-size: 12px;
+            border-radius: 8px;
+            padding: 10px 14px;
             font-weight: 800;
+            font-size: 12px;
             cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
+            text-decoration: none;
+            text-align: center;
             flex: 1;
+            font-family: Arial, sans-serif;
         }
 
-        .btn-green { background: #166534; }
-        .btn-dark { background: #111827; }
+        .btn-green {
+            background: #15803d;
+            color: #fff;
+        }
+
+        .btn-dark {
+            background: #111827;
+            color: #fff;
+        }
 
         .receipt {
-            width: 80mm;
-            max-width: 100%;
-            margin: 0 auto;
-            background: #fff;
+            width: 320px;
+            margin: 0 auto 24px;
             padding: 14px 12px;
-            box-shadow: 0 12px 30px rgba(15,23,42,0.14);
+            background: #fff;
+            color: #111827;
+            font-size: 12px;
+            line-height: 1.35;
         }
 
         .center {
@@ -64,20 +63,17 @@
         .brand {
             font-size: 15px;
             font-weight: 900;
-            line-height: 1.2;
-            margin-bottom: 3px;
+            letter-spacing: 0.08em;
         }
 
         .title {
             font-size: 13px;
             font-weight: 900;
-            margin-bottom: 4px;
+            margin-top: 2px;
         }
 
         .muted {
-            color: #374151;
-            font-size: 11px;
-            line-height: 1.35;
+            color: #4b5563;
         }
 
         .divider {
@@ -89,70 +85,58 @@
             display: flex;
             justify-content: space-between;
             gap: 8px;
-            line-height: 1.45;
         }
 
         .row span:first-child {
             flex: 1;
         }
 
+        .row strong,
         .row span:last-child {
             text-align: right;
-            font-weight: 700;
         }
 
-        .trx {
-            break-inside: avoid;
-            page-break-inside: avoid;
-            margin-bottom: 10px;
-        }
-
-        .trx-head {
+        .section-title {
+            text-align: center;
             font-weight: 900;
-            line-height: 1.45;
-        }
-
-        .status-void {
-            color: #b91c1c;
-            font-weight: 900;
+            margin: 8px 0 6px;
         }
 
         .item {
-            margin-top: 5px;
-            line-height: 1.35;
+            margin-bottom: 8px;
+            break-inside: avoid;
         }
 
         .item-name {
-            font-weight: 700;
+            font-weight: 900;
+            word-break: break-word;
         }
 
         .item-meta {
             display: flex;
             justify-content: space-between;
             gap: 8px;
-            padding-left: 8px;
+            margin-top: 2px;
         }
 
-        .item-meta span:last-child {
+        .item-meta span:first-child {
+            flex: 1;
+        }
+
+        .item-meta strong {
             text-align: right;
             white-space: nowrap;
         }
 
-        .trx-total {
-            margin-top: 5px;
-            font-weight: 900;
-        }
-
         .grand {
-            font-size: 14px;
             font-weight: 900;
+            font-size: 13px;
         }
 
         .footer {
             margin-top: 10px;
             text-align: center;
-            font-size: 11px;
-            line-height: 1.45;
+            font-weight: 800;
         }
 
         @media print {
@@ -163,13 +147,6 @@
 
             body {
                 background: #fff;
-                margin: 0;
-                font-size: 11px;
-            }
-
-            .page {
-                min-height: 0;
-                padding: 0;
             }
 
             .print-actions {
@@ -179,252 +156,188 @@
             .receipt {
                 width: 80mm;
                 margin: 0;
-                padding: 10px 8px;
+                padding: 10px;
                 box-shadow: none;
             }
         }
     </style>
 </head>
 <body>
-@php
-    $completedTransactions = $transactions->where('status', 'completed')->values();
-    $voidTransactions = $transactions->where('status', 'void')->values();
+    @php
+$completedTransactions = $transactions
+            ->filter(fn ($transaction) => strtolower((string) ($transaction->status ?? '')) === 'completed')
+            ->values();
 
-    $grossSales = (float) $completedTransactions->sum('subtotal');
-    $totalDiscount = (float) $completedTransactions->sum('discount_amount');
-    $netSales = (float) $completedTransactions->sum('grand_total');
+        $voidTransactions = $transactions
+            ->filter(fn ($transaction) => strtolower((string) ($transaction->status ?? '')) === 'void')
+            ->values();
 
-    $paymentRows = [
-        'Cash' => (float) ($summary['cash_sales'] ?? 0),
-        'QRIS' => (float) ($summary['qris_sales'] ?? 0),
-        'Transfer' => (float) ($summary['transfer_sales'] ?? 0),
-        'Debit' => (float) ($summary['debit_sales'] ?? 0),
-        'Credit' => (float) ($summary['credit_sales'] ?? 0),
-    ];
+        $soldItems = $completedTransactions
+            ->flatMap(fn ($transaction) => $transaction->items)
+            ->groupBy(function ($item) {
+                return implode('|', [
+                    trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($item->product_name ?? '-'))),
+                    trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($item->variant_name ?? ''))),
+                    (string) ((float) ($item->price ?? 0)),
+                ]);
+            })
+            ->map(function ($items) {
+                $first = $items->first();
 
-    $formatTransactionNumber = function ($transactionNumber) {
-        if (empty($transactionNumber)) {
-            return '-';
-        }
+                return [
+                    'product_name' => trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($first->product_name ?? '-'))),
+                    'variant_name' => trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($first->variant_name ?? ''))),
+                    'price' => (float) ($first->price ?? 0),
+                    'qty' => (float) $items->sum('qty'),
+                    'line_total' => (float) $items->sum('line_total'),
+                ];
+            })
+            ->sortBy('product_name')
+            ->values();
 
-        $parts = explode('-', $transactionNumber);
-        $lastPart = end($parts);
+        $totalQty = (float) $soldItems->sum('qty');
+        $grossSales = (float) $completedTransactions->sum('subtotal');
+        $totalDiscount = (float) $completedTransactions->sum('discount_amount');
+        $netSales = (float) $completedTransactions->sum('grand_total');
 
-        if (is_numeric($lastPart)) {
-            return 'ATG ' . str_pad((string) ((int) $lastPart), 3, '0', STR_PAD_LEFT);
-        }
+        $paymentSummary = $completedTransactions
+            ->groupBy(fn ($transaction) => strtoupper((string) ($transaction->payment_method ?? '-')))
+            ->map(fn ($rows) => (float) $rows->sum('grand_total'))
+            ->sortKeys();
 
-        return $transactionNumber;
-    };
-@endphp
+        $startedAt = $shift->started_at?->format('Y-m-d H:i') ?? '-';
+        $endedAt = $shift->ended_at?->format('Y-m-d H:i') ?? '-';
+        $printedAt = now()->format('Y-m-d H:i:s');
+    @endphp
 
-    <div class="page">
-        <div class="print-actions">
-            <button type="button" class="btn btn-green" onclick="window.print()">Print Shift</button>
-            <a href="{{ route('cashier.index') }}" class="btn btn-dark">Kembali</a>
+    <div class="print-actions">
+        <button type="button" class="btn btn-green" onclick="window.print()">Print Shift</button>
+        <a href="{{ route('cashier.index') }}" class="btn btn-dark">Kembali</a>
+    </div>
+
+    <div class="receipt">
+        <div class="center">
+            <div class="brand">ATG POS</div>
+            <div class="title">SHIFT ITEM SOLD SUMMARY</div>
+            <div class="muted">{{ $shift->outlet->name ?? '-' }}</div>
+            <div class="muted">{{ $printedAt }}</div>
         </div>
 
-        <div class="receipt">
-            <div class="center">
-                <div class="brand">ATG POS</div>
-                <div class="title">SHIFT TRANSACTION RECEIPT</div>
-                <div class="muted">{{ $shift->outlet->name ?? '-' }}</div>
-                <div class="muted">{{ now()->format('Y-m-d H:i:s') }}</div>
-            </div>
+        <div class="divider"></div>
 
-            <div class="divider"></div>
-
-            <div class="row">
-                <span>Shift</span>
-                <span>#{{ $shift->id }}</span>
-            </div>
-            <div class="row">
-                <span>Cashier</span>
-                <span>{{ $shift->user->name ?? '-' }}</span>
-            </div>
-            <div class="row">
-                <span>Start</span>
-                <span>{{ $shift->started_at?->format('Y-m-d H:i') ?? '-' }}</span>
-            </div>
-            <div class="row">
-                <span>End</span>
-                <span>{{ $shift->ended_at?->format('Y-m-d H:i') ?? '-' }}</span>
-            </div>
-            <div class="row">
-                <span>Opening Cash</span>
-                <span>Rp {{ number_format((float) ($shift->opening_cash ?? 0), 0, ',', '.') }}</span>
-            </div>
-            <div class="row">
-                <span>Closing Cash</span>
-                <span>
-                    @if($shift->closing_cash_actual !== null)
-                        Rp {{ number_format((float) $shift->closing_cash_actual, 0, ',', '.') }}
-                    @else
-                        -
-                    @endif
-                </span>
-            </div>
-
-            <div class="divider"></div>
-
-            <div class="row">
-                <span>Total Trx</span>
-                <span>{{ number_format((int) $transactions->count(), 0, ',', '.') }}</span>
-            </div>
-            <div class="row">
-                <span>Completed</span>
-                <span>{{ number_format((int) $completedTransactions->count(), 0, ',', '.') }}</span>
-            </div>
-            <div class="row">
-                <span>Void</span>
-                <span>{{ number_format((int) $voidTransactions->count(), 0, ',', '.') }}</span>
-            </div>
-            <div class="row">
-                <span>Gross Sales</span>
-                <span>Rp {{ number_format($grossSales, 0, ',', '.') }}</span>
-            </div>
-            <div class="row">
-                <span>Discount</span>
-                <span>- Rp {{ number_format($totalDiscount, 0, ',', '.') }}</span>
-            </div>
-            <div class="row grand">
-                <span>Net Sales</span>
-                <span>Rp {{ number_format($netSales, 0, ',', '.') }}</span>
-            </div>
-
-            <div class="divider"></div>
-
-            <div class="center title">TRANSAKSI SHIFT</div>
-
-            @forelse($transactions as $transaction)
-                @php
-                    $status = strtolower((string) ($transaction->status ?? '-'));
-                    $isVoid = $status === 'void';
-                    $paymentMethod = strtoupper(trim((string) ($transaction->payment_method ?? '-'))) ?: '-';
-                    $displayTransactionNumber = $formatTransactionNumber($transaction->transaction_number ?? null);
-                @endphp
-
-                <div class="trx">
-                    <div class="divider"></div>
-
-                    <div class="trx-head">
-                        {{ $loop->iteration }}. {{ $displayTransactionNumber }}
-                        @if($isVoid)
-                            <span class="status-void">[VOID]</span>
-                        @endif
-                    </div>
-
-                    <div class="muted">
-                        {{ $transaction->created_at?->format('Y-m-d H:i:s') ?? '-' }} | {{ $paymentMethod }}
-                    </div>
-
-                    @if($transaction->member)
-                        <div class="muted">Member: {{ $transaction->member->name }}</div>
-                    @endif
-
-                    @forelse($transaction->items as $item)
-                        <div class="item">
-                            <div class="item-name">
-                                {{ $item->product_name ?? '-' }}
-                                @if($item->variant_name)
-                                    - {{ $item->variant_name }}
-                                @endif
-                            </div>
-
-                            @if($item->less_sugar || $item->less_ice)
-                                <div class="muted">
-                                    @if($item->less_sugar)
-                                        Less Sugar
-                                    @endif
-                                    @if($item->less_sugar && $item->less_ice)
-                                        /
-                                    @endif
-                                    @if($item->less_ice)
-                                        Less Ice
-                                    @endif
-                                </div>
-                            @endif
-
-                            <div class="item-meta">
-                                <span>
-                                    {{ number_format((float) $item->qty, 0, ',', '.') }}
-                                    x Rp {{ number_format((float) $item->price, 0, ',', '.') }}
-                                </span>
-                                <span>
-                                    Rp {{ number_format((float) $item->line_total, 0, ',', '.') }}
-                                </span>
-                            </div>
-                        </div>
-                    @empty
-                        <div class="item">Tidak ada item.</div>
-                    @endforelse
-
-                    @if(!empty($transaction->promo_name))
-                        <div class="row">
-                            <span>Promo</span>
-                            <span>{{ $transaction->promo_name }}</span>
-                        </div>
-                    @endif
-
-                    @if((float) ($transaction->discount_amount ?? 0) > 0)
-                        <div class="row">
-                            <span>Discount</span>
-                            <span>- Rp {{ number_format((float) $transaction->discount_amount, 0, ',', '.') }}</span>
-                        </div>
-                    @endif
-
-                    <div class="row trx-total">
-                        <span>Total</span>
-                        <span>Rp {{ number_format((float) ($transaction->grand_total ?? 0), 0, ',', '.') }}</span>
-                    </div>
-
-                    @if($isVoid)
-                        <div class="muted">
-                            Void reason: {{ $transaction->void_reason ?? '-' }}
-                        </div>
-                    @endif
-                </div>
-            @empty
-                <div class="divider"></div>
-                <div class="center muted">Belum ada transaksi dalam shift ini.</div>
-            @endforelse
-
-            <div class="divider"></div>
-
-            <div class="center title">PAYMENT SUMMARY</div>
-            @foreach($paymentRows as $paymentLabel => $paymentTotal)
-                @if($paymentTotal > 0)
-                    <div class="row">
-                        <span>{{ $paymentLabel }}</span>
-                        <span>Rp {{ number_format($paymentTotal, 0, ',', '.') }}</span>
-                    </div>
+        <div class="row">
+            <span>Shift</span>
+            <strong>#{{ $shift->id }}</strong>
+        </div>
+        <div class="row">
+            <span>Cashier</span>
+            <strong>{{ $shift->user->name ?? '-' }}</strong>
+        </div>
+        <div class="row">
+            <span>Start</span>
+            <strong>{{ $startedAt }}</strong>
+        </div>
+        <div class="row">
+            <span>End</span>
+            <strong>{{ $endedAt }}</strong>
+        </div>
+        <div class="row">
+            <span>Opening Cash</span>
+            <strong>Rp {{ number_format((float) ($shift->opening_cash ?? 0), 0, ',', '.') }}</strong>
+        </div>
+        <div class="row">
+            <span>Closing Cash</span>
+            <strong>
+                @if($shift->closing_cash_actual !== null)
+                    Rp {{ number_format((float) $shift->closing_cash_actual, 0, ',', '.') }}
+                @else
+                    -
                 @endif
-            @endforeach
+            </strong>
+        </div>
 
-            <div class="divider"></div>
+        <div class="divider"></div>
 
-            <div class="row">
-                <span>Expected Cash</span>
-                <span>Rp {{ number_format((float) ($summary['expected_cash'] ?? 0), 0, ',', '.') }}</span>
-            </div>
-            <div class="row">
-                <span>Difference</span>
-                <span>Rp {{ number_format((float) ($summary['difference'] ?? 0), 0, ',', '.') }}</span>
-            </div>
+        <div class="row">
+            <span>Total Trx</span>
+            <strong>{{ number_format($transactions->count(), 0, ',', '.') }}</strong>
+        </div>
+        <div class="row">
+            <span>Completed</span>
+            <strong>{{ number_format($completedTransactions->count(), 0, ',', '.') }}</strong>
+        </div>
+        <div class="row">
+            <span>Void</span>
+            <strong>{{ number_format($voidTransactions->count(), 0, ',', '.') }}</strong>
+        </div>
 
-            @if(!empty($shift->closing_note))
-                <div class="divider"></div>
-                <div class="muted">
-                    Note: {{ $shift->closing_note }}
+        <div class="divider"></div>
+        <div class="section-title">ITEM TERJUAL</div>
+        <div class="divider"></div>
+
+        @forelse($soldItems as $item)
+            <div class="item">
+                <div class="item-name">
+                    {{ $item['product_name'] }}
+                    @if(!empty($item['variant_name']))
+                        - {{ $item['variant_name'] }}
+                    @endif
                 </div>
-            @endif
+                <div class="item-meta">
+                    <span>
+                        {{ number_format((float) $item['qty'], 0, ',', '.') }}
+                        x Rp {{ number_format((float) $item['price'], 0, ',', '.') }}
+                    </span>
+                    <strong>Rp {{ number_format((float) $item['line_total'], 0, ',', '.') }}</strong>
+                </div>
+            </div>
+        @empty
+            <div class="center muted">Belum ada item terjual.</div>
+        @endforelse
 
+        <div class="divider"></div>
+
+        <div class="row">
+            <span>Total Item</span>
+            <strong>{{ number_format($totalQty, 0, ',', '.') }}</strong>
+        </div>
+        <div class="row">
+            <span>Gross Sales</span>
+            <strong>Rp {{ number_format($grossSales, 0, ',', '.') }}</strong>
+        </div>
+        <div class="row">
+            <span>Discount</span>
+            <strong>- Rp {{ number_format($totalDiscount, 0, ',', '.') }}</strong>
+        </div>
+        <div class="row grand">
+            <span>Net Sales</span>
+            <strong>Rp {{ number_format($netSales, 0, ',', '.') }}</strong>
+        </div>
+
+        @if($paymentSummary->count())
+            <div class="divider"></div>
+            <div class="section-title">PAYMENT</div>
             <div class="divider"></div>
 
-            <div class="footer">
-                End of shift report<br>
-                Simpan print ini sebagai bukti tutup shift
+            @foreach($paymentSummary as $method => $amount)
+                <div class="row">
+                    <span>{{ $method ?: '-' }}</span>
+                    <strong>Rp {{ number_format((float) $amount, 0, ',', '.') }}</strong>
+                </div>
+            @endforeach
+        @endif
+
+        @if(!empty($shift->closing_note))
+            <div class="divider"></div>
+            <div>
+                <strong>Note:</strong><br>
+                {{ $shift->closing_note }}
             </div>
+        @endif
+
+        <div class="divider"></div>
+        <div class="footer">
+            End of shift summary
         </div>
     </div>
 
