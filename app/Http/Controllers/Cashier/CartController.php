@@ -992,6 +992,8 @@ class CartController extends Controller
             'transaction' => $transaction->fresh(['user', 'outlet', 'member', 'items', 'voidBy']),
             'source' => 'cashier',
             'autoprint' => true,
+            'isReprintReceipt' => $currentPrintCount >= 2,
+            'reprintPrintedAt' => now()->format('d/m/Y H:i:s'),
         ]);
     }
 

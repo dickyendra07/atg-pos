@@ -459,7 +459,7 @@
                     }
 
                     row(
-                        `${money(item.qty)} x ${money(item.price)}`,
+                        `${money(item.price)} x ${money(item.qty)}`,
                         money(item.line_total),
                         { size: 21, gap: 10 }
                     );
