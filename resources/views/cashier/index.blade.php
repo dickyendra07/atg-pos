@@ -1885,25 +1885,19 @@
         }
 
 
-        /* Safe payment popup: no DOM moving */
+        /* Clean payment popup final */
         .open-payment-modal-btn {
             width: 100%;
             border: 0;
-            border-radius: 16px;
-            background: #15803d;
+            border-radius: 18px;
+            background: linear-gradient(180deg, #17813f 0%, #137238 100%);
             color: #ffffff;
-            padding: 15px 16px;
-            font-size: 15px;
+            padding: 16px 18px;
+            font-size: 16px;
             font-weight: 900;
             cursor: pointer;
             margin-top: 12px;
-            box-shadow: 0 14px 30px rgba(21, 128, 61, 0.18);
-        }
-
-        .open-payment-modal-btn:disabled {
-            opacity: 0.55;
-            cursor: not-allowed;
-            box-shadow: none;
+            box-shadow: 0 16px 34px rgba(21, 128, 61, 0.20);
         }
 
         .payment-section.payment-modal-panel {
@@ -1911,12 +1905,10 @@
             position: fixed;
             inset: 0;
             z-index: 90;
-            width: auto;
-            height: auto;
             margin: 0;
-            padding: 18px;
+            padding: 22px;
             overflow: auto;
-            background: rgba(15, 23, 42, 0.48);
+            background: rgba(15, 23, 42, 0.52);
             border: 0;
             border-radius: 0;
             box-shadow: none;
@@ -1928,48 +1920,140 @@
             justify-content: center;
         }
 
-        .payment-section.payment-modal-panel > form,
-        .payment-section.payment-modal-panel .payment-form {
+        .payment-modal-card {
             width: min(520px, 100%);
-            max-height: calc(100vh - 36px);
+            max-height: calc(100vh - 44px);
             overflow-y: auto;
             background: #ffffff;
-            border: 1px solid #e5e7eb;
-            border-radius: 24px;
-            box-shadow: 0 26px 80px rgba(15, 23, 42, 0.25);
-            padding: 18px;
+            border: 1px solid rgba(226, 232, 240, 0.95);
+            border-radius: 28px;
+            box-shadow: 0 28px 90px rgba(15, 23, 42, 0.30);
         }
 
-        .payment-section.payment-modal-panel .payment-section-head {
+        .payment-modal-card .payment-section-head {
             position: sticky;
-            top: -18px;
+            top: 0;
             z-index: 2;
-            background: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: linear-gradient(180deg, #ffffff 0%, #fbfcfe 100%);
             border-bottom: 1px solid #edf1f6;
-            margin: -18px -18px 16px;
-            padding: 18px;
-            border-radius: 24px 24px 0 0;
+            padding: 20px 22px;
+            border-radius: 28px 28px 0 0;
+        }
+
+        .payment-modal-card .payment-section-title {
+            margin: 0;
+            font-size: 21px;
+            line-height: 1.15;
+            font-weight: 900;
+            color: #111827;
+            letter-spacing: -0.02em;
+        }
+
+        .payment-modal-subtitle {
+            margin-top: 5px;
+            font-size: 12px;
+            line-height: 1.4;
+            font-weight: 800;
+            color: #6b7280;
         }
 
         .payment-modal-close-btn {
-            width: 34px;
-            height: 34px;
+            flex: 0 0 auto;
+            width: 40px;
+            height: 40px;
             border: 0;
-            border-radius: 999px;
+            border-radius: 14px;
             background: #f3f4f6;
             color: #111827;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 900;
             cursor: pointer;
             line-height: 1;
         }
 
-        .payment-section.payment-modal-panel .checkout-actions {
-            position: sticky;
-            bottom: -18px;
+        .payment-modal-content {
+            padding: 18px 22px 22px;
+        }
+
+        .payment-modal-content .field {
+            margin-bottom: 14px;
+        }
+
+        .payment-modal-content .field label {
+            font-size: 12px;
+            font-weight: 900;
+            color: #374151;
+            margin-bottom: 7px;
+        }
+
+        .payment-modal-content select,
+        .payment-modal-content input[type="text"] {
+            min-height: 48px;
+            border-radius: 15px;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
+        .payment-modal-content .quick-amount-wrap {
+            margin-top: 12px;
+        }
+
+        .payment-modal-content .quick-amount-label {
+            font-size: 15px;
+            font-weight: 900;
+            color: #111827;
+            margin-bottom: 10px;
+        }
+
+        .payment-modal-content .quick-amount-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 9px;
+        }
+
+        .payment-modal-content .quick-amount-btn {
+            min-height: 48px;
+            border-radius: 14px;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .payment-modal-content .payment-live-box {
+            margin-top: 16px;
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid #e5eaf2;
             background: #ffffff;
-            padding-top: 12px;
+        }
+
+        .payment-modal-content .payment-live-row {
+            padding: 13px 14px;
+        }
+
+        .payment-modal-content .payment-live-label {
+            font-size: 12px;
+        }
+
+        .payment-modal-content .payment-live-value {
+            font-size: 17px;
+        }
+
+        .payment-modal-content .payment-helper {
+            padding: 12px 14px;
+            font-size: 12px;
+        }
+
+        .payment-modal-content .checkout-actions {
+            position: sticky;
+            bottom: -22px;
+            background: linear-gradient(180deg, rgba(255,255,255,0.86) 0%, #ffffff 34%);
+            padding-top: 14px;
             padding-bottom: 2px;
+            margin-top: 14px;
         }
 
         .promo-total-box {
@@ -1986,12 +2070,159 @@
                 align-items: flex-end;
             }
 
-            .payment-section.payment-modal-panel > form,
-            .payment-section.payment-modal-panel .payment-form {
+            .payment-modal-card {
                 width: 100%;
                 max-height: 92vh;
-                border-radius: 24px 24px 0 0;
+                border-radius: 28px 28px 0 0;
             }
+        }
+
+
+        /* Make payment popup compact like variant modal */
+        .payment-modal-card {
+            width: min(500px, 100%) !important;
+            max-height: min(86vh, 720px) !important;
+            border-radius: 26px !important;
+        }
+
+        .payment-modal-card .payment-section-head {
+            padding: 16px 18px !important;
+        }
+
+        .payment-modal-card .payment-section-title {
+            font-size: 20px !important;
+        }
+
+        .payment-modal-subtitle {
+            font-size: 11.5px !important;
+            margin-top: 4px !important;
+        }
+
+        .payment-modal-close-btn {
+            width: 38px !important;
+            height: 38px !important;
+            border-radius: 13px !important;
+        }
+
+        .payment-modal-content {
+            padding: 14px 18px 16px !important;
+        }
+
+        .payment-modal-content .field {
+            margin-bottom: 10px !important;
+        }
+
+        .payment-modal-content .field label {
+            font-size: 11.5px !important;
+            margin-bottom: 6px !important;
+        }
+
+        .payment-modal-content select,
+        .payment-modal-content input[type="text"] {
+            min-height: 44px !important;
+            padding: 10px 12px !important;
+            border-radius: 14px !important;
+            font-size: 13.5px !important;
+        }
+
+        .payment-modal-content .quick-amount-wrap {
+            margin-top: 8px !important;
+        }
+
+        .payment-modal-content .quick-amount-label {
+            font-size: 14px !important;
+            margin-bottom: 8px !important;
+        }
+
+        .payment-modal-content .quick-amount-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+        }
+
+        .payment-modal-content .quick-amount-btn {
+            min-height: 42px !important;
+            padding: 9px 8px !important;
+            border-radius: 13px !important;
+            font-size: 11.5px !important;
+        }
+
+        .payment-modal-content .payment-live-box {
+            margin-top: 12px !important;
+            border-radius: 16px !important;
+        }
+
+        .payment-modal-content .payment-live-row {
+            padding: 10px 12px !important;
+        }
+
+        .payment-modal-content .payment-live-label {
+            font-size: 11px !important;
+        }
+
+        .payment-modal-content .payment-live-value {
+            font-size: 15.5px !important;
+        }
+
+        .payment-modal-content .payment-live-row.change-highlight .payment-live-value {
+            font-size: 17px !important;
+        }
+
+        .payment-modal-content .checkout-actions {
+            position: sticky !important;
+            bottom: -16px !important;
+            margin-top: 10px !important;
+            padding-top: 12px !important;
+            background: linear-gradient(180deg, rgba(255,255,255,0.88) 0%, #ffffff 38%) !important;
+        }
+
+        .payment-modal-content .btn-checkout {
+            min-height: 48px !important;
+            border-radius: 16px !important;
+            font-size: 15px !important;
+        }
+
+        @media (min-height: 760px) {
+            .payment-modal-card {
+                overflow-y: visible !important;
+            }
+        }
+
+
+        /* Force payment popup to open neatly in viewport */
+        .payment-section.payment-modal-panel.active {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 9999 !important;
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: center !important;
+            padding: 56px 18px 18px !important;
+            overflow-y: auto !important;
+            background: rgba(15, 23, 42, 0.52) !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-modal-card {
+            width: min(500px, calc(100vw - 36px)) !important;
+            max-height: calc(100vh - 92px) !important;
+            overflow-y: auto !important;
+            margin: 0 auto !important;
+            transform: none !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-modal-content {
+            padding-bottom: 14px !important;
+        }
+
+        .payment-section.payment-modal-panel .checkout-actions {
+            position: sticky !important;
+            bottom: 0 !important;
+            margin-top: 10px !important;
+            padding-top: 10px !important;
+            background: linear-gradient(180deg, rgba(255,255,255,0.86) 0%, #ffffff 40%) !important;
+        }
+
+        .payment-section.payment-modal-panel .btn-checkout {
+            min-height: 46px !important;
         }
 
     </style>
@@ -2562,24 +2793,13 @@
                                     </div>
                                 </div>
 
-                                <button type="button" class="open-payment-modal-btn" id="open-payment-modal-btn">
-                                    Bayar
-                                </button>
 
-                                <div class="payment-section payment-modal-panel" id="payment-modal-panel">
-                                    <div class="payment-section-head">
-                                        <div>
-                                            <div class="payment-section-title">Payment & Checkout</div>
-
-                                        </div>
-                                        <button type="button" class="payment-modal-close-btn" id="close-payment-modal-btn">×</button>
-                                    </div>
-
-                                    <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
-                                        @csrf
+                                <form method="POST" action="{{ route('cashier.checkout') }}" class="payment-form" id="checkout-form">
+@csrf
 
                                         <input type="hidden" name="order_type" id="checkout-order-type" value="{{ $orderType ?? 'dine_in' }}">
                                         <input type="hidden" name="amount_paid" id="amount_paid_numeric" value="{{ (float) $oldAmountPaid }}">
+
 
                                         <div class="promo-discount-box">
                                             <div class="promo-discount-head">
@@ -2695,7 +2915,21 @@
                                             </div>
                                         </div>
 
-                                        <div class="field">
+                                        
+                                    <button type="button" class="open-payment-modal-btn" id="open-payment-modal-btn">Bayar</button>
+
+                                    <div class="payment-section payment-modal-panel" id="payment-modal-panel">
+                                        <div class="payment-modal-card">
+                                            <div class="payment-section-head">
+                                                <div>
+                                                    <div class="payment-section-title">Pembayaran</div>
+                                                    <div class="payment-modal-subtitle">Pilih metode, isi nominal bayar, lalu checkout.</div>
+                                                </div>
+                                                <button type="button" class="payment-modal-close-btn" id="close-payment-modal-btn">×</button>
+                                            </div>
+
+                                            <div class="payment-modal-content">
+<div class="field">
                                             <label for="payment_method">Payment Method</label>
                                             <select name="payment_method" id="payment_method" required>
                                                 <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
@@ -2765,11 +2999,13 @@
                                         <div class="checkout-actions">
                                             <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
                                         </div>
-                                    </form>
-
-                                    <div class="checkout-actions" style="margin-top:12px;">
-                                        <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
+                                            </div>
+                                        </div>
                                     </div>
+                                </form>
+
+                                <div class="checkout-actions" style="margin-top:12px;">
+                                    <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
                                 </div>
 
                                 <div class="member-box">
@@ -3157,6 +3393,42 @@
             : matches.every(Boolean);
     }
 
+
+    function getPromoEligibleSubtotal(promoPayload) {
+        const requirements = Array.isArray(promoPayload?.requirements) ? promoPayload.requirements : [];
+
+        if (!requirements.length) {
+            return 0;
+        }
+
+        const logic = String(promoPayload?.logic || 'and').toLowerCase();
+
+        const eligibleVariantIds = requirements
+            .filter((requirement) => {
+                if (logic !== 'or') {
+                    return true;
+                }
+
+                const neededQty = Number(requirement.qty || 1);
+                const cartQty = getCartQtyByVariantId(requirement.variant_id);
+
+                return cartQty >= neededQty;
+            })
+            .map((requirement) => Number(requirement.variant_id || 0))
+            .filter(Boolean);
+
+        if (!eligibleVariantIds.length) {
+            return 0;
+        }
+
+        return Object.values(cashierState.cart.items || {})
+            .filter((item) => {
+                return eligibleVariantIds.includes(Number(item.variant_id || 0))
+                    && !item.is_promo_reward;
+            })
+            .reduce((total, item) => total + Number(item.line_total || 0), 0);
+    }
+
     function calculateDiscountPreview(subtotalValue) {
         let discountValue = 0;
 
@@ -3176,17 +3448,21 @@
 
         if (promoPayload && promoRequirementMatched(promoPayload)) {
             const rewards = Array.isArray(promoPayload.rewards) ? promoPayload.rewards : [];
+            const promoEligibleSubtotal = getPromoEligibleSubtotal(promoPayload);
+            let promoDiscountValue = 0;
 
             rewards.forEach((reward) => {
                 const type = reward.type || '';
                 const value = Number(reward.value || 0);
 
                 if (type === 'discount_percent') {
-                    discountValue += subtotalValue * (value / 100);
+                    promoDiscountValue += promoEligibleSubtotal * (value / 100);
                 } else if (type === 'discount_amount') {
-                    discountValue += value;
+                    promoDiscountValue += value;
                 }
             });
+
+            discountValue += Math.min(promoEligibleSubtotal, Math.max(0, promoDiscountValue));
         }
 
         return Math.min(subtotalValue, Math.max(0, Math.round(discountValue)));
@@ -3906,22 +4182,35 @@
 
     openPaymentModalBtn?.addEventListener('click', function () {
         paymentModalPanel?.classList.add('active');
-        updateLivePaymentSummary();
+
+        const paymentModalCard = paymentModalPanel?.querySelector('.payment-modal-card');
+        if (paymentModalCard) {
+            paymentModalCard.scrollTop = 0;
+        }
+
+        document.body.style.overflow = 'hidden';
+
+        if (typeof updateLivePaymentSummary === 'function') {
+            updateLivePaymentSummary();
+        }
     });
 
     closePaymentModalBtn?.addEventListener('click', function () {
         paymentModalPanel?.classList.remove('active');
+        document.body.style.overflow = '';
     });
 
     paymentModalPanel?.addEventListener('click', function (event) {
         if (event.target === paymentModalPanel) {
             paymentModalPanel.classList.remove('active');
+            document.body.style.overflow = '';
         }
     });
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
             paymentModalPanel?.classList.remove('active');
+            document.body.style.overflow = '';
         }
     });
 

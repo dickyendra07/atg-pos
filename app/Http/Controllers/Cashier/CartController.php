@@ -518,6 +518,48 @@ class CartController extends Controller
     }
 
 
+
+    protected function getPromoEligibleSubtotal(array $cart, Promo $promo): float
+    {
+        if ($promo->requirements->isEmpty()) {
+            return 0;
+        }
+
+        $logic = strtolower((string) ($promo->requirement_logic ?? 'and'));
+
+        $eligibleVariantIds = $promo->requirements
+            ->filter(function ($requirement) use ($cart, $logic) {
+                $cartQty = collect($cart)
+                    ->where('variant_id', (int) $requirement->product_variant_id)
+                    ->sum(function ($item) {
+                        return (float) ($item['qty'] ?? 0);
+                    });
+
+                if ($logic === 'or') {
+                    return $cartQty >= (float) $requirement->qty;
+                }
+
+                return true;
+            })
+            ->pluck('product_variant_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($eligibleVariantIds->isEmpty()) {
+            return 0;
+        }
+
+        return (float) collect($cart)
+            ->filter(function ($item) use ($eligibleVariantIds) {
+                return $eligibleVariantIds->contains((int) ($item['variant_id'] ?? 0))
+                    && empty($item['is_promo_reward']);
+            })
+            ->sum(function ($item) {
+                return (float) ($item['line_total'] ?? 0);
+            });
+    }
+
     protected function calculateDiscountAmount(array $cart, float $subtotal, $user, ?int $discountId, ?int $promoId): array
     {
         $discountAmount = 0;
@@ -565,13 +607,16 @@ class CartController extends Controller
                 ->find($promoId);
 
             if ($promo && $this->promoIsCurrentlyActive($promo) && $this->cartMeetsPromoRequirements($cart, $promo)) {
+                $promoEligibleSubtotal = $this->getPromoEligibleSubtotal($cart, $promo);
+                $promoDiscountAmount = 0;
+
                 foreach ($promo->rewards as $reward) {
                     if ($reward->reward_type === 'discount_percent') {
-                        $discountAmount += $subtotal * ((float) $reward->reward_value / 100);
+                        $promoDiscountAmount += $promoEligibleSubtotal * ((float) $reward->reward_value / 100);
                     }
 
                     if ($reward->reward_type === 'discount_amount') {
-                        $discountAmount += (float) $reward->reward_value;
+                        $promoDiscountAmount += (float) $reward->reward_value;
                     }
 
                     if ($reward->reward_type === 'free_item') {
@@ -579,6 +624,7 @@ class CartController extends Controller
                     }
                 }
 
+                $discountAmount += min($promoEligibleSubtotal, max(0, $promoDiscountAmount));
                 $promoLabel = $promo->name;
             }
         }
