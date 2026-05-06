@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shift Print - ATG POS</title>
+    <title>Shift Print - LEE ONG'S TEA X WASPFFLE</title>
     <style>
         * {
             box-sizing: border-box;
@@ -160,6 +160,20 @@
                 box-shadow: none;
             }
         }
+
+        .category-title {
+            text-align: center;
+            font-size: 20px;
+            font-weight: 900;
+            letter-spacing: 0.08em;
+            margin: 12px 0 6px;
+        }
+
+        .category-total {
+            margin-top: 2px;
+            font-weight: 800;
+        }
+
     </style>
 </head>
 <body>
@@ -172,30 +186,53 @@ $completedTransactions = $transactions
             ->filter(fn ($transaction) => strtolower((string) ($transaction->status ?? '')) === 'void')
             ->values();
 
-        $soldItems = $completedTransactions
+        $cleanShiftText = function ($value) {
+            return trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) $value));
+        };
+
+        $categoryItemSummary = $completedTransactions
             ->flatMap(fn ($transaction) => $transaction->items)
+            ->filter(fn ($item) => (float) ($item->qty ?? 0) > 0)
             ->groupBy(function ($item) {
-                return implode('|', [
-                    trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($item->product_name ?? '-'))),
-                    trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($item->variant_name ?? ''))),
-                    (string) ((float) ($item->price ?? 0)),
-                ]);
+                $categoryName = trim((string) ($item->category_name ?? ''));
+
+                if ($categoryName !== '') {
+                    return $categoryName;
+                }
+
+                return trim((string) ($item->variant?->product?->category?->name ?? 'Lainnya'));
             })
-            ->map(function ($items) {
-                $first = $items->first();
+            ->map(function ($items, $categoryName) use ($cleanShiftText) {
+                $summaryItems = $items
+                    ->groupBy(function ($item) use ($cleanShiftText) {
+                        $productName = $cleanShiftText($item->product_name ?? '-');
+                        $variantName = $cleanShiftText($item->variant_name ?? '');
+
+                        return $variantName !== ''
+                            ? $productName . ' ' . $variantName
+                            : $productName;
+                    })
+                    ->map(function ($groupedItems, $name) {
+                        return [
+                            'name' => $name,
+                            'qty' => (float) $groupedItems->sum('qty'),
+                            'line_total' => (float) $groupedItems->sum('line_total'),
+                        ];
+                    })
+                    ->sortBy('name')
+                    ->values();
 
                 return [
-                    'product_name' => trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($first->product_name ?? '-'))),
-                    'variant_name' => trim(preg_replace('/\s*\[(DINE IN|DELIVERY|TAKE AWAY|TAKEAWAY)\]\s*/i', ' ', (string) ($first->variant_name ?? ''))),
-                    'price' => (float) ($first->price ?? 0),
-                    'qty' => (float) $items->sum('qty'),
-                    'line_total' => (float) $items->sum('line_total'),
+                    'category_name' => $categoryName ?: 'Lainnya',
+                    'items' => $summaryItems,
+                    'qty' => (float) $summaryItems->sum('qty'),
+                    'line_total' => (float) $summaryItems->sum('line_total'),
                 ];
             })
-            ->sortBy('product_name')
+            ->sortKeys()
             ->values();
 
-        $totalQty = (float) $soldItems->sum('qty');
+        $totalQty = (float) $categoryItemSummary->sum('qty');
         $grossSales = (float) $completedTransactions->sum('subtotal');
         $totalDiscount = (float) $completedTransactions->sum('discount_amount');
         $netSales = (float) $completedTransactions->sum('grand_total');
@@ -217,7 +254,7 @@ $completedTransactions = $transactions
 
     <div class="receipt">
         <div class="center">
-            <div class="brand">ATG POS</div>
+            <div class="brand">LEE ONG'S TEA X WASPFFLE</div>
             <div class="title">SHIFT ITEM SOLD SUMMARY</div>
             <div class="muted">{{ $shift->outlet->name ?? '-' }}</div>
             <div class="muted">{{ $printedAt }}</div>
@@ -275,22 +312,24 @@ $completedTransactions = $transactions
         <div class="section-title">ITEM TERJUAL</div>
         <div class="divider"></div>
 
-        @forelse($soldItems as $item)
-            <div class="item">
-                <div class="item-name">
-                    {{ $item['product_name'] }}
-                    @if(!empty($item['variant_name']))
-                        - {{ $item['variant_name'] }}
-                    @endif
+        @forelse($categoryItemSummary as $category)
+            <div class="category-title">{{ $category['category_name'] }}</div>
+
+            @foreach($category['items'] as $item)
+                <div class="item">
+                    <div class="item-name">*{{ $item['name'] }}</div>
+                    <div class="item-meta">
+                        <span>{{ number_format((float) $item['qty'], 0, ',', '.') }}</span>
+                        <strong>{{ number_format((float) $item['line_total'], 0, ',', '.') }}</strong>
+                    </div>
                 </div>
-                <div class="item-meta">
-                    <span>
-                        {{ number_format((float) $item['qty'], 0, ',', '.') }}
-                        x Rp {{ number_format((float) $item['price'], 0, ',', '.') }}
-                    </span>
-                    <strong>Rp {{ number_format((float) $item['line_total'], 0, ',', '.') }}</strong>
-                </div>
+            @endforeach
+
+            <div class="row category-total">
+                <span>Total</span>
+                <strong>{{ number_format((float) $category['line_total'], 0, ',', '.') }}</strong>
             </div>
+            <br>
         @empty
             <div class="center muted">Belum ada item terjual.</div>
         @endforelse
