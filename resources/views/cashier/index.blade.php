@@ -3112,7 +3112,7 @@
                                             <div class="payment-modal-content">
 <div class="field">
                                             <label for="payment_method">Payment Method</label>
-                                            <select name="payment_method" id="payment_method" required>
+                                            <select name="payment_method" id="payment_method" form="checkout-form" required>
                                                 <option value="cash" {{ $oldPaymentMethod === 'cash' ? 'selected' : '' }}>Cash</option>
                                                 <option value="qris" {{ $oldPaymentMethod === 'qris' ? 'selected' : '' }}>QRIS</option>
                                                 <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
@@ -3126,6 +3126,7 @@
                                             <input
                                                 type="text"
                                                 id="amount_paid_display"
+                                                form="checkout-form"
                                                 inputmode="numeric"
                                                 autocomplete="off"
                                                 value="Rp {{ number_format((float) $oldAmountPaid, 0, ',', '.') }}"
@@ -3178,7 +3179,7 @@
                                         </div>
 
                                         <div class="checkout-actions">
-                                            <button type="submit" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
+                                            <button type="submit" form="checkout-form" class="btn-wide btn-checkout" id="checkout-button">Checkout</button>
                                         </div>
                                             </div>
                                         </div>
@@ -4499,23 +4500,26 @@
         form.addEventListener('submit', function (event) {
             const printCount = Number(form.dataset.printCount || 0);
 
-            if (printCount <= 0) {
+            // Print pertama dan kedua bebas PIN. Mulai print ke-3 wajib PIN.
+            if (printCount < 2) {
                 return;
             }
 
-            const approvalPin = window.prompt('Reprint kedua dan seterusnya butuh PIN approval dari Back Office:');
+            event.preventDefault();
 
-            if (!approvalPin || !approvalPin.trim()) {
-                event.preventDefault();
-                showAlert('error', 'PIN approval wajib diisi untuk reprint.');
+            const approvalPin = window.prompt('Reprint ke-3 dan seterusnya butuh PIN approval dari Back Office. Kosongkan lalu OK untuk request PIN:');
+
+            if (approvalPin === null) {
                 return;
             }
 
             const pinInput = form.querySelector('input[name="approval_pin"]');
 
             if (pinInput) {
-                pinInput.value = approvalPin.trim();
+                pinInput.value = String(approvalPin).trim();
             }
+
+            form.submit();
         });
     });
 

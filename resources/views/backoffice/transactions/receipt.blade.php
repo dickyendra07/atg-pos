@@ -180,6 +180,12 @@
     $amountPaid = (float) ($transaction->amount_paid ?? 0);
     $changeAmount = (float) ($transaction->change_amount ?? 0);
     $isVoid = strtolower((string) ($transaction->status ?? '')) === 'void';
+    $isReprintReceipt = (bool) (
+        ($isReprintReceipt ?? false)
+        || request()->filled('approval_pin')
+        || ($source === 'cashier' && (int) ($transaction->receipt_print_count ?? 0) >= 3)
+    );
+    $reprintPrintedAt = $reprintPrintedAt ?? now()->format('d/m/Y H:i:s');
 
     $items = $transaction->items->map(function ($item) {
         $modifiers = [];
@@ -224,6 +230,8 @@
         'void_at' => ! empty($transaction->void_at) ? $transaction->void_at?->format('Y-m-d H:i:s') : null,
         'void_by' => $transaction->voidBy->name ?? null,
         'void_reason' => $transaction->void_reason ?? null,
+        'is_reprint' => $isReprintReceipt,
+        'reprint_printed_at' => $reprintPrintedAt,
     ];
 @endphp
 
@@ -256,6 +264,21 @@
 <script>
     (function () {
         const receipt = @json($receiptPayload);
+
+        // REPRINT_FORCE_FROM_URL_MARKER
+        const reprintUrlParams = new URLSearchParams(window.location.search);
+        if (reprintUrlParams.has('approval_pin')) {
+            receipt.is_reprint = true;
+            receipt.reprint_printed_at = new Date().toLocaleString('id-ID', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false,
+            }).replace(',', '');
+        }
         const shouldAutoPrint = @json($autoprint);
         const shouldAutoClose = @json($autoClose);
 
@@ -516,6 +539,22 @@
                 align: 'center',
                 gap: 4,
             });
+
+            // REPRINT_FOOTER_CANVAS_MARKER
+            if (receipt.is_reprint) {
+                push('text', '#REPRINT', {
+                    size: 22,
+                    weight: '700',
+                    align: 'center',
+                    gap: 12,
+                });
+
+                push('text', receipt.reprint_printed_at || '', {
+                    size: 16,
+                    align: 'center',
+                    gap: 4,
+                });
+            }
 
             push('text', '', {
                 size: 18,
