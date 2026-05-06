@@ -2225,6 +2225,187 @@
             min-height: 46px !important;
         }
 
+
+        /* Final centered wide payment modal */
+        .payment-section.payment-modal-panel.active {
+            position: fixed !important;
+            inset: 0 !important;
+            z-index: 99999 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 24px !important;
+            overflow: hidden !important;
+            background: rgba(15, 23, 42, 0.56) !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-modal-card {
+            width: min(900px, calc(100vw - 48px)) !important;
+            max-height: calc(100vh - 48px) !important;
+            overflow: hidden !important;
+            margin: 0 auto !important;
+            border-radius: 28px !important;
+            background: #ffffff !important;
+            box-shadow: 0 30px 90px rgba(15, 23, 42, 0.32) !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-section-head {
+            padding: 18px 22px !important;
+            border-bottom: 1px solid #edf1f6 !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-modal-content {
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) minmax(310px, 0.9fr) !important;
+            gap: 18px !important;
+            padding: 18px 22px 22px !important;
+            max-height: calc(100vh - 150px) !important;
+            overflow-y: auto !important;
+        }
+
+        .payment-section.payment-modal-panel .field {
+            margin-bottom: 12px !important;
+        }
+
+        .payment-section.payment-modal-panel select,
+        .payment-section.payment-modal-panel input[type="text"] {
+            min-height: 48px !important;
+            border-radius: 15px !important;
+        }
+
+        .payment-section.payment-modal-panel .quick-amount-wrap {
+            margin-top: 10px !important;
+        }
+
+        .payment-section.payment-modal-panel .quick-amount-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+            gap: 9px !important;
+        }
+
+        .payment-section.payment-modal-panel .quick-amount-btn {
+            min-height: 50px !important;
+            border-radius: 15px !important;
+            font-size: 12px !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-live-box {
+            margin-top: 0 !important;
+            height: fit-content !important;
+            border-radius: 20px !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-live-row {
+            padding: 13px 14px !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-live-label {
+            font-size: 12px !important;
+        }
+
+        .payment-section.payment-modal-panel .payment-live-value {
+            font-size: 17px !important;
+        }
+
+        .payment-section.payment-modal-panel .checkout-actions {
+            position: static !important;
+            margin-top: 14px !important;
+            padding: 0 !important;
+            background: transparent !important;
+        }
+
+        .payment-section.payment-modal-panel .btn-checkout {
+            min-height: 52px !important;
+            border-radius: 17px !important;
+            font-size: 16px !important;
+        }
+
+        .payment-left-column,
+        .payment-right-column {
+            min-width: 0;
+        }
+
+        @media (max-width: 860px) {
+            .payment-section.payment-modal-panel {
+                align-items: flex-end !important;
+                padding: 0 !important;
+            }
+
+            .payment-section.payment-modal-panel .payment-modal-card {
+                width: 100% !important;
+                max-height: 92vh !important;
+                border-radius: 28px 28px 0 0 !important;
+            }
+
+            .payment-section.payment-modal-panel .payment-modal-content {
+                grid-template-columns: 1fr !important;
+                max-height: calc(92vh - 86px) !important;
+                overflow-y: auto !important;
+            }
+        }
+
+
+        /* Force payment modal exactly centered on visible screen */
+        .payment-section.payment-modal-panel.active {
+            position: fixed !important;
+            top: 0 !important;
+            right: 0 !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            z-index: 999999 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 20px !important;
+            overflow: hidden !important;
+            background: rgba(15, 23, 42, 0.56) !important;
+        }
+
+        .payment-section.payment-modal-panel.active .payment-modal-card {
+            margin: 0 auto !important;
+            max-height: calc(100vh - 40px) !important;
+            max-height: calc(100dvh - 40px) !important;
+            transform: translateY(0) !important;
+        }
+
+
+        /* Payment modal true viewport center */
+        body.payment-modal-open {
+            overflow: hidden !important;
+        }
+
+        body > .payment-section.payment-modal-panel.active {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            height: 100dvh !important;
+            z-index: 999999 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 24px !important;
+            overflow: hidden !important;
+            background: rgba(15, 23, 42, 0.56) !important;
+        }
+
+        body > .payment-section.payment-modal-panel.active .payment-modal-card {
+            width: min(900px, calc(100vw - 48px)) !important;
+            max-height: calc(100vh - 48px) !important;
+            max-height: calc(100dvh - 48px) !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+            transform: none !important;
+        }
+
+        body > .payment-section.payment-modal-panel.active .payment-modal-content {
+            max-height: calc(100vh - 150px) !important;
+            max-height: calc(100dvh - 150px) !important;
+            overflow-y: auto !important;
+        }
+
     </style>
 </head>
 <body>
@@ -4180,37 +4361,51 @@
     const openPaymentModalBtn = document.getElementById('open-payment-modal-btn');
     const closePaymentModalBtn = document.getElementById('close-payment-modal-btn');
 
-    openPaymentModalBtn?.addEventListener('click', function () {
-        paymentModalPanel?.classList.add('active');
+    function openPaymentModal() {
+        if (!paymentModalPanel) {
+            return;
+        }
 
-        const paymentModalCard = paymentModalPanel?.querySelector('.payment-modal-card');
+        if (paymentModalPanel.parentElement !== document.body) {
+            document.body.appendChild(paymentModalPanel);
+        }
+
+        paymentModalPanel.classList.add('active');
+        document.body.classList.add('payment-modal-open');
+
+        const paymentModalCard = paymentModalPanel.querySelector('.payment-modal-card');
+        const paymentModalContent = paymentModalPanel.querySelector('.payment-modal-content');
+
         if (paymentModalCard) {
             paymentModalCard.scrollTop = 0;
         }
 
-        document.body.style.overflow = 'hidden';
+        if (paymentModalContent) {
+            paymentModalContent.scrollTop = 0;
+        }
 
         if (typeof updateLivePaymentSummary === 'function') {
             updateLivePaymentSummary();
         }
-    });
+    }
 
-    closePaymentModalBtn?.addEventListener('click', function () {
+    function closePaymentModal() {
         paymentModalPanel?.classList.remove('active');
-        document.body.style.overflow = '';
-    });
+        document.body.classList.remove('payment-modal-open');
+    }
+
+    openPaymentModalBtn?.addEventListener('click', openPaymentModal);
+    closePaymentModalBtn?.addEventListener('click', closePaymentModal);
 
     paymentModalPanel?.addEventListener('click', function (event) {
         if (event.target === paymentModalPanel) {
-            paymentModalPanel.classList.remove('active');
-            document.body.style.overflow = '';
+            closePaymentModal();
         }
     });
 
     document.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
-            paymentModalPanel?.classList.remove('active');
-            document.body.style.overflow = '';
+            closePaymentModal();
         }
     });
 
