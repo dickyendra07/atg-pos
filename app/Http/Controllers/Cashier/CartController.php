@@ -519,15 +519,15 @@ class CartController extends Controller
 
 
 
-    protected function getPromoEligibleSubtotal(array $cart, Promo $promo): float
+    protected function getPromoEligibleVariantIds(array $cart, Promo $promo)
     {
         if ($promo->requirements->isEmpty()) {
-            return 0;
+            return collect();
         }
 
         $logic = strtolower((string) ($promo->requirement_logic ?? 'and'));
 
-        $eligibleVariantIds = $promo->requirements
+        return $promo->requirements
             ->filter(function ($requirement) use ($cart, $logic) {
                 $cartQty = collect($cart)
                     ->where('variant_id', (int) $requirement->product_variant_id)
@@ -545,6 +545,104 @@ class CartController extends Controller
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
+    }
+
+    protected function buildPromoItemDiscounts(array $cart, $user, ?int $promoId): array
+    {
+        if (! $promoId) {
+            return [];
+        }
+
+        $promo = Promo::with(['requirements', 'rewards', 'outlets'])
+            ->where('is_active', true)
+            ->where('status', 'active')
+            ->where(function ($query) use ($user) {
+                $query->whereDoesntHave('outlets');
+
+                if (! empty($user->outlet_id)) {
+                    $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                        $outletQuery->where('outlets.id', $user->outlet_id);
+                    });
+                }
+            })
+            ->find($promoId);
+
+        if (! $promo || ! $this->promoIsCurrentlyActive($promo) || ! $this->cartMeetsPromoRequirements($cart, $promo)) {
+            return [];
+        }
+
+        $eligibleVariantIds = $this->getPromoEligibleVariantIds($cart, $promo);
+
+        if ($eligibleVariantIds->isEmpty()) {
+            return [];
+        }
+
+        $eligibleItems = collect($cart)
+            ->filter(function ($item) use ($eligibleVariantIds) {
+                return $eligibleVariantIds->contains((int) ($item['variant_id'] ?? 0))
+                    && empty($item['is_promo_reward']);
+            });
+
+        $eligibleSubtotal = (float) $eligibleItems->sum(function ($item) {
+            return (float) ($item['line_total'] ?? 0);
+        });
+
+        if ($eligibleSubtotal <= 0) {
+            return [];
+        }
+
+        $promoDiscountAmount = 0;
+
+        foreach ($promo->rewards as $reward) {
+            if ($reward->reward_type === 'discount_percent') {
+                $promoDiscountAmount += $eligibleSubtotal * ((float) $reward->reward_value / 100);
+            }
+
+            if ($reward->reward_type === 'discount_amount') {
+                $promoDiscountAmount += (float) $reward->reward_value;
+            }
+        }
+
+        $promoDiscountAmount = min($eligibleSubtotal, max(0, $promoDiscountAmount));
+
+        if ($promoDiscountAmount <= 0) {
+            return [];
+        }
+
+        $breakdown = [];
+        $allocated = 0;
+        $keys = $eligibleItems->keys()->values();
+        $lastKey = $keys->last();
+
+        foreach ($eligibleItems as $cartKey => $item) {
+            $lineTotal = (float) ($item['line_total'] ?? 0);
+
+            if ((string) $cartKey === (string) $lastKey) {
+                $itemDiscount = $promoDiscountAmount - $allocated;
+            } else {
+                $itemDiscount = round($promoDiscountAmount * ($lineTotal / $eligibleSubtotal));
+                $allocated += $itemDiscount;
+            }
+
+            $itemDiscount = min($lineTotal, max(0, $itemDiscount));
+
+            $breakdown[$cartKey] = [
+                'promo_name' => $promo->name,
+                'promo_discount_amount' => $itemDiscount,
+                'final_line_total' => max(0, $lineTotal - $itemDiscount),
+            ];
+        }
+
+        return $breakdown;
+    }
+
+    protected function getPromoEligibleSubtotal(array $cart, Promo $promo): float
+    {
+        if ($promo->requirements->isEmpty()) {
+            return 0;
+        }
+
+        $eligibleVariantIds = $this->getPromoEligibleVariantIds($cart, $promo);
 
         if ($eligibleVariantIds->isEmpty()) {
             return 0;
@@ -739,6 +837,11 @@ class CartController extends Controller
 
         $discountAmount = (float) $discountResult['discount_amount'];
         $promoLabel = $discountResult['promo_label'] ?? null;
+        $promoItemDiscounts = $this->buildPromoItemDiscounts(
+            cart: $cart,
+            user: $user,
+            promoId: $request->filled('promo_id') ? (int) $request->input('promo_id') : null,
+        );
         $grandTotal = max(0, (float) $subtotal - $discountAmount);
 
         $paymentMethod = strtolower((string) $request->input('payment_method'));
@@ -776,6 +879,7 @@ class CartController extends Controller
                 $subtotal,
                 $discountAmount,
                 $promoLabel,
+                $promoItemDiscounts,
                 $grandTotal,
                 $paymentMethod,
                 $amountPaid,
@@ -801,7 +905,7 @@ class CartController extends Controller
                     'status' => 'completed',
                 ]);
 
-                foreach ($cart as $item) {
+                foreach ($cart as $cartKey => $item) {
                     $variantName = $item['variant_name'] ?? null;
                     $itemOrderType = $item['order_type'] ?? 'dine_in';
 
@@ -810,6 +914,9 @@ class CartController extends Controller
                     } else {
                         $variantName = strtoupper(str_replace('_', ' ', $itemOrderType));
                     }
+
+                    $promoItemDiscount = $promoItemDiscounts[$cartKey] ?? null;
+                    $lineTotal = (float) ($item['line_total'] ?? 0);
 
                     $transaction->items()->create([
                         'product_id' => $item['product_id'] ?? null,
@@ -820,7 +927,10 @@ class CartController extends Controller
                         'less_ice' => (bool) ($item['less_ice'] ?? false),
                         'qty' => $item['qty'] ?? 1,
                         'price' => $item['price'] ?? 0,
-                        'line_total' => $item['line_total'] ?? 0,
+                        'line_total' => $lineTotal,
+                        'promo_name' => $promoItemDiscount['promo_name'] ?? null,
+                        'promo_discount_amount' => $promoItemDiscount['promo_discount_amount'] ?? 0,
+                        'final_line_total' => $promoItemDiscount['final_line_total'] ?? $lineTotal,
                     ]);
                 }
 

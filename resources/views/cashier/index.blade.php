@@ -2932,7 +2932,7 @@
                                                         <br>
                                                         Modifier:
                                                         @if(!empty($item['less_sugar']))
-                                                            Less Sugar
+                                                            Less Sweet
                                                         @endif
                                                         @if(!empty($item['less_sugar']) && !empty($item['less_ice']))
                                                             •
@@ -2952,7 +2952,7 @@
 
                                                     <div class="modifier-buttons">
                                                         <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
-                                                            {{ !empty($item['less_sugar']) ? '✓ Less Sugar' : 'Less Sugar' }}
+                                                            {{ !empty($item['less_sugar']) ? '✓ Less Sweet' : 'Less Sweet' }}
                                                         </button>
                                                         <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="{{ route('cashier.cart.toggle-modifier', $cartKey) }}">
                                                             {{ !empty($item['less_ice']) ? '✓ Less Ice' : 'Less Ice' }}
@@ -3476,7 +3476,7 @@
 
         cartItemsContainer.innerHTML = items.map((item) => {
             const modifiers = [];
-            if (item.less_sugar) modifiers.push('Less Sugar');
+            if (item.less_sugar) modifiers.push('Less Sweet');
             if (item.less_ice) modifiers.push('Less Ice');
 
             return `
@@ -3501,7 +3501,7 @@
                         </div>
 
                         <div class="modifier-buttons">
-                            <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="/cashier/cart/toggle-modifier/${encodeURIComponent(item.cart_key)}">${item.less_sugar ? '✓ Less Sugar' : 'Less Sugar'}</button>
+                            <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_sugar" data-url="/cashier/cart/toggle-modifier/${encodeURIComponent(item.cart_key)}">${item.less_sugar ? '✓ Less Sweet' : 'Less Sweet'}</button>
                             <button type="button" class="mini-btn mini-btn-dark" data-cart-modifier="less_ice" data-url="/cashier/cart/toggle-modifier/${encodeURIComponent(item.cart_key)}">${item.less_ice ? '✓ Less Ice' : 'Less Ice'}</button>
                             <button type="button" class="mini-btn mini-btn-red" data-cart-action="remove" data-url="/cashier/cart/remove/${encodeURIComponent(item.cart_key)}">Hapus</button>
                         </div>

@@ -191,7 +191,7 @@
         $modifiers = [];
 
         if (! empty($item->less_sugar)) {
-            $modifiers[] = 'Less Sugar';
+            $modifiers[] = 'Less Sweet';
         }
 
         if (! empty($item->less_ice)) {
@@ -205,6 +205,9 @@
             'qty' => (float) ($item->qty ?? 0),
             'price' => (float) ($item->price ?? 0),
             'line_total' => (float) ($item->line_total ?? 0),
+            'promo_name' => $item->promo_name ?? null,
+            'promo_discount_amount' => (float) ($item->promo_discount_amount ?? 0),
+            'final_line_total' => (float) ($item->final_line_total ?? $item->line_total ?? 0),
         ];
     })->values();
 
@@ -438,6 +441,17 @@
 
             if (Array.isArray(receipt.items) && receipt.items.length) {
                 receipt.items.forEach((item) => {
+                    const itemPromoDiscount = Number(item.promo_discount_amount || 0);
+                    const itemFinalTotal = Number(item.final_line_total || item.line_total || 0);
+
+                    if (item.promo_name && itemPromoDiscount > 0) {
+                        pushWrapped(`PROMO ${item.promo_name}`, {
+                            size: 19,
+                            weight: '700',
+                            gap: 6,
+                        });
+                    }
+
                     pushWrapped(item.product_name || '-', {
                         size: 23,
                         weight: '700',
@@ -452,17 +466,24 @@
                     }
 
                     if (Array.isArray(item.modifiers) && item.modifiers.length) {
-                        pushWrapped(item.modifiers.join(' / '), {
-                            size: 19,
-                            gap: 3,
+                        item.modifiers.forEach((modifier) => {
+                            pushWrapped(modifier, {
+                                size: 19,
+                                gap: 3,
+                            });
                         });
                     }
 
                     row(
                         `${money(item.price)} x ${money(item.qty)}`,
                         money(item.line_total),
-                        { size: 21, gap: 10 }
+                        { size: 21, gap: 5 }
                     );
+
+                    if (itemPromoDiscount > 0) {
+                        row('Promo Discount', `-${money(itemPromoDiscount)}`, { size: 20, gap: 4 });
+                        row('Subtotal Item', money(itemFinalTotal), { size: 20, gap: 10 });
+                    }
                 });
             } else {
                 push('text', 'Tidak ada item.', {
@@ -474,14 +495,23 @@
 
             divider();
 
-            row('Subtotal', money(receipt.subtotal), { size: 21 });
+            const itemPromoDiscountTotal = Array.isArray(receipt.items)
+                ? receipt.items.reduce((total, item) => total + Number(item.promo_discount_amount || 0), 0)
+                : 0;
 
-            if (receipt.promo_name) {
-                row('Promo', receipt.promo_name, { size: 20 });
-            }
+            const subtotalAfterItemPromo = Array.isArray(receipt.items)
+                ? receipt.items.reduce((total, item) => {
+                    const finalLineTotal = Number(item.final_line_total || item.line_total || 0);
+                    return total + finalLineTotal;
+                }, 0)
+                : Number(receipt.subtotal || 0);
 
-            if (Number(receipt.discount_amount || 0) > 0) {
-                row('Discount', `-${money(receipt.discount_amount)}`, { size: 21 });
+            const globalDiscountAmount = Math.max(0, Number(receipt.discount_amount || 0) - itemPromoDiscountTotal);
+
+            row('Subtotal', money(subtotalAfterItemPromo), { size: 21 });
+
+            if (globalDiscountAmount > 0) {
+                row('Discount', `-${money(globalDiscountAmount)}`, { size: 21 });
             }
 
             if (Number(receipt.tax_amount || 0) > 0) {

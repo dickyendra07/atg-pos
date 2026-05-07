@@ -18,11 +18,16 @@ class SalesTransactionItem extends Model
         'qty',
         'price',
         'line_total',
+        'promo_name',
+        'promo_discount_amount',
+        'final_line_total',
     ];
 
     protected $casts = [
         'less_sugar' => 'boolean',
         'less_ice' => 'boolean',
+        'promo_discount_amount' => 'decimal:2',
+        'final_line_total' => 'decimal:2',
         'qty' => 'decimal:2',
         'price' => 'decimal:2',
         'line_total' => 'decimal:2',
