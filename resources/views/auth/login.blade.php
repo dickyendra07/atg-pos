@@ -435,18 +435,18 @@
                         @csrf
 
                         <div class="form-group">
-                            <label class="form-label" for="email">Email</label>
+                            <label class="form-label" for="login">Username / Email</label>
                             <input
-                                id="email"
-                                type="email"
-                                name="email"
+                                id="login"
+                                type="text"
+                                name="login"
                                 class="form-input"
-                                placeholder="Enter your email"
-                                value="{{ old('email') }}"
+                                placeholder="Enter username or email"
+                                value="{{ old('login') }}"
                                 required
                                 autofocus
                             >
-                            @error('email')
+                            @error('login')
                                 <div class="error-text">{{ $message }}</div>
                             @enderror
                         </div>

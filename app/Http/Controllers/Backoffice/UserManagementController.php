@@ -44,6 +44,13 @@ class UserManagementController extends Controller
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
+            'username' => [
+                'nullable',
+                'string',
+                'max:50',
+                'alpha_dash',
+                Rule::unique('users', 'username')->ignore($user?->id),
+            ],
             'email' => [
                 'required',
                 'email',
@@ -96,6 +103,7 @@ class UserManagementController extends Controller
         }
 
         $validated['outlet_ids'] = $outletIds;
+        $validated['role_id'] = $primaryRoleId;
 
         if (empty($validated['password'])) {
             unset($validated['password']);
@@ -153,10 +161,12 @@ class UserManagementController extends Controller
 
         $validated = $this->validateUser($request);
 
+        $roleIds = $validated['role_ids'] ?? [];
         $outletIds = $validated['outlet_ids'] ?? [];
-        unset($validated['outlet_ids']);
+        unset($validated['role_ids'], $validated['outlet_ids']);
 
         $createdUser = User::create($validated);
+        $createdUser->roles()->sync($roleIds);
         $createdUser->outlets()->sync($outletIds);
 
         return redirect()

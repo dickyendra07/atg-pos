@@ -15,19 +15,22 @@ class LoginController extends Controller
 
     public function store(Request $request)
     {
-        $credentials = $request->validate([
-            'email' => ['required', 'email'],
+        $validated = $request->validate([
+            'login' => ['required', 'string'],
             'password' => ['required', 'string'],
         ]);
 
+        $login = trim((string) $validated['login']);
+        $password = (string) $validated['password'];
         $remember = $request->boolean('remember');
+        $loginField = filter_var($login, FILTER_VALIDATE_EMAIL) ? 'email' : 'username';
 
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! Auth::attempt([$loginField => $login, 'password' => $password], $remember)) {
             return back()
                 ->withErrors([
-                    'email' => 'Email atau password tidak valid.',
+                    'login' => 'Username/email atau password tidak valid.',
                 ])
-                ->onlyInput('email');
+                ->onlyInput('login');
         }
 
         $request->session()->regenerate();
@@ -42,9 +45,9 @@ class LoginController extends Controller
 
             return back()
                 ->withErrors([
-                    'email' => 'Akun kamu sedang nonaktif. Hubungi admin untuk mengaktifkan kembali.',
+                    'login' => 'Akun kamu sedang nonaktif. Hubungi admin untuk mengaktifkan kembali.',
                 ])
-                ->onlyInput('email');
+                ->onlyInput('login');
         }
 
         return redirect()->intended(route('dashboard'));

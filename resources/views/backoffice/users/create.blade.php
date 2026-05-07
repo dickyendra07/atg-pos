@@ -258,6 +258,14 @@
                 </div>
 
                 <div class="field">
+                    <label>Username</label>
+                    <input type="text" name="username" value="{{ old('username') }}" placeholder="Contoh: adminpusat">
+                    @error('username')
+                        <div class="field-error">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="field">
                     <label>Email</label>
                     <input type="email" name="email" value="{{ old('email') }}" required>
                 </div>

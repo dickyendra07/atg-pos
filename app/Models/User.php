@@ -14,6 +14,7 @@ class User extends Authenticatable
 
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
         'phone',
@@ -79,25 +80,32 @@ class User extends Authenticatable
         return in_array($code, $this->roleCodes(), true);
     }
 
+    protected function normalizedRoleName(): string
+    {
+        return strtolower(trim((string) ($this->role?->name ?? '')));
+    }
+
     public function isFullAccessUser(): bool
     {
-        return ! empty(array_intersect($this->roleCodes(), [
+        return in_array($this->normalizedRoleName(), [
             'owner',
-            'admin_pusat',
-        ]));
+            'admin pusat',
+        ], true);
     }
 
     public function isLimitedAccessUser(): bool
     {
-        return ! empty(array_intersect($this->roleCodes(), [
-            'admin_outlet',
+        return in_array($this->normalizedRoleName(), [
             'kasir',
-        ]));
+        ], true);
     }
 
     public function canAccessCashier(): bool
     {
-        return $this->isFullAccessUser() || $this->isLimitedAccessUser();
+        return in_array($this->normalizedRoleName(), [
+            'owner',
+            'kasir',
+        ], true);
     }
 
     public function canAccessBackofficeDashboard(): bool
