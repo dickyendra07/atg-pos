@@ -4331,22 +4331,38 @@
                 return;
             }
 
-            const pin = window.prompt('Masukkan PIN approval dari back office. Kalau belum ada PIN, kosongkan lalu OK untuk request PIN:');
+            const hiddenReasonInput = form.querySelector('input[name="void_reason"]');
+            const hiddenPinInput = form.querySelector('input[name="approval_pin"]');
+
+            if (hiddenReasonInput) {
+                hiddenReasonInput.value = String(reason).trim();
+            }
+
+            const hasPin = window.confirm('Sudah punya PIN approval dari Back Office?\n\nOK = input PIN dan proses void\nCancel = request PIN void ke Back Office');
+
+            if (!hasPin) {
+                if (hiddenPinInput) {
+                    hiddenPinInput.value = '';
+                }
+
+                form.submit();
+                return;
+            }
+
+            const pin = window.prompt('Masukkan PIN approval dari Back Office:');
 
             if (pin === null) {
+                return;
+            }
+
+            if (!String(pin).trim()) {
+                showAlert('error', 'PIN approval wajib diisi kalau mau langsung void. Klik Void lagi lalu pilih Cancel untuk request PIN.');
                 return;
             }
 
             const confirmed = window.confirm('Yakin void transaksi ini? Stock akan dikembalikan.');
             if (!confirmed) {
                 return;
-            }
-
-            const hiddenReasonInput = form.querySelector('input[name="void_reason"]');
-            const hiddenPinInput = form.querySelector('input[name="approval_pin"]');
-
-            if (hiddenReasonInput) {
-                hiddenReasonInput.value = String(reason).trim();
             }
 
             if (hiddenPinInput) {
@@ -4500,20 +4516,36 @@
         form.addEventListener('submit', function (event) {
             const printCount = Number(form.dataset.printCount || 0);
 
-            // Print pertama dan kedua bebas PIN. Mulai print ke-3 wajib PIN.
+            // Print pertama dan kedua bebas PIN. Mulai print ke-3 wajib approval.
             if (printCount < 2) {
                 return;
             }
 
             event.preventDefault();
 
-            const approvalPin = window.prompt('Reprint ke-3 dan seterusnya butuh PIN approval dari Back Office. Kosongkan lalu OK untuk request PIN:');
+            const pinInput = form.querySelector('input[name="approval_pin"]');
+
+            const hasPin = window.confirm('Reprint ke-3 dan seterusnya butuh PIN approval dari Back Office.\n\nSudah punya PIN approval?\n\nOK = input PIN dan print\nCancel = request PIN reprint ke Back Office');
+
+            if (!hasPin) {
+                if (pinInput) {
+                    pinInput.value = '';
+                }
+
+                form.submit();
+                return;
+            }
+
+            const approvalPin = window.prompt('Masukkan PIN approval dari Back Office:');
 
             if (approvalPin === null) {
                 return;
             }
 
-            const pinInput = form.querySelector('input[name="approval_pin"]');
+            if (!String(approvalPin).trim()) {
+                showAlert('error', 'PIN approval wajib diisi kalau mau langsung reprint. Klik Print Receipt lagi lalu pilih Cancel untuk request PIN.');
+                return;
+            }
 
             if (pinInput) {
                 pinInput.value = String(approvalPin).trim();

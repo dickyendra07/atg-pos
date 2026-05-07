@@ -782,7 +782,105 @@
             color: #111827;
         }
 
+    
+        .dashboard-topbar {
+            position: relative;
+        }
+
+        .dashboard-topbar-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+
+        .notification-bell-btn {
+            position: relative;
+            width: 46px;
+            height: 46px;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.92);
+            color: #111827;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+            transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+        }
+
+        .notification-bell-btn:hover {
+            border-color: #f26b3a;
+            box-shadow: 0 12px 28px rgba(242, 107, 58, 0.16);
+            transform: translateY(-1px);
+        }
+
+        .notification-bell-icon {
+            width: 20px;
+            height: 20px;
+            color: #111827;
+        }
+
+        .notification-bell-badge {
+            position: absolute;
+            top: -7px;
+            right: -7px;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 6px;
+            border-radius: 999px;
+            background: #ef4444;
+            color: #ffffff;
+            border: 3px solid #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 900;
+        }
+
+        .notification-drawer {
+            position: fixed !important;
+            top: 96px;
+            right: 28px;
+            z-index: 9999;
+            width: min(760px, calc(100vw - 56px));
+            max-height: calc(100vh - 132px);
+            overflow: auto;
+            display: none;
+            margin: 0 !important;
+        }
+
+        .notification-drawer.active {
+            display: block;
+        }
+
+        .notification-drawer-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            background: rgba(15, 23, 42, 0.18);
+            display: none;
+        }
+
+        .notification-drawer-backdrop.active {
+            display: block;
+        }
+
+        @media (max-width: 780px) {
+            .notification-drawer {
+                top: 84px;
+                left: 16px;
+                right: 16px;
+                width: auto;
+                max-height: calc(100vh - 110px);
+            }
+        }
+
     </style>
+
+    <div class="notification-drawer-backdrop" id="notification-drawer-backdrop"></div>
 
     <div class="dashboard-shell">
         <div class="dashboard-topbar">
@@ -791,8 +889,20 @@
 
             </div>
 
-            <div class="dashboard-user-pill">
+            <div class="dashboard-topbar-actions">
+
+
+                <button type="button" class="notification-bell-btn" id="notification-bell-btn" aria-label="Open notifications">
+                    🔔
+                    @if((int) ($unreadNotificationCount ?? 0) > 0)
+                        <span class="notification-bell-badge">{{ number_format((int) ($unreadNotificationCount ?? 0), 0, ',', '.') }}</span>
+                    @endif
+                </button>
+                <div class="dashboard-user-pill">
                 {{ $user->name }} • {{ $user->role->name ?? '-' }}
+            </div>
+
+
             </div>
         </div>
 
@@ -844,7 +954,7 @@
             </div>
         @endif
 
-        <div class="notification-card">
+        <div class="notification-card notification-drawer" id="backoffice-notification-drawer">
             <div class="notification-head">
                 <div>
                     <h2 class="notification-title">Need Action / Notifications</h2>
@@ -1334,4 +1444,43 @@
             
         </div>
     </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const bellButton = document.getElementById('notification-bell-btn');
+        const drawer = document.getElementById('backoffice-notification-drawer');
+        const backdrop = document.getElementById('notification-drawer-backdrop');
+
+        function closeNotificationDrawer() {
+            if (drawer) {
+                drawer.classList.remove('active');
+            }
+
+            if (backdrop) {
+                backdrop.classList.remove('active');
+            }
+        }
+
+        if (bellButton && drawer && backdrop) {
+            bellButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                drawer.classList.toggle('active');
+                backdrop.classList.toggle('active');
+            });
+        }
+
+        if (backdrop) {
+            backdrop.addEventListener('click', closeNotificationDrawer);
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeNotificationDrawer();
+            }
+        });
+    });
+</script>
+
 @endsection

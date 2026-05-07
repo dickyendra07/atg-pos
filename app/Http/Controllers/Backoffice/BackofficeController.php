@@ -282,7 +282,11 @@ class BackofficeController extends Controller
             ->take(10)
             ->values();
 
+        $notificationFreshSince = now()->subHour();
+
         $notificationQuery = BackofficeNotification::with(['transaction', 'outlet', 'createdBy'])
+            ->whereNull('read_at')
+            ->where('created_at', '>=', $notificationFreshSince)
             ->latest();
 
         if ($selectedOutletId) {
@@ -295,6 +299,7 @@ class BackofficeController extends Controller
 
         $unreadNotificationCount = BackofficeNotification::query()
             ->whereNull('read_at')
+            ->where('created_at', '>=', $notificationFreshSince)
             ->when($selectedOutletId, function ($query) use ($selectedOutletId) {
                 $query->where('outlet_id', $selectedOutletId);
             })
