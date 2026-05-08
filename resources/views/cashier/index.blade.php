@@ -2406,6 +2406,17 @@
             overflow-y: auto !important;
         }
 
+    
+        .logout-inline-form {
+            display: inline-flex;
+            margin: 0;
+        }
+
+        .logout-inline-form .btn {
+            border: 0;
+            cursor: pointer;
+        }
+
     </style>
 </head>
 <body>
@@ -2487,6 +2498,10 @@
                     {{ $user->name ?? 'Cashier User' }} • {{ $user->outlet->name ?? 'Outlet' }}
                 </div>
                 <a href="{{ route('dashboard') }}" class="btn btn-dark">Mode Select</a>
+                <form method="POST" action="{{ route('logout') }}" class="logout-inline-form">
+                    @csrf
+                    <button type="submit" class="btn btn-dark">Logout</button>
+                </form>
             </div>
         </div>
 
@@ -4316,8 +4331,24 @@
         }
     });
 
+
+    async function submitFormForApprovalRequest(form) {
+        const response = await fetch(form.action, {
+            method: form.method || 'POST',
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'text/html,application/xhtml+xml',
+            },
+            body: new FormData(form),
+        });
+
+        return response;
+    }
+
+
     document.querySelectorAll('.cashier-void-form').forEach((form) => {
-        form.addEventListener('submit', function (event) {
+        form.addEventListener('submit', async function (event) {
             event.preventDefault();
 
             const reason = window.prompt('Masukkan alasan void transaksi:');
@@ -4338,25 +4369,27 @@
                 hiddenReasonInput.value = String(reason).trim();
             }
 
-            const hasPin = window.confirm('Sudah punya PIN approval dari Back Office?\n\nOK = input PIN dan proses void\nCancel = request PIN void ke Back Office');
-
-            if (!hasPin) {
-                if (hiddenPinInput) {
-                    hiddenPinInput.value = '';
-                }
-
-                form.submit();
-                return;
+            if (hiddenPinInput) {
+                hiddenPinInput.value = '';
             }
 
-            const pin = window.prompt('Masukkan PIN approval dari Back Office:');
+            showAlert('info', 'Request PIN void sedang dikirim ke Back Office...');
+
+            try {
+                await submitFormForApprovalRequest(form);
+            } catch (error) {
+                // Kalau fetch gagal karena redirect / response HTML, tetap lanjut input PIN supaya flow kasir tidak berhenti.
+            }
+
+            const pin = window.prompt('Request PIN void sudah dikirim ke Back Office.\n\nHubungi Back Office, lalu masukkan PIN approval di sini:');
 
             if (pin === null) {
+                showAlert('info', 'Request PIN void sudah masuk. Void belum diproses sampai PIN dimasukkan.');
                 return;
             }
 
             if (!String(pin).trim()) {
-                showAlert('error', 'PIN approval wajib diisi kalau mau langsung void. Klik Void lagi lalu pilih Cancel untuk request PIN.');
+                showAlert('error', 'PIN approval wajib diisi untuk memproses void.');
                 return;
             }
 
@@ -4513,7 +4546,7 @@
 
 
     document.querySelectorAll('.cashier-reprint-form').forEach((form) => {
-        form.addEventListener('submit', function (event) {
+        form.addEventListener('submit', async function (event) {
             const printCount = Number(form.dataset.printCount || 0);
 
             // Print pertama dan kedua bebas PIN. Mulai print ke-3 wajib approval.
@@ -4525,25 +4558,27 @@
 
             const pinInput = form.querySelector('input[name="approval_pin"]');
 
-            const hasPin = window.confirm('Reprint ke-3 dan seterusnya butuh PIN approval dari Back Office.\n\nSudah punya PIN approval?\n\nOK = input PIN dan print\nCancel = request PIN reprint ke Back Office');
-
-            if (!hasPin) {
-                if (pinInput) {
-                    pinInput.value = '';
-                }
-
-                form.submit();
-                return;
+            if (pinInput) {
+                pinInput.value = '';
             }
 
-            const approvalPin = window.prompt('Masukkan PIN approval dari Back Office:');
+            showAlert('info', 'Request PIN reprint sedang dikirim ke Back Office...');
+
+            try {
+                await submitFormForApprovalRequest(form);
+            } catch (error) {
+                // Kalau fetch gagal karena redirect / response HTML, tetap lanjut input PIN supaya flow kasir tidak berhenti.
+            }
+
+            const approvalPin = window.prompt('Request PIN reprint sudah dikirim ke Back Office.\n\nHubungi Back Office, lalu masukkan PIN approval di sini:');
 
             if (approvalPin === null) {
+                showAlert('info', 'Request PIN reprint sudah masuk. Reprint belum diproses sampai PIN dimasukkan.');
                 return;
             }
 
             if (!String(approvalPin).trim()) {
-                showAlert('error', 'PIN approval wajib diisi kalau mau langsung reprint. Klik Print Receipt lagi lalu pilih Cancel untuk request PIN.');
+                showAlert('error', 'PIN approval wajib diisi untuk memproses reprint.');
                 return;
             }
 

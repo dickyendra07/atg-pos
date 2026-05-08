@@ -452,16 +452,21 @@
                         });
                     }
 
-                    pushWrapped(item.product_name || '-', {
-                        size: 23,
-                        weight: '700',
-                        gap: 4,
-                    });
+                    row(
+                        `${money(item.qty)} x ${item.product_name || '-'}`,
+                        money(item.line_total),
+                        {
+                            size: 21,
+                            weight: '700',
+                            gap: 4,
+                        }
+                    );
 
                     if (item.variant_name) {
                         pushWrapped(item.variant_name, {
                             size: 20,
                             gap: 3,
+                            indent: 18,
                         });
                     }
 
@@ -470,19 +475,14 @@
                             pushWrapped(modifier, {
                                 size: 19,
                                 gap: 3,
+                                indent: 18,
                             });
                         });
                     }
 
-                    row(
-                        `${money(item.price)} x ${money(item.qty)}`,
-                        money(item.line_total),
-                        { size: 21, gap: 5 }
-                    );
-
                     if (itemPromoDiscount > 0) {
-                        row('Promo Discount', `-${money(itemPromoDiscount)}`, { size: 20, gap: 4 });
-                        row('Subtotal Item', money(itemFinalTotal), { size: 20, gap: 10 });
+                        row('Promo Discount', `-${money(itemPromoDiscount)}`, { size: 20, gap: 4, indent: 18 });
+                        row('Subtotal Item', money(itemFinalTotal), { size: 20, gap: 10, indent: 18 });
                     }
                 });
             } else {

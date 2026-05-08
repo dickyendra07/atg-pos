@@ -878,6 +878,127 @@
             }
         }
 
+    
+        .topbar-mini-btn {
+            height: 46px;
+            padding: 0 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            background: #ffffff;
+            color: #111827;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 900;
+            text-decoration: none;
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+        }
+
+        .topbar-mini-btn:hover {
+            border-color: #f26b3a;
+            color: #c9552a;
+        }
+
+        .topbar-logout-form {
+            display: inline-flex;
+            margin: 0;
+        }
+
+        .approval-history-drawer {
+            position: fixed !important;
+            top: 96px;
+            right: 28px;
+            z-index: 9999;
+            width: min(820px, calc(100vw - 56px));
+            max-height: calc(100vh - 132px);
+            overflow: auto;
+            display: none;
+            margin: 0 !important;
+            background: linear-gradient(135deg, #ffffff 0%, #fff7f2 100%);
+            border: 1px solid #f0d8cb;
+            border-radius: 28px;
+            box-shadow: 0 28px 70px rgba(15, 23, 42, 0.24);
+            padding: 22px;
+        }
+
+        .approval-history-drawer.active {
+            display: block !important;
+        }
+
+        .approval-history-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .approval-history-title {
+            margin: 0;
+            color: #111827;
+            font-size: 22px;
+            font-weight: 900;
+        }
+
+        .approval-history-subtitle {
+            margin-top: 5px;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .approval-history-close {
+            width: 38px;
+            height: 38px;
+            border: 0;
+            border-radius: 14px;
+            background: #f3f4f6;
+            color: #111827;
+            font-size: 22px;
+            font-weight: 900;
+            cursor: pointer;
+        }
+
+        .approval-history-list {
+            display: grid;
+            gap: 12px;
+        }
+
+        .approval-history-item {
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.92);
+            border: 1px solid #e8edf4;
+        }
+
+        .approval-history-empty {
+            padding: 18px;
+            border-radius: 18px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        @media (max-width: 780px) {
+            .approval-history-drawer {
+                top: 84px;
+                left: 16px;
+                right: 16px;
+                width: auto;
+                max-height: calc(100vh - 110px);
+            }
+
+            .dashboard-topbar-actions {
+                flex-wrap: wrap;
+                justify-content: flex-end;
+            }
+        }
+
     </style>
 
     <div class="notification-drawer-backdrop" id="notification-drawer-backdrop"></div>
@@ -898,6 +1019,17 @@
                         <span class="notification-bell-badge">{{ number_format((int) ($unreadNotificationCount ?? 0), 0, ',', '.') }}</span>
                     @endif
                 </button>
+                <button type="button" class="topbar-mini-btn" id="approval-history-btn">
+                    History
+                </button>
+
+                <form method="POST" action="{{ route('logout') }}" class="topbar-logout-form">
+                    @csrf
+                    <button type="submit" class="topbar-mini-btn">
+                        Logout
+                    </button>
+                </form>
+
                 <div class="dashboard-user-pill">
                 {{ $user->name }} • {{ $user->role->name ?? '-' }}
             </div>
@@ -905,6 +1037,69 @@
 
             </div>
         </div>
+
+
+        <div class="approval-history-drawer" id="approval-history-drawer">
+            <div class="approval-history-head">
+                <div>
+                    <h2 class="approval-history-title">History Void & Reprint</h2>
+                    <div class="approval-history-subtitle">
+                        Riwayat request PIN, void transaksi, dan reprint receipt terbaru.
+                    </div>
+                </div>
+                <button type="button" class="approval-history-close" id="approval-history-close">×</button>
+            </div>
+
+            @if(($approvalActivityHistory ?? collect())->isEmpty())
+                <div class="approval-history-empty">
+                    Belum ada history void / reprint.
+                </div>
+            @else
+                <div class="approval-history-list">
+                    @foreach($approvalActivityHistory as $history)
+                        @php
+                            $badgeClass = str_contains((string) $history->type, 'void')
+                                ? 'void'
+                                : 'reprint';
+                        @endphp
+
+                        <div class="approval-history-item">
+                            <div class="notification-badge {{ $badgeClass }}">
+                                {{ str_replace('_', ' ', $history->type) }}
+                            </div>
+
+                            <p class="notification-message">
+                                {{ $history->message ?? $history->title }}
+                            </p>
+
+                            <div class="notification-meta">
+                                {{ $history->created_at?->format('d M Y H:i') ?? '-' }}
+                                @if($history->outlet)
+                                    • {{ $history->outlet->name }}
+                                @endif
+                                @if($history->createdBy)
+                                    • Oleh {{ $history->createdBy->name }}
+                                @endif
+                                @if($history->read_at)
+                                    • Read {{ $history->read_at?->format('d M Y H:i') }}
+                                @else
+                                    • Unread
+                                @endif
+                            </div>
+
+                            @if($history->sales_transaction_id)
+                                <div style="margin-top:10px;">
+                                    <a href="{{ route('backoffice.transactions.show', $history->sales_transaction_id) }}" class="btn btn-dark">
+                                        Lihat Transaksi
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            @endif
+        </div>
+
 
         <div class="filter-card">
             <h2 class="filter-title">Filter Dashboard</h2>
@@ -1478,6 +1673,56 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 closeNotificationDrawer();
+            }
+        });
+    });
+</script>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const historyButton = document.getElementById('approval-history-btn');
+        const historyDrawer = document.getElementById('approval-history-drawer');
+        const historyClose = document.getElementById('approval-history-close');
+        const notificationBackdrop = document.getElementById('notification-drawer-backdrop');
+
+        function closeApprovalHistory() {
+            if (historyDrawer) {
+                historyDrawer.classList.remove('active');
+            }
+
+            if (notificationBackdrop) {
+                notificationBackdrop.classList.remove('active');
+            }
+        }
+
+        if (historyButton && historyDrawer) {
+            historyButton.addEventListener('click', function (event) {
+                event.preventDefault();
+                event.stopPropagation();
+
+                historyDrawer.classList.toggle('active');
+
+                if (notificationBackdrop) {
+                    notificationBackdrop.classList.toggle('active', historyDrawer.classList.contains('active'));
+                }
+            });
+        }
+
+        if (historyClose) {
+            historyClose.addEventListener('click', function (event) {
+                event.preventDefault();
+                closeApprovalHistory();
+            });
+        }
+
+        if (notificationBackdrop) {
+            notificationBackdrop.addEventListener('click', closeApprovalHistory);
+        }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                closeApprovalHistory();
             }
         });
     });

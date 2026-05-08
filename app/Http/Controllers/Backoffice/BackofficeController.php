@@ -297,6 +297,20 @@ class BackofficeController extends Controller
             ->take(8)
             ->get();
 
+        $approvalActivityHistory = BackofficeNotification::with(['transaction', 'outlet', 'createdBy'])
+            ->whereIn('type', [
+                'transaction_void',
+                'transaction_void_request',
+                'receipt_reprint',
+                'receipt_reprint_request',
+            ])
+            ->when($selectedOutletId, function ($query) use ($selectedOutletId) {
+                $query->where('outlet_id', $selectedOutletId);
+            })
+            ->latest()
+            ->take(50)
+            ->get();
+
         $unreadNotificationCount = BackofficeNotification::query()
             ->whereNull('read_at')
             ->where('created_at', '>=', $notificationFreshSince)
@@ -344,6 +358,7 @@ class BackofficeController extends Controller
             'outletTransactionSummary' => $outletTransactionSummary,
             'topProducts' => $topProducts,
             'backofficeNotifications' => $backofficeNotifications,
+            'approvalActivityHistory' => $approvalActivityHistory,
             'unreadNotificationCount' => $unreadNotificationCount,
             'permissions' => [
                 'can_see_global_data' => $canSeeGlobalData,
