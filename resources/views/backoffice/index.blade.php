@@ -1860,23 +1860,49 @@
 </script>
 
 
+
+
+
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const AUTO_REFRESH_MS = 5000;
-        let historyRefreshTimer = null;
-        let isRefreshingHistory = false;
+        let isLoadingHistoryFilter = false;
+        let historyFilterTimer = null;
 
-        async function refreshApprovalHistoryDrawer() {
-            const currentDrawer = document.getElementById('approval-history-drawer');
+        function getHistoryDrawer() {
+            return document.getElementById('approval-history-drawer');
+        }
 
-            if (!currentDrawer || !currentDrawer.classList.contains('active') || isRefreshingHistory) {
+        function getHistoryForm() {
+            return document.querySelector('#approval-history-drawer .approval-history-filter');
+        }
+
+        async function applyApprovalHistoryFilter() {
+            const drawer = getHistoryDrawer();
+            const form = getHistoryForm();
+
+            if (!drawer || !form || isLoadingHistoryFilter) {
                 return;
             }
 
-            isRefreshingHistory = true;
+            isLoadingHistoryFilter = true;
+            drawer.style.opacity = '0.65';
 
             try {
-                const response = await fetch(window.location.href, {
+                const formData = new FormData(form);
+                const url = new URL(form.action || window.location.href, window.location.origin);
+
+                formData.forEach(function (value, key) {
+                    if (value !== null && String(value).trim() !== '') {
+                        url.searchParams.set(key, value);
+                    } else {
+                        url.searchParams.delete(key);
+                    }
+                });
+
+                url.searchParams.set('_approval_history_filter', Date.now().toString());
+
+                const response = await fetch(url.toString(), {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'text/html',
@@ -1884,90 +1910,85 @@
                     cache: 'no-store',
                 });
 
+                if (!response.ok) {
+                    return;
+                }
+
                 const html = await response.text();
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-
-                const freshDrawer = doc.getElementById('approval-history-drawer');
-                const freshBellBadge = doc.querySelector('#notification-bell-btn .notification-bell-badge');
-                const currentBellBadge = document.querySelector('#notification-bell-btn .notification-bell-badge');
-                const bellButton = document.getElementById('notification-bell-btn');
+                const freshDocument = parser.parseFromString(html, 'text/html');
+                const freshDrawer = freshDocument.getElementById('approval-history-drawer');
 
                 if (freshDrawer) {
-                    currentDrawer.innerHTML = freshDrawer.innerHTML;
-                    currentDrawer.classList.add('active');
-                }
+                    drawer.innerHTML = freshDrawer.innerHTML;
+                    drawer.classList.add('active');
 
-                if (bellButton) {
-                    if (freshBellBadge) {
-                        if (currentBellBadge) {
-                            currentBellBadge.outerHTML = freshBellBadge.outerHTML;
-                        } else {
-                            bellButton.insertAdjacentHTML('beforeend', freshBellBadge.outerHTML);
-                        }
-                    } else if (currentBellBadge) {
-                        currentBellBadge.remove();
-                    }
+                    // Update URL supaya filter state tetap kebaca kalau reload manual.
+                    url.searchParams.delete('_approval_history_filter');
+                    window.history.replaceState({}, '', url.toString());
                 }
             } catch (error) {
-                // Silent supaya dashboard tidak terganggu kalau koneksi sedang lambat.
+                // Silent supaya dashboard tidak terganggu.
             } finally {
-                isRefreshingHistory = false;
+                drawer.style.opacity = '';
+                isLoadingHistoryFilter = false;
             }
         }
 
-        function startApprovalHistoryAutoRefresh() {
-            if (historyRefreshTimer) {
-                return;
-            }
-
-            historyRefreshTimer = setInterval(refreshApprovalHistoryDrawer, AUTO_REFRESH_MS);
+        function scheduleApprovalHistoryFilter() {
+            clearTimeout(historyFilterTimer);
+            historyFilterTimer = setTimeout(applyApprovalHistoryFilter, 250);
         }
 
-        function stopApprovalHistoryAutoRefresh() {
-            if (!historyRefreshTimer) {
-                return;
+        document.addEventListener('change', function (event) {
+            if (event.target.closest('#approval-history-drawer .approval-history-filter')) {
+                scheduleApprovalHistoryFilter();
             }
+        });
 
-            clearInterval(historyRefreshTimer);
-            historyRefreshTimer = null;
-        }
+        document.addEventListener('input', function (event) {
+            if (event.target.closest('#approval-history-drawer .approval-history-filter input[type="date"]')) {
+                scheduleApprovalHistoryFilter();
+            }
+        });
+
+        document.addEventListener('submit', function (event) {
+            if (event.target.matches('#approval-history-drawer .approval-history-filter')) {
+                event.preventDefault();
+                applyApprovalHistoryFilter();
+            }
+        });
 
         document.addEventListener('click', function (event) {
-            if (event.target.closest('#approval-history-btn')) {
-                setTimeout(function () {
-                    const drawer = document.getElementById('approval-history-drawer');
+            const resetLink = event.target.closest('#approval-history-drawer .approval-history-filter-actions a');
 
-                    if (drawer && drawer.classList.contains('active')) {
-                        refreshApprovalHistoryDrawer();
-                        startApprovalHistoryAutoRefresh();
-                    } else {
-                        stopApprovalHistoryAutoRefresh();
-                    }
-                }, 80);
-            }
-
-            if (event.target.closest('#approval-history-close') || event.target.closest('#notification-drawer-backdrop')) {
-                setTimeout(stopApprovalHistoryAutoRefresh, 80);
-            }
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape') {
-                stopApprovalHistoryAutoRefresh();
-            }
-        });
-
-        document.addEventListener('visibilitychange', function () {
-            if (document.hidden) {
-                stopApprovalHistoryAutoRefresh();
+            if (!resetLink) {
                 return;
             }
 
-            const drawer = document.getElementById('approval-history-drawer');
-            if (drawer && drawer.classList.contains('active')) {
-                startApprovalHistoryAutoRefresh();
-            }
+            event.preventDefault();
+
+            fetch(resetLink.href, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html',
+                },
+                cache: 'no-store',
+            })
+                .then(response => response.text())
+                .then(html => {
+                    const drawer = getHistoryDrawer();
+                    const parser = new DOMParser();
+                    const freshDocument = parser.parseFromString(html, 'text/html');
+                    const freshDrawer = freshDocument.getElementById('approval-history-drawer');
+
+                    if (drawer && freshDrawer) {
+                        drawer.innerHTML = freshDrawer.innerHTML;
+                        drawer.classList.add('active');
+                        window.history.replaceState({}, '', resetLink.href);
+                    }
+                })
+                .catch(() => {});
         });
     });
 </script>
