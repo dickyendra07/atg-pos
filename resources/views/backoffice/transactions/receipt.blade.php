@@ -440,16 +440,21 @@
             divider();
 
             if (Array.isArray(receipt.items) && receipt.items.length) {
+                let lastPrintedPromoName = null;
+
                 receipt.items.forEach((item) => {
                     const itemPromoDiscount = Number(item.promo_discount_amount || 0);
                     const itemFinalTotal = Number(item.final_line_total || item.line_total || 0);
+                    const itemPromoName = item.promo_name ? String(item.promo_name).trim() : '';
 
-                    if (item.promo_name && itemPromoDiscount > 0) {
-                        pushWrapped(`PROMO ${item.promo_name}`, {
+                    if (itemPromoName && itemPromoDiscount > 0 && itemPromoName !== lastPrintedPromoName) {
+                        pushWrapped(`PROMO ${itemPromoName}`, {
                             size: 19,
                             weight: '700',
                             gap: 6,
                         });
+
+                        lastPrintedPromoName = itemPromoName;
                     }
 
                     row(
