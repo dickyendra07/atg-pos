@@ -999,6 +999,67 @@
             }
         }
 
+    
+        .approval-history-filter {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+            padding: 12px;
+            border-radius: 18px;
+            background: rgba(255,255,255,0.78);
+            border: 1px solid #e8edf4;
+            margin-bottom: 14px;
+        }
+
+        .approval-history-filter .field {
+            display: grid;
+            gap: 6px;
+        }
+
+        .approval-history-filter label {
+            font-size: 11px;
+            font-weight: 900;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .approval-history-filter input,
+        .approval-history-filter select {
+            width: 100%;
+            min-height: 38px;
+            border: 1px solid #d1d5db;
+            border-radius: 12px;
+            padding: 0 10px;
+            font-size: 13px;
+            font-weight: 800;
+            color: #111827;
+            background: #ffffff;
+        }
+
+        .approval-history-filter-actions {
+            display: flex;
+            align-items: end;
+            gap: 8px;
+        }
+
+        .approval-history-filter-actions .btn {
+            min-height: 38px;
+            padding: 0 12px;
+            white-space: nowrap;
+        }
+
+        @media (max-width: 780px) {
+            .approval-history-filter {
+                grid-template-columns: 1fr;
+            }
+
+            .approval-history-filter-actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+        }
+
     </style>
 
     <div class="notification-drawer-backdrop" id="notification-drawer-backdrop"></div>
@@ -1044,15 +1105,61 @@
                 <div>
                     <h2 class="approval-history-title">History Void & Reprint</h2>
                     <div class="approval-history-subtitle">
-                        Riwayat request PIN, void transaksi, dan reprint receipt terbaru.
+                        Riwayat request PIN void dan reprint beserta status pemakaian PIN untuk KPI outlet.
                     </div>
                 </div>
                 <button type="button" class="approval-history-close" id="approval-history-close">×</button>
             </div>
 
+            <form method="GET" action="{{ route('backoffice.index') }}" class="approval-history-filter">
+                <input type="hidden" name="outlet_id" value="{{ $filters['outlet_id'] ?? '' }}">
+                <input type="hidden" name="date_from" value="{{ $filters['date_from'] ?? '' }}">
+                <input type="hidden" name="date_to" value="{{ $filters['date_to'] ?? '' }}">
+
+                <div class="field">
+                    <label for="history_date_from">Dari Tanggal</label>
+                    <input
+                        type="date"
+                        id="history_date_from"
+                        name="history_date_from"
+                        value="{{ $approvalHistoryFilters['date_from'] ?? '' }}"
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="history_date_to">Sampai Tanggal</label>
+                    <input
+                        type="date"
+                        id="history_date_to"
+                        name="history_date_to"
+                        value="{{ $approvalHistoryFilters['date_to'] ?? '' }}"
+                    >
+                </div>
+
+                <div class="field">
+                    <label for="history_status">Status PIN</label>
+                    <select id="history_status" name="history_status">
+                        <option value="all" @selected(($approvalHistoryFilters['status'] ?? 'all') === 'all')>Semua Status</option>
+                        <option value="used" @selected(($approvalHistoryFilters['status'] ?? 'all') === 'used')>Berhasil Digunakan</option>
+                        <option value="waiting" @selected(($approvalHistoryFilters['status'] ?? 'all') === 'waiting')>Belum Digunakan</option>
+                        <option value="expired" @selected(($approvalHistoryFilters['status'] ?? 'all') === 'expired')>Expired</option>
+                        <option value="not_generated" @selected(($approvalHistoryFilters['status'] ?? 'all') === 'not_generated')>Belum Dibuat</option>
+                    </select>
+                </div>
+
+                <div class="approval-history-filter-actions">
+                    <button type="submit" class="btn btn-brand">Filter</button>
+                    <a href="{{ route('backoffice.index', array_filter([
+                        'outlet_id' => $filters['outlet_id'] ?? null,
+                        'date_from' => $filters['date_from'] ?? null,
+                        'date_to' => $filters['date_to'] ?? null,
+                    ])) }}" class="btn btn-soft">Reset</a>
+                </div>
+            </form>
+
             @if(($approvalActivityHistory ?? collect())->isEmpty())
                 <div class="approval-history-empty">
-                    Belum ada history void / reprint.
+                    Belum ada history request PIN void / reprint.
                 </div>
             @else
                 <div class="approval-history-list">
@@ -1061,11 +1168,28 @@
                             $badgeClass = str_contains((string) $history->type, 'void')
                                 ? 'void'
                                 : 'reprint';
+
+                            $pinStatus = $history->approval_pin_status ?? 'not_generated';
+                            $pinStatusLabel = $history->approval_pin_status_label ?? 'PIN BELUM DIBUAT';
+
+                            $pinStatusStyle = 'background:#4b5563;';
+                            if ($pinStatus === 'used') {
+                                $pinStatusStyle = 'background:#166534;';
+                            } elseif ($pinStatus === 'waiting') {
+                                $pinStatusStyle = 'background:#c9552a;';
+                            } elseif ($pinStatus === 'expired') {
+                                $pinStatusStyle = 'background:#991b1b;';
+                            }
                         @endphp
 
                         <div class="approval-history-item">
-                            <div class="notification-badge {{ $badgeClass }}">
-                                {{ str_replace('_', ' ', $history->type) }}
+                            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px;">
+                                <div class="notification-badge {{ $badgeClass }}" style="margin-bottom:0;">
+                                    {{ str_replace('_', ' ', $history->type) }}
+                                </div>
+                                <div class="notification-badge" style="margin-bottom:0; {{ $pinStatusStyle }}">
+                                    {{ $pinStatusLabel }}
+                                </div>
                             </div>
 
                             <p class="notification-message">
@@ -1080,10 +1204,17 @@
                                 @if($history->createdBy)
                                     • Oleh {{ $history->createdBy->name }}
                                 @endif
-                                @if($history->read_at)
-                                    • Read {{ $history->read_at?->format('d M Y H:i') }}
-                                @else
-                                    • Unread
+                                @if($history->approval_pin_generated_at)
+                                    • PIN dibuat {{ $history->approval_pin_generated_at?->format('d M Y H:i') }}
+                                @endif
+                                @if($history->approval_pin_used_at)
+                                    • Dipakai {{ $history->approval_pin_used_at?->format('d M Y H:i') }}
+                                @endif
+                                @if($history->approval_pin_used_by)
+                                    • Dipakai oleh {{ $history->approval_pin_used_by }}
+                                @endif
+                                @if(($history->approval_pin_status ?? null) === 'expired' && $history->approval_pin_expires_at)
+                                    • Expired {{ $history->approval_pin_expires_at?->format('d M Y H:i') }}
                                 @endif
                             </div>
 
@@ -1723,6 +1854,119 @@
         document.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
                 closeApprovalHistory();
+            }
+        });
+    });
+</script>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const AUTO_REFRESH_MS = 5000;
+        let historyRefreshTimer = null;
+        let isRefreshingHistory = false;
+
+        async function refreshApprovalHistoryDrawer() {
+            const currentDrawer = document.getElementById('approval-history-drawer');
+
+            if (!currentDrawer || !currentDrawer.classList.contains('active') || isRefreshingHistory) {
+                return;
+            }
+
+            isRefreshingHistory = true;
+
+            try {
+                const response = await fetch(window.location.href, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'text/html',
+                    },
+                    cache: 'no-store',
+                });
+
+                const html = await response.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+
+                const freshDrawer = doc.getElementById('approval-history-drawer');
+                const freshBellBadge = doc.querySelector('#notification-bell-btn .notification-bell-badge');
+                const currentBellBadge = document.querySelector('#notification-bell-btn .notification-bell-badge');
+                const bellButton = document.getElementById('notification-bell-btn');
+
+                if (freshDrawer) {
+                    currentDrawer.innerHTML = freshDrawer.innerHTML;
+                    currentDrawer.classList.add('active');
+                }
+
+                if (bellButton) {
+                    if (freshBellBadge) {
+                        if (currentBellBadge) {
+                            currentBellBadge.outerHTML = freshBellBadge.outerHTML;
+                        } else {
+                            bellButton.insertAdjacentHTML('beforeend', freshBellBadge.outerHTML);
+                        }
+                    } else if (currentBellBadge) {
+                        currentBellBadge.remove();
+                    }
+                }
+            } catch (error) {
+                // Silent supaya dashboard tidak terganggu kalau koneksi sedang lambat.
+            } finally {
+                isRefreshingHistory = false;
+            }
+        }
+
+        function startApprovalHistoryAutoRefresh() {
+            if (historyRefreshTimer) {
+                return;
+            }
+
+            historyRefreshTimer = setInterval(refreshApprovalHistoryDrawer, AUTO_REFRESH_MS);
+        }
+
+        function stopApprovalHistoryAutoRefresh() {
+            if (!historyRefreshTimer) {
+                return;
+            }
+
+            clearInterval(historyRefreshTimer);
+            historyRefreshTimer = null;
+        }
+
+        document.addEventListener('click', function (event) {
+            if (event.target.closest('#approval-history-btn')) {
+                setTimeout(function () {
+                    const drawer = document.getElementById('approval-history-drawer');
+
+                    if (drawer && drawer.classList.contains('active')) {
+                        refreshApprovalHistoryDrawer();
+                        startApprovalHistoryAutoRefresh();
+                    } else {
+                        stopApprovalHistoryAutoRefresh();
+                    }
+                }, 80);
+            }
+
+            if (event.target.closest('#approval-history-close') || event.target.closest('#notification-drawer-backdrop')) {
+                setTimeout(stopApprovalHistoryAutoRefresh, 80);
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                stopApprovalHistoryAutoRefresh();
+            }
+        });
+
+        document.addEventListener('visibilitychange', function () {
+            if (document.hidden) {
+                stopApprovalHistoryAutoRefresh();
+                return;
+            }
+
+            const drawer = document.getElementById('approval-history-drawer');
+            if (drawer && drawer.classList.contains('active')) {
+                startApprovalHistoryAutoRefresh();
             }
         });
     });

@@ -283,6 +283,9 @@ class BackofficeController extends Controller
             ->values();
 
         $notificationFreshSince = now()->subHour();
+        $historyDateFrom = $request->query('history_date_from');
+        $historyDateTo = $request->query('history_date_to');
+        $historyStatus = $request->query('history_status', 'all');
 
         $notificationQuery = BackofficeNotification::with(['transaction', 'outlet', 'createdBy'])
             ->whereNull('read_at')
@@ -299,17 +302,78 @@ class BackofficeController extends Controller
 
         $approvalActivityHistory = BackofficeNotification::with(['transaction', 'outlet', 'createdBy'])
             ->whereIn('type', [
-                'transaction_void',
                 'transaction_void_request',
-                'receipt_reprint',
                 'receipt_reprint_request',
             ])
             ->when($selectedOutletId, function ($query) use ($selectedOutletId) {
                 $query->where('outlet_id', $selectedOutletId);
             })
+            ->when($historyDateFrom, function ($query) use ($historyDateFrom) {
+                $query->whereDate('created_at', '>=', $historyDateFrom);
+            })
+            ->when($historyDateTo, function ($query) use ($historyDateTo) {
+                $query->whereDate('created_at', '<=', $historyDateTo);
+            })
             ->latest()
-            ->take(50)
+            ->take(100)
             ->get();
+
+        $approvalHistoryPins = ApprovalPin::with(['usedBy'])
+            ->whereIn('purpose', ['void', 'reprint'])
+            ->whereIn('sales_transaction_id', $approvalActivityHistory
+                ->pluck('sales_transaction_id')
+                ->filter()
+                ->unique()
+                ->values())
+            ->when($selectedOutletId, function ($query) use ($selectedOutletId) {
+                $query->where('outlet_id', $selectedOutletId);
+            })
+            ->orderBy('created_at')
+            ->get();
+
+        $approvalActivityHistory = $approvalActivityHistory->map(function ($notification) use ($approvalHistoryPins) {
+            $purpose = str_contains((string) $notification->type, 'void') ? 'void' : 'reprint';
+
+            $pin = $approvalHistoryPins
+                ->filter(function ($approvalPin) use ($notification, $purpose) {
+                    return (string) $approvalPin->purpose === $purpose
+                        && (int) ($approvalPin->sales_transaction_id ?? 0) === (int) ($notification->sales_transaction_id ?? 0)
+                        && (int) ($approvalPin->outlet_id ?? 0) === (int) ($notification->outlet_id ?? 0)
+                        && $approvalPin->created_at >= $notification->created_at;
+                })
+                ->sortBy('created_at')
+                ->first();
+
+            if (! $pin) {
+                $notification->setAttribute('approval_pin_status', 'not_generated');
+                $notification->setAttribute('approval_pin_status_label', 'PIN BELUM DIBUAT');
+                return $notification;
+            }
+
+            $notification->setAttribute('approval_pin_generated_at', $pin->created_at);
+            $notification->setAttribute('approval_pin_expires_at', $pin->expires_at);
+            $notification->setAttribute('approval_pin_used_at', $pin->used_at);
+            $notification->setAttribute('approval_pin_used_by', $pin->usedBy?->name);
+
+            if ($pin->used_at) {
+                $notification->setAttribute('approval_pin_status', 'used');
+                $notification->setAttribute('approval_pin_status_label', 'PIN BERHASIL DIGUNAKAN');
+            } elseif ($pin->expires_at && $pin->expires_at->isPast()) {
+                $notification->setAttribute('approval_pin_status', 'expired');
+                $notification->setAttribute('approval_pin_status_label', 'PIN EXPIRED');
+            } else {
+                $notification->setAttribute('approval_pin_status', 'waiting');
+                $notification->setAttribute('approval_pin_status_label', 'PIN BELUM DIGUNAKAN');
+            }
+
+            return $notification;
+        });
+
+        if (in_array($historyStatus, ['used', 'waiting', 'expired', 'not_generated'], true)) {
+            $approvalActivityHistory = $approvalActivityHistory
+                ->filter(fn ($notification) => ($notification->approval_pin_status ?? 'not_generated') === $historyStatus)
+                ->values();
+        }
 
         $unreadNotificationCount = BackofficeNotification::query()
             ->whereNull('read_at')
@@ -359,6 +423,11 @@ class BackofficeController extends Controller
             'topProducts' => $topProducts,
             'backofficeNotifications' => $backofficeNotifications,
             'approvalActivityHistory' => $approvalActivityHistory,
+            'approvalHistoryFilters' => [
+                'date_from' => $historyDateFrom,
+                'date_to' => $historyDateTo,
+                'status' => $historyStatus,
+            ],
             'unreadNotificationCount' => $unreadNotificationCount,
             'permissions' => [
                 'can_see_global_data' => $canSeeGlobalData,
