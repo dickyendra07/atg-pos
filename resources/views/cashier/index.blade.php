@@ -2417,6 +2417,518 @@
             cursor: pointer;
         }
 
+    
+        .cart-action-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            width: 100%;
+            min-height: 54px;
+        }
+
+        .promo-logic-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 38px;
+            height: 24px;
+            padding: 0 9px;
+            border-radius: 999px;
+            background: #111827;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 0.06em;
+        }
+
+        .promo-logic-badge.or {
+            background: #c9552a;
+        }
+
+        .promo-logic-badge.and {
+            background: #166534;
+        }
+
+        .quick-promo-card.compact {
+            min-height: auto;
+            padding: 12px 13px;
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            margin: 0;
+            line-height: 1.25;
+        }
+
+        .quick-promo-card.compact .promo-reward-pill {
+            grid-column: 1 / -1;
+            width: fit-content;
+            margin-top: 2px;
+        }
+
+        @media (max-width: 780px) {
+            .cart-action-row {
+                grid-template-columns: 1fr;
+            }
+        }
+
+    
+        /* Compact right sidebar UX refinement */
+        .cart-section,
+        .promo-discount-box,
+        .member-box,
+        .summary-card {
+            padding: 20px !important;
+            border-radius: 24px !important;
+        }
+
+        .cart-title,
+        .promo-discount-title,
+        .section-title {
+            font-size: 24px !important;
+            line-height: 1.2 !important;
+        }
+
+        .summary-label,
+        .payment-live-label,
+        .field label {
+            font-size: 13px !important;
+        }
+
+        .summary-value {
+            font-size: 30px !important;
+            line-height: 1.15 !important;
+        }
+
+        #summary-member-name {
+            font-size: 28px !important;
+        }
+
+        .summary-desc,
+        .cart-empty,
+        .quick-promo-meta,
+        .member-active {
+            font-size: 17px !important;
+            line-height: 1.55 !important;
+        }
+
+        .cart-total {
+            padding-top: 18px !important;
+            margin-top: 18px !important;
+            font-size: 22px !important;
+        }
+
+        .quick-promo-grid {
+            gap: 12px !important;
+        }
+
+        .quick-promo-card.compact {
+            padding: 14px 16px !important;
+            min-height: 92px !important;
+            border-radius: 20px !important;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            font-size: 19px !important;
+            line-height: 1.25 !important;
+        }
+
+        .promo-logic-badge {
+            min-width: 44px !important;
+            height: 30px !important;
+            font-size: 12px !important;
+        }
+
+        .promo-reward-pill {
+            font-size: 12px !important;
+            padding: 7px 10px !important;
+        }
+
+        .promo-discount-grid {
+            gap: 12px !important;
+            margin-top: 16px !important;
+        }
+
+        .promo-discount-grid select,
+        .member-input {
+            min-height: 54px !important;
+            font-size: 18px !important;
+        }
+
+        .cart-action-row {
+            gap: 12px !important;
+            margin-top: 14px !important;
+            align-items: stretch !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            min-height: 58px !important;
+            height: 58px !important;
+            width: 100% !important;
+            padding: 0 18px !important;
+            border-radius: 22px !important;
+            font-size: 22px !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+        }
+
+        .payment-live-box {
+            padding: 16px !important;
+            border-radius: 20px !important;
+        }
+
+        .payment-live-row {
+            padding: 8px 0 !important;
+        }
+
+        .payment-live-value {
+            font-size: 18px !important;
+        }
+
+        @media (max-width: 780px) {
+            .cart-section,
+            .promo-discount-box,
+            .member-box,
+            .summary-card {
+                padding: 18px !important;
+            }
+
+            .cart-title,
+            .promo-discount-title,
+            .section-title {
+                font-size: 22px !important;
+            }
+
+            .summary-value,
+            #summary-member-name {
+                font-size: 26px !important;
+            }
+
+            .cart-action-row {
+                grid-template-columns: 1fr 1fr !important;
+            }
+
+            .cart-action-row .open-payment-modal-btn,
+            .cart-action-row .btn-clear {
+                min-height: 54px !important;
+                height: 54px !important;
+                font-size: 19px !important;
+                border-radius: 20px !important;
+            }
+        }
+
+    
+        /* Smaller right sidebar override */
+        .cart-sidebar,
+        .payment-sidebar,
+        .right-sidebar {
+            font-size: 13px !important;
+        }
+
+        .cart-section,
+        .promo-discount-box,
+        .member-box,
+        .summary-card {
+            padding: 14px !important;
+            border-radius: 18px !important;
+            margin-bottom: 12px !important;
+        }
+
+        .cart-title,
+        .promo-discount-title {
+            font-size: 18px !important;
+            line-height: 1.15 !important;
+            margin-bottom: 10px !important;
+        }
+
+        .summary-label {
+            font-size: 10px !important;
+            letter-spacing: 0.08em !important;
+        }
+
+        .summary-value,
+        #summary-member-name {
+            font-size: 22px !important;
+            line-height: 1.1 !important;
+        }
+
+        .summary-desc,
+        .cart-empty,
+        .member-active {
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+        }
+
+        .cart-total {
+            padding-top: 12px !important;
+            margin-top: 12px !important;
+            font-size: 18px !important;
+        }
+
+        .promo-discount-head {
+            margin-bottom: 12px !important;
+        }
+
+        .promo-discount-pill {
+            font-size: 10px !important;
+            padding: 6px 10px !important;
+        }
+
+        .quick-promo-grid {
+            gap: 8px !important;
+        }
+
+        .quick-promo-card.compact {
+            min-height: 70px !important;
+            padding: 10px 10px !important;
+            border-radius: 16px !important;
+            gap: 6px !important;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            font-size: 15px !important;
+            line-height: 1.18 !important;
+        }
+
+        .promo-logic-badge {
+            min-width: 34px !important;
+            height: 24px !important;
+            padding: 0 7px !important;
+            font-size: 10px !important;
+        }
+
+        .promo-reward-pill {
+            font-size: 10px !important;
+            padding: 5px 8px !important;
+        }
+
+        .promo-discount-grid {
+            gap: 10px !important;
+            margin-top: 12px !important;
+        }
+
+        .promo-discount-grid .field {
+            gap: 6px !important;
+        }
+
+        .promo-discount-grid label,
+        .field label {
+            font-size: 11px !important;
+        }
+
+        .promo-discount-grid select,
+        .member-input {
+            min-height: 44px !important;
+            height: 44px !important;
+            font-size: 14px !important;
+            border-radius: 14px !important;
+            padding: 0 12px !important;
+        }
+
+        .cart-action-row {
+            gap: 8px !important;
+            margin-top: 10px !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            min-height: 44px !important;
+            height: 44px !important;
+            padding: 0 12px !important;
+            border-radius: 16px !important;
+            font-size: 16px !important;
+            font-weight: 900 !important;
+        }
+
+        .payment-live-box {
+            padding: 12px !important;
+            border-radius: 16px !important;
+        }
+
+        .payment-live-row {
+            padding: 6px 0 !important;
+        }
+
+        .payment-live-label {
+            font-size: 11px !important;
+        }
+
+        .payment-live-value {
+            font-size: 14px !important;
+        }
+
+        @media (max-width: 780px) {
+            .cart-section,
+            .promo-discount-box,
+            .member-box,
+            .summary-card {
+                padding: 13px !important;
+            }
+
+            .cart-title,
+            .promo-discount-title {
+                font-size: 17px !important;
+            }
+
+            .summary-value,
+            #summary-member-name {
+                font-size: 21px !important;
+            }
+
+            .quick-promo-card.compact .quick-promo-name {
+                font-size: 14px !important;
+            }
+
+            .cart-action-row {
+                grid-template-columns: 1fr 1fr !important;
+            }
+
+            .cart-action-row .open-payment-modal-btn,
+            .cart-action-row .btn-clear {
+                height: 42px !important;
+                min-height: 42px !important;
+                font-size: 15px !important;
+                border-radius: 15px !important;
+            }
+        }
+
+    
+        /* Extra compact right sidebar override */
+        .cart-section,
+        .promo-discount-box,
+        .member-box,
+        .summary-card {
+            padding: 12px !important;
+            border-radius: 16px !important;
+            margin-bottom: 10px !important;
+        }
+
+        .cart-title,
+        .promo-discount-title {
+            font-size: 16px !important;
+            margin-bottom: 8px !important;
+        }
+
+        .summary-label {
+            font-size: 9px !important;
+        }
+
+        .summary-value,
+        #summary-member-name {
+            font-size: 19px !important;
+        }
+
+        .summary-desc,
+        .cart-empty,
+        .member-active {
+            font-size: 12px !important;
+            line-height: 1.38 !important;
+        }
+
+        .cart-total {
+            padding-top: 10px !important;
+            margin-top: 10px !important;
+            font-size: 16px !important;
+        }
+
+        .promo-discount-head {
+            margin-bottom: 10px !important;
+        }
+
+        .promo-discount-pill {
+            font-size: 9px !important;
+            padding: 5px 9px !important;
+        }
+
+        .quick-promo-grid {
+            gap: 7px !important;
+        }
+
+        .quick-promo-card.compact {
+            min-height: 62px !important;
+            padding: 8px 9px !important;
+            border-radius: 14px !important;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            font-size: 13px !important;
+            line-height: 1.15 !important;
+        }
+
+        .promo-logic-badge {
+            min-width: 30px !important;
+            height: 21px !important;
+            padding: 0 6px !important;
+            font-size: 9px !important;
+        }
+
+        .promo-reward-pill {
+            font-size: 9px !important;
+            padding: 4px 7px !important;
+        }
+
+        .promo-discount-grid {
+            gap: 8px !important;
+            margin-top: 10px !important;
+        }
+
+        .promo-discount-grid label,
+        .field label {
+            font-size: 10px !important;
+        }
+
+        .promo-discount-grid select,
+        .member-input {
+            min-height: 40px !important;
+            height: 40px !important;
+            font-size: 13px !important;
+            border-radius: 12px !important;
+            padding: 0 10px !important;
+        }
+
+        .cart-action-row {
+            gap: 7px !important;
+            margin-top: 8px !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            min-height: 40px !important;
+            height: 40px !important;
+            padding: 0 10px !important;
+            border-radius: 14px !important;
+            font-size: 14px !important;
+        }
+
+        .payment-live-box {
+            padding: 10px !important;
+            border-radius: 14px !important;
+        }
+
+        .payment-live-row {
+            padding: 5px 0 !important;
+        }
+
+        .payment-live-label {
+            font-size: 10px !important;
+        }
+
+        .payment-live-value {
+            font-size: 13px !important;
+        }
+
     </style>
 </head>
 <body>
@@ -2597,6 +3109,7 @@
                         <div class="tab-wrap">
                             <div class="tab-nav">
                                 <button type="button" class="tab-btn active" data-tab-btn="transaction">Transaksi</button>
+                                <button type="button" class="tab-btn" data-tab-btn="member">Member</button>
                                 <button type="button" class="tab-btn" data-tab-btn="history">History Transaksi</button>
                                 <button type="button" class="tab-btn" data-tab-btn="shift">Shift</button>
                             </div>
@@ -2700,6 +3213,52 @@
                                     </div>
                                 @endforelse
                             </div>
+                        </div>
+
+
+                        <div id="tab-panel-member" class="tab-panel hidden">
+
+                                <div class="member-box">
+                                    <div class="cart-title">Member Access</div>
+
+                                    @if($member)
+                                        <div class="member-active">
+                                            Member aktif:
+                                            <strong>{{ $member['name'] ?? '-' }}</strong>
+                                            @if(!empty($member['phone']))
+                                                • {{ $member['phone'] }}
+                                            @endif
+                                            @if(isset($member['points']))
+                                                <br>Poin: {{ $member['points'] }}
+                                            @endif
+                                        </div>
+
+                                        <div class="member-actions">
+                                            <form method="POST" action="{{ route('cashier.member.detach') }}">
+                                                @csrf
+                                                <button type="submit" class="btn btn-dark">Lepas Member</button>
+                                            </form>
+                                        </div>
+                                    @else
+                                        <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
+                                            @csrf
+                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
+                                            <div class="member-actions">
+                                                <button type="submit" class="btn btn-dark">Attach Member</button>
+                                            </div>
+                                        </form>
+
+                                        <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
+                                            @csrf
+                                            <input type="text" name="name" class="member-input" placeholder="Nama member baru">
+                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
+                                            <div class="member-actions">
+                                                <button type="submit" class="btn btn-brand">Quick Register</button>
+                                            </div>
+                                        </form>
+                                    @endif
+                                </div>
+
                         </div>
 
                         <div id="tab-panel-history" class="tab-panel hidden">
@@ -3010,28 +3569,20 @@
                                             <div class="quick-promo-grid">
                                                 @forelse($promoOptions ?? [] as $promo)
                                                     @php
-                                                        $requirementText = $promo->requirements->map(function ($requirement) {
-                                                            return number_format((float) $requirement->qty, 0, ',', '.') . 'x ' . ($requirement->variant?->product?->name ?? 'Product') . ' - ' . ($requirement->variant?->name ?? 'Variant');
-                                                        })->implode(' + ');
-
                                                         $freeRewardCount = $promo->rewards->where('reward_type', 'free_item')->count();
+                                                        $promoLogic = strtolower((string) ($promo->requirement_logic ?? 'and'));
                                                     @endphp
                                                     <button
                                                         type="button"
-                                                        class="quick-promo-card"
+                                                        class="quick-promo-card compact"
                                                         data-quick-promo
                                                         data-url="{{ route('cashier.promo.apply', $promo) }}"
                                                         data-promo-id="{{ $promo->id }}"
                                                     >
                                                         <div class="quick-promo-name">{{ $promo->name }}</div>
-                                                        <div class="quick-promo-meta">
-                                                            {{ $requirementText ?: 'Promo aktif' }}
-                                                            @if(($promo->requirement_logic ?? 'and') === 'or')
-                                                                <br>Logic: OR
-                                                            @else
-                                                                <br>Logic: AND
-                                                            @endif
-                                                        </div>
+                                                        <span class="promo-logic-badge {{ $promoLogic === 'or' ? 'or' : 'and' }}" title="Promo logic {{ strtoupper($promoLogic) }}">
+                                                            {{ strtoupper($promoLogic) }}
+                                                        </span>
                                                         @if($freeRewardCount > 0)
                                                             <span class="promo-reward-pill">Free item otomatis</span>
                                                         @endif
@@ -3112,7 +3663,10 @@
                                         </div>
 
                                         
-                                    <button type="button" class="open-payment-modal-btn" id="open-payment-modal-btn">Bayar</button>
+                                    <div class="cart-action-row">
+                                        <button type="button" class="open-payment-modal-btn" id="open-payment-modal-btn">Bayar</button>
+                                        <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
+                                    </div>
 
                                     <div class="payment-section payment-modal-panel" id="payment-modal-panel">
                                         <div class="payment-modal-card">
@@ -3201,50 +3755,7 @@
                                     </div>
                                 </form>
 
-                                <div class="checkout-actions" style="margin-top:12px;">
-                                    <button type="button" id="clear-cart-button" class="btn-wide btn-clear">Clear Cart</button>
-                                </div>
 
-                                <div class="member-box">
-                                    <div class="cart-title">Member Access</div>
-
-                                    @if($member)
-                                        <div class="member-active">
-                                            Member aktif:
-                                            <strong>{{ $member['name'] ?? '-' }}</strong>
-                                            @if(!empty($member['phone']))
-                                                • {{ $member['phone'] }}
-                                            @endif
-                                            @if(isset($member['points']))
-                                                <br>Poin: {{ $member['points'] }}
-                                            @endif
-                                        </div>
-
-                                        <div class="member-actions">
-                                            <form method="POST" action="{{ route('cashier.member.detach') }}">
-                                                @csrf
-                                                <button type="submit" class="btn btn-dark">Lepas Member</button>
-                                            </form>
-                                        </div>
-                                    @else
-                                        <form method="POST" action="{{ route('cashier.member.attach') }}" class="member-form">
-                                            @csrf
-                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member">
-                                            <div class="member-actions">
-                                                <button type="submit" class="btn btn-dark">Attach Member</button>
-                                            </div>
-                                        </form>
-
-                                        <form method="POST" action="{{ route('cashier.member.quick-register') }}" class="member-form">
-                                            @csrf
-                                            <input type="text" name="name" class="member-input" placeholder="Nama member baru">
-                                            <input type="text" name="phone" class="member-input" placeholder="Nomor HP member baru">
-                                            <div class="member-actions">
-                                                <button type="submit" class="btn btn-brand">Quick Register</button>
-                                            </div>
-                                        </form>
-                                    @endif
-                                </div>
                             </div>
                         </div>
                     </div>
