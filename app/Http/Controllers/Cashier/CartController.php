@@ -21,7 +21,7 @@ class CartController extends Controller
 {
     protected function authorizeCashierAccess()
     {
-        $user = Auth::user()->load(['role', 'outlet']);
+        $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets'])->applyCashierOutletFromSession();
 
         $allowedRoles = [
             'owner',
@@ -1038,7 +1038,7 @@ class CartController extends Controller
 
     protected function authorizeCashierTransactionAccess(SalesTransaction $transaction)
     {
-        $user = Auth::user()?->load(['role', 'outlet']);
+        $user = Auth::user()?->load(['role', 'roles', 'outlet', 'outlets'])->applyCashierOutletFromSession();
 
         if (! $user) {
             return null;

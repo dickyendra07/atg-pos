@@ -57,6 +57,51 @@ class User extends Authenticatable
         return $this->belongsToMany(Outlet::class, 'user_outlet', 'user_id', 'outlet_id')->withTimestamps();
     }
 
+
+    public function cashierAccessibleOutlets()
+    {
+        $outlets = $this->relationLoaded('outlets')
+            ? $this->outlets
+            : $this->outlets()->orderBy('name')->get();
+
+        if ($outlets->isEmpty() && $this->outlet) {
+            $outlets = collect([$this->outlet]);
+        }
+
+        return $outlets
+            ->filter()
+            ->unique('id')
+            ->values();
+    }
+
+    public function hasCashierOutletAccess(int $outletId): bool
+    {
+        return $this->cashierAccessibleOutlets()
+            ->contains(fn ($outlet) => (int) $outlet->id === (int) $outletId);
+    }
+
+    public function applyCashierOutletFromSession(): self
+    {
+        $outletId = (int) session('cashier_outlet_id');
+
+        if (! $outletId || ! $this->hasCashierOutletAccess($outletId)) {
+            return $this;
+        }
+
+        $outlet = $this->cashierAccessibleOutlets()
+            ->first(fn ($candidate) => (int) $candidate->id === $outletId);
+
+        if ($outlet) {
+            $this->forceFill([
+                'outlet_id' => $outlet->id,
+            ]);
+
+            $this->setRelation('outlet', $outlet);
+        }
+
+        return $this;
+    }
+
     public function roleCode(): ?string
     {
         return $this->role?->code;
@@ -85,32 +130,79 @@ class User extends Authenticatable
         return strtolower(trim((string) ($this->role?->name ?? '')));
     }
 
-    public function isFullAccessUser(): bool
+    public function hasAnyRoleCode(array $codes): bool
     {
-        return in_array($this->normalizedRoleName(), [
+        return ! empty(array_intersect($this->roleCodes(), $codes));
+    }
+
+    public function hasAnyRoleName(array $names): bool
+    {
+        $roleNames = [];
+
+        if ($this->role?->name) {
+            $roleNames[] = strtolower(trim((string) $this->role->name));
+        }
+
+        if ($this->relationLoaded('roles')) {
+            $roleNames = array_merge($roleNames, $this->roles->pluck('name')->map(fn ($name) => strtolower(trim((string) $name)))->all());
+        } else {
+            $roleNames = array_merge($roleNames, $this->roles()->pluck('name')->map(fn ($name) => strtolower(trim((string) $name)))->all());
+        }
+
+        return ! empty(array_intersect(array_unique(array_filter($roleNames)), $names));
+    }
+
+    public function isCashierUser(): bool
+    {
+        return $this->hasAnyRoleCode(['kasir'])
+            || $this->hasAnyRoleName(['kasir']);
+    }
+
+    public function isBackofficeUser(): bool
+    {
+        return $this->hasAnyRoleCode([
+            'owner',
+            'admin_pusat',
+            'admin_outlet',
+            'staff_gudang',
+        ]) || $this->hasAnyRoleName([
             'owner',
             'admin pusat',
-        ], true);
+            'admin outlet',
+            'staff gudang',
+        ]);
+    }
+
+    public function isFullAccessUser(): bool
+    {
+        return $this->hasAnyRoleCode([
+            'owner',
+            'admin_pusat',
+        ]) || $this->hasAnyRoleName([
+            'owner',
+            'admin pusat',
+        ]);
     }
 
     public function isLimitedAccessUser(): bool
     {
-        return in_array($this->normalizedRoleName(), [
-            'kasir',
-        ], true);
+        return $this->hasAnyRoleCode([
+            'admin_outlet',
+            'staff_gudang',
+        ]) || $this->hasAnyRoleName([
+            'admin outlet',
+            'staff gudang',
+        ]);
     }
 
     public function canAccessCashier(): bool
     {
-        return in_array($this->normalizedRoleName(), [
-            'owner',
-            'kasir',
-        ], true);
+        return $this->isCashierUser();
     }
 
     public function canAccessBackofficeDashboard(): bool
     {
-        return $this->isFullAccessUser();
+        return $this->isBackofficeUser();
     }
 
     public function canManageUsers(): bool

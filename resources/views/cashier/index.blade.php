@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="manifest" href="{{ asset('manifest.json') }}">
-    <meta name="theme-color" content="#111827">
+    <link rel="manifest" href="{{ asset('manifest-cashier.json') }}">
+    <meta name="theme-color" content="#e86a3a">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="ATG POS">
+    <meta name="apple-mobile-web-app-title" content="ATG Cashier">
 
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -5717,7 +5717,7 @@
     <script>
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', function () {
-                navigator.serviceWorker.register('/service-worker.js').catch(function () {
+                navigator.serviceWorker.register('/sw-cashier.js').catch(function () {
                     // Silent fail supaya tidak ganggu POS flow.
                 });
             });

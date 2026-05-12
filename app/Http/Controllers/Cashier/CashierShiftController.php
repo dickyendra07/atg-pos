@@ -12,7 +12,7 @@ class CashierShiftController extends Controller
 {
     protected function authorizeCashierAccess()
     {
-        $user = Auth::user()->load(['role', 'outlet']);
+        $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets'])->applyCashierOutletFromSession();
 
         $allowedRoles = [
             'owner',

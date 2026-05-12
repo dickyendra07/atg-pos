@@ -88,14 +88,21 @@ class UserManagementController extends Controller
             ->values()
             ->all();
 
-        if (in_array($roleCode, ['admin_outlet', 'kasir']) && count($outletIds) === 0) {
+        $selectedRoleCodes = Role::whereIn('id', $roleIds)->pluck('code')->filter()->values();
+
+        $requiresOutlet = $selectedRoleCodes
+            ->intersect(['admin_pusat', 'admin_outlet', 'staff_gudang', 'kasir'])
+            ->isNotEmpty()
+            && ! $selectedRoleCodes->contains('owner');
+
+        if ($requiresOutlet && count($outletIds) === 0) {
             return back()
-                ->withErrors(['outlet_ids' => 'Minimal pilih 1 outlet untuk admin outlet / kasir.'])
+                ->withErrors(['outlet_ids' => 'Minimal pilih 1 outlet untuk role selain Owner.'])
                 ->withInput()
                 ->throwResponse();
         }
 
-        if (in_array($roleCode, ['owner', 'admin_pusat'])) {
+        if ($selectedRoleCodes->contains('owner')) {
             $validated['outlet_id'] = null;
             $outletIds = [];
         } else {

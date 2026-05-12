@@ -28,11 +28,21 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
+
+    Route::get('/backoffice/login', [LoginController::class, 'showBackoffice'])->name('backoffice.login');
+    Route::post('/backoffice/login', [LoginController::class, 'storeBackoffice'])->name('backoffice.login.store');
+
+    Route::get('/cashier/login', [LoginController::class, 'showCashier'])->name('cashier.login');
+    Route::post('/cashier/login', [LoginController::class, 'storeCashier'])->name('cashier.login.store');
+
     Route::post('/login', [LoginController::class, 'store'])->name('login.store');
 });
 
 Route::middleware('auth')->group(function () {
     Route::get('/', ModeController::class)->name('dashboard');
+
+    Route::get('/cashier/select-outlet', [CashierController::class, 'selectOutletForm'])->name('cashier.select-outlet');
+    Route::post('/cashier/select-outlet', [CashierController::class, 'selectOutletStore'])->name('cashier.select-outlet.store');
 
     Route::get('/cashier', CashierController::class)->name('cashier.index');
     Route::get('/cashier/new-transaction', [CashierController::class, 'newTransaction'])->name('cashier.new-transaction');

@@ -1,0 +1,25 @@
+{
+  "name": "ATG POS Cashier",
+  "short_name": "ATG Cashier",
+  "description": "ATG POS cashier workspace for outlet transactions.",
+  "start_url": "/cashier/login",
+  "scope": "/cashier",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#fff7ed",
+  "theme_color": "#e86a3a",
+  "icons": [
+    {
+      "src": "/images/atg-icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/atg-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

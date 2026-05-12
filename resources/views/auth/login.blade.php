@@ -384,9 +384,450 @@
             color: #111827;
         }
 
+    
+        /* Portal-specific login design */
+        body.login-portal-backoffice {
+            background:
+                radial-gradient(circle at top left, rgba(232, 106, 58, 0.18), transparent 34%),
+                linear-gradient(135deg, #fff7ed 0%, #f8fafc 48%, #eef2ff 100%) !important;
+        }
+
+        body.login-portal-cashier {
+            background:
+                radial-gradient(circle at top left, rgba(22, 101, 52, 0.20), transparent 34%),
+                linear-gradient(135deg, #ecfdf5 0%, #f8fafc 50%, #fff7ed 100%) !important;
+        }
+
+        .login-portal-backoffice .visual-side {
+            background:
+                linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(31, 41, 55, 0.93)),
+                radial-gradient(circle at top right, rgba(232, 106, 58, 0.40), transparent 42%) !important;
+        }
+
+        .login-portal-cashier .visual-side {
+            background:
+                linear-gradient(135deg, rgba(20, 83, 45, 0.96), rgba(22, 101, 52, 0.92)),
+                radial-gradient(circle at top right, rgba(249, 115, 22, 0.30), transparent 42%) !important;
+        }
+
+        .login-portal-cashier .brand-badge {
+            background: rgba(255,255,255,0.16) !important;
+            border-color: rgba(187, 247, 208, 0.32) !important;
+        }
+
+        .login-portal-cashier .brand-dot {
+            background: #22c55e !important;
+        }
+
+        .login-portal-backoffice .login-chip {
+            background: #fff3eb !important;
+            color: #c9552a !important;
+            border-color: #fed7aa !important;
+        }
+
+        .login-portal-cashier .login-chip {
+            background: #e8fff1 !important;
+            color: #166534 !important;
+            border-color: #bbf7d0 !important;
+        }
+
+        .login-portal-backoffice .btn-login {
+            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%) !important;
+        }
+
+        .login-portal-cashier .btn-login {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%) !important;
+        }
+
+        .login-portal-cashier .password-toggle {
+            background: #e8fff1 !important;
+            color: #166534 !important;
+            box-shadow: inset 0 0 0 1px #bbf7d0 !important;
+        }
+
+        .portal-switch {
+            margin-top: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            color: #6b7280;
+            font-size: 12px;
+            font-weight: 800;
+        }
+
+        .portal-switch a {
+            color: #111827;
+            background: #f3f4f6;
+            border: 1px solid #e5e7eb;
+            border-radius: 999px;
+            padding: 7px 10px;
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 900;
+        }
+
+        .login-portal-cashier .portal-switch a {
+            color: #166534;
+            background: #e8fff1;
+            border-color: #bbf7d0;
+        }
+
+        .login-portal-backoffice .portal-switch a {
+            color: #c9552a;
+            background: #fff3eb;
+            border-color: #fed7aa;
+        }
+
+        .top-row {
+            align-items: flex-start !important;
+        }
+
+    
+        /* Keep orange brand, flip layout only for cashier */
+        body.login-portal-cashier {
+            background:
+                radial-gradient(circle at top left, rgba(232, 106, 58, 0.18), transparent 34%),
+                linear-gradient(135deg, #fff7ed 0%, #f8fafc 48%, #eef2ff 100%) !important;
+        }
+
+        .login-portal-cashier .shell {
+            grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr) !important;
+        }
+
+        .login-portal-cashier .form-side {
+            order: 1 !important;
+        }
+
+        .login-portal-cashier .visual-side {
+            order: 2 !important;
+            background:
+                linear-gradient(135deg, rgba(17, 24, 39, 0.96), rgba(31, 41, 55, 0.93)),
+                radial-gradient(circle at top right, rgba(232, 106, 58, 0.40), transparent 42%) !important;
+        }
+
+        .login-portal-cashier .brand-badge {
+            background: rgba(255,255,255,0.14) !important;
+            border-color: rgba(255,255,255,0.22) !important;
+        }
+
+        .login-portal-cashier .brand-dot {
+            background: #e86a3a !important;
+        }
+
+        .login-portal-cashier .login-chip,
+        .login-portal-backoffice .login-chip {
+            background: #fff3eb !important;
+            color: #c9552a !important;
+            border-color: #fed7aa !important;
+        }
+
+        .login-portal-cashier .btn-login,
+        .login-portal-backoffice .btn-login {
+            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%) !important;
+        }
+
+        .login-portal-cashier .password-toggle {
+            background: #fff4ed !important;
+            color: #c9552a !important;
+            box-shadow: inset 0 0 0 1px #f4d6c8 !important;
+        }
+
+        .login-portal-cashier .portal-switch a,
+        .login-portal-backoffice .portal-switch a {
+            color: #c9552a !important;
+            background: #fff3eb !important;
+            border-color: #fed7aa !important;
+        }
+
+        @media (max-width: 900px) {
+            .login-portal-cashier .form-side,
+            .login-portal-cashier .visual-side {
+                order: unset !important;
+            }
+        }
+
+    
+        /* Login cover image */
+        .visual-side {
+            position: relative !important;
+            overflow: hidden !important;
+            background-image:
+                linear-gradient(135deg, rgba(17, 24, 39, 0.72), rgba(17, 24, 39, 0.34)),
+                url('{{ asset('images/login-cover.jpg') }}') !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+        }
+
+        .visual-side > * {
+            position: relative !important;
+            z-index: 2 !important;
+        }
+
+        .login-portal-backoffice .visual-side,
+        .login-portal-cashier .visual-side {
+            background-image:
+                linear-gradient(135deg, rgba(17, 24, 39, 0.72), rgba(17, 24, 39, 0.34)),
+                url('{{ asset('images/login-cover.jpg') }}') !important;
+            background-size: cover !important;
+            background-position: center !important;
+            background-repeat: no-repeat !important;
+        }
+
+        .visual-title,
+        .visual-subtitle,
+        .brand-badge {
+            text-shadow: 0 2px 14px rgba(0,0,0,0.35);
+        }
+
+        .brand-badge {
+            background: rgba(17, 24, 39, 0.42) !important;
+            border-color: rgba(255,255,255,0.22) !important;
+            backdrop-filter: blur(8px);
+        }
+
+    
+        /* Professional login polish */
+        .page {
+            padding: 28px !important;
+        }
+
+        .shell {
+            max-width: 1180px !important;
+            min-height: 680px !important;
+            border-radius: 34px !important;
+            overflow: hidden !important;
+            box-shadow: 0 30px 90px rgba(15, 23, 42, 0.14) !important;
+            border: 1px solid rgba(255,255,255,0.9) !important;
+            background: rgba(255,255,255,0.86) !important;
+        }
+
+        .form-side {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 56px !important;
+            background:
+                radial-gradient(circle at top left, rgba(232,106,58,0.08), transparent 32%),
+                #ffffff !important;
+        }
+
+        .form-card {
+            width: min(430px, 100%) !important;
+            padding: 0 !important;
+            box-shadow: none !important;
+            background: transparent !important;
+        }
+
+        .top-row {
+            display: grid !important;
+            grid-template-columns: 1fr auto !important;
+            gap: 14px !important;
+            align-items: center !important;
+            margin-bottom: 34px !important;
+        }
+
+        .logo-mini {
+            gap: 10px !important;
+        }
+
+        .logo-box {
+            width: 42px !important;
+            height: 42px !important;
+            border-radius: 14px !important;
+        }
+
+        .logo-text {
+            font-size: 14px !important;
+            line-height: 1.05 !important;
+            letter-spacing: -0.02em !important;
+        }
+
+        .login-chip {
+            font-size: 11px !important;
+            padding: 8px 11px !important;
+            white-space: nowrap !important;
+        }
+
+        .top-row > div[style*="margin-top:10px"] {
+            grid-column: 1 / -1 !important;
+            margin-top: 0 !important;
+            max-width: 360px !important;
+            font-size: 13px !important;
+            line-height: 1.55 !important;
+            color: #6b7280 !important;
+        }
+
+        .portal-switch {
+            grid-column: 1 / -1 !important;
+            margin-top: -2px !important;
+            padding-top: 0 !important;
+            font-size: 12px !important;
+        }
+
+        .portal-switch a {
+            padding: 6px 10px !important;
+            font-size: 11px !important;
+        }
+
+        .form-title {
+            font-size: 34px !important;
+            line-height: 1.05 !important;
+            letter-spacing: -0.045em !important;
+            margin-bottom: 10px !important;
+        }
+
+        .form-subtitle {
+            font-size: 14px !important;
+            line-height: 1.6 !important;
+            margin-bottom: 28px !important;
+            color: #6b7280 !important;
+        }
+
+        .form-group {
+            margin-bottom: 17px !important;
+        }
+
+        .form-label {
+            font-size: 12px !important;
+            margin-bottom: 8px !important;
+            color: #374151 !important;
+        }
+
+        .form-input {
+            min-height: 54px !important;
+            border-radius: 16px !important;
+            padding: 0 16px !important;
+            font-size: 14px !important;
+            border-color: #dfe4ec !important;
+            background: #ffffff !important;
+            box-shadow: 0 8px 20px rgba(15,23,42,0.03) !important;
+        }
+
+        .form-input:focus {
+            border-color: #e86a3a !important;
+            box-shadow: 0 0 0 4px rgba(232,106,58,0.12) !important;
+        }
+
+        .remember-row {
+            margin: 2px 0 24px !important;
+        }
+
+        .btn-login {
+            min-height: 56px !important;
+            border-radius: 17px !important;
+            font-size: 14px !important;
+            box-shadow: 0 16px 28px rgba(232,106,58,0.24) !important;
+        }
+
+        .form-footer {
+            margin-top: 16px !important;
+            font-size: 12px !important;
+            color: #9ca3af !important;
+        }
+
+        .visual-side {
+            padding: 42px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+            background-image:
+                linear-gradient(180deg, rgba(17,24,39,0.18) 0%, rgba(17,24,39,0.22) 42%, rgba(17,24,39,0.78) 100%),
+                url('{{ asset('images/login-cover.jpg') }}') !important;
+            background-size: cover !important;
+            background-position: center !important;
+        }
+
+        .brand-badge {
+            width: fit-content !important;
+            background: rgba(17,24,39,0.38) !important;
+            border: 1px solid rgba(255,255,255,0.22) !important;
+            backdrop-filter: blur(10px) !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.16) !important;
+        }
+
+        .visual-copy {
+            max-width: 520px !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .visual-title {
+            font-size: 42px !important;
+            line-height: 1.02 !important;
+            letter-spacing: -0.055em !important;
+            margin-bottom: 12px !important;
+            text-shadow: 0 4px 22px rgba(0,0,0,0.34) !important;
+        }
+
+        .visual-subtitle {
+            max-width: 450px !important;
+            font-size: 15px !important;
+            line-height: 1.8 !important;
+            color: rgba(255,255,255,0.92) !important;
+            text-shadow: 0 3px 18px rgba(0,0,0,0.32) !important;
+        }
+
+        .login-portal-cashier .shell {
+            grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) !important;
+        }
+
+        .login-portal-backoffice .shell {
+            grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr) !important;
+        }
+
+        .login-portal-cashier .form-side {
+            order: 1 !important;
+        }
+
+        .login-portal-cashier .visual-side {
+            order: 2 !important;
+        }
+
+        .login-portal-backoffice .visual-side {
+            order: 1 !important;
+        }
+
+        .login-portal-backoffice .form-side {
+            order: 2 !important;
+        }
+
+        @media (max-width: 900px) {
+            .shell {
+                min-height: auto !important;
+                grid-template-columns: 1fr !important;
+            }
+
+            .form-side {
+                padding: 34px 24px !important;
+            }
+
+            .visual-side {
+                min-height: 360px !important;
+                order: unset !important;
+            }
+
+            .login-portal-cashier .form-side,
+            .login-portal-cashier .visual-side,
+            .login-portal-backoffice .form-side,
+            .login-portal-backoffice .visual-side {
+                order: unset !important;
+            }
+        }
+
     </style>
+    @if(($portal ?? 'backoffice') === 'cashier')
+        <link rel="manifest" href="{{ asset('manifest-cashier.json') }}">
+        <meta name="theme-color" content="#e86a3a">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-title" content="ATG Cashier">
+        <link rel="apple-touch-icon" href="{{ asset('images/atg-icon.png') }}">
+    @endif
+
 </head>
-<body>
+<body class="login-portal-{{ $portal ?? 'backoffice' }}">
     <div class="page">
         <div class="shell">
             <div class="visual-side">
@@ -396,8 +837,14 @@
                 </div>
 
                 <div class="visual-copy">
-                    <h1 class="visual-title">Modern login for daily operations.</h1>
-                    <p class="visual-subtitle">Simple, clean, and ready for demo.</p>
+                    <h1 class="visual-title">{{ $portalTitle ?? 'Modern login for daily operations.' }}</h1>
+                    <p class="visual-subtitle">
+                        @if(($portal ?? 'backoffice') === 'cashier')
+                            Khusus operasional kasir outlet: pilih outlet, buka shift, transaksi, receipt, dan closing.
+                        @else
+                            Khusus Back Office: dashboard, inventory, recipes, promos, users, reports, dan approval.
+                        @endif
+                    </p>
                 </div>
             </div>
 
@@ -411,11 +858,36 @@
                             <div class="logo-text">ATG POS</div>
                         </div>
 
-                        <div class="login-chip">Secure Login</div>
+                        <div class="login-chip">{{ $portalTitle ?? 'Secure Login' }}</div>
+                        @isset($portalSubtitle)
+                            <div style="margin-top:10px; color:#6b7280; font-size:14px; line-height:1.6; font-weight:700;">{{ $portalSubtitle }}</div>
+                        @endisset
+
+                        <div class="portal-switch">
+                            @if(($portal ?? 'backoffice') === 'cashier')
+                                <span>Butuh akses admin?</span>
+                                <a href="{{ route('backoffice.login') }}">Login Back Office</a>
+                            @else
+                                <span>Masuk sebagai kasir?</span>
+                                <a href="{{ route('cashier.login') }}">Login Cashier</a>
+                            @endif
+                        </div>
                     </div>
 
-                    <h2 class="form-title">Welcome back</h2>
-                    <p class="form-subtitle">Please sign in to continue.</p>
+                    <h2 class="form-title">
+                        @if(($portal ?? 'backoffice') === 'cashier')
+                            Cashier sign in
+                        @else
+                            Back Office sign in
+                        @endif
+                    </h2>
+                    <p class="form-subtitle">
+                        @if(($portal ?? 'backoffice') === 'cashier')
+                            Gunakan akun kasir yang sudah diberikan akses outlet.
+                        @else
+                            Gunakan akun back office sesuai role dan akses outlet.
+                        @endif
+                    </p>
 
                     @if (session('success'))
                         <div class="alert alert-success">
@@ -431,7 +903,7 @@
                         </div>
                     @endif
 
-                    <form method="POST" action="{{ route('login.store') }}">
+                    <form method="POST" action="{{ $loginRoute ?? route('login.store') }}">
                         @csrf
 
                         <div class="form-group">
@@ -503,6 +975,16 @@
             });
         });
     </script>
+
+    @if(($portal ?? 'backoffice') === 'cashier')
+        <script>
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function () {
+                    navigator.serviceWorker.register('/sw-cashier.js').catch(function () {});
+                });
+            }
+        </script>
+    @endif
 
 </body>
 </html>

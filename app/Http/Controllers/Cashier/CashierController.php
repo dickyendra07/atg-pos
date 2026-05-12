@@ -13,12 +13,94 @@ use Illuminate\Support\Facades\Auth;
 
 class CashierController extends Controller
 {
+
+    public function selectOutletForm()
+    {
+        $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets']);
+
+        if (! $user->canAccessCashier()) {
+            return redirect()
+                ->route('backoffice.login')
+                ->withErrors(['login' => 'Akun ini bukan akun kasir.']);
+        }
+
+        $outlets = $user->cashierAccessibleOutlets();
+
+        if ($outlets->isEmpty()) {
+            Auth::logout();
+
+            return redirect()
+                ->route('cashier.login')
+                ->withErrors(['login' => 'Akun kasir ini belum punya akses outlet. Hubungi admin Back Office.']);
+        }
+
+        if ($outlets->count() === 1) {
+            session(['cashier_outlet_id' => $outlets->first()->id]);
+
+            return redirect()->route('cashier.index');
+        }
+
+        return view('cashier.select-outlet', [
+            'user' => $user,
+            'outlets' => $outlets,
+            'selectedOutletId' => session('cashier_outlet_id'),
+        ]);
+    }
+
+    public function selectOutletStore(Request $request)
+    {
+        $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets']);
+
+        if (! $user->canAccessCashier()) {
+            abort(403, 'Akun ini bukan akun kasir.');
+        }
+
+        $validated = $request->validate([
+            'outlet_id' => ['required', 'integer'],
+        ]);
+
+        $outletId = (int) $validated['outlet_id'];
+
+        if (! $user->hasCashierOutletAccess($outletId)) {
+            return back()
+                ->withErrors(['outlet_id' => 'Outlet ini tidak tersedia untuk akun kasir kamu.'])
+                ->withInput();
+        }
+
+        session(['cashier_outlet_id' => $outletId]);
+
+        return redirect()->route('cashier.index');
+    }
+
     protected function authorizeCashierAccess()
     {
-        $user = Auth::user()->load(['role', 'outlet']);
+        $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets'])->applyCashierOutletFromSession();
 
         if (! $user->canAccessCashier()) {
             return null;
+        }
+
+        $outlets = $user->cashierAccessibleOutlets();
+
+        if ($outlets->isEmpty()) {
+            return null;
+        }
+
+        if (! session('cashier_outlet_id')) {
+            if ($outlets->count() === 1) {
+                session(['cashier_outlet_id' => $outlets->first()->id]);
+                $user->applyCashierOutletFromSession();
+            } else {
+                redirect()->route('cashier.select-outlet')->send();
+                exit;
+            }
+        }
+
+        if (! $user->outlet_id || ! $user->hasCashierOutletAccess((int) $user->outlet_id)) {
+            session()->forget('cashier_outlet_id');
+
+            redirect()->route('cashier.select-outlet')->send();
+            exit;
         }
 
         return $user;
