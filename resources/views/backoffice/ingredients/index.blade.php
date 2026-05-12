@@ -439,6 +439,78 @@
             }
         }
 
+    
+        /* Ingredients filter refinement */
+        .filter-form {
+            display: grid !important;
+            grid-template-columns: minmax(320px, 1fr) minmax(260px, 320px) auto auto !important;
+            gap: 14px !important;
+            align-items: end !important;
+        }
+
+        .filter-form .field {
+            display: grid !important;
+            gap: 8px !important;
+        }
+
+        .filter-form label {
+            font-size: 12px !important;
+            font-weight: 900 !important;
+            color: #6b7280 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.06em !important;
+        }
+
+        .filter-form input,
+        .filter-form select {
+            width: 100% !important;
+            height: 54px !important;
+            border: 1px solid #d9e1ec !important;
+            border-radius: 16px !important;
+            padding: 0 16px !important;
+            background: #ffffff !important;
+            color: #111827 !important;
+            font-size: 15px !important;
+            font-weight: 800 !important;
+            outline: none !important;
+            box-sizing: border-box !important;
+        }
+
+        .filter-form input:focus,
+        .filter-form select:focus {
+            border-color: #94a3b8 !important;
+            box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.16) !important;
+        }
+
+        .filter-form .btn {
+            width: auto !important;
+            min-width: 112px !important;
+            height: 54px !important;
+            padding: 0 18px !important;
+            border-radius: 16px !important;
+            white-space: nowrap !important;
+        }
+
+        .filter-form .btn-blue {
+            min-width: 126px !important;
+        }
+
+        @media (max-width: 1100px) {
+            .filter-form {
+                grid-template-columns: 1fr 1fr !important;
+            }
+
+            .filter-form .btn {
+                width: 100% !important;
+            }
+        }
+
+        @media (max-width: 780px) {
+            .filter-form {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
     </style>
 
     <div class="ingredients-shell">
@@ -450,8 +522,8 @@
             </div>
 
             <div class="ingredients-actions">
-                <a href="{{ route('backoffice.ingredients.export.csv', ['ingredient_type' => $selectedIngredientType]) }}" class="btn btn-blue">Export CSV</a>
-                <a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-green">Import CSV</a>
+                                <a href="{{ route('backoffice.ingredients.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
+<a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-green">Import Data</a>
                 <a href="{{ route('backoffice.ingredients.create') }}" class="btn btn-orange">Tambah Ingredient</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
@@ -486,6 +558,16 @@
             <div class="filter-card">
                 <form method="GET" action="{{ route('backoffice.ingredients.index') }}" class="filter-form">
                     <div class="field">
+                        <label>Search Ingredient</label>
+                        <input
+                            type="text"
+                            name="search"
+                            value="{{ $search ?? '' }}"
+                            placeholder="Cari nama, kategori, unit..."
+                        >
+                    </div>
+
+                    <div class="field">
                         <label>Tipe Bahan</label>
                         <select name="ingredient_type">
                             <option value="">Semua tipe bahan</option>
@@ -499,7 +581,6 @@
 
                     <button type="submit" class="btn btn-orange">Apply Filter</button>
                     <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Reset</a>
-                    <a href="{{ route('backoffice.ingredients.export.csv', ['ingredient_type' => $selectedIngredientType]) }}" class="btn btn-blue">Export CSV</a>
                 </form>
             </div>
 
@@ -515,7 +596,6 @@
                             <thead>
                                 <tr>
                                     <th>Category</th>
-                                    <th>Code</th>
                                     <th>Name</th>
                                     <th>Type</th>
                                     <th>Unit</th>
@@ -529,7 +609,6 @@
                                 @foreach($ingredients as $ingredient)
                                     <tr>
                                         <td class="category-text">{{ $ingredient->category->name ?? '-' }}</td>
-                                        <td class="number-text">{{ $ingredient->code ?? '-' }}</td>
                                         <td class="ingredient-name">{{ $ingredient->name }}</td>
                                         <td>
                                             @if($ingredient->ingredient_type === \App\Models\Ingredient::TYPE_SEMI_FINISHED)

@@ -1,215 +1,327 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Import Recipes CSV - Back Office ATG POS</title>
+@extends('backoffice.layouts.app')
+
+@section('content')
     <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f3f6fb;
-            color: #1f2937;
+        .import-shell {
+            display: grid;
+            gap: 22px;
         }
 
-        .wrap {
-            max-width: 980px;
-            margin: 36px auto;
-            padding: 0 20px 40px;
-        }
-
-        .topbar {
+        .import-topbar {
             display: flex;
             justify-content: space-between;
-            align-items: center;
-            gap: 16px;
-            margin-bottom: 24px;
+            align-items: flex-start;
+            gap: 18px;
+            flex-wrap: wrap;
         }
 
-        .title {
-            font-size: 30px;
-            font-weight: 700;
+        .import-title {
+            margin: 0;
+            font-size: 34px;
+            font-weight: 900;
             color: #111827;
+            letter-spacing: -0.04em;
         }
 
-        .top-actions {
+        .import-subtitle {
+            margin-top: 8px;
+            color: #6b7280;
+            font-size: 14px;
+            line-height: 1.7;
+            max-width: 800px;
+            font-weight: 700;
+        }
+
+        .import-actions {
             display: flex;
             gap: 10px;
             flex-wrap: wrap;
         }
 
-        .btn {
-            text-decoration: none;
-            border: 0;
-            cursor: pointer;
-            color: white;
-            padding: 11px 16px;
-            border-radius: 12px;
-            font-weight: 700;
+        .import-card {
+            background: #ffffff;
+            border: 1px solid #e8edf4;
+            border-radius: 26px;
+            box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+        }
+
+        .import-card-head {
+            padding: 22px 22px 0;
+        }
+
+        .import-card-title {
+            margin: 0 0 8px;
+            font-size: 22px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .import-card-subtitle {
+            margin: 0 0 18px;
+            color: #6b7280;
             font-size: 14px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 42px;
-        }
-
-        .btn-primary { background: #e86a3a; }
-        .btn-dark { background: #111827; }
-        .btn-success { background: #166534; }
-
-        .card {
-            background: white;
-            border-radius: 20px;
-            box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
-            padding: 24px;
-        }
-
-        .info {
-            margin-bottom: 22px;
-            background: #f8fafc;
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            padding: 16px 18px;
-            line-height: 1.75;
-            font-size: 14px;
-        }
-
-        .error {
-            margin-bottom: 18px;
-            background: #ffe8e8;
-            color: #9b1c1c;
-            padding: 14px 16px;
-            border-radius: 14px;
+            line-height: 1.7;
             font-weight: 700;
-            border: 1px solid #fecaca;
         }
 
-        .field {
+        .import-card-body {
+            padding: 22px;
+        }
+
+        .import-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(360px, 0.8fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .import-field {
+            display: grid;
+            gap: 8px;
             margin-bottom: 16px;
         }
 
-        .field label {
-            display: block;
-            font-size: 13px;
-            font-weight: 700;
-            margin-bottom: 7px;
-            color: #4b5563;
+        .import-field label {
+            font-size: 12px;
+            font-weight: 900;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
         }
 
-        .field input[type="file"] {
+        .import-field input[type="file"] {
             width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #d1d5db;
-            border-radius: 12px;
-            padding: 12px 13px;
-            font-size: 14px;
-            background: white;
+            min-height: 54px;
+            border: 1px solid #d9e1ec;
+            border-radius: 16px;
+            padding: 14px 16px;
+            background: #ffffff;
             color: #111827;
+            font-size: 14px;
+            font-weight: 800;
         }
 
-        .actions {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-        }
-
-        .template {
-            margin-top: 22px;
-            background: #eef2ff;
-            color: #3730a3;
+        .import-info {
             padding: 16px;
-            border-radius: 14px;
+            border-radius: 18px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            color: #374151;
+            line-height: 1.7;
+            font-size: 14px;
             font-weight: 700;
-            border: 1px solid #dbe3ff;
+        }
+
+        .template-box {
+            padding: 16px;
+            border-radius: 18px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            font-size: 13px;
+            line-height: 1.7;
+            font-weight: 700;
         }
 
         .template-title {
-            margin-bottom: 10px;
-        }
-
-        code {
-            display: block;
-            margin-top: 8px;
-            background: #ffffff;
             color: #111827;
-            padding: 12px;
-            border-radius: 10px;
-            font-weight: 600;
-            border: 1px solid #d1d5db;
-            white-space: pre-wrap;
-            line-height: 1.7;
+            font-size: 13px;
+            font-weight: 900;
+            margin-bottom: 8px;
         }
 
-        .hint {
+        .template-box code {
+            display: block;
+            white-space: pre-wrap;
+            background: rgba(255,255,255,0.8);
+            border: 1px solid #fed7aa;
+            border-radius: 12px;
+            padding: 10px;
+            color: #111827;
+            font-size: 12px;
+            margin: 8px 0 12px;
+        }
+
+        .format-list {
+            display: grid;
+            gap: 10px;
             margin-top: 12px;
-            color: #4b5563;
-            font-size: 14px;
+        }
+
+        .format-item {
+            padding: 12px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #e8edf4;
+            color: #374151;
+            font-size: 13px;
+            line-height: 1.6;
+            font-weight: 700;
+        }
+
+        .format-item strong {
+            color: #111827;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .import-alert {
+            border-radius: 18px;
+            padding: 15px 18px;
             line-height: 1.7;
+            font-size: 14px;
+            font-weight: 800;
+            border: 1px solid transparent;
+        }
+
+        .import-alert.error {
+            background: #ffe8e8;
+            color: #9b1c1c;
+            border-color: #fecaca;
+        }
+
+        @media (max-width: 980px) {
+            .import-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .import-title {
+                font-size: 30px;
+            }
         }
     </style>
-</head>
-<body>
-    <div class="wrap">
-        <div class="topbar">
-            <div class="title">Import Recipes CSV</div>
 
-            <div class="top-actions">
-                <a href="{{ route('backoffice.recipes.import.template') }}" class="btn btn-success">Download Template CSV</a>
+    <div class="import-shell">
+        <div class="import-topbar">
+            <div>
+                <h1 class="import-title">Import Recipes</h1>
+                <div class="import-subtitle">
+                    Upload recipe dari CSV template lama atau Excel client. Excel client akan dibaca dari format grouped recipe:
+                    Kolom A = *Nama Menu, Kolom B = Variant, Kolom C = Ingredient, Kolom D = Qty, Kolom E = Unit.
+                </div>
+            </div>
+
+            <div class="import-actions">
+                <a href="{{ route('backoffice.recipes.import.template') }}" class="btn btn-green">Download Template CSV</a>
                 <a href="{{ route('backoffice.recipes.index') }}" class="btn btn-dark">Kembali ke Recipes</a>
             </div>
         </div>
 
         @if(session('error'))
-            <div class="error">
+            <div class="import-alert error">
                 {{ session('error') }}
             </div>
         @endif
 
         @if($errors->any())
-            <div class="error">
+            <div class="import-alert error">
                 @foreach($errors->all() as $error)
                     <div>{{ $error }}</div>
                 @endforeach
             </div>
         @endif
 
-        <div class="card">
-            <div class="info">
-                <strong>User:</strong> {{ $user->name }}<br>
-                <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+        <div class="import-grid">
+            <div class="import-card">
+                <div class="import-card-head">
+                    <h2 class="import-card-title">Upload File</h2>
+                    <p class="import-card-subtitle">
+                        Pilih file CSV, XLS, atau XLSX. Sistem akan otomatis mendeteksi format dan menampilkan detail baris yang gagal jika ada.
+                    </p>
+                </div>
+
+                <div class="import-card-body">
+                    <form method="POST" action="{{ route('backoffice.recipes.import.store') }}" enctype="multipart/form-data">
+                        @csrf
+
+                        <div class="import-field">
+                            <label>Upload File CSV / Excel</label>
+                            <input type="file" name="file" accept=".csv,.txt,.xls,.xlsx,text/csv" required>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-orange">Import Recipes</button>
+                            <a href="{{ route('backoffice.recipes.index') }}" class="btn btn-dark">Batal</a>
+                        </div>
+                    </form>
+                </div>
             </div>
 
-            <form method="POST" action="{{ route('backoffice.recipes.import.store') }}" enctype="multipart/form-data">
-                @csrf
-
-                <div class="field">
-                    <label>Upload File CSV</label>
-                    <input type="file" name="file" accept=".csv,text/csv" required>
+            <div class="import-card">
+                <div class="import-card-head">
+                    <h2 class="import-card-title">Format Import</h2>
+                    <p class="import-card-subtitle">
+                        Sistem mendukung dua format supaya tetap kompatibel dengan template lama dan file recipe dari client.
+                    </p>
                 </div>
 
-                <div class="actions">
-                    <button type="submit" class="btn btn-primary">Import Recipes</button>
-                    <a href="{{ route('backoffice.recipes.index') }}" class="btn btn-dark">Batal</a>
-                </div>
-            </form>
+                <div class="import-card-body">
+                    <div class="import-info" style="margin-bottom:14px;">
+                        <strong>User:</strong> {{ $user->name }}<br>
+                        <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
+                        <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                    </div>
 
-            <div class="template">
-                <div class="template-title">Template header CSV wajib:</div>
-                <code>variant_code,ingredient_name,qty,is_active</code>
+                    <div class="template-box">
+                        <div class="template-title">Format CSV lama:</div>
+                        <code>variant_code,ingredient_name,qty,is_active</code>
 
-                <div class="template-title" style="margin-top:14px;">Contoh isi:</div>
-                <code>r,Black Tea,10,1
+                        <div class="template-title">Contoh CSV:</div>
+                        <code>r,Black Tea,10,1
 r,Liquid Sugar,20,1
 l,Black Tea,15,1
 l,Liquid Sugar,25,1</code>
 
-                <div class="hint">
-                    Pakai tombol <strong>Download Template CSV</strong> supaya format file selalu sesuai sistem.
+                        <div class="format-list">
+                            <div class="format-item">
+                                <strong>Format Excel client:</strong><br>
+                                Kolom A = *Nama Menu<br>
+                                Kolom B = Variant / Size<br>
+                                Kolom C = Ingredient<br>
+                                Kolom D = Qty<br>
+                                Kolom E = Unit
+                            </div>
+
+                            <div class="format-item">
+                                <strong>Catatan:</strong><br>
+                                Jika product, variant, atau ingredient tidak ditemukan di master data, baris tersebut akan dilewati dan muncul di daftar error.
+                            </div>
+
+                            <div class="format-item">
+                                <strong>Proteksi qty:</strong><br>
+                                Qty terlalu besar akan dilewati supaya tidak merusak stock deduction jika cell Excel salah format.
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        @if(session('import_errors') && count(session('import_errors')))
+            <div class="import-card">
+                <div class="import-card-head">
+                    <h2 class="import-card-title">Detail Baris yang Dilewati</h2>
+                    <p class="import-card-subtitle">
+                        Perbaiki master data atau file import berdasarkan daftar di bawah, lalu upload ulang.
+                    </p>
+                </div>
+
+                <div class="import-card-body">
+                    <div class="import-alert error">
+                        <ul style="margin:0 0 0 18px; padding:0;">
+                            @foreach(session('import_errors') as $error)
+                                <li style="margin-bottom:6px;">{{ $error }}</li>
+                            @endforeach
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        @endif
     </div>
-</body>
-</html>
+@endsection

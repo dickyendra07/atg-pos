@@ -125,6 +125,64 @@
             line-height: 1;
         }
 
+    
+        /* Fix promo table clipping */
+        .page-shell {
+            min-width: 0 !important;
+            overflow: visible !important;
+        }
+
+        .page-shell > .card {
+            min-width: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .table-wrap {
+            width: 100% !important;
+            max-width: 100% !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            -webkit-overflow-scrolling: touch !important;
+            padding-bottom: 12px !important;
+        }
+
+        .table-wrap table {
+            width: max-content !important;
+            min-width: 1420px !important;
+            table-layout: auto !important;
+        }
+
+        .table-wrap th,
+        .table-wrap td {
+            white-space: normal !important;
+        }
+
+        .table-wrap th:last-child,
+        .table-wrap td:last-child {
+            min-width: 120px !important;
+            width: 120px !important;
+        }
+
+        .table-wrap .actions {
+            width: 96px !important;
+            min-width: 96px !important;
+            margin: 0 auto !important;
+        }
+
+        .table-wrap::-webkit-scrollbar {
+            height: 10px;
+        }
+
+        .table-wrap::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 999px;
+        }
+
+        .table-wrap::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+
     </style>
 
     <div class="page-shell">

@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
+use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RecipeViewController extends Controller
@@ -343,13 +345,14 @@ class RecipeViewController extends Controller
         $this->authorizeAccess();
 
         $request->validate([
-            'file' => 'required|file|mimes:csv,txt',
+            'file' => 'required|file|mimes:csv,txt,xls,xlsx',
         ], [
-            'file.required' => 'File CSV wajib dipilih.',
-            'file.mimes' => 'File harus berformat CSV.',
+            'file.required' => 'File import wajib dipilih.',
+            'file.mimes' => 'File harus berformat CSV, XLS, atau XLSX.',
         ]);
 
-        $realPath = $request->file('file')->getRealPath();
+        $uploadedFile = $request->file('file');
+        $realPath = $uploadedFile->getRealPath();
 
         if (! $realPath || ! file_exists($realPath)) {
             return redirect()
@@ -357,6 +360,17 @@ class RecipeViewController extends Controller
                 ->with('error', 'File upload tidak ditemukan. Coba upload ulang.');
         }
 
+        $extension = strtolower($uploadedFile->getClientOriginalExtension());
+
+        if (in_array($extension, ['xls', 'xlsx'], true)) {
+            return $this->importClientRecipeSpreadsheet($realPath);
+        }
+
+        return $this->importLegacyRecipeCsv($realPath);
+    }
+
+    protected function importLegacyRecipeCsv(string $realPath)
+    {
         $content = file_get_contents($realPath);
 
         if ($content === false || trim($content) === '') {
@@ -378,9 +392,7 @@ class RecipeViewController extends Controller
         $delimiter = substr_count($firstLine, ';') > substr_count($firstLine, ',') ? ';' : ',';
 
         $header = str_getcsv($firstLine, $delimiter);
-        $header = array_map(function ($value) {
-            return trim(strtolower($value));
-        }, $header);
+        $header = array_map(fn ($value) => trim(strtolower($value)), $header);
 
         $expectedHeader = [
             'variant_code',
@@ -396,10 +408,11 @@ class RecipeViewController extends Controller
         }
 
         $imported = 0;
+        $updated = 0;
         $skipped = 0;
         $errors = [];
 
-        DB::transaction(function () use ($lines, $delimiter, &$imported, &$skipped, &$errors) {
+        DB::transaction(function () use ($lines, $delimiter, &$imported, &$updated, &$skipped, &$errors) {
             foreach (array_slice($lines, 1) as $index => $line) {
                 $rowNumber = $index + 2;
 
@@ -419,7 +432,7 @@ class RecipeViewController extends Controller
 
                 $variantCode = trim($row[0] ?? '');
                 $ingredientName = trim($row[1] ?? '');
-                $qty = is_numeric(trim($row[2] ?? '')) ? (float) trim($row[2]) : null;
+                $qty = $this->parseRecipeQty($row[2] ?? null);
                 $isActiveRaw = trim($row[3] ?? '');
 
                 if ($variantCode === '') {
@@ -450,8 +463,7 @@ class RecipeViewController extends Controller
                     continue;
                 }
 
-                $ingredient = Ingredient::whereRaw('LOWER(name) = ?', [mb_strtolower($ingredientName)])
-                    ->first();
+                $ingredient = $this->findIngredientByName($ingredientName);
 
                 if (! $ingredient) {
                     $skipped++;
@@ -465,7 +477,7 @@ class RecipeViewController extends Controller
                     ['product_variant_id' => $variant->id],
                     [
                         'product_id' => $variant->product_id,
-                        'name' => $variant->product->name . ' - ' . $variant->name,
+                        'name' => ($variant->product->name ?? 'Recipe') . ' - ' . $variant->name,
                         'is_active' => $isActive,
                     ]
                 );
@@ -476,13 +488,16 @@ class RecipeViewController extends Controller
                     ]);
                 }
 
-                $alreadyExists = RecipeItem::where('recipe_id', $recipe->id)
+                $recipeItem = RecipeItem::where('recipe_id', $recipe->id)
                     ->where('ingredient_id', $ingredient->id)
-                    ->exists();
+                    ->first();
 
-                if ($alreadyExists) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: recipe item untuk variant '{$variantCode}' dan ingredient '{$ingredientName}' sudah ada.";
+                if ($recipeItem) {
+                    $recipeItem->update([
+                        'qty' => $qty,
+                        'unit' => $ingredient->unit,
+                    ]);
+                    $updated++;
                     continue;
                 }
 
@@ -499,7 +514,219 @@ class RecipeViewController extends Controller
 
         return redirect()
             ->route('backoffice.recipes.index')
-            ->with('success', "Import recipes selesai. Data masuk: {$imported}. Data dilewati: {$skipped}.")
+            ->with('success', "Import recipes CSV selesai. Data masuk: {$imported}. Data update: {$updated}. Data dilewati: {$skipped}.")
             ->with('import_errors', $errors);
     }
+
+    protected function importClientRecipeSpreadsheet(string $realPath)
+    {
+        $spreadsheet = IOFactory::load($realPath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = $sheet->toArray(null, true, true, true);
+
+        $currentProductName = null;
+        $currentProduct = null;
+        $currentVariantName = null;
+        $currentVariant = null;
+
+        $imported = 0;
+        $updated = 0;
+        $skipped = 0;
+        $errors = [];
+
+        DB::transaction(function () use ($rows, &$currentProductName, &$currentProduct, &$currentVariantName, &$currentVariant, &$imported, &$updated, &$skipped, &$errors) {
+            foreach ($rows as $rowNumber => $row) {
+                $productCell = $this->cleanRecipeCell($row['A'] ?? '');
+                $variantCell = $this->cleanRecipeCell($row['B'] ?? '');
+                $ingredientName = $this->cleanRecipeCell($row['C'] ?? '');
+                $qty = $this->parseRecipeQty($row['D'] ?? null);
+                $unitCell = $this->cleanRecipeCell($row['E'] ?? '');
+
+                if ($rowNumber <= 1 && $this->looksLikeRecipeHeader($productCell, $variantCell, $ingredientName)) {
+                    continue;
+                }
+
+                if ($productCell !== '') {
+                    $currentProductName = ltrim($productCell, "* \t\n\r\0\x0B");
+                    $currentProduct = $this->findProductByName($currentProductName);
+                    $currentVariantName = null;
+                    $currentVariant = null;
+
+                    if (! $currentProduct) {
+                        $skipped++;
+                        $errors[] = "Baris {$rowNumber}: product/menu '{$currentProductName}' tidak ditemukan di master Product.";
+                        continue;
+                    }
+                }
+
+                if ($variantCell !== '') {
+                    $currentVariantName = $variantCell;
+
+                    if ($currentProduct) {
+                        $currentVariant = $this->findVariantForProduct($currentProduct->id, $currentVariantName);
+                    }
+
+                    if (! $currentVariant) {
+                        $skipped++;
+                        $errors[] = "Baris {$rowNumber}: variant '{$currentVariantName}' untuk product '{$currentProductName}' tidak ditemukan.";
+                        continue;
+                    }
+                }
+
+                if ($ingredientName !== '' && $currentProduct) {
+                    $possibleVariant = $this->findVariantForProduct($currentProduct->id, $ingredientName);
+
+                    if ($possibleVariant) {
+                        $currentVariantName = $ingredientName;
+                        $currentVariant = $possibleVariant;
+                        continue;
+                    }
+                }
+
+                if ($ingredientName === '' && ($qty === null || $qty <= 0)) {
+                    continue;
+                }
+
+                if (! $currentProduct || ! $currentVariant) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: product/variant belum terbaca. Pastikan kolom A berisi *Nama Menu dan kolom B berisi variant.";
+                    continue;
+                }
+
+                if ($ingredientName === '') {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: ingredient kosong.";
+                    continue;
+                }
+
+                if ($qty === null || $qty <= 0) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: qty untuk ingredient '{$ingredientName}' tidak valid.";
+                    continue;
+                }
+
+                if ($qty > 5000) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: qty '{$qty}' untuk '{$ingredientName}' terlalu besar. Cek kemungkinan cell Excel salah format.";
+                    continue;
+                }
+
+                $ingredient = $this->findIngredientByName($ingredientName);
+
+                if (! $ingredient) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: ingredient '{$ingredientName}' tidak ditemukan di master Ingredient.";
+                    continue;
+                }
+
+                $recipe = Recipe::firstOrCreate(
+                    ['product_variant_id' => $currentVariant->id],
+                    [
+                        'product_id' => $currentVariant->product_id,
+                        'name' => ($currentProduct->name ?? $currentProductName) . ' - ' . $currentVariant->name,
+                        'is_active' => true,
+                    ]
+                );
+
+                if (! $recipe->is_active) {
+                    $recipe->update(['is_active' => true]);
+                }
+
+                $recipeItem = RecipeItem::where('recipe_id', $recipe->id)
+                    ->where('ingredient_id', $ingredient->id)
+                    ->first();
+
+                if ($recipeItem) {
+                    $recipeItem->update([
+                        'qty' => $qty,
+                        'unit' => $ingredient->unit ?: $unitCell,
+                    ]);
+                    $updated++;
+                    continue;
+                }
+
+                RecipeItem::create([
+                    'recipe_id' => $recipe->id,
+                    'ingredient_id' => $ingredient->id,
+                    'qty' => $qty,
+                    'unit' => $ingredient->unit ?: $unitCell,
+                ]);
+
+                $imported++;
+            }
+        });
+
+        return redirect()
+            ->route('backoffice.recipes.index')
+            ->with('success', "Import recipes Excel client selesai. Data masuk: {$imported}. Data update: {$updated}. Data dilewati: {$skipped}.")
+            ->with('import_errors', $errors);
+    }
+
+    protected function cleanRecipeCell($value): string
+    {
+        return trim(preg_replace('/\s+/', ' ', (string) $value));
+    }
+
+    protected function normalizeRecipeName(string $value): string
+    {
+        return mb_strtolower(trim(preg_replace('/\s+/', ' ', $value)));
+    }
+
+    protected function parseRecipeQty($value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_numeric($value)) {
+            return (float) $value;
+        }
+
+        $clean = trim((string) $value);
+        $clean = str_replace([' ', ','], ['', '.'], $clean);
+
+        return is_numeric($clean) ? (float) $clean : null;
+    }
+
+    protected function looksLikeRecipeHeader(string $productCell, string $variantCell, string $ingredientName): bool
+    {
+        $joined = $this->normalizeRecipeName($productCell . ' ' . $variantCell . ' ' . $ingredientName);
+
+        return str_contains($joined, 'produk')
+            || str_contains($joined, 'product')
+            || str_contains($joined, 'ingredient')
+            || str_contains($joined, 'bahan');
+    }
+
+    protected function findProductByName(string $name): ?Product
+    {
+        $normalized = $this->normalizeRecipeName($name);
+
+        return Product::query()
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
+            ->first();
+    }
+
+    protected function findVariantForProduct(int $productId, string $variantName): ?ProductVariant
+    {
+        $normalized = $this->normalizeRecipeName($variantName);
+
+        return ProductVariant::with('product')
+            ->where('product_id', $productId)
+            ->where(function ($query) use ($normalized) {
+                $query->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
+                    ->orWhereRaw('LOWER(TRIM(code)) = ?', [$normalized]);
+            })
+            ->first();
+    }
+
+    protected function findIngredientByName(string $name): ?Ingredient
+    {
+        $normalized = $this->normalizeRecipeName($name);
+
+        return Ingredient::query()
+            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
+            ->first();
+    }
+
 }

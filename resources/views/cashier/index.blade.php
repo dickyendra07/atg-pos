@@ -2929,6 +2929,686 @@
             font-size: 13px !important;
         }
 
+    
+        /* Cashier menu/sidebar final visual refinement */
+        .cashier-main-column .section-title {
+            font-size: 24px !important;
+        }
+
+        .tab-btn {
+            font-size: 13px !important;
+            padding: 10px 16px !important;
+            min-height: 42px !important;
+        }
+
+        .search-input,
+        .product-search-input,
+        input[type="search"] {
+            font-size: 14px !important;
+        }
+
+        .category-title,
+        .product-category-title,
+        [data-product-category-toggle] {
+            font-size: 16px !important;
+            line-height: 1.25 !important;
+        }
+
+        [data-product-category-toggle] .category-name,
+        [data-product-category-toggle] strong {
+            font-size: 16px !important;
+        }
+
+        .category-count,
+        .product-count,
+        .category-pill {
+            font-size: 11px !important;
+            padding: 5px 9px !important;
+        }
+
+        .order-type-card label,
+        .order-type-title {
+            font-size: 12px !important;
+        }
+
+        .order-type-btn,
+        .order-type-button {
+            font-size: 14px !important;
+            min-height: 44px !important;
+        }
+
+        .product-card-title,
+        .product-name {
+            font-size: 15px !important;
+            line-height: 1.25 !important;
+        }
+
+        .product-card-meta,
+        .variant-count,
+        .product-category-text {
+            font-size: 11px !important;
+            line-height: 1.4 !important;
+        }
+
+        .choose-variant-btn,
+        .product-card .btn {
+            font-size: 13px !important;
+            min-height: 42px !important;
+        }
+
+        /* Right sidebar button anti-crop */
+        .cart-action-row {
+            align-items: center !important;
+            padding-top: 2px !important;
+            padding-bottom: 2px !important;
+            overflow: visible !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            height: 38px !important;
+            min-height: 38px !important;
+            line-height: 1 !important;
+            padding: 0 12px !important;
+            border-radius: 13px !important;
+            font-size: 13px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: visible !important;
+            box-shadow: 0 8px 14px rgba(15, 23, 42, 0.10) !important;
+        }
+
+        .open-payment-modal-btn {
+            transform: none !important;
+        }
+
+        /* Promo card alignment */
+        .quick-promo-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            align-items: stretch !important;
+        }
+
+        .quick-promo-card.compact {
+            min-height: 58px !important;
+            height: auto !important;
+            padding: 9px 10px !important;
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            grid-template-rows: auto auto !important;
+            align-content: center !important;
+            align-items: center !important;
+            gap: 5px 8px !important;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            font-size: 12px !important;
+            line-height: 1.2 !important;
+            min-height: 30px !important;
+            display: flex !important;
+            align-items: center !important;
+            margin: 0 !important;
+        }
+
+        .quick-promo-card.compact .promo-logic-badge {
+            align-self: center !important;
+            justify-self: end !important;
+            min-width: 28px !important;
+            height: 20px !important;
+            font-size: 8.5px !important;
+            padding: 0 6px !important;
+        }
+
+        .quick-promo-card.compact .promo-reward-pill {
+            grid-column: 1 / -1 !important;
+            justify-self: start !important;
+            font-size: 8.5px !important;
+            padding: 4px 7px !important;
+            line-height: 1 !important;
+            margin-top: 0 !important;
+        }
+
+        .promo-discount-title,
+        .cart-title {
+            font-size: 15px !important;
+        }
+
+        .promo-discount-pill {
+            font-size: 8.5px !important;
+            padding: 5px 8px !important;
+        }
+
+        .promo-discount-grid select {
+            height: 38px !important;
+            min-height: 38px !important;
+            font-size: 12px !important;
+        }
+
+        @media (max-width: 900px) {
+            .quick-promo-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
+    
+        /* Final compact checkout actions + hide duplicate promo dropdown */
+        .manual-promo-select-field {
+            display: none !important;
+        }
+
+        .cart-action-row {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 8px !important;
+            margin-top: 10px !important;
+            padding: 0 !important;
+            overflow: visible !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            height: 42px !important;
+            min-height: 42px !important;
+            max-height: 42px !important;
+            width: 100% !important;
+            padding: 0 14px !important;
+            border-radius: 14px !important;
+            font-size: 15px !important;
+            font-weight: 900 !important;
+            line-height: 1 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            transform: none !important;
+            box-shadow: 0 8px 16px rgba(15, 23, 42, 0.10) !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%) !important;
+        }
+
+        .cart-action-row .btn-clear {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%) !important;
+            color: #ffffff !important;
+            border: 0 !important;
+        }
+
+        .promo-discount-grid {
+            grid-template-columns: 1fr !important;
+        }
+
+    
+        /* Right sidebar section spacing + promo alignment polish */
+        .cashier-sidebar,
+        .cart-sidebar,
+        .right-sidebar {
+            padding: 14px !important;
+        }
+
+        .summary-grid,
+        .cart-summary-grid {
+            gap: 12px !important;
+            margin-bottom: 14px !important;
+        }
+
+        .summary-card,
+        .member-box,
+        .cart-section,
+        .promo-discount-box {
+            padding: 16px !important;
+            border-radius: 22px !important;
+            margin-bottom: 14px !important;
+        }
+
+        .member-box {
+            min-height: unset !important;
+        }
+
+        .summary-label {
+            font-size: 10px !important;
+            margin-bottom: 6px !important;
+        }
+
+        .summary-value,
+        #summary-member-name {
+            font-size: 22px !important;
+            line-height: 1.1 !important;
+        }
+
+        .summary-desc,
+        .cart-empty {
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+        }
+
+        .cart-title,
+        .promo-discount-title {
+            font-size: 18px !important;
+            line-height: 1.2 !important;
+            margin: 0 !important;
+        }
+
+        .promo-discount-head {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            gap: 10px !important;
+            margin-bottom: 14px !important;
+        }
+
+        .promo-discount-pill {
+            flex: 0 0 auto !important;
+            font-size: 10px !important;
+            padding: 6px 10px !important;
+            border-radius: 999px !important;
+        }
+
+        .quick-promo-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 10px !important;
+            align-items: stretch !important;
+            margin-bottom: 16px !important;
+        }
+
+        .quick-promo-card.compact {
+            height: 86px !important;
+            min-height: 86px !important;
+            padding: 12px 14px !important;
+            border-radius: 18px !important;
+            display: grid !important;
+            grid-template-columns: minmax(0, 1fr) auto !important;
+            grid-template-rows: 1fr auto !important;
+            gap: 8px !important;
+            align-items: center !important;
+            align-content: center !important;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            font-size: 14px !important;
+            line-height: 1.22 !important;
+            font-weight: 900 !important;
+            min-height: 38px !important;
+            display: flex !important;
+            align-items: center !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .quick-promo-card.compact .promo-logic-badge {
+            grid-column: 2 !important;
+            grid-row: 1 / span 2 !important;
+            align-self: center !important;
+            justify-self: end !important;
+            width: 42px !important;
+            min-width: 42px !important;
+            height: 30px !important;
+            font-size: 11px !important;
+            padding: 0 !important;
+            border-radius: 999px !important;
+        }
+
+        .quick-promo-card.compact .promo-reward-pill {
+            grid-column: 1 / 2 !important;
+            grid-row: 2 !important;
+            justify-self: start !important;
+            align-self: end !important;
+            font-size: 10px !important;
+            line-height: 1 !important;
+            padding: 6px 9px !important;
+            margin: 0 !important;
+            border-radius: 999px !important;
+            max-width: 100% !important;
+            white-space: nowrap !important;
+        }
+
+        .promo-discount-grid {
+            display: grid !important;
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+            margin-top: 0 !important;
+        }
+
+        .promo-discount-grid .field {
+            display: grid !important;
+            gap: 8px !important;
+        }
+
+        .promo-discount-grid label {
+            font-size: 12px !important;
+            margin: 0 !important;
+        }
+
+        .promo-discount-grid select {
+            height: 44px !important;
+            min-height: 44px !important;
+            font-size: 14px !important;
+            border-radius: 16px !important;
+            padding: 0 14px !important;
+        }
+
+        .cart-action-row {
+            padding: 0 14px 12px !important;
+            margin-top: 2px !important;
+            gap: 10px !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            height: 46px !important;
+            min-height: 46px !important;
+            border-radius: 18px !important;
+            font-size: 16px !important;
+        }
+
+    
+        /* Keep sidebar spacing, reduce font scale */
+        .summary-card,
+        .member-box,
+        .cart-section,
+        .promo-discount-box {
+            padding: 14px !important;
+            border-radius: 20px !important;
+            margin-bottom: 12px !important;
+        }
+
+        .summary-label {
+            font-size: 9px !important;
+            margin-bottom: 5px !important;
+        }
+
+        .summary-value,
+        #summary-member-name {
+            font-size: 18px !important;
+            line-height: 1.1 !important;
+        }
+
+        .summary-desc,
+        .cart-empty,
+        .member-active {
+            font-size: 12px !important;
+            line-height: 1.4 !important;
+        }
+
+        .cart-title,
+        .promo-discount-title {
+            font-size: 15px !important;
+            line-height: 1.2 !important;
+        }
+
+        .cart-total {
+            font-size: 15px !important;
+            padding-top: 10px !important;
+            margin-top: 10px !important;
+        }
+
+        .promo-discount-head {
+            margin-bottom: 12px !important;
+        }
+
+        .promo-discount-pill {
+            font-size: 8.5px !important;
+            padding: 5px 8px !important;
+        }
+
+        .quick-promo-grid {
+            gap: 8px !important;
+            margin-bottom: 12px !important;
+        }
+
+        .quick-promo-card.compact {
+            height: 72px !important;
+            min-height: 72px !important;
+            padding: 10px 11px !important;
+            border-radius: 16px !important;
+            gap: 6px !important;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            font-size: 12px !important;
+            line-height: 1.18 !important;
+            min-height: 30px !important;
+        }
+
+        .quick-promo-card.compact .promo-logic-badge {
+            width: 34px !important;
+            min-width: 34px !important;
+            height: 24px !important;
+            font-size: 9px !important;
+        }
+
+        .quick-promo-card.compact .promo-reward-pill {
+            font-size: 8.5px !important;
+            padding: 5px 7px !important;
+        }
+
+        .promo-discount-grid label {
+            font-size: 10px !important;
+        }
+
+        .promo-discount-grid select {
+            height: 38px !important;
+            min-height: 38px !important;
+            font-size: 12px !important;
+            border-radius: 14px !important;
+            padding: 0 11px !important;
+        }
+
+        .cart-action-row {
+            padding: 0 12px 10px !important;
+            gap: 8px !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            height: 40px !important;
+            min-height: 40px !important;
+            border-radius: 14px !important;
+            font-size: 14px !important;
+        }
+
+    
+        /* Sidebar tighter spacing + vertical promo card layout */
+        .cashier-sidebar,
+        .cart-sidebar,
+        .right-sidebar {
+            padding: 10px !important;
+        }
+
+        .summary-grid,
+        .cart-summary-grid {
+            gap: 8px !important;
+            margin-bottom: 10px !important;
+        }
+
+        .summary-card,
+        .member-box,
+        .cart-section,
+        .promo-discount-box {
+            padding: 12px !important;
+            border-radius: 18px !important;
+            margin-bottom: 10px !important;
+        }
+
+        .member-box {
+            padding-top: 12px !important;
+            padding-bottom: 12px !important;
+        }
+
+        .summary-card {
+            min-height: 92px !important;
+        }
+
+        .summary-label {
+            font-size: 9px !important;
+            margin-bottom: 4px !important;
+        }
+
+        .summary-value,
+        #summary-member-name {
+            font-size: 18px !important;
+            line-height: 1.08 !important;
+        }
+
+        .summary-desc,
+        .cart-empty,
+        .member-active {
+            font-size: 12px !important;
+            line-height: 1.35 !important;
+        }
+
+        .cart-title,
+        .promo-discount-title {
+            font-size: 15px !important;
+            line-height: 1.15 !important;
+            margin: 0 !important;
+        }
+
+        .cart-total {
+            font-size: 15px !important;
+            padding-top: 8px !important;
+            margin-top: 8px !important;
+        }
+
+        .cart-item,
+        .cart-item-card {
+            padding: 10px !important;
+            border-radius: 16px !important;
+        }
+
+        .cart-item-name {
+            font-size: 15px !important;
+            line-height: 1.2 !important;
+        }
+
+        .cart-item-meta {
+            font-size: 11px !important;
+            line-height: 1.3 !important;
+        }
+
+        .qty-control {
+            transform: scale(0.9) !important;
+            transform-origin: left center !important;
+        }
+
+        .modifier-buttons {
+            gap: 6px !important;
+            margin-top: 6px !important;
+        }
+
+        .modifier-buttons .mini-btn,
+        .mini-btn {
+            min-height: 34px !important;
+            height: 34px !important;
+            padding: 0 10px !important;
+            font-size: 11px !important;
+            border-radius: 12px !important;
+        }
+
+        .promo-discount-head {
+            margin-bottom: 10px !important;
+        }
+
+        .promo-discount-pill {
+            font-size: 8px !important;
+            padding: 4px 7px !important;
+        }
+
+        .quick-promo-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-bottom: 10px !important;
+            align-items: stretch !important;
+        }
+
+        .quick-promo-card.compact {
+            height: 74px !important;
+            min-height: 74px !important;
+            padding: 10px !important;
+            border-radius: 16px !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: flex-start !important;
+            gap: 6px !important;
+            text-align: left !important;
+        }
+
+        .quick-promo-card.compact .quick-promo-name {
+            width: 100% !important;
+            min-height: 28px !important;
+            height: auto !important;
+            display: block !important;
+            align-items: unset !important;
+            font-size: 12px !important;
+            line-height: 1.18 !important;
+            font-weight: 900 !important;
+            margin: 0 !important;
+            overflow: hidden !important;
+        }
+
+        .quick-promo-card.compact .promo-logic-badge {
+            position: static !important;
+            align-self: flex-start !important;
+            width: auto !important;
+            min-width: 34px !important;
+            height: 22px !important;
+            padding: 0 9px !important;
+            font-size: 8.5px !important;
+            border-radius: 999px !important;
+            margin: 0 !important;
+        }
+
+        .quick-promo-card.compact .promo-reward-pill {
+            position: static !important;
+            align-self: flex-start !important;
+            font-size: 8px !important;
+            line-height: 1 !important;
+            padding: 4px 7px !important;
+            margin: 0 !important;
+            border-radius: 999px !important;
+            max-width: 100% !important;
+            white-space: nowrap !important;
+        }
+
+        .quick-promo-card.compact:has(.promo-reward-pill) {
+            height: 86px !important;
+            min-height: 86px !important;
+        }
+
+        .promo-discount-grid {
+            gap: 7px !important;
+        }
+
+        .promo-discount-grid label {
+            font-size: 10px !important;
+        }
+
+        .promo-discount-grid select {
+            height: 36px !important;
+            min-height: 36px !important;
+            font-size: 12px !important;
+            border-radius: 13px !important;
+            padding: 0 10px !important;
+        }
+
+        .cart-action-row {
+            padding: 0 10px 8px !important;
+            margin-top: 0 !important;
+            gap: 8px !important;
+        }
+
+        .cart-action-row .open-payment-modal-btn,
+        .cart-action-row .btn-clear {
+            height: 38px !important;
+            min-height: 38px !important;
+            border-radius: 14px !important;
+            font-size: 14px !important;
+        }
+
     </style>
 </head>
 <body>
@@ -3615,7 +4295,7 @@
                                                     </select>
                                                 </div>
 
-                                                <div class="field">
+                                                <div class="field manual-promo-select-field">
                                                     <label for="promo_id">Promo</label>
                                                     <select name="promo_id" id="promo_id">
                                                         <option value="" data-promo='{}'>Tidak pakai promo</option>

@@ -457,8 +457,12 @@
                         lastPrintedPromoName = itemPromoName;
                     }
 
+                    const productName = item.product_name || '-';
+                    const variantName = item.variant_name ? String(item.variant_name).trim() : '';
+                    const productNameWithVariant = variantName ? `${productName} ${variantName}` : productName;
+
                     row(
-                        `${money(item.qty)} x ${item.product_name || '-'}`,
+                        `${money(item.qty)} x ${productNameWithVariant}`,
                         money(item.line_total),
                         {
                             size: 21,
@@ -466,14 +470,6 @@
                             gap: 4,
                         }
                     );
-
-                    if (item.variant_name) {
-                        pushWrapped(item.variant_name, {
-                            size: 20,
-                            gap: 3,
-                            indent: 18,
-                        });
-                    }
 
                     if (Array.isArray(item.modifiers) && item.modifiers.length) {
                         item.modifiers.forEach((modifier) => {

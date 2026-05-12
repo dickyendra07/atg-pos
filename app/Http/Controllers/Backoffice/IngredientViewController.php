@@ -98,6 +98,19 @@ class IngredientViewController extends Controller
             $ingredientsQuery->where('ingredient_type', $request->ingredient_type);
         }
 
+        if ($request->filled('search')) {
+            $keyword = trim((string) $request->search);
+
+            $ingredientsQuery->where(function ($query) use ($keyword) {
+                $query->where('name', 'like', '%' . $keyword . '%')
+                    ->orWhere('code', 'like', '%' . $keyword . '%')
+                    ->orWhere('unit', 'like', '%' . $keyword . '%')
+                    ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
+                        $categoryQuery->where('name', 'like', '%' . $keyword . '%');
+                    });
+            });
+        }
+
         $ingredients = $ingredientsQuery->get();
 
         return view('backoffice.ingredients.index', [
@@ -105,6 +118,7 @@ class IngredientViewController extends Controller
             'ingredients' => $ingredients,
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
             'selectedIngredientType' => $request->input('ingredient_type', ''),
+            'search' => $request->input('search', ''),
         ]);
     }
 
@@ -233,7 +247,20 @@ class IngredientViewController extends Controller
 
         $ingredients = $ingredientsQuery->get();
 
-        $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
+                if ($request->filled('search')) {
+            $keyword = trim((string) $request->search);
+
+            $ingredientsQuery->where(function ($query) use ($keyword) {
+                $query->where('name', 'like', '%' . $keyword . '%')
+                    ->orWhere('code', 'like', '%' . $keyword . '%')
+                    ->orWhere('unit', 'like', '%' . $keyword . '%')
+                    ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
+                        $categoryQuery->where('name', 'like', '%' . $keyword . '%');
+                    });
+            });
+        }
+
+$filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',

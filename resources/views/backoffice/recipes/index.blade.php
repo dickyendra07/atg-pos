@@ -481,6 +481,328 @@
             align-items: center;
         }
 
+    
+        /* Recipe table compact items layout */
+        .recipe-items-cell {
+            width: 430px !important;
+            max-width: 430px !important;
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+            max-height: 150px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding: 12px !important;
+            align-content: start !important;
+            vertical-align: top !important;
+        }
+
+        .recipe-items-cell::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .recipe-items-cell::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 999px;
+        }
+
+        .recipe-items-cell::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+
+        .recipe-item-row {
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 0 !important;
+            padding: 6px 8px !important;
+            border-radius: 999px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e5e7eb !important;
+            font-size: 11px !important;
+            line-height: 1.2 !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            box-sizing: border-box !important;
+            margin: 0 !important;
+        }
+
+        .recipe-item-row * {
+            font-size: inherit !important;
+            line-height: inherit !important;
+            white-space: nowrap !important;
+        }
+
+        .table-wrap table {
+            table-layout: fixed !important;
+            min-width: 1240px !important;
+        }
+
+        .table-wrap th:nth-child(1),
+        .table-wrap td:nth-child(1) {
+            width: 220px !important;
+        }
+
+        .table-wrap th:nth-child(2),
+        .table-wrap td:nth-child(2) {
+            width: 190px !important;
+        }
+
+        .table-wrap th:nth-child(3),
+        .table-wrap td:nth-child(3) {
+            width: 110px !important;
+        }
+
+        .table-wrap th:nth-child(4),
+        .table-wrap td:nth-child(4) {
+            width: 430px !important;
+        }
+
+        .table-wrap th:nth-child(5),
+        .table-wrap td:nth-child(5) {
+            width: 140px !important;
+        }
+
+        .table-wrap th:nth-child(6),
+        .table-wrap td:nth-child(6) {
+            width: 100px !important;
+        }
+
+        .table-wrap th:nth-child(7),
+        .table-wrap td:nth-child(7) {
+            width: 110px !important;
+        }
+
+    
+        /* Recipe items compact scroll layout */
+        .recipe-items-list-cell {
+            width: 430px !important;
+            max-width: 430px !important;
+            vertical-align: top !important;
+            padding: 10px !important;
+        }
+
+        .recipe-items-scroll {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+            max-height: 132px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding-right: 4px !important;
+            align-content: start !important;
+        }
+
+        .recipe-items-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .recipe-items-scroll::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 999px;
+        }
+
+        .recipe-items-scroll::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 999px;
+        }
+
+        .recipe-items-scroll .recipe-item-row {
+            margin: 0 !important;
+            min-width: 0 !important;
+        }
+
+        .recipe-items-scroll .item-pill {
+            width: 100% !important;
+            max-width: 100% !important;
+            display: block !important;
+            padding: 6px 8px !important;
+            border-radius: 999px !important;
+            font-size: 10.5px !important;
+            line-height: 1.2 !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            box-sizing: border-box !important;
+        }
+
+        .recipe-items-type-cell {
+            width: 140px !important;
+            max-width: 140px !important;
+            vertical-align: top !important;
+        }
+
+        .recipe-items-type-cell .recipe-item-row {
+            margin: 0 0 5px !important;
+        }
+
+        .recipe-items-type-cell .type-badge {
+            font-size: 10px !important;
+            padding: 5px 8px !important;
+            white-space: nowrap !important;
+        }
+
+        .recipe-table {
+            table-layout: fixed !important;
+        }
+
+        .recipe-table th:nth-child(4),
+        .recipe-table td:nth-child(4) {
+            width: 430px !important;
+        }
+
+        .recipe-table th:nth-child(5),
+        .recipe-table td:nth-child(5) {
+            width: 140px !important;
+        }
+
+    
+        /* Recipe table row alignment fix */
+        .recipe-table td {
+            vertical-align: middle !important;
+        }
+
+        .recipe-items-cell,
+        .recipe-items-list-cell,
+        .recipe-items-type-cell {
+            display: table-cell !important;
+            max-height: none !important;
+            overflow: visible !important;
+            vertical-align: middle !important;
+        }
+
+        .recipe-items-list-cell {
+            width: 440px !important;
+            max-width: 440px !important;
+            padding: 12px !important;
+        }
+
+        .recipe-items-scroll {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 6px !important;
+            max-height: 118px !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+            padding-right: 4px !important;
+            align-content: start !important;
+        }
+
+        .recipe-items-scroll .recipe-item-row {
+            margin: 0 !important;
+            min-width: 0 !important;
+            display: block !important;
+        }
+
+        .recipe-items-scroll .item-pill {
+            width: 100% !important;
+            max-width: 100% !important;
+            display: block !important;
+            padding: 6px 8px !important;
+            border-radius: 999px !important;
+            font-size: 10.5px !important;
+            line-height: 1.2 !important;
+            font-weight: 800 !important;
+            white-space: nowrap !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+            box-sizing: border-box !important;
+        }
+
+        .recipe-items-type-cell {
+            width: 140px !important;
+            max-width: 140px !important;
+            text-align: center !important;
+        }
+
+        .recipe-items-type-cell .type-badge {
+            display: inline-flex !important;
+            margin: 3px !important;
+            font-size: 10px !important;
+            padding: 6px 10px !important;
+            white-space: nowrap !important;
+        }
+
+        .recipe-table {
+            table-layout: fixed !important;
+            min-width: 1240px !important;
+        }
+
+        .recipe-table th:nth-child(1),
+        .recipe-table td:nth-child(1) {
+            width: 210px !important;
+        }
+
+        .recipe-table th:nth-child(2),
+        .recipe-table td:nth-child(2) {
+            width: 190px !important;
+        }
+
+        .recipe-table th:nth-child(3),
+        .recipe-table td:nth-child(3) {
+            width: 90px !important;
+        }
+
+        .recipe-table th:nth-child(4),
+        .recipe-table td:nth-child(4) {
+            width: 440px !important;
+        }
+
+        .recipe-table th:nth-child(5),
+        .recipe-table td:nth-child(5) {
+            width: 140px !important;
+        }
+
+        .recipe-table th:nth-child(6),
+        .recipe-table td:nth-child(6) {
+            width: 100px !important;
+        }
+
+        .recipe-table th:nth-child(7),
+        .recipe-table td:nth-child(7) {
+            width: 110px !important;
+        }
+
+    
+        /* Recipe table simplified columns */
+        .recipe-table {
+            table-layout: fixed !important;
+            min-width: 980px !important;
+        }
+
+        .recipe-table th:nth-child(1),
+        .recipe-table td:nth-child(1) {
+            width: 260px !important;
+        }
+
+        .recipe-table th:nth-child(2),
+        .recipe-table td:nth-child(2) {
+            width: 430px !important;
+        }
+
+        .recipe-table th:nth-child(3),
+        .recipe-table td:nth-child(3) {
+            width: 150px !important;
+        }
+
+        .recipe-table th:nth-child(4),
+        .recipe-table td:nth-child(4) {
+            width: 100px !important;
+        }
+
+        .recipe-table th:nth-child(5),
+        .recipe-table td:nth-child(5) {
+            width: 120px !important;
+        }
+
+        .recipe-name {
+            text-align: left !important;
+            line-height: 1.25 !important;
+        }
+
     </style>
 
     <div class="recipes-shell">
@@ -595,8 +917,6 @@
                         <thead>
                             <tr>
                                 <th>Recipe Name</th>
-                                <th>Product</th>
-                                <th>Variant</th>
                                 <th>Recipe Items</th>
                                 <th>Ingredient Type</th>
                                 <th>Status</th>
@@ -609,35 +929,41 @@
                                     <td>
                                         <div class="recipe-name">{{ $recipe->name }}</div>
                                     </td>
-                                    <td>{{ $recipe->variant->product->name ?? '-' }}</td>
-                                    <td>{{ $recipe->variant->name ?? '-' }}</td>
-                                    <td class="recipe-items-cell">
-                                        @forelse($recipe->items as $item)
-                                            <div class="recipe-item-row">
-                                                <span class="item-pill">
-                                                    {{ $item->ingredient->name ?? '-' }}
-                                                    - {{ number_format((float) $item->qty, 2, ',', '.') }}
-                                                    {{ $item->unit ?? $item->ingredient->unit ?? '' }}
-                                                </span>
-                                            </div>
-                                        @empty
-                                            -
-                                        @endforelse
+                                    <td class="recipe-items-cell recipe-items-list-cell">
+                                        <div class="recipe-items-scroll">
+                                            @forelse($recipe->items as $item)
+                                                <div class="recipe-item-row">
+                                                    <span class="item-pill">
+                                                        {{ $item->ingredient->name ?? '-' }}
+                                                        - {{ number_format((float) $item->qty, 2, ',', '.') }}
+                                                        {{ $item->unit ?? $item->ingredient->unit ?? '' }}
+                                                    </span>
+                                                </div>
+                                            @empty
+                                                -
+                                            @endforelse
+                                        </div>
                                     </td>
-                                    <td class="recipe-items-cell">
-                                        @forelse($recipe->items as $item)
+                                    <td class="recipe-items-type-cell">
+                                        @php
+                                            $ingredientTypes = $recipe->items
+                                                ->map(fn($item) => $item->ingredient?->ingredient_type ?? \App\Models\Ingredient::TYPE_RAW)
+                                                ->unique()
+                                                ->values();
+                                        @endphp
+
+                                        @forelse($ingredientTypes as $ingredientType)
                                             @php
-                                                $ingredientType = $item->ingredient?->ingredient_type;
-                                                $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
+                                                $ingredientTypeLabel = $ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED
+                                                    ? 'Setengah Jadi'
+                                                    : 'Mentah';
                                             @endphp
 
-                                            <div class="recipe-item-row">
-                                                @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
-                                                    <span class="type-badge badge-semi">{{ $ingredientTypeLabel }}</span>
-                                                @else
-                                                    <span class="type-badge badge-raw">{{ $ingredientTypeLabel }}</span>
-                                                @endif
-                                            </div>
+                                            @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
+                                                <span class="type-badge badge-semi">{{ $ingredientTypeLabel }}</span>
+                                            @else
+                                                <span class="type-badge badge-raw">{{ $ingredientTypeLabel }}</span>
+                                            @endif
                                         @empty
                                             -
                                         @endforelse
