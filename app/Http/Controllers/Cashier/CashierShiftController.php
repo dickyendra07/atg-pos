@@ -14,14 +14,15 @@ class CashierShiftController extends Controller
     {
         $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets'])->applyCashierOutletFromSession();
 
-        $allowedRoles = [
-            'owner',
-            'admin_outlet',
-            'kasir',
-        ];
-
-        if (! in_array($user->role?->code, $allowedRoles, true)) {
+        if (! $user->canAccessCashier()) {
             abort(403, 'Role kamu tidak punya akses ke Shift Cashier.');
+        }
+
+        if (! $user->outlet_id || ! $user->hasCashierOutletAccess((int) $user->outlet_id)) {
+            session()->forget('cashier_outlet_id');
+
+            redirect()->route('cashier.select-outlet')->send();
+            exit;
         }
 
         return $user;

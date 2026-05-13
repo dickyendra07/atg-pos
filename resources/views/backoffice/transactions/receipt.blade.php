@@ -108,12 +108,13 @@
         @media print {
             html,
             body {
-                width: 58mm;
-                min-width: 58mm;
-                max-width: 58mm;
+                width: 58mm !important;
+                min-width: 58mm !important;
+                max-width: 58mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
                 background: #ffffff !important;
+                overflow: visible !important;
             }
 
             .toolbar,
@@ -143,9 +144,11 @@
                 display: block !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                image-rendering: auto !important;
             }
         }
     </style>
+    <style id="dynamic-receipt-print-style"></style>
 </head>
 <body>
 @php
@@ -255,7 +258,7 @@
     </div>
 
     <div class="hint">
-        Preview ini dibuat sebagai gambar PNG fixed width 384px untuk thermal 58mm. Kalau print dari Android masih kecil, berarti driver printer Android tetap melakukan scaling otomatis.
+        Preview ini dibuat sebagai PNG high resolution untuk thermal 58mm. Saat print, pilih paper 58mm, margin none/minimal, dan scale 100%.
     </div>
 
     <div class="receipt-preview">
@@ -288,15 +291,21 @@
         const canvas = document.getElementById('receipt-canvas');
         const image = document.getElementById('receipt-image');
         const downloadButton = document.getElementById('download-receipt-btn');
+        const dynamicPrintStyle = document.getElementById('dynamic-receipt-print-style');
 
-        const width = 384;
-        const paddingX = 18;
-        const topPadding = 18;
-        const bottomPadding = 28;
-        const lineGap = 6;
+        const width = 576;
+        const renderScale = 1.65;
+        const paddingX = 28;
+        const topPadding = 28;
+        const bottomPadding = 20;
+        const lineGap = 7;
         const fontFamily = '"Courier New", monospace';
 
         const ctx = canvas.getContext('2d');
+
+        function scaled(value) {
+            return Math.round(Number(value || 0) * renderScale);
+        }
 
         function money(value) {
             return new Intl.NumberFormat('id-ID', {
@@ -309,7 +318,7 @@
         }
 
         function setFont(size, weight = 'normal') {
-            ctx.font = `${weight} ${size}px ${fontFamily}`;
+            ctx.font = `${weight} ${scaled(size)}px ${fontFamily}`;
             ctx.fillStyle = '#000000';
             ctx.textBaseline = 'top';
         }
@@ -392,8 +401,8 @@
                 });
             }
 
-            push('text', receipt.brand_name || "Lee Ong's Tea x Waspffle", {
-                size: 23,
+            pushWrapped(receipt.brand_name || "Lee Ong's Tea x Waspffle", {
+                size: 19,
                 weight: '700',
                 align: 'center',
                 gap: 4,
@@ -401,14 +410,14 @@
 
             if (receipt.address) {
                 pushWrapped(receipt.address, {
-                    size: 18,
+                    size: 16,
                     align: 'center',
                     gap: 4,
                 });
             }
 
             push('text', receipt.created_at || '-', {
-                size: 20,
+                size: 17,
                 align: 'center',
                 gap: 8,
             });
@@ -607,14 +616,14 @@
 
             lines.forEach((line) => {
                 if (line.type === 'divider' || line.type === 'solid') {
-                    height += 14 + line.gap;
+                    height += scaled(14) + scaled(line.gap);
                     return;
                 }
 
-                height += line.size + line.gap;
+                height += scaled(line.size) + scaled(line.gap);
             });
 
-            return Math.max(420, height);
+            return Math.max(640, height);
         }
 
         function drawLines(lines) {
@@ -628,14 +637,14 @@
             lines.forEach((line) => {
                 if (line.type === 'divider' || line.type === 'solid') {
                     ctx.strokeStyle = '#000000';
-                    ctx.lineWidth = line.type === 'solid' ? 2 : 1;
-                    ctx.setLineDash(line.type === 'divider' ? [8, 5] : []);
+                    ctx.lineWidth = line.type === 'solid' ? scaled(2) : scaled(1);
+                    ctx.setLineDash(line.type === 'divider' ? [scaled(8), scaled(5)] : []);
                     ctx.beginPath();
-                    ctx.moveTo(paddingX, y + 5);
-                    ctx.lineTo(width - paddingX, y + 5);
+                    ctx.moveTo(paddingX, y + scaled(5));
+                    ctx.lineTo(width - paddingX, y + scaled(5));
                     ctx.stroke();
                     ctx.setLineDash([]);
-                    y += 14 + line.gap;
+                    y += scaled(14) + scaled(line.gap);
                     return;
                 }
 
@@ -643,7 +652,7 @@
 
                 if (line.type === 'row') {
                     const rightWidth = ctx.measureText(line.right).width;
-                    const leftMaxWidth = maxTextWidth - rightWidth - 12;
+                    const leftMaxWidth = maxTextWidth - rightWidth - scaled(12);
                     const leftLines = wrapText(line.left, leftMaxWidth, line.size, line.weight);
 
                     leftLines.forEach((leftLine, index) => {
@@ -653,10 +662,10 @@
                             ctx.fillText(line.right, width - paddingX - rightWidth, y);
                         }
 
-                        y += line.size + 2;
+                        y += scaled(line.size) + scaled(2);
                     });
 
-                    y += line.gap;
+                    y += scaled(line.gap);
                     return;
                 }
 
@@ -671,7 +680,7 @@
                 }
 
                 ctx.fillText(value, x, y);
-                y += line.size + line.gap;
+                y += scaled(line.size) + scaled(line.gap);
             });
         }
 
@@ -680,6 +689,28 @@
 
             const lines = buildLines();
             canvas.height = measureHeight(lines);
+
+            if (dynamicPrintStyle) {
+                const receiptHeightMm = Math.max(80, Math.ceil((canvas.height / width) * 58) + 6);
+
+                dynamicPrintStyle.textContent = `
+                    @media print {
+                        @page {
+                            size: 58mm ${receiptHeightMm}mm;
+                            margin: 0;
+                        }
+
+                        html,
+                        body,
+                        .page-shell,
+                        .receipt-preview {
+                            height: ${receiptHeightMm}mm !important;
+                            min-height: ${receiptHeightMm}mm !important;
+                            max-height: ${receiptHeightMm}mm !important;
+                        }
+                    }
+                `;
+            }
 
             drawLines(lines);
 

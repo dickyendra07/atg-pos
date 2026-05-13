@@ -197,7 +197,12 @@ class User extends Authenticatable
 
     public function canAccessCashier(): bool
     {
-        return $this->isCashierUser();
+        return $this->hasAnyRoleCode([
+            'owner',
+            'admin_pusat',
+            'admin_outlet',
+            'kasir',
+        ]);
     }
 
     public function canAccessBackofficeDashboard(): bool
