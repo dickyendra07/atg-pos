@@ -527,8 +527,7 @@
                                 <tr>
                                     <th>Date</th>
                                     <th>Ingredient</th>
-                                    <th>Location Type</th>
-                                    <th>Location ID</th>
+                                    <th>Location</th>
                                     <th>Movement Type</th>
                                     <th>Qty In</th>
                                     <th>Qty Out</th>
@@ -544,8 +543,21 @@
                                             {{ $movement->created_at?->format('H:i:s') }}
                                         </td>
                                         <td class="ingredient-name">{{ $movement->ingredient->name ?? '-' }}</td>
-                                        <td class="location-text">{{ ucfirst($movement->location_type ?? '-') }}</td>
-                                        <td class="location-text">{{ $movement->location_id ?? '-' }}</td>
+                                        <td class="location-text">
+                                            @php
+                                                $locationName = '-';
+
+                                                if (($movement->location_type ?? null) === 'outlet') {
+                                                    $locationName = \App\Models\Outlet::find($movement->location_id)?->name ?? 'Outlet #' . ($movement->location_id ?? '-');
+                                                } elseif (($movement->location_type ?? null) === 'warehouse') {
+                                                    $locationName = \App\Models\Warehouse::find($movement->location_id)?->name ?? 'Warehouse #' . ($movement->location_id ?? '-');
+                                                } elseif (! empty($movement->location_type)) {
+                                                    $locationName = ucfirst((string) $movement->location_type) . ' #' . ($movement->location_id ?? '-');
+                                                }
+                                            @endphp
+
+                                            {{ $locationName }}
+                                        </td>
                                         <td>
                                             @if(in_array($movement->movement_type, ['stock_in', 'opening_balance', 'transfer_in', 'production_in', 'transfer_cancel_return', 'transfer_in_reactivated']))
                                                 <span class="badge badge-green">{{ $movement->movement_type }}</span>

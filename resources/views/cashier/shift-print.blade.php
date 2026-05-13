@@ -9,16 +9,23 @@
             box-sizing: border-box;
         }
 
+        html,
         body {
             margin: 0;
+            padding: 0;
             background: #f3f4f6;
             color: #111827;
             font-family: "Courier New", monospace;
         }
 
+        body {
+            min-height: 100vh;
+            padding: 18px;
+        }
+
         .print-actions {
-            width: 320px;
-            margin: 18px auto 10px;
+            width: min(420px, 100%);
+            margin: 0 auto 10px;
             display: flex;
             gap: 8px;
         }
@@ -47,13 +54,15 @@
         }
 
         .receipt {
-            width: 320px;
+            width: 58mm;
+            max-width: 100%;
             margin: 0 auto 24px;
-            padding: 14px 12px;
+            padding: 4mm 3mm 5mm;
             background: #fff;
             color: #111827;
             font-size: 12px;
-            line-height: 1.35;
+            line-height: 1.32;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
         }
 
         .center {
@@ -61,13 +70,14 @@
         }
 
         .brand {
-            font-size: 15px;
+            font-size: 12px;
             font-weight: 900;
-            letter-spacing: 0.08em;
+            letter-spacing: 0.02em;
+            line-height: 1.2;
         }
 
         .title {
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 900;
             margin-top: 2px;
         }
@@ -78,7 +88,7 @@
 
         .divider {
             border-top: 1px dashed #111827;
-            margin: 8px 0;
+            margin: 6px 0;
         }
 
         .row {
@@ -99,12 +109,13 @@
         .section-title {
             text-align: center;
             font-weight: 900;
-            margin: 8px 0 6px;
+            margin: 7px 0 5px;
         }
 
         .item {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
             break-inside: avoid;
+            page-break-inside: avoid;
         }
 
         .item-name {
@@ -130,7 +141,7 @@
 
         .grand {
             font-weight: 900;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .footer {
@@ -141,32 +152,57 @@
 
         @media print {
             @page {
-                size: 80mm auto;
+                size: 58mm 180mm;
                 margin: 0;
             }
 
+            html,
             body {
-                background: #fff;
+                width: 58mm !important;
+                min-width: 58mm !important;
+                max-width: 58mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+                overflow: visible !important;
             }
 
             .print-actions {
-                display: none;
+                display: none !important;
             }
 
             .receipt {
-                width: 80mm;
-                margin: 0;
-                padding: 10px;
-                box-shadow: none;
+                width: 58mm !important;
+                min-width: 58mm !important;
+                max-width: 58mm !important;
+                margin: 0 !important;
+                padding: 4mm 3mm 5mm !important;
+                box-shadow: none !important;
+                background: #fff !important;
+                color: #000 !important;
+                font-size: 12px !important;
+                line-height: 1.32 !important;
+                break-inside: auto !important;
+                page-break-inside: auto !important;
+            }
+
+            .item,
+            .row,
+            .category-title,
+            .section-title {
+                break-inside: avoid !important;
+                page-break-inside: avoid !important;
             }
         }
 
         .category-title {
             text-align: center;
-            font-size: 20px;
+            font-size: 14px;
             font-weight: 900;
-            letter-spacing: 0.08em;
-            margin: 12px 0 6px;
+            letter-spacing: 0.04em;
+            margin: 10px 0 6px;
+            break-after: avoid;
+            page-break-after: avoid;
         }
 
         .category-total {
@@ -175,6 +211,7 @@
         }
 
     </style>
+    <style id="dynamic-shift-print-style"></style>
 </head>
 <body>
     @php
@@ -252,7 +289,7 @@ $completedTransactions = $transactions
         <a href="{{ route('cashier.index') }}" class="btn btn-dark">Kembali</a>
     </div>
 
-    <div class="receipt">
+    <div class="receipt" id="shift-receipt">
         <div class="center">
             <div class="brand">LEE ONG'S TEA X WASPFFLE</div>
             <div class="title">SHIFT ITEM SOLD SUMMARY</div>
@@ -382,11 +419,62 @@ $completedTransactions = $transactions
 
     <script>
         window.addEventListener('load', function () {
+            const receipt = document.getElementById('shift-receipt');
+            const dynamicPrintStyle = document.getElementById('dynamic-shift-print-style');
             const params = new URLSearchParams(window.location.search);
 
-            if (params.get('autoprint') === '1') {
-                window.print();
+            function updatePrintSize() {
+                if (!receipt || !dynamicPrintStyle) {
+                    return;
+                }
+
+                const receiptWidthPx = receipt.offsetWidth || 1;
+                const receiptHeightPx = receipt.scrollHeight || receipt.offsetHeight || 1;
+                const shiftHeightMm = Math.max(90, Math.ceil((receiptHeightPx / receiptWidthPx) * 58) + 8);
+
+                dynamicPrintStyle.textContent = `
+                    @media print {
+                        @page {
+                            size: 58mm ${shiftHeightMm}mm;
+                            margin: 0;
+                        }
+
+                        html,
+                        body {
+                            width: 58mm !important;
+                            min-width: 58mm !important;
+                            max-width: 58mm !important;
+                            height: ${shiftHeightMm}mm !important;
+                            min-height: ${shiftHeightMm}mm !important;
+                            max-height: ${shiftHeightMm}mm !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                            background: #ffffff !important;
+                        }
+
+                        #shift-receipt {
+                            width: 58mm !important;
+                            min-width: 58mm !important;
+                            max-width: 58mm !important;
+                            height: auto !important;
+                            min-height: 0 !important;
+                            margin: 0 !important;
+                            padding: 4mm 3mm 5mm !important;
+                            box-shadow: none !important;
+                        }
+                    }
+                `;
             }
+
+            updatePrintSize();
+
+            setTimeout(function () {
+                updatePrintSize();
+
+                if (params.get('autoprint') === '1') {
+                    window.print();
+                }
+            }, 150);
         });
     </script>
 </body>
