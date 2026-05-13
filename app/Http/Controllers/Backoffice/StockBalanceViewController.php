@@ -329,8 +329,12 @@ class StockBalanceViewController extends Controller
                     - $adjustment;
             }
 
+            $shouldShowZeroOpnameRow = $request->filled('summary_location_type')
+                && $request->filled('summary_location_id');
+
             if (
-                $locationMovements->isEmpty()
+                ! $shouldShowZeroOpnameRow
+                && $locationMovements->isEmpty()
                 && ! $locationBalance
                 && $openingBalance == 0.0
                 && $endingStock == 0.0
