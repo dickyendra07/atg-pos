@@ -862,17 +862,6 @@ class CartController extends Controller
         $earnedPoints = 0;
 
         try {
-            $stockDeductionService->validateCartStock(
-                cart: $cart,
-                outletId: $user->outlet?->id
-            );
-        } catch (RuntimeException $e) {
-            return redirect()
-                ->route('cashier.index')
-                ->with('error', 'Checkout diblok karena stok bahan tidak cukup: ' . $e->getMessage());
-        }
-
-        try {
             $transaction = DB::transaction(function () use (
                 $user,
                 $activeShift,
@@ -891,7 +880,7 @@ class CartController extends Controller
                 $transaction = SalesTransaction::create([
                     'transaction_number' => $this->generateDailyTransactionNumber(),
                     'user_id' => $user->id,
-                    'outlet_id' => $user->outlet?->id,
+                    'outlet_id' => (int) $user->outlet_id,
                     'cashier_shift_id' => $activeShift->id,
                     'member_id' => $memberSession['id'] ?? null,
                     'subtotal' => $subtotal,

@@ -459,7 +459,7 @@
 
         table {
             width: 100%;
-            min-width: 1260px;
+            min-width: 1180px;
             border-collapse: collapse;
             background: white;
             border: 1px solid #e8edf4;
@@ -850,7 +850,7 @@
                     <input type="hidden" name="keyword" value="{{ request('keyword') }}">
 
                     <div class="field">
-                        <label for="summary_location_type">Location Type Summary</label>
+                        <label for="summary_location_type">Location Type</label>
                         <select name="summary_location_type" id="summary_location_type">
                             <option value="">Semua location type</option>
                             <option value="warehouse" {{ request('summary_location_type') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
@@ -859,7 +859,7 @@
                     </div>
 
                     <div class="field">
-                        <label for="summary_location_id">Location Summary</label>
+                        <label for="summary_location_id">Location</label>
                         <select name="summary_location_id" id="summary_location_id">
                             <option value="">Semua lokasi</option>
 
@@ -905,62 +905,55 @@
                     <table class="inventory-table-center">
                         <thead>
                             <tr>
+                                <th>Name</th>
                                 <th>Category</th>
-                                <th>Ingredient</th>
-                                <th>Unit</th>
-                                <th>Saldo Awal</th>
-                                <th>Purchase Order</th>
-                                <th>Transfer Masuk</th>
-                                <th>Transfer Keluar</th>
-                                <th>Produksi Masuk</th>
-                                <th>Produksi Keluar</th>
-                                <th>Adjust Masuk</th>
-                                <th>Adjust Keluar</th>
-                                <th>Stok Akhir</th>
-                                <th>Status</th>
+                                <th>Outlet</th>
+                                <th>Beginning</th>
+                                <th>Purchase</th>
+                                <th>Transfer</th>
+                                <th>Sales</th>
+                                <th>Adjustment</th>
+                                <th>Ending</th>
                             </tr>
                         </thead>
                         <tbody>
                             @forelse(($stockSummaryRows ?? []) as $row)
                                 @php
                                     $endingQty = (float) ($row['ending_stock'] ?? 0);
-                                    $minimum = (float) ($row['minimum_stock'] ?? 0);
+                                    $transferQty = (float) ($row['transfer'] ?? 0);
+                                    $salesQty = (float) ($row['sales'] ?? 0);
+                                    $adjustmentQty = (float) ($row['adjustment'] ?? 0);
 
-                                    if ($endingQty <= 0) {
-                                        $summaryStatusLabel = 'Out of Stock';
-                                        $summaryStatusClass = 'status-out';
-                                    } elseif ($endingQty <= $minimum) {
-                                        $summaryStatusLabel = 'Low Stock';
-                                        $summaryStatusClass = 'status-low';
-                                    } else {
-                                        $summaryStatusLabel = 'Safe';
-                                        $summaryStatusClass = 'status-safe';
-                                    }
+                                    $formatSummaryQty = function ($value) {
+                                        return number_format((float) $value, 0, ',', '.');
+                                    };
                                 @endphp
                                 <tr>
+                                    <td class="text-left-cell">{{ $row['ingredient_name'] ?? '-' }}</td>
                                     <td>{{ $row['category_name'] ?? '-' }}</td>
-                                    <td>{{ $row['ingredient_name'] ?? '-' }}</td>
-                                    <td>{{ $row['unit'] ?? '-' }}</td>
-                                    <td class="movement-neutral">{{ number_format((float) ($row['opening_balance'] ?? 0), 0, ',', '.') }}</td>
-                                    <td class="movement-plus">+{{ number_format((float) ($row['stock_in'] ?? 0), 0, ',', '.') }}</td>
-                                    <td class="movement-plus">+{{ number_format((float) ($row['transfer_in'] ?? 0), 0, ',', '.') }}</td>
-                                    <td class="movement-minus">-{{ number_format((float) ($row['transfer_out'] ?? 0), 0, ',', '.') }}</td>
-                                    <td class="movement-plus">+{{ number_format((float) ($row['production_in'] ?? 0), 0, ',', '.') }}</td>
-                                    <td class="movement-minus">-{{ number_format((float) ($row['production_out'] ?? 0), 0, ',', '.') }}</td>
-                                    <td class="movement-plus">+{{ number_format((float) ($row['adjustment_in'] ?? 0), 0, ',', '.') }}</td>
-                                    <td class="movement-minus">-{{ number_format((float) ($row['adjustment_out'] ?? 0), 0, ',', '.') }}</td>
+                                    <td class="text-left-cell">{{ $row['location_name'] ?? '-' }}</td>
+                                    <td class="movement-neutral">{{ $formatSummaryQty($row['opening_balance'] ?? 0) }}</td>
+                                    <td class="movement-plus">{{ $formatSummaryQty($row['purchase'] ?? 0) }}</td>
+                                    <td class="{{ $transferQty < 0 ? 'movement-minus' : ($transferQty > 0 ? 'movement-plus' : 'movement-neutral') }}">
+                                        {{ $formatSummaryQty($transferQty) }}
+                                    </td>
+                                    <td class="{{ $salesQty > 0 ? 'movement-minus' : 'movement-neutral' }}">
+                                        {{ $salesQty > 0 ? '-' : '' }}{{ $formatSummaryQty(abs($salesQty)) }}
+                                    </td>
+                                    <td class="{{ $adjustmentQty < 0 ? 'movement-minus' : ($adjustmentQty > 0 ? 'movement-plus' : 'movement-neutral') }}">
+                                        {{ $formatSummaryQty($adjustmentQty) }}
+                                    </td>
                                     <td>
                                         @if($endingQty <= 0)
-                                            <span class="qty-zero">{{ number_format($endingQty, 0, ',', '.') }}</span>
+                                            <span class="qty-zero">{{ $formatSummaryQty($endingQty) }}</span>
                                         @else
-                                            <span class="qty-value">{{ number_format($endingQty, 0, ',', '.') }}</span>
+                                            <span class="qty-value">{{ $formatSummaryQty($endingQty) }}</span>
                                         @endif
                                     </td>
-                                    <td><span class="status-badge {{ $summaryStatusClass }}">{{ $summaryStatusLabel }}</span></td>
                                 </tr>
                             @empty
                                 <tr>
-                                    <td colspan="13">Belum ada data summary stok.</td>
+                                    <td colspan="9">Belum ada data summary stok.</td>
                                 </tr>
                             @endforelse
                         </tbody>

@@ -197,7 +197,7 @@ class StockBalanceViewController extends Controller
 
         $allRelevantMovements = $movementBaseQuery->get();
 
-        $balanceBaseQuery = StockBalance::with(['ingredient.category']);
+        $balanceBaseQuery = StockBalance::with(['ingredient.category', 'warehouse', 'outlet']);
 
         if ($request->filled('ingredient_id')) {
             $balanceBaseQuery->where('ingredient_id', $request->ingredient_id);
@@ -207,46 +207,71 @@ class StockBalanceViewController extends Controller
 
         $filteredBalances = $balanceBaseQuery->get();
 
+        $locationKeys = collect();
+
+        $filteredBalances->each(function ($balance) use ($locationKeys) {
+            if ($balance->ingredient_id && $balance->location_type && $balance->location_id) {
+                $locationKeys->push($balance->ingredient_id . '|' . $balance->location_type . '|' . $balance->location_id);
+            }
+        });
+
+        $allRelevantMovements->each(function ($movement) use ($locationKeys) {
+            if ($movement->ingredient_id && $movement->location_type && $movement->location_id) {
+                $locationKeys->push($movement->ingredient_id . '|' . $movement->location_type . '|' . $movement->location_id);
+            }
+        });
+
+        $locationKeys = $locationKeys->unique()->values();
+
         $stockSummaryRows = [];
 
-        foreach ($ingredients as $ingredient) {
+        foreach ($locationKeys as $locationKey) {
+            [$ingredientId, $locationType, $locationId] = array_pad(explode('|', $locationKey, 3), 3, null);
+
+            $ingredient = $ingredients->firstWhere('id', (int) $ingredientId);
+
+            if (! $ingredient) {
+                continue;
+            }
+
             if ($request->filled('ingredient_id') && (int) $request->ingredient_id !== (int) $ingredient->id) {
                 continue;
             }
 
-            $ingredientMovements = $allRelevantMovements->where('ingredient_id', $ingredient->id)->values();
-            $ingredientBalances = $filteredBalances->where('ingredient_id', $ingredient->id)->values();
+            $locationMovements = $allRelevantMovements
+                ->where('ingredient_id', (int) $ingredientId)
+                ->where('location_type', $locationType)
+                ->where('location_id', (int) $locationId)
+                ->values();
+
+            $locationBalance = $filteredBalances
+                ->where('ingredient_id', (int) $ingredientId)
+                ->where('location_type', $locationType)
+                ->where('location_id', (int) $locationId)
+                ->first();
 
             if ($dateFrom) {
-                $openingMovements = $ingredientMovements
-                    ->filter(function ($movement) use ($dateFrom) {
-                        return $movement->created_at && $movement->created_at->lt($dateFrom);
-                    })
+                $openingMovements = $locationMovements
+                    ->filter(fn ($movement) => $movement->created_at && $movement->created_at->lt($dateFrom))
                     ->values();
 
-                $periodMovements = $ingredientMovements
-                    ->filter(function ($movement) use ($dateFrom) {
-                        return $movement->created_at && $movement->created_at->gte($dateFrom);
-                    })
+                $periodMovements = $locationMovements
+                    ->filter(fn ($movement) => $movement->created_at && $movement->created_at->gte($dateFrom))
                     ->values();
 
                 $openingBalance = $this->sumNetMovement($openingMovements);
             } else {
-                $periodMovements = $ingredientMovements->values();
+                $periodMovements = $locationMovements->values();
 
-                $openingBalance = (float) $ingredientMovements
+                $openingBalance = (float) $locationMovements
                     ->where('movement_type', 'opening_balance')
-                    ->sum('qty_in') - (float) $ingredientMovements
+                    ->sum('qty_in') - (float) $locationMovements
                     ->where('movement_type', 'opening_balance')
                     ->sum('qty_out');
             }
 
-            if ($ingredientMovements->isEmpty() && $ingredientBalances->isEmpty() && $openingBalance == 0.0) {
-                continue;
-            }
-
-            $stockIn = (float) $periodMovements
-                ->where('movement_type', 'stock_in')
+            $purchase = (float) $periodMovements
+                ->whereIn('movement_type', ['stock_in', 'purchase', 'purchase_order'])
                 ->sum('qty_in');
 
             $transferIn = (float) $periodMovements
@@ -257,26 +282,53 @@ class StockBalanceViewController extends Controller
                 ->where('movement_type', 'transfer_out')
                 ->sum('qty_out');
 
-            $productionIn = (float) $periodMovements
-                ->where('movement_type', 'production_in')
-                ->sum('qty_in');
+            $transfer = $transferIn - $transferOut;
 
-            $productionOut = (float) $periodMovements
-                ->where('movement_type', 'production_out')
+            $salesUsage = (float) $periodMovements
+                ->where('movement_type', 'sales_usage')
                 ->sum('qty_out');
 
+            $salesVoidRestore = (float) $periodMovements
+                ->where('movement_type', 'sales_void_restore')
+                ->sum('qty_in');
+
+            $sales = $salesUsage - $salesVoidRestore;
+
             $adjustmentIn = (float) $periodMovements
-                ->where('movement_type', 'stock_adjustment')
+                ->whereIn('movement_type', ['stock_adjustment', 'adjustment'])
                 ->sum('qty_in');
 
             $adjustmentOut = (float) $periodMovements
-                ->where('movement_type', 'stock_adjustment')
+                ->whereIn('movement_type', ['stock_adjustment', 'adjustment'])
                 ->sum('qty_out');
 
+            $adjustment = $adjustmentIn - $adjustmentOut;
+
+            $endingStock = (float) ($locationBalance?->qty_on_hand ?? $this->sumNetMovement($locationMovements));
+
             if ($dateFrom || $dateTo) {
-                $endingStock = $openingBalance + $this->sumNetMovement($periodMovements);
+                $openingBalance = $endingStock
+                    - $purchase
+                    - $transfer
+                    + $sales
+                    - $adjustment;
+            }
+
+            if (
+                $locationMovements->isEmpty()
+                && ! $locationBalance
+                && $openingBalance == 0.0
+                && $endingStock == 0.0
+            ) {
+                continue;
+            }
+
+            if ($locationType === 'warehouse') {
+                $locationName = Warehouse::find((int) $locationId)?->name ?? ('Warehouse ID ' . $locationId);
+            } elseif ($locationType === 'outlet') {
+                $locationName = Outlet::find((int) $locationId)?->name ?? ('Outlet ID ' . $locationId);
             } else {
-                $endingStock = (float) $ingredientBalances->sum('qty_on_hand');
+                $locationName = ucfirst((string) $locationType) . ' ID ' . $locationId;
             }
 
             $minimumStock = (float) ($ingredient->minimum_stock ?? 0);
@@ -285,15 +337,15 @@ class StockBalanceViewController extends Controller
                 'category_name' => $ingredient->category->name ?? '-',
                 'ingredient_name' => $ingredient->name,
                 'unit' => $ingredient->unit,
+                'location_type' => $locationType,
+                'location_id' => (int) $locationId,
+                'location_name' => $locationName,
                 'minimum_stock' => $minimumStock,
                 'opening_balance' => $openingBalance,
-                'stock_in' => $stockIn,
-                'transfer_in' => $transferIn,
-                'transfer_out' => $transferOut,
-                'production_in' => $productionIn,
-                'production_out' => $productionOut,
-                'adjustment_in' => $adjustmentIn,
-                'adjustment_out' => $adjustmentOut,
+                'purchase' => $purchase,
+                'transfer' => $transfer,
+                'sales' => $sales,
+                'adjustment' => $adjustment,
                 'ending_stock' => $endingStock,
                 'need_action' => $endingStock <= $minimumStock,
                 'is_zero' => $endingStock <= 0,
@@ -301,7 +353,10 @@ class StockBalanceViewController extends Controller
         }
 
         return collect($stockSummaryRows)
-            ->sortBy('ingredient_name')
+            ->sortBy([
+                ['location_name', 'asc'],
+                ['ingredient_name', 'asc'],
+            ])
             ->values();
     }
 

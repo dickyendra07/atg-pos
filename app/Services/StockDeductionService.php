@@ -68,27 +68,18 @@ class StockDeductionService
 
         DB::transaction(function () use ($transaction, $requirements) {
             foreach ($requirements as $ingredientId => $qtyUsed) {
-                $stockBalance = StockBalance::where('ingredient_id', $ingredientId)
-                    ->where('location_type', 'outlet')
-                    ->where('location_id', $transaction->outlet_id)
-                    ->lockForUpdate()
-                    ->first();
+                $stockBalance = StockBalance::firstOrCreate(
+                    [
+                        'ingredient_id' => $ingredientId,
+                        'location_type' => 'outlet',
+                        'location_id' => $transaction->outlet_id,
+                    ],
+                    [
+                        'qty_on_hand' => 0,
+                    ]
+                );
 
-                $availableQty = (float) ($stockBalance?->qty_on_hand ?? 0);
-
-                if (! $stockBalance || $availableQty < $qtyUsed) {
-                    $ingredientName = Ingredient::find($ingredientId)?->name ?? ('Ingredient ID ' . $ingredientId);
-
-                    throw new RuntimeException(
-                        'Stock deduction gagal untuk '
-                        . $ingredientName
-                        . '. Butuh '
-                        . number_format($qtyUsed, 2, ',', '.')
-                        . ', tersedia '
-                        . number_format($availableQty, 2, ',', '.')
-                        . '.'
-                    );
-                }
+                $availableQty = (float) ($stockBalance->qty_on_hand ?? 0);
 
                 $stockBalance->update([
                     'qty_on_hand' => $availableQty - $qtyUsed,
