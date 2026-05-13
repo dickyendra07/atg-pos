@@ -209,17 +209,32 @@ class StockBalanceViewController extends Controller
 
         $locationKeys = collect();
 
+        // Stock opname needs every ingredient-location balance to show,
+        // even when there is no movement/sales in the selected period.
         $filteredBalances->each(function ($balance) use ($locationKeys) {
             if ($balance->ingredient_id && $balance->location_type && $balance->location_id) {
                 $locationKeys->push($balance->ingredient_id . '|' . $balance->location_type . '|' . $balance->location_id);
             }
         });
 
+        // Keep movement-only rows too, in case a movement exists before a balance row was created.
         $allRelevantMovements->each(function ($movement) use ($locationKeys) {
             if ($movement->ingredient_id && $movement->location_type && $movement->location_id) {
                 $locationKeys->push($movement->ingredient_id . '|' . $movement->location_type . '|' . $movement->location_id);
             }
         });
+
+        // If user filters a specific location and there are ingredients without balance rows yet,
+        // show them as zero rows so monthly stock opname can check all ingredients.
+        if ($request->filled('summary_location_type') && $request->filled('summary_location_id')) {
+            foreach ($ingredients as $ingredient) {
+                if ($request->filled('ingredient_id') && (int) $request->ingredient_id !== (int) $ingredient->id) {
+                    continue;
+                }
+
+                $locationKeys->push($ingredient->id . '|' . $request->summary_location_type . '|' . $request->summary_location_id);
+            }
+        }
 
         $locationKeys = $locationKeys->unique()->values();
 

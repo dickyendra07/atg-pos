@@ -414,7 +414,7 @@
         .summary-filter-form {
             padding: 0 22px 22px;
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr 1fr auto;
+            grid-template-columns: 1.45fr 1fr 1fr auto;
             gap: 12px;
             align-items: end;
         }
@@ -849,24 +849,17 @@
                     <input type="hidden" name="status" value="{{ request('status') }}">
                     <input type="hidden" name="keyword" value="{{ request('keyword') }}">
 
-                    <div class="field">
-                        <label for="summary_location_type">Location Type</label>
-                        <select name="summary_location_type" id="summary_location_type">
-                            <option value="">Semua location type</option>
-                            <option value="warehouse" {{ request('summary_location_type') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
-                            <option value="outlet" {{ request('summary_location_type') === 'outlet' ? 'selected' : '' }}>Outlet</option>
-                        </select>
-                    </div>
+                    <input type="hidden" name="summary_location_type" id="summary_location_type" value="{{ request('summary_location_type') }}">
+                    <input type="hidden" name="summary_location_id" id="summary_location_id" value="{{ request('summary_location_id') }}">
 
                     <div class="field">
-                        <label for="summary_location_id">Location</label>
-                        <select name="summary_location_id" id="summary_location_id">
+                        <label for="summary_location_combined">Location</label>
+                        <select id="summary_location_combined">
                             <option value="">Semua lokasi</option>
 
                             @foreach(($warehouses ?? []) as $warehouse)
                                 <option
-                                    value="{{ $warehouse->id }}"
-                                    data-type="warehouse"
+                                    value="warehouse:{{ $warehouse->id }}"
                                     {{ request('summary_location_type') === 'warehouse' && (string) request('summary_location_id') === (string) $warehouse->id ? 'selected' : '' }}
                                 >
                                     Warehouse - {{ $warehouse->name }}
@@ -875,8 +868,7 @@
 
                             @foreach(($outlets ?? []) as $outlet)
                                 <option
-                                    value="{{ $outlet->id }}"
-                                    data-type="outlet"
+                                    value="outlet:{{ $outlet->id }}"
                                     {{ request('summary_location_type') === 'outlet' && (string) request('summary_location_id') === (string) $outlet->id ? 'selected' : '' }}
                                 >
                                     Outlet - {{ $outlet->name }}
@@ -1187,4 +1179,30 @@
             filterSummaryLocationOptions();
         })();
     </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const combined = document.getElementById('summary_location_combined');
+            const typeInput = document.getElementById('summary_location_type');
+            const idInput = document.getElementById('summary_location_id');
+
+            if (!combined || !typeInput || !idInput) {
+                return;
+            }
+
+            combined.addEventListener('change', function () {
+                const value = combined.value || '';
+
+                if (!value.includes(':')) {
+                    typeInput.value = '';
+                    idInput.value = '';
+                    return;
+                }
+
+                const parts = value.split(':');
+                typeInput.value = parts[0] || '';
+                idInput.value = parts[1] || '';
+            });
+        });
+    </script>
+
 @endsection
