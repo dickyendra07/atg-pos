@@ -491,39 +491,50 @@ class StockBalanceViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $stocks = $this->applyStockFilters($request);
+        $ingredients = Ingredient::with('category')
+            ->orderBy('name')
+            ->get();
 
-        $filename = 'stock_balances_export_' . now()->format('Ymd_His') . '.csv';
+        $stockSummaryRows = $this->buildStockSummaryRows($request, $ingredients)
+            ->sortBy(fn ($row) => mb_strtolower((string) ($row['ingredient_name'] ?? '')))
+            ->values();
+
+        $filename = 'inventory_summary_export_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
             'Content-Disposition' => 'attachment; filename="' . $filename . '"',
         ];
 
-        return response()->stream(function () use ($stocks) {
+        return response()->stream(function () use ($stockSummaryRows) {
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, [
-                'category_name',
-                'ingredient_name',
-                'unit',
-                'minimum_stock',
-                'location_type',
-                'location_name',
-                'qty_on_hand',
-                'status',
+                'name',
+                'category',
+                'outlet',
+                'beginning',
+                'purchase',
+                'transfer',
+                'sales',
+                'adjustment',
+                'ending',
             ]);
 
-            foreach ($stocks as $stock) {
+            foreach ($stockSummaryRows as $row) {
+                $sales = (float) ($row['sales'] ?? 0);
+                $salesExport = $sales == 0.0 ? 0 : -1 * abs($sales);
+
                 fputcsv($handle, [
-                    $stock->ingredient->category->name ?? '-',
-                    $stock->ingredient->name ?? '-',
-                    $stock->ingredient->unit ?? '-',
-                    (float) ($stock->ingredient->minimum_stock ?? 0),
-                    $stock->location_type ?? '-',
-                    $this->getLocationLabel($stock),
-                    (float) ($stock->qty_on_hand ?? 0),
-                    $this->getStockStatusLabel($stock),
+                    $row['ingredient_name'] ?? '-',
+                    $row['category_name'] ?? '-',
+                    $row['location_name'] ?? '-',
+                    (float) ($row['opening_balance'] ?? 0),
+                    (float) ($row['purchase'] ?? 0),
+                    (float) ($row['transfer'] ?? 0),
+                    $salesExport,
+                    (float) ($row['adjustment'] ?? 0),
+                    (float) ($row['ending_stock'] ?? 0),
                 ]);
             }
 
