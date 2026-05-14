@@ -517,7 +517,7 @@
 
                 <form method="POST" action="{{ route('logout') }}" style="margin-top:10px;">
                     @csrf
-                    <button type="submit" class="btn btn-dark">Ganti Login</button>
+                    <button type="submit" class="btn btn-dark">Log Out</button>
                 </form>
 
                 <div class="user-pill">
