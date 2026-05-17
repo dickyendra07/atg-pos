@@ -1,0 +1,179 @@
+<!doctype html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ATG Bluetooth Printer Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 18px; background: #f8fafc; color: #111827; }
+        button { display:block; width:100%; padding:14px; margin:10px 0; border:0; border-radius:12px; background:#111827; color:white; font-weight:800; font-size:16px; }
+        pre { white-space:pre-wrap; background:white; padding:12px; border-radius:12px; border:1px solid #e5e7eb; font-size:12px; line-height:1.5; }
+        .danger { background:#b91c1c; }
+    </style>
+</head>
+<body>
+    <h2>ATG Bluetooth Printer Test</h2>
+    <p>Test direct print Bluetooth dari Chrome/PWA ke thermal printer.</p>
+
+    <button id="connect">1. Connect Printer</button>
+    <button id="test">2. Test Print</button>
+    <button id="clear" class="danger">Clear Log</button>
+
+    <pre id="log">Ready...</pre>
+
+<script>
+let device = null;
+let server = null;
+let writeChar = null;
+
+const logEl = document.getElementById('log');
+
+function log(msg) {
+    logEl.textContent += "\n" + msg;
+}
+
+function bytesFromText(text) {
+    return new TextEncoder().encode(text);
+}
+
+function escposTestBytes() {
+    const ESC = 0x1B;
+    const GS = 0x1D;
+
+    const chunks = [];
+
+    chunks.push(new Uint8Array([ESC, 0x40]));
+    chunks.push(new Uint8Array([ESC, 0x61, 0x01]));
+    chunks.push(bytesFromText("ATG POS\n"));
+    chunks.push(bytesFromText("BLUETOOTH TEST\n"));
+    chunks.push(new Uint8Array([ESC, 0x61, 0x00]));
+    chunks.push(bytesFromText("------------------------------\n"));
+    chunks.push(bytesFromText("Printer direct test OK\n"));
+    chunks.push(bytesFromText(new Date().toLocaleString("id-ID") + "\n"));
+    chunks.push(bytesFromText("------------------------------\n\n\n"));
+    chunks.push(new Uint8Array([GS, 0x56, 0x42, 0x00]));
+
+    const total = chunks.reduce((sum, c) => sum + c.length, 0);
+    const out = new Uint8Array(total);
+    let offset = 0;
+
+    for (const c of chunks) {
+        out.set(c, offset);
+        offset += c.length;
+    }
+
+    return out;
+}
+
+async function writeInChunks(characteristic, data) {
+    const chunkSize = 180;
+
+    for (let i = 0; i < data.length; i += chunkSize) {
+        const chunk = data.slice(i, i + chunkSize);
+
+        if (characteristic.writeValueWithoutResponse) {
+            await characteristic.writeValueWithoutResponse(chunk);
+        } else {
+            await characteristic.writeValue(chunk);
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 40));
+    }
+}
+
+async function findWritableCharacteristic(server) {
+    const services = await server.getPrimaryServices();
+    log("Services found: " + services.length);
+
+    for (const service of services) {
+        log("Service: " + service.uuid);
+
+        let characteristics = [];
+
+        try {
+            characteristics = await service.getCharacteristics();
+        } catch (e) {
+            log("  Cannot read characteristics: " + e.message);
+            continue;
+        }
+
+        for (const ch of characteristics) {
+            const props = [];
+            if (ch.properties.read) props.push("read");
+            if (ch.properties.write) props.push("write");
+            if (ch.properties.writeWithoutResponse) props.push("writeWithoutResponse");
+            if (ch.properties.notify) props.push("notify");
+
+            log("  Char: " + ch.uuid + " props=" + props.join(","));
+
+            if (ch.properties.write || ch.properties.writeWithoutResponse) {
+                return ch;
+            }
+        }
+    }
+
+    return null;
+}
+
+document.getElementById('connect').onclick = async function () {
+    try {
+        if (!navigator.bluetooth) {
+            log("ERROR: Browser tidak support Web Bluetooth.");
+            return;
+        }
+
+        logEl.textContent = "Requesting Bluetooth device...";
+
+        device = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [
+                0x1800,
+                0x1801,
+                "0000ffe0-0000-1000-8000-00805f9b34fb",
+                "0000fff0-0000-1000-8000-00805f9b34fb",
+                "0000ff00-0000-1000-8000-00805f9b34fb",
+                "49535343-fe7d-4ae5-8fa9-9fafd205e455",
+                "e7810a71-73ae-499d-8c15-faa9aef0c3f2"
+            ]
+        });
+
+        log("Selected: " + (device.name || "Unknown") + " / " + device.id);
+
+        server = await device.gatt.connect();
+        log("Connected.");
+
+        writeChar = await findWritableCharacteristic(server);
+
+        if (!writeChar) {
+            log("No writable characteristic found.");
+            log("Kemungkinan printer ini Bluetooth Classic/SPP, bukan BLE Web Bluetooth.");
+            return;
+        }
+
+        log("Writable characteristic selected: " + writeChar.uuid);
+    } catch (e) {
+        log("ERROR: " + e.message);
+    }
+};
+
+document.getElementById('test').onclick = async function () {
+    try {
+        if (!writeChar) {
+            log("Belum connect / belum ada writable characteristic.");
+            return;
+        }
+
+        const data = escposTestBytes();
+        await writeInChunks(writeChar, data);
+        log("Test print sent.");
+    } catch (e) {
+        log("PRINT ERROR: " + e.message);
+    }
+};
+
+document.getElementById('clear').onclick = function () {
+    logEl.textContent = "Ready...";
+};
+</script>
+</body>
+</html>
