@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atg-pos-cashier-v1';
+const CACHE_NAME = 'atg-pos-cashier-v1-v2';
 
 const CORE_ASSETS = [
   '/cashier/login',
