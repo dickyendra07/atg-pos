@@ -77,6 +77,19 @@
             font-weight: 700;
         }
 
+        .bluetooth-status {
+            width: min(520px, 100%);
+            padding: 10px 12px;
+            border-radius: 14px;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            color: #312e81;
+            font-size: 12px;
+            line-height: 1.5;
+            font-weight: 800;
+            white-space: pre-wrap;
+        }
+
         .receipt-preview {
             width: min(420px, 100%);
             display: flex;
@@ -244,6 +257,8 @@
 <div class="page-shell">
     <div class="toolbar">
         <button type="button" class="btn green" onclick="window.print()">Print PNG Receipt</button>
+        <button type="button" class="btn" id="connect-bluetooth-printer-btn">Connect Bluetooth</button>
+        <button type="button" class="btn green" id="direct-bluetooth-print-btn">Direct Print Bluetooth</button>
         <button type="button" class="btn secondary" id="download-receipt-btn">Download PNG</button>
 
         @if($source === 'cashier')
@@ -259,6 +274,10 @@
 
     <div class="hint">
         Preview ini dibuat sebagai PNG high resolution untuk thermal 58mm. Saat print, pilih paper 58mm, margin none/minimal, dan scale 100%.
+    </div>
+
+    <div class="bluetooth-status" id="bluetooth-printer-status">
+        Bluetooth printer belum connect.
     </div>
 
     <div class="receipt-preview">
@@ -292,6 +311,13 @@
         const image = document.getElementById('receipt-image');
         const downloadButton = document.getElementById('download-receipt-btn');
         const dynamicPrintStyle = document.getElementById('dynamic-receipt-print-style');
+        const connectBluetoothButton = document.getElementById('connect-bluetooth-printer-btn');
+        const directBluetoothPrintButton = document.getElementById('direct-bluetooth-print-btn');
+        const bluetoothStatus = document.getElementById('bluetooth-printer-status');
+
+        let bluetoothDevice = null;
+        let bluetoothServer = null;
+        let bluetoothWriteCharacteristic = null;
 
         const width = 576;
         const renderScale = 1.65;
@@ -682,6 +708,366 @@
                 ctx.fillText(value, x, y);
                 y += scaled(line.size) + scaled(line.gap);
             });
+        }
+
+        function setBluetoothStatus(message) {
+            if (bluetoothStatus) {
+                bluetoothStatus.textContent = message;
+            }
+        }
+
+        function bluetoothBytesFromText(value) {
+            return new TextEncoder().encode(String(value ?? ''));
+        }
+
+        function mergeBluetoothChunks(chunks) {
+            const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+            const output = new Uint8Array(total);
+            let offset = 0;
+
+            chunks.forEach((chunk) => {
+                output.set(chunk, offset);
+                offset += chunk.length;
+            });
+
+            return output;
+        }
+
+        function normalizeBluetoothLine(value) {
+            return String(value ?? '').replace(/\s+/g, ' ').trim();
+        }
+
+        function bluetoothMoney(value) {
+            return money(value);
+        }
+
+        function padBluetoothRow(left, right, width = 32) {
+            const leftText = normalizeBluetoothLine(left);
+            const rightText = normalizeBluetoothLine(right);
+            const space = Math.max(1, width - leftText.length - rightText.length);
+
+            if (leftText.length + rightText.length >= width) {
+                return leftText + '\n' + rightText.padStart(width, ' ');
+            }
+
+            return leftText + ' '.repeat(space) + rightText;
+        }
+
+        function wrapBluetoothText(value, width = 32) {
+            const words = normalizeBluetoothLine(value).split(' ').filter(Boolean);
+            const lines = [];
+            let current = '';
+
+            words.forEach((word) => {
+                const next = current ? current + ' ' + word : word;
+
+                if (next.length <= width) {
+                    current = next;
+                    return;
+                }
+
+                if (current) {
+                    lines.push(current);
+                    current = word;
+                    return;
+                }
+
+                lines.push(word.slice(0, width));
+            });
+
+            if (current) {
+                lines.push(current);
+            }
+
+            return lines.length ? lines : [''];
+        }
+
+        function centerBluetoothText(value, width = 32) {
+            const line = normalizeBluetoothLine(value);
+            const pad = Math.max(0, Math.floor((width - line.length) / 2));
+
+            return ' '.repeat(pad) + line;
+        }
+
+        function buildReceiptEscposBytes() {
+            const ESC = 0x1B;
+            const GS = 0x1D;
+            const widthChars = 32;
+            const chunks = [];
+
+            function raw(bytes) {
+                chunks.push(new Uint8Array(bytes));
+            }
+
+            function line(value = '') {
+                chunks.push(bluetoothBytesFromText(String(value) + '\n'));
+            }
+
+            function wrapped(value = '') {
+                wrapBluetoothText(value, widthChars).forEach(line);
+            }
+
+            function divider() {
+                line('-'.repeat(widthChars));
+            }
+
+            function row(left, right) {
+                line(padBluetoothRow(left, right, widthChars));
+            }
+
+            raw([ESC, 0x40]); // init
+            raw([ESC, 0x61, 0x01]); // center
+
+            wrapBluetoothText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach((value) => {
+                line(centerBluetoothText(value, widthChars));
+            });
+
+            if (receipt.address) {
+                wrapBluetoothText(receipt.address, widthChars).forEach((value) => {
+                    line(centerBluetoothText(value, widthChars));
+                });
+            }
+
+            line(centerBluetoothText(receipt.created_at || '-', widthChars));
+
+            if (receipt.is_void) {
+                line(centerBluetoothText('*** VOID ***', widthChars));
+            }
+
+            raw([ESC, 0x61, 0x00]); // left
+            divider();
+
+            row('No', receipt.transaction_number || '-');
+            row('Cashier', receipt.cashier_name || '-');
+            row('Payment', receipt.payment_method || '-');
+            row('Status', receipt.status || '-');
+
+            if (receipt.member_name || receipt.member_phone) {
+                row('Member', receipt.member_name || '-');
+
+                if (receipt.member_phone) {
+                    row('Phone', receipt.member_phone);
+                }
+            }
+
+            divider();
+
+            if (Array.isArray(receipt.items) && receipt.items.length) {
+                let lastPrintedPromoName = null;
+
+                receipt.items.forEach((item) => {
+                    const itemPromoDiscount = Number(item.promo_discount_amount || 0);
+                    const itemFinalTotal = Number(item.final_line_total || item.line_total || 0);
+                    const itemPromoName = item.promo_name ? String(item.promo_name).trim() : '';
+
+                    if (itemPromoName && itemPromoDiscount > 0 && itemPromoName !== lastPrintedPromoName) {
+                        wrapped('PROMO ' + itemPromoName);
+                        lastPrintedPromoName = itemPromoName;
+                    }
+
+                    const productName = item.product_name || '-';
+                    const variantName = item.variant_name ? String(item.variant_name).trim() : '';
+                    const productNameWithVariant = variantName ? productName + ' ' + variantName : productName;
+
+                    wrapBluetoothText(String(bluetoothMoney(item.qty)) + ' x ' + productNameWithVariant, widthChars - 10)
+                        .forEach((value, index) => {
+                            if (index === 0) {
+                                line(padBluetoothRow(value, bluetoothMoney(item.line_total), widthChars));
+                            } else {
+                                line(value);
+                            }
+                        });
+
+                    if (Array.isArray(item.modifiers) && item.modifiers.length) {
+                        item.modifiers.forEach((modifier) => {
+                            wrapBluetoothText('  ' + modifier, widthChars).forEach(line);
+                        });
+                    }
+
+                    if (itemPromoDiscount > 0) {
+                        row('Promo Discount', '-' + bluetoothMoney(itemPromoDiscount));
+                        row('Subtotal Item', bluetoothMoney(itemFinalTotal));
+                    }
+                });
+            } else {
+                raw([ESC, 0x61, 0x01]);
+                line(centerBluetoothText('Tidak ada item.', widthChars));
+                raw([ESC, 0x61, 0x00]);
+            }
+
+            divider();
+
+            const itemPromoDiscountTotal = Array.isArray(receipt.items)
+                ? receipt.items.reduce((total, item) => total + Number(item.promo_discount_amount || 0), 0)
+                : 0;
+
+            const subtotalAfterItemPromo = Array.isArray(receipt.items)
+                ? receipt.items.reduce((total, item) => total + Number(item.final_line_total || item.line_total || 0), 0)
+                : Number(receipt.subtotal || 0);
+
+            const globalDiscountAmount = Math.max(0, Number(receipt.discount_amount || 0) - itemPromoDiscountTotal);
+
+            row('Subtotal', bluetoothMoney(subtotalAfterItemPromo));
+
+            if (globalDiscountAmount > 0) {
+                row('Discount', '-' + bluetoothMoney(globalDiscountAmount));
+            }
+
+            if (Number(receipt.tax_amount || 0) > 0) {
+                row('Tax', bluetoothMoney(receipt.tax_amount));
+            }
+
+            divider();
+            raw([ESC, 0x45, 0x01]); // bold on
+            row('TOTAL', bluetoothMoney(receipt.grand_total));
+            raw([ESC, 0x45, 0x00]); // bold off
+            divider();
+
+            row('Paid', bluetoothMoney(receipt.amount_paid));
+            row('Change', bluetoothMoney(receipt.change_amount));
+
+            if (receipt.is_void) {
+                divider();
+                raw([ESC, 0x61, 0x01]);
+                line(centerBluetoothText('VOID INFO', widthChars));
+                raw([ESC, 0x61, 0x00]);
+
+                if (receipt.void_at) {
+                    row('Void At', receipt.void_at);
+                }
+
+                if (receipt.void_by) {
+                    row('Void By', receipt.void_by);
+                }
+
+                if (receipt.void_reason) {
+                    wrapped('Reason: ' + receipt.void_reason);
+                }
+            }
+
+            divider();
+            raw([ESC, 0x61, 0x01]);
+            line(centerBluetoothText('Terima kasih', widthChars));
+            wrapBluetoothText('Simpan struk ini sebagai bukti transaksi', widthChars).forEach((value) => {
+                line(centerBluetoothText(value, widthChars));
+            });
+
+            if (receipt.is_reprint) {
+                line('');
+                raw([ESC, 0x45, 0x01]);
+                line(centerBluetoothText('#REPRINT', widthChars));
+                raw([ESC, 0x45, 0x00]);
+                line(centerBluetoothText(receipt.reprint_printed_at || '', widthChars));
+            }
+
+            line('');
+            line('');
+            line('');
+            raw([GS, 0x56, 0x42, 0x00]); // cut if supported
+
+            return mergeBluetoothChunks(chunks);
+        }
+
+        async function writeBluetoothInChunks(characteristic, data) {
+            const chunkSize = 180;
+
+            for (let i = 0; i < data.length; i += chunkSize) {
+                const chunk = data.slice(i, i + chunkSize);
+
+                if (characteristic.writeValueWithoutResponse) {
+                    await characteristic.writeValueWithoutResponse(chunk);
+                } else {
+                    await characteristic.writeValue(chunk);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 40));
+            }
+        }
+
+        async function findBluetoothWritableCharacteristic(server) {
+            const services = await server.getPrimaryServices();
+
+            for (const service of services) {
+                let characteristics = [];
+
+                try {
+                    characteristics = await service.getCharacteristics();
+                } catch (error) {
+                    continue;
+                }
+
+                for (const characteristic of characteristics) {
+                    if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+                        return characteristic;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        async function connectBluetoothPrinter() {
+            if (!navigator.bluetooth) {
+                setBluetoothStatus('Browser tidak support Web Bluetooth.');
+                return;
+            }
+
+            setBluetoothStatus('Mencari printer Bluetooth...');
+
+            bluetoothDevice = await navigator.bluetooth.requestDevice({
+                acceptAllDevices: true,
+                optionalServices: [
+                    0x1800,
+                    0x1801,
+                    '0000ffe0-0000-1000-8000-00805f9b34fb',
+                    '0000fff0-0000-1000-8000-00805f9b34fb',
+                    '0000ff00-0000-1000-8000-00805f9b34fb',
+                    '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                    'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+                ]
+            });
+
+            setBluetoothStatus('Menghubungkan ke ' + (bluetoothDevice.name || 'printer') + '...');
+
+            bluetoothServer = await bluetoothDevice.gatt.connect();
+            bluetoothWriteCharacteristic = await findBluetoothWritableCharacteristic(bluetoothServer);
+
+            if (!bluetoothWriteCharacteristic) {
+                setBluetoothStatus('Printer connect, tapi writable characteristic tidak ditemukan.');
+                return;
+            }
+
+            setBluetoothStatus('Printer siap: ' + (bluetoothDevice.name || 'Bluetooth Printer'));
+        }
+
+        async function directBluetoothPrintReceipt() {
+            try {
+                if (!bluetoothWriteCharacteristic || !bluetoothDevice?.gatt?.connected) {
+                    await connectBluetoothPrinter();
+                }
+
+                if (!bluetoothWriteCharacteristic) {
+                    return;
+                }
+
+                setBluetoothStatus('Mengirim receipt ke printer...');
+                await writeBluetoothInChunks(bluetoothWriteCharacteristic, buildReceiptEscposBytes());
+                setBluetoothStatus('Receipt berhasil dikirim ke printer.');
+            } catch (error) {
+                setBluetoothStatus('Bluetooth print error: ' + error.message);
+            }
+        }
+
+        if (connectBluetoothButton) {
+            connectBluetoothButton.addEventListener('click', function () {
+                connectBluetoothPrinter().catch((error) => {
+                    setBluetoothStatus('Bluetooth connect error: ' + error.message);
+                });
+            });
+        }
+
+        if (directBluetoothPrintButton) {
+            directBluetoothPrintButton.addEventListener('click', directBluetoothPrintReceipt);
         }
 
         function renderReceipt() {
