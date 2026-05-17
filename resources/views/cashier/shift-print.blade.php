@@ -299,7 +299,37 @@ $completedTransactions = $transactions
         $startedAt = $shift->started_at?->format('Y-m-d H:i') ?? '-';
         $endedAt = $shift->ended_at?->format('Y-m-d H:i') ?? '-';
         $printedAt = now()->format('Y-m-d H:i:s');
-    @php
+
+        $shiftPaymentPayload = [];
+
+        foreach ($paymentSummary as $method => $amount) {
+            $shiftPaymentPayload[] = [
+                'method' => $method ?: '-',
+                'amount' => (float) $amount,
+            ];
+        }
+
+        $shiftCategoryPayload = [];
+
+        foreach ($categoryItemSummary as $category) {
+            $shiftItemsPayload = [];
+
+            foreach (collect($category['items'] ?? []) as $item) {
+                $shiftItemsPayload[] = [
+                    'name' => $item['name'] ?? '-',
+                    'qty' => (float) ($item['qty'] ?? 0),
+                    'line_total' => (float) ($item['line_total'] ?? 0),
+                ];
+            }
+
+            $shiftCategoryPayload[] = [
+                'category_name' => $category['category_name'] ?? '-',
+                'qty' => (float) ($category['qty'] ?? 0),
+                'line_total' => (float) ($category['line_total'] ?? 0),
+                'items' => $shiftItemsPayload,
+            ];
+        }
+
         $shiftPrintPayload = [
             'brand_name' => "LEE ONG'S TEA X WASPFFLE",
             'title' => 'SHIFT ITEM SOLD SUMMARY',
@@ -314,24 +344,12 @@ $completedTransactions = $transactions
             'total_transactions' => (int) $transactions->count(),
             'completed_transactions' => (int) $completedTransactions->count(),
             'void_transactions' => (int) $voidTransactions->count(),
-            'categories' => $categoryItemSummary->map(fn ($category) => [
-                'category_name' => $category['category_name'] ?? '-',
-                'qty' => (float) ($category['qty'] ?? 0),
-                'line_total' => (float) ($category['line_total'] ?? 0),
-                'items' => collect($category['items'] ?? [])->map(fn ($item) => [
-                    'name' => $item['name'] ?? '-',
-                    'qty' => (float) ($item['qty'] ?? 0),
-                    'line_total' => (float) ($item['line_total'] ?? 0),
-                ])->values()->all(),
-            ])->values()->all(),
+            'categories' => $shiftCategoryPayload,
             'total_qty' => $totalQty,
             'gross_sales' => $grossSales,
             'total_discount' => $totalDiscount,
             'net_sales' => $netSales,
-            'payments' => $paymentSummary->map(fn ($amount, $method) => [
-                'method' => $method ?: '-',
-                'amount' => (float) $amount,
-            ])->values()->all(),
+            'payments' => $shiftPaymentPayload,
             'closing_note' => $shift->closing_note ?? null,
         ];
     @endphp
