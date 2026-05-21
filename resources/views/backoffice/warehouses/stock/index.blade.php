@@ -156,7 +156,7 @@
             <div class="actions">
                 <a href="{{ route('backoffice.transfers.create', ['from_location_type' => 'warehouse', 'from_location_id' => $warehouse->id]) }}" class="btn btn-green">Transfer</a>
                 <a href="{{ route('backoffice.warehouses.stock.create', $warehouse) }}" class="btn btn-primary">Stock In Warehouse</a>
-                <a href="{{ route('backoffice.warehouses.movements.index', $warehouse) }}" class="btn btn-info">Lihat Riwayat</a>
+
                 <a href="{{ route('backoffice.warehouses.index') }}" class="btn btn-dark">Kembali</a>
             </div>
         </div>

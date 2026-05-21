@@ -731,7 +731,44 @@
             line-height: 1.5;
         }
 
-    </style>
+    
+        /* INVENTORY_CONTROL_FORCE_CENTER_ALIGN */
+        .inventory-table-center th,
+        .inventory-table-center td,
+        .inventory-table-center .text-left-cell,
+        .inventory-table-center .wide-text-cell,
+        .inventory-table-center .recommended-action-cell {
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        .inventory-table-center .wide-text-cell,
+        .inventory-table-center .recommended-action-cell {
+            max-width: 280px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .inventory-table-center .action-stack,
+        .inventory-table-center form {
+            justify-content: center !important;
+            align-items: center !important;
+        }
+
+        @media (max-width: 780px) {
+            .inventory-table-center th,
+            .inventory-table-center td {
+                text-align: center !important;
+                white-space: nowrap;
+            }
+
+            .inventory-table-center .wide-text-cell,
+            .inventory-table-center .recommended-action-cell {
+                white-space: normal;
+            }
+        }
+
+</style>
 
     <div class="inventory-shell">
         <div class="inventory-topbar">

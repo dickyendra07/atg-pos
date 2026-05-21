@@ -159,18 +159,6 @@
             <span>Inventory Control</span>
         </a>
 
-        <a href="{{ route('backoffice.stock-movements.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.stock-movements.*') ? 'active' : '' }}">
-            <span class="sidebar-nav-icon violet">
-                <svg viewBox="0 0 24 24">
-                    <path d="M5 17h14"></path>
-                    <path d="M5 12h10"></path>
-                    <path d="M5 7h6"></path>
-                    <path d="M17 9l2-2 2 2"></path>
-                    <path d="M19 7v10"></path>
-                </svg>
-            </span>
-            <span>Stock Movements</span>
-        </a>
 
         <a href="{{ route('backoffice.transfers.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.transfers.*') ? 'active' : '' }}">
             <span class="sidebar-nav-icon orange">
