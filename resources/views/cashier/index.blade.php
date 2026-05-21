@@ -3702,6 +3702,258 @@
             }
         }
 
+
+        /* CHECKOUT_SUCCESS_AS_PAYMENT_MODAL */
+        .checkout-success-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 9998;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 18px;
+            background: rgba(15, 23, 42, 0.52);
+            backdrop-filter: blur(8px);
+        }
+
+        .checkout-success-box {
+            position: relative !important;
+            inset: auto !important;
+            left: auto !important;
+            top: auto !important;
+            right: auto !important;
+            bottom: auto !important;
+            transform: none !important;
+            z-index: 9999 !important;
+            width: min(720px, 100%) !important;
+            max-height: calc(100vh - 36px) !important;
+            overflow-y: auto !important;
+            margin: 0 !important;
+            padding: 24px !important;
+            border-radius: 28px !important;
+            background:
+                radial-gradient(circle at top left, rgba(232, 106, 58, 0.10), transparent 34%),
+                #ffffff !important;
+            border: 1px solid #e8edf4 !important;
+            box-shadow: 0 28px 80px rgba(15, 23, 42, 0.30) !important;
+        }
+
+        .checkout-success-box::before {
+            display: none !important;
+            content: none !important;
+        }
+
+        .checkout-success-title {
+            margin: 0 0 8px !important;
+            color: #166534 !important;
+            font-size: 28px !important;
+            line-height: 1.08 !important;
+            font-weight: 900 !important;
+            letter-spacing: -0.03em !important;
+        }
+
+        .checkout-success-box::after {
+            content: "Transaksi sudah tersimpan. Cetak struk langsung ke printer Bluetooth thermal.";
+            display: block;
+            margin: 0 0 18px;
+            color: #6b7280;
+            font-size: 14px;
+            font-weight: 800;
+            line-height: 1.6;
+        }
+
+        .checkout-success-meta {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 12px !important;
+            margin: 18px 0 !important;
+        }
+
+        .checkout-success-item {
+            min-height: 98px !important;
+            padding: 16px !important;
+            border-radius: 22px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e8edf4 !important;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.80) !important;
+        }
+
+        .checkout-success-label {
+            margin-bottom: 8px !important;
+            color: #6b7280 !important;
+            font-size: 11px !important;
+            font-weight: 900 !important;
+            letter-spacing: 0.08em !important;
+            text-transform: uppercase !important;
+        }
+
+        .checkout-success-value {
+            color: #111827 !important;
+            font-size: 20px !important;
+            line-height: 1.2 !important;
+            font-weight: 900 !important;
+            word-break: break-word !important;
+        }
+
+        .checkout-success-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+            margin-top: 18px !important;
+        }
+
+        .checkout-success-actions .btn,
+        .checkout-success-actions button,
+        .checkout-success-actions a {
+            width: 100% !important;
+            min-height: 58px !important;
+            border-radius: 18px !important;
+            border: 0 !important;
+            cursor: pointer !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            font-size: 15px !important;
+            font-weight: 900 !important;
+            text-decoration: none !important;
+            box-shadow: 0 14px 28px rgba(15, 23, 42, 0.12) !important;
+        }
+
+        #checkout-direct-receipt-print-btn {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%) !important;
+            color: #ffffff !important;
+        }
+
+        #checkout-direct-receipt-print-btn:disabled {
+            opacity: 0.65 !important;
+            cursor: wait !important;
+        }
+
+        @media (max-width: 640px) {
+            .checkout-success-modal-backdrop {
+                align-items: center;
+                padding: 12px;
+            }
+
+            .checkout-success-box {
+                width: 100% !important;
+                padding: 20px !important;
+                border-radius: 24px !important;
+            }
+
+            .checkout-success-title {
+                font-size: 24px !important;
+            }
+
+            .checkout-success-meta,
+            .checkout-success-actions {
+                grid-template-columns: 1fr !important;
+            }
+
+            .checkout-success-item {
+                min-height: auto !important;
+            }
+        }
+
+
+        /* CHECKOUT_SUCCESS_TRUE_VIEWPORT_MODAL */
+        body.checkout-success-open {
+            overflow: hidden !important;
+        }
+
+        body.checkout-success-open .checkout-success-modal-backdrop {
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            z-index: 99999 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 24px !important;
+            background: rgba(15, 23, 42, 0.52) !important;
+            backdrop-filter: blur(8px) !important;
+            overflow: hidden !important;
+        }
+
+        body.checkout-success-open .checkout-success-box {
+            position: relative !important;
+            width: min(900px, calc(100vw - 48px)) !important;
+            max-height: calc(100vh - 48px) !important;
+            overflow-y: auto !important;
+            margin: 0 !important;
+            transform: none !important;
+            border-radius: 28px !important;
+            padding: 24px !important;
+            background: #ffffff !important;
+            border: 1px solid #e8edf4 !important;
+            box-shadow: 0 28px 80px rgba(15, 23, 42, 0.30) !important;
+        }
+
+        body.checkout-success-open .checkout-success-title {
+            font-size: 26px !important;
+            margin: 0 0 14px !important;
+        }
+
+        body.checkout-success-open .checkout-success-meta {
+            display: grid !important;
+            grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+            gap: 12px !important;
+            margin: 0 0 18px !important;
+        }
+
+        body.checkout-success-open .checkout-success-item {
+            min-height: 104px !important;
+            padding: 16px !important;
+            border-radius: 20px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e8edf4 !important;
+        }
+
+        body.checkout-success-open .checkout-success-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+            margin-top: 0 !important;
+        }
+
+        body.checkout-success-open .checkout-success-actions .btn,
+        body.checkout-success-open .checkout-success-actions button,
+        body.checkout-success-open .checkout-success-actions a {
+            min-height: 58px !important;
+            border-radius: 18px !important;
+        }
+
+        body.checkout-success-open .checkout-success-box::after {
+            display: none !important;
+            content: none !important;
+        }
+
+        @media (max-width: 780px) {
+            body.checkout-success-open .checkout-success-modal-backdrop {
+                padding: 14px !important;
+            }
+
+            body.checkout-success-open .checkout-success-box {
+                width: calc(100vw - 28px) !important;
+                max-height: calc(100vh - 28px) !important;
+                padding: 20px !important;
+                border-radius: 24px !important;
+            }
+
+            body.checkout-success-open .checkout-success-meta {
+                grid-template-columns: 1fr 1fr !important;
+            }
+        }
+
+        @media (max-width: 520px) {
+            body.checkout-success-open .checkout-success-meta,
+            body.checkout-success-open .checkout-success-actions {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
 </style>
 </head>
 <body>
@@ -3816,6 +4068,7 @@
                         <div id="cashier-alert-info" class="alert alert-info hidden"></div>
 
                         @if(session('last_checkout'))
+                            <div class="checkout-success-modal-backdrop" id="checkout-success-modal-backdrop">
                             <div class="checkout-success-box">
                                 <div class="checkout-success-title">Checkout berhasil disimpan.</div>
 
@@ -3864,18 +4117,15 @@
                                 </div>
 
                                 <div class="checkout-success-actions">
-                                    <a
-                                        href="{{ route('cashier.transactions.receipt', ['transaction' => session('last_checkout.transaction_id')]) }}"
-                                        target="_blank"
-                                        class="btn btn-green"
-                                    >
-                                        Print Receipt
-                                    </a>
+                                    <button type="button" id="checkout-direct-receipt-print-btn" class="btn btn-green" data-receipt-url="{{ route('cashier.transactions.receipt', ['transaction' => session('last_checkout.transaction_id')]) }}">
+                                            Print Receipt
+                                        </button>
 
                                     <a href="{{ route('cashier.new-transaction') }}" class="btn btn-dark">
                                         Transaksi Baru
                                     </a>
                                 </div>
+                            </div>
                             </div>
                         @endif
 
@@ -6207,6 +6457,23 @@
 
         cashierPrintStatus('Receipt berhasil dikirim ke printer.', 'success');
     }
+
+    /* CHECKOUT_SUCCESS_PORTAL_TO_BODY */
+    function mountCheckoutSuccessModalToViewport() {
+        const modalBackdrop = document.getElementById('checkout-success-modal-backdrop');
+
+        if (!modalBackdrop) {
+            return;
+        }
+
+        if (modalBackdrop.parentElement !== document.body) {
+            document.body.appendChild(modalBackdrop);
+        }
+
+        document.body.classList.add('checkout-success-open');
+    }
+
+    mountCheckoutSuccessModalToViewport();
 
     const checkoutDirectReceiptPrintButton = document.getElementById('checkout-direct-receipt-print-btn');
 
