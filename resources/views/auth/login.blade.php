@@ -1308,6 +1308,124 @@
             }
         }
 
+
+
+        @media (max-width: 1024px) {
+
+            .shell {
+                grid-template-columns: 1fr !important;
+                max-width: 720px;
+                overflow: hidden;
+            }
+
+            .visual-side {
+                min-height: 240px;
+                order: -1;
+                border-radius: 28px 28px 0 0 !important;
+            }
+
+            .form-side {
+                padding: 32px !important;
+            }
+
+            .visual-title {
+                font-size: 42px !important;
+                line-height: 1.05 !important;
+            }
+
+            .visual-subtitle {
+                max-width: 90%;
+                font-size: 16px !important;
+            }
+
+            .form-title {
+                font-size: 42px !important;
+            }
+
+            .top-row {
+                flex-wrap: wrap;
+                gap: 14px;
+            }
+
+            .portal-switch {
+                width: 100%;
+                justify-content: flex-start;
+            }
+        }
+
+        @media (max-width: 768px) {
+
+            .page {
+                padding: 18px !important;
+            }
+
+            .shell {
+                border-radius: 24px !important;
+            }
+
+            .visual-side {
+                min-height: 200px;
+                padding: 26px !important;
+            }
+
+            .visual-title {
+                font-size: 34px !important;
+            }
+
+            .form-side {
+                padding: 26px !important;
+            }
+
+            .form-title {
+                font-size: 28px !important;
+                line-height: 1.1;
+            }
+
+            .form-subtitle {
+                font-size: 14px !important;
+            }
+
+            .btn-login {
+                min-height: 56px;
+                font-size: 16px;
+            }
+        }
+
+
+
+        /* Cashier tablet login cleanup */
+        @media (max-width: 1024px) {
+            .login-portal-cashier .shell {
+                grid-template-columns: 1fr !important;
+                max-width: 720px !important;
+                min-height: auto !important;
+            }
+
+            .login-portal-cashier .visual-side {
+                order: -1 !important;
+                min-height: 230px !important;
+                padding: 28px !important;
+                border-radius: 28px 28px 0 0 !important;
+            }
+
+            .login-portal-cashier .form-side {
+                padding: 30px !important;
+            }
+
+            .login-portal-cashier .form-title {
+                font-size: 30px !important;
+                line-height: 1.1 !important;
+            }
+
+            .login-portal-cashier .visual-title {
+                font-size: 34px !important;
+            }
+
+            .login-portal-cashier .portal-switch {
+                display: none !important;
+            }
+        }
+
 </style>
     @if(($portal ?? 'backoffice') === 'cashier')
         <link rel="manifest" href="{{ asset('manifest-cashier.json') }}">
@@ -1356,10 +1474,7 @@
                         @endisset
 
                         <div class="portal-switch">
-                            @if(($portal ?? 'backoffice') === 'cashier')
-                                <span>Butuh akses admin?</span>
-                                <a href="{{ route('backoffice.login') }}">Login Back Office</a>
-                            @else
+                            @if(($portal ?? 'backoffice') !== 'cashier')
                                 <span>Masuk sebagai kasir?</span>
                                 <a href="{{ route('cashier.login') }}">Login Cashier</a>
                             @endif
