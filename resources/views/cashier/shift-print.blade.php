@@ -229,7 +229,6 @@
 
     
         /* THERMAL_BLUETOOTH_ONLY_SHIFT_UI */
-        .btn[onclick="window.print()"],
         #connect-bluetooth-printer-btn {
             display: none !important;
         }
@@ -366,8 +365,6 @@ $completedTransactions = $transactions
     @endphp
 
     <div class="print-actions">
-        <button type="button" class="btn btn-green" onclick="window.print()">Print Shift</button>
-        <button type="button" class="btn btn-dark" id="connect-bluetooth-printer-btn">Connect BT</button>
         <button type="button" class="btn btn-green" id="direct-bluetooth-print-btn">Print Shift</button>
         <a href="{{ route('cashier.index') }}" class="btn btn-dark">Kembali</a>
     </div>
@@ -441,7 +438,7 @@ $completedTransactions = $transactions
 
             @foreach($category['items'] as $item)
                 <div class="item">
-                    <div class="item-name">*{{ $item['name'] }}</div>
+                    <div class="item-name">{{ $item['name'] }}</div>
                     <div class="item-meta">
                         <span>{{ number_format((float) $item['qty'], 0, ',', '.') }}</span>
                         <strong>{{ number_format((float) $item['line_total'], 0, ',', '.') }}</strong>
@@ -705,7 +702,7 @@ $completedTransactions = $transactions
 
                         if (Array.isArray(category.items)) {
                             category.items.forEach((item) => {
-                                wrapText('*' + (item.name || '-'), widthChars).forEach(line);
+                                wrapText(item.name || '-', widthChars).forEach(line);
                                 row(money(item.qty || 0), money(item.line_total || 0));
                             });
                         }
@@ -822,7 +819,7 @@ $completedTransactions = $transactions
                 bluetoothWriteCharacteristic = await findWritableCharacteristic(bluetoothServer);
 
                 if (!bluetoothWriteCharacteristic) {
-                    setBluetoothStatus('Printer connect, tapi writable characteristic tidak ditemukan.');
+                    setBluetoothStatus('Printer terhubung, tapi tidak bisa menerima data print.');
                     return;
                 }
 
@@ -843,14 +840,14 @@ $completedTransactions = $transactions
                     await writeBluetoothInChunks(bluetoothWriteCharacteristic, buildShiftEscposBytes());
                     setBluetoothStatus('Shift summary berhasil dikirim ke printer.');
                 } catch (error) {
-                    setBluetoothStatus('Bluetooth print error: ' + error.message);
+                    setBluetoothStatus('Print error: ' + error.message);
                 }
             }
 
             if (connectBluetoothButton) {
                 connectBluetoothButton.addEventListener('click', function () {
                     connectBluetoothPrinter().catch((error) => {
-                        setBluetoothStatus('Bluetooth connect error: ' + error.message);
+                        setBluetoothStatus('Connect error: ' + error.message);
                     });
                 });
             }
@@ -906,10 +903,6 @@ $completedTransactions = $transactions
 
             setTimeout(function () {
                 updatePrintSize();
-
-                if (params.get('autoprint') === '1') {
-                    window.print();
-                }
             }, 150);
         });
     </script>
