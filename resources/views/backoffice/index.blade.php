@@ -1848,7 +1848,20 @@
         <div class="mobile-quick-actions">
             <div class="mobile-quick-actions-head">
                 <div>
-                    <div class="mobile-quick-eyebrow">Mobile Workspace</div>
+                    @if(session('approval_pin'))
+                                <div class="approval-pin-card">
+                                    <div class="approval-pin-title">PIN Approval</div>
+                                    <div class="approval-pin-code">{{ session('approval_pin.pin_code') }}</div>
+                                    <div style="color:#6b7280; font-size:13px; font-weight:800;">
+                                        {{ strtoupper(session('approval_pin.purpose')) }}
+                                        • {{ session('approval_pin.transaction_number') }}
+                                        • {{ session('approval_pin.outlet_name') }}
+                                        • Expired: {{ session('approval_pin.expires_at') }}
+                                    </div>
+                                </div>
+                            @endif
+                    
+                                        <div class="mobile-quick-eyebrow">Mobile Workspace</div>
                     <h2 class="mobile-quick-actions-title">Aksi Cepat</h2>
                     <p class="mobile-quick-actions-subtitle">
                         Fitur utama untuk approval, transaksi, dan stok dari HP.
@@ -2079,18 +2092,8 @@
         </div>
 
 
-        @if(session('approval_pin'))
-            <div class="approval-pin-card">
-                <div class="approval-pin-title">PIN Approval</div>
-                <div class="approval-pin-code">{{ session('approval_pin.pin_code') }}</div>
-                <div style="color:#6b7280; font-size:13px; font-weight:800;">
-                    {{ strtoupper(session('approval_pin.purpose')) }}
-                    • {{ session('approval_pin.transaction_number') }}
-                    • {{ session('approval_pin.outlet_name') }}
-                    • Expired: {{ session('approval_pin.expires_at') }}
-                </div>
-            </div>
-        @endif
+
+
 
         <div class="notification-card notification-drawer" id="backoffice-notification-drawer">
             <div class="notification-head">
