@@ -160,7 +160,19 @@
                 image-rendering: auto !important;
             }
         }
-    </style>
+    
+        /* THERMAL_BLUETOOTH_ONLY_RECEIPT_UI */
+        .btn[onclick="window.print()"],
+        #download-receipt-btn,
+        #connect-bluetooth-printer-btn {
+            display: none !important;
+        }
+
+        #direct-bluetooth-print-btn {
+            min-width: 180px;
+        }
+
+</style>
     <style id="dynamic-receipt-print-style"></style>
 </head>
 <body>
@@ -258,7 +270,7 @@
     <div class="toolbar">
         <button type="button" class="btn green" onclick="window.print()">Print PNG Receipt</button>
         <button type="button" class="btn" id="connect-bluetooth-printer-btn">Connect Bluetooth</button>
-        <button type="button" class="btn green" id="direct-bluetooth-print-btn">Direct Print Bluetooth</button>
+        <button type="button" class="btn green" id="direct-bluetooth-print-btn">Print Receipt</button>
         <button type="button" class="btn secondary" id="download-receipt-btn">Download PNG</button>
 
         @if($source === 'cashier')
@@ -273,7 +285,7 @@
     </div>
 
     <div class="hint">
-        Preview ini dibuat sebagai PNG high resolution untuk thermal 58mm. Saat print, pilih paper 58mm, margin none/minimal, dan scale 100%.
+        Gunakan tombol Print Receipt untuk cetak langsung ke printer Bluetooth thermal.
     </div>
 
     <div class="bluetooth-status" id="bluetooth-printer-status">
@@ -859,20 +871,16 @@
             raw([ESC, 0x40]); // init
             raw([ESC, 0x61, 0x01]); // center
 
-            wrapBluetoothText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach((value) => {
-                line(centerBluetoothText(value, widthChars));
-            });
+            wrapBluetoothText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach(line);
 
             if (receipt.address) {
-                wrapBluetoothText(receipt.address, widthChars).forEach((value) => {
-                    line(centerBluetoothText(value, widthChars));
-                });
+                wrapBluetoothText(receipt.address, widthChars).forEach(line);
             }
 
-            line(centerBluetoothText(formatAtgDateTime(receipt.created_at), widthChars));
+            line(formatAtgDateTime(receipt.created_at));
 
             if (receipt.is_void) {
-                line(centerBluetoothText('*** VOID ***', widthChars));
+                line('*** VOID ***');
             }
 
             raw([ESC, 0x61, 0x00]); // left
@@ -932,7 +940,7 @@
                 });
             } else {
                 raw([ESC, 0x61, 0x01]);
-                line(centerBluetoothText('Tidak ada item.', widthChars));
+                line('Tidak ada item.');
                 raw([ESC, 0x61, 0x00]);
             }
 
@@ -970,7 +978,7 @@
             if (receipt.is_void) {
                 divider();
                 raw([ESC, 0x61, 0x01]);
-                line(centerBluetoothText('VOID INFO', widthChars));
+                line('VOID INFO');
                 raw([ESC, 0x61, 0x00]);
 
                 if (receipt.void_at) {
@@ -988,17 +996,15 @@
 
             divider();
             raw([ESC, 0x61, 0x01]);
-            line(centerBluetoothText('Terima kasih', widthChars));
-            wrapBluetoothText('Simpan struk ini sebagai bukti transaksi', widthChars).forEach((value) => {
-                line(centerBluetoothText(value, widthChars));
-            });
+            line('Terima kasih');
+            wrapBluetoothText('Simpan struk ini sebagai bukti transaksi', widthChars).forEach(line);
 
             if (receipt.is_reprint) {
                 line('');
                 raw([ESC, 0x45, 0x01]);
-                line(centerBluetoothText('#REPRINT', widthChars));
+                line('#REPRINT');
                 raw([ESC, 0x45, 0x00]);
-                line(centerBluetoothText(formatAtgDateTime(receipt.reprint_printed_at), widthChars));
+                line(formatAtgDateTime(receipt.reprint_printed_at));
             }
 
             line('');
@@ -1161,21 +1167,15 @@
         if (shouldAutoPrint) {
             window.addEventListener('load', function () {
                 setTimeout(function () {
-                    window.print();
+                    directBluetoothPrintReceipt().then(function () {
+                        if (shouldAutoClose) {
+                            setTimeout(function () {
+                                window.close();
+                            }, 1200);
+                        }
+                    });
                 }, 600);
             });
-
-            window.addEventListener('afterprint', function () {
-                if (shouldAutoClose) {
-                    window.close();
-                }
-            });
-
-            setTimeout(function () {
-                if (shouldAutoClose) {
-                    window.close();
-                }
-            }, 4500);
         }
     })();
 </script>

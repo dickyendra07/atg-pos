@@ -227,7 +227,18 @@
             font-weight: 800;
         }
 
-    </style>
+    
+        /* THERMAL_BLUETOOTH_ONLY_SHIFT_UI */
+        .btn[onclick="window.print()"],
+        #connect-bluetooth-printer-btn {
+            display: none !important;
+        }
+
+        #direct-bluetooth-print-btn {
+            min-width: 180px;
+        }
+
+</style>
     <style id="dynamic-shift-print-style"></style>
 </head>
 <body>
@@ -357,7 +368,7 @@ $completedTransactions = $transactions
     <div class="print-actions">
         <button type="button" class="btn btn-green" onclick="window.print()">Print Shift</button>
         <button type="button" class="btn btn-dark" id="connect-bluetooth-printer-btn">Connect BT</button>
-        <button type="button" class="btn btn-green" id="direct-bluetooth-print-btn">Print BT</button>
+        <button type="button" class="btn btn-green" id="direct-bluetooth-print-btn">Print Shift</button>
         <a href="{{ route('cashier.index') }}" class="btn btn-dark">Kembali</a>
     </div>
 
@@ -656,13 +667,11 @@ $completedTransactions = $transactions
                 raw([ESC, 0x40]);
                 raw([ESC, 0x61, 0x01]);
 
-                wrapText(shiftPrintPayload.brand_name || "LEE ONG'S TEA X WASPFFLE", widthChars).forEach((value) => {
-                    line(centerText(value, widthChars));
-                });
+                wrapText(shiftPrintPayload.brand_name || "LEE ONG'S TEA X WASPFFLE", widthChars).forEach(line);
 
-                line(centerText(shiftPrintPayload.title || 'SHIFT SUMMARY', widthChars));
-                line(centerText(shiftPrintPayload.outlet_name || '-', widthChars));
-                line(centerText(formatAtgDateTime(shiftPrintPayload.printed_at), widthChars));
+                line(shiftPrintPayload.title || 'SHIFT SUMMARY');
+                line(shiftPrintPayload.outlet_name || '-');
+                line(formatAtgDateTime(shiftPrintPayload.printed_at));
 
                 raw([ESC, 0x61, 0x00]);
                 divider();
@@ -682,7 +691,7 @@ $completedTransactions = $transactions
 
                 divider();
                 raw([ESC, 0x61, 0x01]);
-                line(centerText('ITEM TERJUAL', widthChars));
+                line('ITEM TERJUAL');
                 raw([ESC, 0x61, 0x00]);
                 divider();
 
@@ -690,7 +699,7 @@ $completedTransactions = $transactions
                     shiftPrintPayload.categories.forEach((category) => {
                         raw([ESC, 0x45, 0x01]);
                         raw([ESC, 0x61, 0x01]);
-                        line(centerText(category.category_name || '-', widthChars));
+                        line(category.category_name || '-');
                         raw([ESC, 0x61, 0x00]);
                         raw([ESC, 0x45, 0x00]);
 
@@ -706,7 +715,7 @@ $completedTransactions = $transactions
                     });
                 } else {
                     raw([ESC, 0x61, 0x01]);
-                    line(centerText('Belum ada item terjual.', widthChars));
+                    line('Belum ada item terjual.');
                     raw([ESC, 0x61, 0x00]);
                 }
 
@@ -723,7 +732,7 @@ $completedTransactions = $transactions
                 if (Array.isArray(shiftPrintPayload.payments) && shiftPrintPayload.payments.length) {
                     divider();
                     raw([ESC, 0x61, 0x01]);
-                    line(centerText('PAYMENT', widthChars));
+                    line('PAYMENT');
                     raw([ESC, 0x61, 0x00]);
                     divider();
 
@@ -739,7 +748,7 @@ $completedTransactions = $transactions
 
                 divider();
                 raw([ESC, 0x61, 0x01]);
-                line(centerText('End of shift summary', widthChars));
+                line('End of shift summary');
                 line('');
                 line('');
                 line('');
