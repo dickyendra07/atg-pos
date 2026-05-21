@@ -984,6 +984,76 @@
             font-weight: 700;
         }
 
+        .mobile-quick-actions {
+            display: none;
+        }
+
+        .mobile-quick-actions-title {
+            margin: 0;
+            font-size: 15px;
+            font-weight: 900;
+            color: #111827;
+        }
+
+        .mobile-quick-actions-subtitle {
+            margin: 4px 0 14px;
+            font-size: 12px;
+            line-height: 1.6;
+            color: #6b7280;
+            font-weight: 700;
+        }
+
+        .mobile-quick-actions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .mobile-quick-action-btn {
+            min-height: 54px;
+            width: 100%;
+            border: 0;
+            border-radius: 16px;
+            padding: 10px 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 900;
+            line-height: 1.2;
+            cursor: pointer;
+            color: #ffffff;
+            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+            box-shadow: 0 12px 22px rgba(15,23,42,0.12);
+        }
+
+        .mobile-quick-action-btn.brand {
+            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
+        }
+
+        .mobile-quick-action-btn.soft {
+            background: #f3f4f6;
+            color: #111827;
+            box-shadow: none;
+            border: 1px solid #e5e7eb;
+        }
+
+        .mobile-quick-action-btn.green {
+            background: linear-gradient(135deg, #166534 0%, #15803d 100%);
+        }
+
+        .mobile-quick-action-btn:disabled {
+            cursor: not-allowed;
+            opacity: 0.78;
+        }
+
+        .quick-pin-form {
+            margin: 0;
+            display: block;
+        }
+
         @media (max-width: 780px) {
             .approval-history-drawer {
                 top: 84px;
@@ -1060,6 +1130,681 @@
             }
         }
 
+
+        /* MOBILE_DASHBOARD_POLISH_V1 */
+        @media (max-width: 780px) {
+            .dashboard-shell {
+                gap: 14px;
+            }
+
+            .dashboard-topbar {
+                gap: 10px;
+            }
+
+            .dashboard-title {
+                font-size: 26px;
+                line-height: 1.1;
+            }
+
+            .dashboard-topbar-actions {
+                width: 100%;
+                display: grid;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 8px;
+                justify-content: stretch;
+            }
+
+            .dashboard-topbar-actions .notification-bell-btn,
+            .dashboard-topbar-actions .topbar-mini-btn,
+            .dashboard-topbar-actions .topbar-logout-form,
+            .dashboard-topbar-actions .topbar-logout-form button,
+            .dashboard-topbar-actions .dashboard-user-pill {
+                width: 100%;
+            }
+
+            .dashboard-user-pill {
+                grid-column: 1 / -1;
+                white-space: normal;
+                text-align: center;
+            }
+
+            .mobile-quick-actions {
+                display: block;
+                padding: 16px;
+                border-radius: 22px;
+                background: linear-gradient(135deg, #ffffff 0%, #fff8f4 100%);
+                border: 1px solid #f0e1d8;
+                box-shadow: 0 14px 28px rgba(15,23,42,0.08);
+            }
+
+            .filter-card,
+            .summary-section,
+            .premium-strip {
+                border-radius: 22px;
+            }
+
+            .filter-card,
+            .premium-strip {
+                padding: 16px;
+            }
+
+            .filter-grid,
+            .premium-grid,
+            .stats-grid,
+            .dual-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .filter-actions {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                width: 100%;
+            }
+
+            .filter-actions .btn {
+                width: 100%;
+                min-height: 46px;
+            }
+
+            .premium-card,
+            .stats-card {
+                min-height: 0;
+                padding: 16px;
+            }
+
+            .premium-value,
+            .stats-value {
+                font-size: 24px;
+                overflow-wrap: anywhere;
+            }
+
+            .summary-head,
+            .stats-grid,
+            .dual-grid,
+            .bottom-actions {
+                padding-left: 16px;
+                padding-right: 16px;
+            }
+
+            .summary-title {
+                font-size: 22px;
+            }
+
+            .chart-card,
+            .table-card {
+                margin-left: 16px;
+                margin-right: 16px;
+                border-radius: 20px;
+            }
+
+            .chart-card {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .chart-area {
+                min-width: 620px;
+                height: 260px;
+            }
+
+            .chart-footer {
+                min-width: 620px;
+                grid-template-columns: repeat(3, minmax(160px, 1fr));
+            }
+
+            .table-wrap {
+                padding-left: 12px;
+                padding-right: 12px;
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
+                min-width: 760px;
+            }
+
+            .approval-history-drawer {
+                top: 72px;
+                left: 10px;
+                right: 10px;
+                width: auto;
+                max-height: calc(100vh - 90px);
+                border-radius: 22px;
+                padding: 16px;
+            }
+
+            .approval-history-title {
+                font-size: 18px;
+            }
+
+            .approval-history-subtitle {
+                font-size: 12px;
+                line-height: 1.5;
+            }
+
+            .approval-history-filter {
+                grid-template-columns: 1fr !important;
+            }
+
+            .approval-history-filter-actions {
+                align-items: stretch;
+                flex-direction: column;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .mobile-quick-actions-grid,
+            .dashboard-topbar-actions,
+            .filter-actions {
+                grid-template-columns: 1fr;
+            }
+        }
+
+
+        /* BACKOFFICE_DASHBOARD_MOBILE_FIX_V2 */
+        @media (max-width: 1180px) {
+            .dashboard-shell,
+            .dashboard-topbar,
+            .filter-card,
+            .premium-strip,
+            .summary-section,
+            .mobile-quick-actions {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
+            .dashboard-shell {
+                gap: 16px;
+            }
+
+            .dashboard-topbar {
+                display: grid;
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .dashboard-title {
+                font-size: 34px;
+                line-height: 1.08;
+                letter-spacing: -0.04em;
+                margin-bottom: 0;
+                overflow-wrap: anywhere;
+            }
+
+            .dashboard-topbar-actions {
+                width: 100%;
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                align-items: stretch;
+                justify-content: stretch;
+                overflow: hidden;
+            }
+
+            .dashboard-topbar-actions > *,
+            .dashboard-topbar-actions .notification-bell-btn,
+            .dashboard-topbar-actions .topbar-mini-btn,
+            .dashboard-topbar-actions .topbar-logout-form,
+            .dashboard-topbar-actions .topbar-logout-form button,
+            .dashboard-topbar-actions .dashboard-user-pill {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                margin: 0 !important;
+            }
+
+            .dashboard-topbar-actions .notification-bell-btn,
+            .dashboard-topbar-actions .topbar-mini-btn,
+            .dashboard-topbar-actions .topbar-logout-form button {
+                min-height: 52px;
+                border-radius: 18px;
+                font-size: 15px;
+                justify-content: center;
+                text-align: center;
+            }
+
+            .dashboard-user-pill {
+                grid-column: 1 / -1;
+                min-height: 48px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                white-space: normal;
+                text-align: center;
+                overflow-wrap: anywhere;
+            }
+
+            .mobile-quick-actions {
+                display: block !important;
+                padding: 18px;
+                border-radius: 24px;
+                background: linear-gradient(135deg, #ffffff 0%, #fff8f4 100%);
+                border: 1px solid #f0e1d8;
+                box-shadow: 0 14px 28px rgba(15,23,42,0.08);
+            }
+
+            .mobile-quick-actions-title {
+                font-size: 20px;
+                line-height: 1.2;
+            }
+
+            .mobile-quick-actions-subtitle {
+                max-width: 100%;
+                overflow-wrap: anywhere;
+                word-break: normal;
+            }
+
+            .mobile-quick-actions-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 12px;
+                width: 100%;
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .mobile-quick-action-btn,
+            .quick-pin-form {
+                width: 100%;
+                max-width: 100%;
+                min-width: 0;
+            }
+
+            .mobile-quick-action-btn {
+                min-height: 58px;
+                border-radius: 18px;
+                font-size: 15px;
+                text-align: center;
+                overflow-wrap: anywhere;
+            }
+
+            .filter-card,
+            .premium-strip {
+                padding: 18px;
+                border-radius: 24px;
+            }
+
+            .filter-title,
+            .summary-title {
+                font-size: 28px;
+                line-height: 1.1;
+            }
+
+            .filter-grid,
+            .premium-grid,
+            .stats-grid,
+            .dual-grid {
+                grid-template-columns: 1fr !important;
+            }
+
+            .field input,
+            .field select {
+                min-height: 56px;
+                font-size: 16px;
+                border-radius: 18px;
+            }
+
+            .filter-actions {
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+                gap: 10px;
+                width: 100%;
+            }
+
+            .filter-actions .btn {
+                width: 100%;
+                min-height: 52px;
+                font-size: 15px;
+                border-radius: 18px;
+                margin: 0 !important;
+            }
+
+            .premium-card,
+            .stats-card,
+            .info-panel {
+                min-height: 0;
+                padding: 18px;
+                border-radius: 22px;
+            }
+
+            .premium-value,
+            .stats-value {
+                font-size: 28px;
+                line-height: 1.1;
+                overflow-wrap: anywhere;
+            }
+
+            .summary-head,
+            .stats-grid,
+            .dual-grid,
+            .bottom-actions {
+                padding-left: 18px;
+                padding-right: 18px;
+            }
+
+            .chart-card,
+            .table-card {
+                margin-left: 18px;
+                margin-right: 18px;
+                border-radius: 22px;
+                max-width: calc(100% - 36px);
+            }
+
+            .chart-card {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .chart-area {
+                min-width: 680px;
+                height: 280px;
+            }
+
+            .chart-footer {
+                min-width: 680px;
+                grid-template-columns: repeat(3, minmax(180px, 1fr));
+            }
+
+            .table-wrap {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
+                min-width: 760px;
+            }
+
+            .approval-history-drawer {
+                top: 88px !important;
+                left: 14px !important;
+                right: 14px !important;
+                width: auto !important;
+                max-width: none !important;
+                max-height: calc(100vh - 108px) !important;
+                border-radius: 24px;
+                padding: 18px;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .dashboard-title {
+                font-size: 30px;
+            }
+
+            .dashboard-topbar-actions,
+            .mobile-quick-actions-grid,
+            .filter-actions {
+                grid-template-columns: 1fr !important;
+            }
+
+            .filter-title,
+            .summary-title {
+                font-size: 26px;
+            }
+
+            .chart-card,
+            .table-card {
+                margin-left: 12px;
+                margin-right: 12px;
+                max-width: calc(100% - 24px);
+            }
+
+            .summary-head,
+            .stats-grid,
+            .dual-grid,
+            .bottom-actions {
+                padding-left: 12px;
+                padding-right: 12px;
+            }
+        }
+
+
+        /* MOBILE_QUICK_ACTIONS_ELEGANT_V3 */
+        @media (max-width: 1180px) {
+            .dashboard-topbar-actions {
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                padding: 8px;
+                border-radius: 28px;
+                background: rgba(255,255,255,0.70);
+                border: 1px solid rgba(229,231,235,0.90);
+                box-shadow: inset 0 1px 0 rgba(255,255,255,0.70);
+            }
+
+            .dashboard-topbar-actions .notification-bell-btn,
+            .dashboard-topbar-actions .topbar-mini-btn,
+            .dashboard-topbar-actions .topbar-logout-form button,
+            .dashboard-topbar-actions .dashboard-user-pill {
+                min-height: 48px !important;
+                border-radius: 22px !important;
+                box-shadow: none !important;
+                font-size: 14px !important;
+                background: #ffffff !important;
+                color: #111827 !important;
+                border: 1px solid #e8edf4 !important;
+            }
+
+            .dashboard-topbar-actions .notification-bell-btn {
+                font-size: 18px !important;
+            }
+
+            .dashboard-topbar-actions .dashboard-user-pill {
+                grid-column: 1 / -1;
+                background: linear-gradient(135deg, #fff7ed 0%, #ffffff 100%) !important;
+                color: #374151 !important;
+            }
+
+            .mobile-quick-actions {
+                position: relative;
+                overflow: hidden !important;
+                padding: 22px !important;
+                border-radius: 30px !important;
+                background:
+                    radial-gradient(circle at top right, rgba(232,106,58,0.16), transparent 34%),
+                    linear-gradient(135deg, #ffffff 0%, #fffaf7 52%, #ffffff 100%) !important;
+                border: 1px solid #f1d8cb !important;
+                box-shadow: 0 20px 46px rgba(15,23,42,0.10) !important;
+            }
+
+            .mobile-quick-actions::after {
+                content: "";
+                position: absolute;
+                right: -46px;
+                top: -52px;
+                width: 150px;
+                height: 150px;
+                border-radius: 999px;
+                background: rgba(232,106,58,0.10);
+                pointer-events: none;
+            }
+
+            .mobile-quick-actions-head {
+                position: relative;
+                z-index: 1;
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                gap: 14px;
+                margin-bottom: 18px;
+            }
+
+            .mobile-quick-eyebrow {
+                display: inline-flex;
+                align-items: center;
+                width: fit-content;
+                margin-bottom: 8px;
+                padding: 7px 10px;
+                border-radius: 999px;
+                background: #fff3eb;
+                border: 1px solid #f1d8cb;
+                color: #c9552a;
+                font-size: 11px;
+                font-weight: 900;
+                text-transform: uppercase;
+                letter-spacing: 0.07em;
+            }
+
+            .mobile-quick-actions-title {
+                font-size: 28px !important;
+                line-height: 1.05 !important;
+                letter-spacing: -0.04em;
+                margin: 0 !important;
+            }
+
+            .mobile-quick-actions-subtitle {
+                margin: 8px 0 0 !important;
+                font-size: 14px !important;
+                line-height: 1.65 !important;
+                max-width: 520px;
+                color: #6b7280;
+            }
+
+            .mobile-quick-badge {
+                position: relative;
+                z-index: 1;
+                flex-shrink: 0;
+                padding: 9px 12px;
+                border-radius: 999px;
+                background: #111827;
+                color: #ffffff;
+                font-size: 12px;
+                font-weight: 900;
+                white-space: nowrap;
+                box-shadow: 0 12px 24px rgba(15,23,42,0.16);
+            }
+
+            .mobile-quick-actions-grid {
+                position: relative;
+                z-index: 1;
+                display: grid !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 12px !important;
+            }
+
+            .mobile-quick-action-card {
+                min-height: 86px;
+                width: 100%;
+                max-width: 100%;
+                border: 1px solid #e8edf4;
+                border-radius: 24px;
+                padding: 14px;
+                display: flex;
+                align-items: center;
+                justify-content: flex-start;
+                gap: 12px;
+                text-decoration: none;
+                cursor: pointer;
+                background: rgba(255,255,255,0.92);
+                color: #111827;
+                box-shadow: 0 12px 24px rgba(15,23,42,0.06);
+                text-align: left;
+                font-family: Arial, sans-serif;
+            }
+
+            .mobile-quick-action-card:disabled {
+                cursor: not-allowed;
+                opacity: 0.88;
+            }
+
+            .mobile-quick-action-card.brand {
+                background: linear-gradient(135deg, #fff3eb 0%, #ffffff 100%);
+                border-color: #f1d8cb;
+            }
+
+            .mobile-quick-action-card.dark {
+                background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+                border-color: #111827;
+                color: #ffffff;
+            }
+
+            .mobile-quick-action-card.green {
+                background: linear-gradient(135deg, #ecfdf3 0%, #ffffff 100%);
+                border-color: #ccebd5;
+            }
+
+            .mobile-quick-action-card.soft,
+            .mobile-quick-action-card.muted {
+                background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+            }
+
+            .mobile-quick-icon {
+                width: 44px;
+                height: 44px;
+                flex-shrink: 0;
+                border-radius: 16px;
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 20px;
+                font-weight: 900;
+                background: rgba(17,24,39,0.06);
+                color: #111827;
+            }
+
+            .mobile-quick-action-card.dark .mobile-quick-icon {
+                background: rgba(255,255,255,0.14);
+                color: #ffffff;
+            }
+
+            .mobile-quick-action-card.brand .mobile-quick-icon {
+                background: #e86a3a;
+                color: #ffffff;
+            }
+
+            .mobile-quick-action-card.green .mobile-quick-icon {
+                background: #166534;
+                color: #ffffff;
+            }
+
+            .mobile-quick-copy {
+                display: grid;
+                gap: 4px;
+                min-width: 0;
+            }
+
+            .mobile-quick-copy strong {
+                font-size: 16px;
+                line-height: 1.1;
+                font-weight: 900;
+                letter-spacing: -0.01em;
+            }
+
+            .mobile-quick-copy small {
+                font-size: 12px;
+                line-height: 1.35;
+                color: #6b7280;
+                font-weight: 800;
+            }
+
+            .mobile-quick-action-card.dark .mobile-quick-copy small {
+                color: rgba(255,255,255,0.72);
+            }
+
+            .quick-pin-form {
+                width: 100%;
+                max-width: 100%;
+                margin: 0;
+            }
+        }
+
+        @media (max-width: 620px) {
+            .dashboard-topbar-actions {
+                grid-template-columns: 1fr 1fr !important;
+            }
+
+            .mobile-quick-actions-head {
+                display: grid;
+                grid-template-columns: 1fr;
+            }
+
+            .mobile-quick-badge {
+                width: fit-content;
+            }
+
+            .mobile-quick-actions-grid {
+                grid-template-columns: 1fr !important;
+            }
+        }
+
     </style>
 
     <div class="notification-drawer-backdrop" id="notification-drawer-backdrop"></div>
@@ -1099,6 +1844,73 @@
             </div>
         </div>
 
+
+        <div class="mobile-quick-actions">
+            <div class="mobile-quick-actions-head">
+                <div>
+                    <div class="mobile-quick-eyebrow">Mobile Workspace</div>
+                    <h2 class="mobile-quick-actions-title">Aksi Cepat</h2>
+                    <p class="mobile-quick-actions-subtitle">
+                        Fitur utama untuk approval, transaksi, dan stok dari HP.
+                    </p>
+                </div>
+                <div class="mobile-quick-badge">
+                    {{ number_format((int) (($pendingApprovalNotifications ?? collect())->count()), 0, ',', '.') }} request
+                </div>
+            </div>
+
+            <div class="mobile-quick-actions-grid">
+                @if(($pendingApprovalNotifications ?? collect())->count())
+                    @php
+                        $firstPendingApproval = ($pendingApprovalNotifications ?? collect())->first();
+                    @endphp
+
+                    <form method="POST" action="{{ route('backoffice.approval-pins.generate') }}" class="quick-pin-form">
+                        @csrf
+                        <input type="hidden" name="notification_id" value="{{ $firstPendingApproval->id }}">
+                        <button type="submit" class="mobile-quick-action-card brand">
+                            <span class="mobile-quick-icon">#</span>
+                            <span class="mobile-quick-copy">
+                                <strong>Generate PIN</strong>
+                                <small>Buat approval kasir</small>
+                            </span>
+                        </button>
+                    </form>
+                @else
+                    <button type="button" class="mobile-quick-action-card muted" disabled>
+                        <span class="mobile-quick-icon">✓</span>
+                        <span class="mobile-quick-copy">
+                            <strong>Tidak Ada PIN</strong>
+                            <small>Belum ada request</small>
+                        </span>
+                    </button>
+                @endif
+
+                <button type="button" class="mobile-quick-action-card dark" id="mobile-approval-history-btn">
+                    <span class="mobile-quick-icon">⌕</span>
+                    <span class="mobile-quick-copy">
+                        <strong>History PIN</strong>
+                        <small>Void & reprint</small>
+                    </span>
+                </button>
+
+                <a href="{{ route('backoffice.transactions.index') }}" class="mobile-quick-action-card green">
+                    <span class="mobile-quick-icon">↗</span>
+                    <span class="mobile-quick-copy">
+                        <strong>Transactions</strong>
+                        <small>Lihat transaksi</small>
+                    </span>
+                </a>
+
+                <a href="{{ route('backoffice.stock-balances.index') }}" class="mobile-quick-action-card soft">
+                    <span class="mobile-quick-icon">□</span>
+                    <span class="mobile-quick-copy">
+                        <strong>Inventory</strong>
+                        <small>Cek stok outlet</small>
+                    </span>
+                </a>
+            </div>
+        </div>
 
         <div class="approval-history-drawer" id="approval-history-drawer">
             <div class="approval-history-head">
@@ -1813,6 +2625,7 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const historyButton = document.getElementById('approval-history-btn');
+        const mobileHistoryButton = document.getElementById('mobile-approval-history-btn');
         const historyDrawer = document.getElementById('approval-history-drawer');
         const historyClose = document.getElementById('approval-history-close');
         const notificationBackdrop = document.getElementById('notification-drawer-backdrop');
@@ -1837,6 +2650,18 @@
                 if (notificationBackdrop) {
                     notificationBackdrop.classList.toggle('active', historyDrawer.classList.contains('active'));
                 }
+
+        if (mobileHistoryButton && historyDrawer) {
+            mobileHistoryButton.addEventListener('click', function (event) {
+                event.preventDefault();
+
+                historyDrawer.classList.toggle('active');
+
+                if (notificationBackdrop) {
+                    notificationBackdrop.classList.toggle('active', historyDrawer.classList.contains('active'));
+                }
+            });
+        }
             });
         }
 

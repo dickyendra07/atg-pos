@@ -296,9 +296,9 @@ $completedTransactions = $transactions
             ->map(fn ($rows) => (float) $rows->sum('grand_total'))
             ->sortKeys();
 
-        $startedAt = $shift->started_at?->format('Y-m-d H:i') ?? '-';
-        $endedAt = $shift->ended_at?->format('Y-m-d H:i') ?? '-';
-        $printedAt = now()->format('Y-m-d H:i:s');
+        $startedAt = $shift->started_at?->format('d-m-Y H:i') ?? '-';
+        $endedAt = $shift->ended_at?->format('d-m-Y H:i') ?? '-';
+        $printedAt = now()->format('d-m-Y H:i');
 
         $shiftPaymentPayload = [];
 
@@ -534,6 +534,38 @@ $completedTransactions = $transactions
                 return String(value ?? '').replace(/\s+/g, ' ').trim();
             }
 
+
+            function formatAtgDateTime(value) {
+                if (!value) {
+                    return '-';
+                }
+
+                const raw = String(value).trim();
+
+                const idDateMatch = raw.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
+                if (idDateMatch) {
+                    return `${idDateMatch[1]}-${idDateMatch[2]}-${idDateMatch[3]} ${idDateMatch[4]}:${idDateMatch[5]}`;
+                }
+
+                const dbDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+                if (dbDateMatch) {
+                    return `${dbDateMatch[3]}-${dbDateMatch[2]}-${dbDateMatch[1]} ${dbDateMatch[4]}:${dbDateMatch[5]}`;
+                }
+
+                const date = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'));
+                if (!Number.isNaN(date.getTime())) {
+                    const dd = String(date.getDate()).padStart(2, '0');
+                    const mm = String(date.getMonth() + 1).padStart(2, '0');
+                    const yyyy = date.getFullYear();
+                    const hh = String(date.getHours()).padStart(2, '0');
+                    const min = String(date.getMinutes()).padStart(2, '0');
+
+                    return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+                }
+
+                return raw;
+            }
+
             function money(value) {
                 return new Intl.NumberFormat('id-ID', {
                     maximumFractionDigits: 0
@@ -541,13 +573,20 @@ $completedTransactions = $transactions
             }
 
             function padRow(left, right, width = 32) {
-                const leftText = cleanLine(left);
-                const rightText = cleanLine(right);
-                const space = Math.max(1, width - leftText.length - rightText.length);
+                let leftText = cleanLine(left);
+                let rightText = cleanLine(right);
 
-                if (leftText.length + rightText.length >= width) {
-                    return leftText + '\n' + rightText.padStart(width, ' ');
+                if (rightText.length > width - 4) {
+                    rightText = rightText.slice(0, width - 4);
                 }
+
+                const maxLeftLength = Math.max(1, width - rightText.length - 1);
+
+                if (leftText.length > maxLeftLength) {
+                    leftText = leftText.slice(0, maxLeftLength);
+                }
+
+                const space = Math.max(1, width - leftText.length - rightText.length);
 
                 return leftText + ' '.repeat(space) + rightText;
             }
@@ -623,15 +662,15 @@ $completedTransactions = $transactions
 
                 line(centerText(shiftPrintPayload.title || 'SHIFT SUMMARY', widthChars));
                 line(centerText(shiftPrintPayload.outlet_name || '-', widthChars));
-                line(centerText(shiftPrintPayload.printed_at || '-', widthChars));
+                line(centerText(formatAtgDateTime(shiftPrintPayload.printed_at), widthChars));
 
                 raw([ESC, 0x61, 0x00]);
                 divider();
 
                 row('Shift', '#' + (shiftPrintPayload.shift_id || '-'));
                 row('Cashier', shiftPrintPayload.cashier_name || '-');
-                row('Start', shiftPrintPayload.started_at || '-');
-                row('End', shiftPrintPayload.ended_at || '-');
+                row('Start', formatAtgDateTime(shiftPrintPayload.started_at));
+                row('End', formatAtgDateTime(shiftPrintPayload.ended_at));
                 row('Opening Cash', 'Rp ' + money(shiftPrintPayload.opening_cash || 0));
                 row('Closing Cash', shiftPrintPayload.closing_cash === null ? '-' : 'Rp ' + money(shiftPrintPayload.closing_cash || 0));
 

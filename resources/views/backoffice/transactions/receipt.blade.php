@@ -185,7 +185,7 @@
     $cashierName = $transaction->user->name ?? '-';
     $memberName = $transaction->member->name ?? null;
     $memberPhone = $transaction->member->phone ?? null;
-    $createdAt = $transaction->created_at?->format('Y-m-d H:i:s') ?? '-';
+    $createdAt = $transaction->created_at?->format('d-m-Y H:i') ?? '-';
     $paymentMethod = strtoupper((string) ($transaction->payment_method ?? '-'));
     $status = strtoupper((string) ($transaction->status ?? '-'));
     $subtotal = (float) ($transaction->subtotal ?? 0);
@@ -294,15 +294,7 @@
         const reprintUrlParams = new URLSearchParams(window.location.search);
         if (reprintUrlParams.has('approval_pin')) {
             receipt.is_reprint = true;
-            receipt.reprint_printed_at = new Date().toLocaleString('id-ID', {
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false,
-            }).replace(',', '');
+            receipt.reprint_printed_at = formatAtgDateTime(new Date());
         }
         const shouldAutoPrint = @json($autoprint);
         const shouldAutoClose = @json($autoClose);
@@ -331,6 +323,48 @@
 
         function scaled(value) {
             return Math.round(Number(value || 0) * renderScale);
+        }
+
+
+        function formatAtgDateTime(value) {
+            if (!value) {
+                return '-';
+            }
+
+            if (value instanceof Date) {
+                const dd = String(value.getDate()).padStart(2, '0');
+                const mm = String(value.getMonth() + 1).padStart(2, '0');
+                const yyyy = value.getFullYear();
+                const hh = String(value.getHours()).padStart(2, '0');
+                const min = String(value.getMinutes()).padStart(2, '0');
+
+                return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+            }
+
+            const raw = String(value).trim();
+
+            const idDateMatch = raw.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
+            if (idDateMatch) {
+                return `${idDateMatch[1]}-${idDateMatch[2]}-${idDateMatch[3]} ${idDateMatch[4]}:${idDateMatch[5]}`;
+            }
+
+            const dbDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+            if (dbDateMatch) {
+                return `${dbDateMatch[3]}-${dbDateMatch[2]}-${dbDateMatch[1]} ${dbDateMatch[4]}:${dbDateMatch[5]}`;
+            }
+
+            const date = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'));
+            if (!Number.isNaN(date.getTime())) {
+                const dd = String(date.getDate()).padStart(2, '0');
+                const mm = String(date.getMonth() + 1).padStart(2, '0');
+                const yyyy = date.getFullYear();
+                const hh = String(date.getHours()).padStart(2, '0');
+                const min = String(date.getMinutes()).padStart(2, '0');
+
+                return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+            }
+
+            return raw;
         }
 
         function money(value) {
@@ -442,7 +476,7 @@
                 });
             }
 
-            push('text', receipt.created_at || '-', {
+            push('text', formatAtgDateTime(receipt.created_at), {
                 size: 17,
                 align: 'center',
                 gap: 8,
@@ -615,7 +649,7 @@
                     gap: 12,
                 });
 
-                push('text', receipt.reprint_printed_at || '', {
+                push('text', formatAtgDateTime(receipt.reprint_printed_at), {
                     size: 16,
                     align: 'center',
                     gap: 4,
@@ -742,13 +776,20 @@
         }
 
         function padBluetoothRow(left, right, width = 32) {
-            const leftText = normalizeBluetoothLine(left);
-            const rightText = normalizeBluetoothLine(right);
-            const space = Math.max(1, width - leftText.length - rightText.length);
+            let leftText = normalizeBluetoothLine(left);
+            let rightText = normalizeBluetoothLine(right);
 
-            if (leftText.length + rightText.length >= width) {
-                return leftText + '\n' + rightText.padStart(width, ' ');
+            if (rightText.length > width - 4) {
+                rightText = rightText.slice(0, width - 4);
             }
+
+            const maxLeftLength = Math.max(1, width - rightText.length - 1);
+
+            if (leftText.length > maxLeftLength) {
+                leftText = leftText.slice(0, maxLeftLength);
+            }
+
+            const space = Math.max(1, width - leftText.length - rightText.length);
 
             return leftText + ' '.repeat(space) + rightText;
         }
@@ -828,7 +869,7 @@
                 });
             }
 
-            line(centerBluetoothText(receipt.created_at || '-', widthChars));
+            line(centerBluetoothText(formatAtgDateTime(receipt.created_at), widthChars));
 
             if (receipt.is_void) {
                 line(centerBluetoothText('*** VOID ***', widthChars));
@@ -957,7 +998,7 @@
                 raw([ESC, 0x45, 0x01]);
                 line(centerBluetoothText('#REPRINT', widthChars));
                 raw([ESC, 0x45, 0x00]);
-                line(centerBluetoothText(receipt.reprint_printed_at || '', widthChars));
+                line(centerBluetoothText(formatAtgDateTime(receipt.reprint_printed_at), widthChars));
             }
 
             line('');

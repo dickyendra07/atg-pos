@@ -816,7 +816,499 @@
             }
         }
 
-    </style>
+    
+        /* LOGIN_TABLET_MOBILE_FIX_V2 */
+        @media (max-width: 1100px) and (min-width: 701px) {
+            html,
+            body {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
+            .page {
+                min-height: 100vh !important;
+                padding: 18px !important;
+                align-items: center !important;
+            }
+
+            .shell {
+                width: min(100%, 920px) !important;
+                max-width: 920px !important;
+                min-height: auto !important;
+                display: grid !important;
+                grid-template-columns: minmax(260px, 0.9fr) minmax(330px, 1.1fr) !important;
+                border-radius: 32px !important;
+                overflow: hidden !important;
+            }
+
+            .login-portal-cashier .shell {
+                grid-template-columns: minmax(330px, 1.1fr) minmax(260px, 0.9fr) !important;
+            }
+
+            .visual-side {
+                min-height: 640px !important;
+                max-height: none !important;
+                padding: 0 !important;
+            }
+
+            .visual-copy {
+                left: 26px !important;
+                right: 26px !important;
+                bottom: 28px !important;
+                max-width: 300px !important;
+            }
+
+            .visual-title {
+                font-size: 42px !important;
+                line-height: 0.98 !important;
+                margin-bottom: 14px !important;
+            }
+
+            .visual-subtitle {
+                font-size: 16px !important;
+                line-height: 1.7 !important;
+                max-width: 280px !important;
+            }
+
+            .brand-badge {
+                top: 24px !important;
+                left: 24px !important;
+                font-size: 12px !important;
+                padding: 10px 14px !important;
+            }
+
+            .form-side {
+                min-width: 0 !important;
+                padding: 42px 34px !important;
+                align-items: center !important;
+            }
+
+            .form-card {
+                width: 100% !important;
+                max-width: 390px !important;
+                min-width: 0 !important;
+            }
+
+            .top-row {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 14px !important;
+                margin-bottom: 26px !important;
+            }
+
+            .logo-mini {
+                min-width: 0 !important;
+            }
+
+            .logo-text {
+                font-size: 16px !important;
+                line-height: 1.1 !important;
+            }
+
+            .portal-switch {
+                width: 100% !important;
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 8px !important;
+                margin-top: 0 !important;
+                font-size: 13px !important;
+            }
+
+            .portal-switch a {
+                width: fit-content !important;
+                max-width: 100% !important;
+                min-height: 40px !important;
+                display: inline-flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                white-space: normal !important;
+                text-align: center !important;
+                padding: 9px 14px !important;
+            }
+
+            .form-title {
+                font-size: 46px !important;
+                line-height: 1.02 !important;
+                letter-spacing: -0.05em !important;
+                margin-bottom: 14px !important;
+            }
+
+            .form-subtitle {
+                font-size: 17px !important;
+                line-height: 1.75 !important;
+                margin-bottom: 28px !important;
+            }
+
+            .form-label {
+                font-size: 15px !important;
+            }
+
+            .form-input {
+                min-height: 58px !important;
+                font-size: 17px !important;
+                border-radius: 20px !important;
+            }
+
+            .password-toggle {
+                right: 12px !important;
+                min-height: 40px !important;
+                padding: 8px 13px !important;
+            }
+
+            .btn-login {
+                min-height: 62px !important;
+                border-radius: 22px !important;
+                font-size: 18px !important;
+            }
+
+            .footer-note {
+                font-size: 14px !important;
+                line-height: 1.7 !important;
+            }
+        }
+
+        @media (max-width: 700px) {
+            html,
+            body {
+                width: 100%;
+                max-width: 100%;
+                overflow-x: hidden;
+            }
+
+            .page {
+                padding: 12px !important;
+                align-items: flex-start !important;
+            }
+
+            .shell,
+            .login-portal-cashier .shell,
+            .login-portal-backoffice .shell {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-height: auto !important;
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                border-radius: 28px !important;
+                overflow: hidden !important;
+            }
+
+            .visual-side,
+            .login-portal-cashier .visual-side,
+            .login-portal-backoffice .visual-side {
+                order: 1 !important;
+                min-height: 230px !important;
+                max-height: 260px !important;
+            }
+
+            .form-side,
+            .login-portal-cashier .form-side,
+            .login-portal-backoffice .form-side {
+                order: 2 !important;
+                padding: 26px 22px 28px !important;
+            }
+
+            .form-card {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            .top-row {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 14px !important;
+                margin-bottom: 22px !important;
+            }
+
+            .portal-switch {
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                gap: 8px !important;
+                margin-top: 0 !important;
+            }
+
+            .portal-switch a {
+                width: fit-content !important;
+                max-width: 100% !important;
+                white-space: normal !important;
+            }
+
+            .visual-copy {
+                left: 22px !important;
+                right: 22px !important;
+                bottom: 22px !important;
+                max-width: 260px !important;
+            }
+
+            .visual-title {
+                font-size: 30px !important;
+                line-height: 1.02 !important;
+            }
+
+            .visual-subtitle {
+                font-size: 13px !important;
+                line-height: 1.55 !important;
+                max-width: 260px !important;
+            }
+
+            .brand-badge {
+                top: 18px !important;
+                left: 18px !important;
+                font-size: 11px !important;
+            }
+
+            .form-title {
+                font-size: 34px !important;
+                line-height: 1.04 !important;
+            }
+
+            .form-subtitle {
+                font-size: 15px !important;
+                line-height: 1.7 !important;
+            }
+
+            .form-input {
+                min-height: 56px !important;
+                font-size: 16px !important;
+                border-radius: 18px !important;
+            }
+
+            .btn-login {
+                min-height: 58px !important;
+                border-radius: 20px !important;
+                font-size: 17px !important;
+            }
+        }
+
+        @media (max-width: 420px) {
+            .visual-side,
+            .login-portal-cashier .visual-side,
+            .login-portal-backoffice .visual-side {
+                min-height: 190px !important;
+                max-height: 220px !important;
+            }
+
+            .visual-title {
+                font-size: 26px !important;
+            }
+
+            .visual-subtitle {
+                display: none !important;
+            }
+
+            .form-side {
+                padding: 22px 18px 24px !important;
+            }
+
+            .form-title {
+                font-size: 30px !important;
+            }
+        }
+
+
+        /* LOGIN_HERO_FINAL_POLISH_V3 */
+        @media (max-width: 1100px) {
+            .visual-side,
+            .login-portal-backoffice .visual-side,
+            .login-portal-cashier .visual-side {
+                background-position: center 58% !important;
+            }
+
+            .visual-side::after {
+                background:
+                    linear-gradient(180deg, rgba(17,24,39,0.20) 0%, rgba(17,24,39,0.38) 100%),
+                    linear-gradient(135deg, rgba(232,106,58,0.10), rgba(17,24,39,0.08)) !important;
+            }
+
+            .visual-copy {
+                left: 34px !important;
+                right: 34px !important;
+                bottom: 34px !important;
+                max-width: 520px !important;
+            }
+
+            .visual-title {
+                font-size: 38px !important;
+                line-height: 1.02 !important;
+                letter-spacing: -0.045em !important;
+                margin-bottom: 12px !important;
+                text-shadow: 0 5px 24px rgba(0,0,0,0.48) !important;
+            }
+
+            .visual-subtitle {
+                font-size: 15px !important;
+                line-height: 1.65 !important;
+                max-width: 440px !important;
+                text-shadow: 0 4px 18px rgba(0,0,0,0.48) !important;
+            }
+
+            .brand-badge {
+                top: 22px !important;
+                left: 22px !important;
+                transform: scale(0.92);
+                transform-origin: top left;
+            }
+        }
+
+        @media (max-width: 700px) {
+            .visual-side,
+            .login-portal-backoffice .visual-side,
+            .login-portal-cashier .visual-side {
+                min-height: 230px !important;
+                max-height: 240px !important;
+                background-position: center 55% !important;
+            }
+
+            .visual-copy {
+                left: 28px !important;
+                right: 28px !important;
+                bottom: 28px !important;
+                max-width: 420px !important;
+            }
+
+            .visual-title {
+                font-size: 34px !important;
+                line-height: 1.02 !important;
+                margin-bottom: 10px !important;
+            }
+
+            .visual-subtitle {
+                font-size: 14px !important;
+                line-height: 1.55 !important;
+                max-width: 390px !important;
+            }
+
+            .form-side {
+                padding-top: 32px !important;
+            }
+
+            .top-row {
+                margin-bottom: 24px !important;
+            }
+
+            .login-chip {
+                width: fit-content !important;
+                max-width: 100% !important;
+            }
+
+            .form-title {
+                font-size: 40px !important;
+                line-height: 1.02 !important;
+                margin-bottom: 14px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .visual-side,
+            .login-portal-backoffice .visual-side,
+            .login-portal-cashier .visual-side {
+                min-height: 205px !important;
+                max-height: 215px !important;
+            }
+
+            .visual-copy {
+                left: 22px !important;
+                right: 22px !important;
+                bottom: 22px !important;
+            }
+
+            .visual-title {
+                font-size: 28px !important;
+            }
+
+            .visual-subtitle {
+                font-size: 12px !important;
+                line-height: 1.45 !important;
+                max-width: 310px !important;
+            }
+
+            .brand-badge {
+                transform: scale(0.82);
+            }
+
+            .form-title {
+                font-size: 34px !important;
+            }
+        }
+
+
+        /* LOGIN_MOBILE_REMOVE_HERO_TEXT_V4 */
+        @media (max-width: 1100px) {
+            .visual-side,
+            .login-portal-backoffice .visual-side,
+            .login-portal-cashier .visual-side {
+                min-height: 220px !important;
+                max-height: 240px !important;
+                background-position: center 58% !important;
+            }
+
+            .visual-copy {
+                display: none !important;
+            }
+
+            .brand-badge {
+                top: 18px !important;
+                left: 18px !important;
+                transform: none !important;
+                background: rgba(17, 24, 39, 0.48) !important;
+                border-color: rgba(255,255,255,0.24) !important;
+                text-shadow: none !important;
+            }
+
+            .visual-side::before {
+                content: "Back Office";
+                position: absolute;
+                left: 22px;
+                bottom: 22px;
+                z-index: 3;
+                color: #ffffff;
+                font-size: 26px;
+                line-height: 1;
+                font-weight: 900;
+                letter-spacing: -0.04em;
+                text-shadow: 0 5px 22px rgba(0,0,0,0.46);
+            }
+
+            .login-portal-cashier .visual-side::before {
+                content: "Cashier";
+            }
+
+            .form-side {
+                padding-top: 30px !important;
+            }
+
+            .form-title {
+                margin-top: 0 !important;
+            }
+        }
+
+        @media (max-width: 560px) {
+            .visual-side,
+            .login-portal-backoffice .visual-side,
+            .login-portal-cashier .visual-side {
+                min-height: 180px !important;
+                max-height: 195px !important;
+            }
+
+            .visual-side::before {
+                left: 18px;
+                bottom: 18px;
+                font-size: 24px;
+            }
+
+            .brand-badge {
+                top: 14px !important;
+                left: 14px !important;
+                padding: 8px 11px !important;
+                font-size: 10px !important;
+            }
+
+            .form-side {
+                padding: 24px 20px 26px !important;
+            }
+        }
+
+</style>
     @if(($portal ?? 'backoffice') === 'cashier')
         <link rel="manifest" href="{{ asset('manifest-cashier.json') }}">
         <meta name="theme-color" content="#e86a3a">
