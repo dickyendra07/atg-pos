@@ -3609,7 +3609,100 @@
             font-size: 14px !important;
         }
 
-    </style>
+    
+        /* CHECKOUT_SUCCESS_POPUP_DIRECT_PRINT */
+        .checkout-success-box {
+            position: fixed !important;
+            left: 50% !important;
+            top: 50% !important;
+            transform: translate(-50%, -50%) !important;
+            z-index: 9999 !important;
+            width: min(520px, calc(100vw - 28px)) !important;
+            max-height: calc(100vh - 36px) !important;
+            overflow: auto !important;
+            border-radius: 30px !important;
+            padding: 24px !important;
+            background:
+                radial-gradient(circle at top left, rgba(232,106,58,0.12), transparent 38%),
+                #ffffff !important;
+            border: 1px solid rgba(232,106,58,0.22) !important;
+            box-shadow: 0 32px 90px rgba(15, 23, 42, 0.30) !important;
+        }
+
+        .checkout-success-box::before {
+            content: "";
+            position: fixed;
+            inset: -100vh -100vw;
+            background: rgba(15, 23, 42, 0.52);
+            backdrop-filter: blur(7px);
+            z-index: -1;
+        }
+
+        .checkout-success-title {
+            font-size: 24px !important;
+            line-height: 1.15 !important;
+            margin-bottom: 16px !important;
+        }
+
+        .checkout-success-meta {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+        }
+
+        .checkout-success-item {
+            border-radius: 18px !important;
+            padding: 14px !important;
+            background: #f8fafc !important;
+            border: 1px solid #e5e7eb !important;
+        }
+
+        .checkout-success-actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 12px !important;
+            margin-top: 18px !important;
+        }
+
+        .checkout-success-actions .btn,
+        .checkout-success-actions button {
+            width: 100% !important;
+            min-height: 54px !important;
+            border-radius: 18px !important;
+            font-weight: 900 !important;
+            border: 0 !important;
+            cursor: pointer !important;
+            text-decoration: none !important;
+        }
+
+        #checkout-direct-receipt-print-btn {
+            background: linear-gradient(135deg, #15803d 0%, #166534 100%) !important;
+            color: #ffffff !important;
+        }
+
+        #checkout-direct-receipt-print-btn:disabled {
+            opacity: 0.6 !important;
+            cursor: wait !important;
+        }
+
+        @media (max-width: 640px) {
+            .checkout-success-box {
+                width: calc(100vw - 22px) !important;
+                padding: 20px !important;
+                border-radius: 26px !important;
+            }
+
+            .checkout-success-meta,
+            .checkout-success-actions {
+                grid-template-columns: 1fr !important;
+            }
+
+            .checkout-success-title {
+                font-size: 22px !important;
+            }
+        }
+
+</style>
 </head>
 <body>
 @php
@@ -5734,6 +5827,406 @@
             section.classList.toggle('collapsed');
         });
     });
+
+
+
+    /* CHECKOUT_DIRECT_BLUETOOTH_PRINT */
+    let cashierBluetoothDevice = null;
+    let cashierBluetoothWriteCharacteristic = null;
+
+    function cashierPrintStatus(message, type = 'info') {
+        if (typeof showAlert === 'function') {
+            showAlert(type, message);
+        }
+    }
+
+    function cashierBytesFromText(value) {
+        return new TextEncoder().encode(String(value ?? ''));
+    }
+
+    function cashierMergeChunks(chunks) {
+        const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+        const output = new Uint8Array(total);
+        let offset = 0;
+
+        chunks.forEach((chunk) => {
+            output.set(chunk, offset);
+            offset += chunk.length;
+        });
+
+        return output;
+    }
+
+    function cashierCleanLine(value) {
+        return String(value ?? '').replace(/\s+/g, ' ').trim();
+    }
+
+    function cashierMoney(value) {
+        return new Intl.NumberFormat('id-ID', {
+            maximumFractionDigits: 0
+        }).format(Number(value || 0));
+    }
+
+    function cashierFormatDateTime(value) {
+        if (!value) {
+            return '-';
+        }
+
+        const raw = String(value).trim();
+
+        const idDateMatch = raw.match(/^(\d{2})-(\d{2})-(\d{4})\s+(\d{2}):(\d{2})/);
+        if (idDateMatch) {
+            return `${idDateMatch[1]}-${idDateMatch[2]}-${idDateMatch[3]} ${idDateMatch[4]}:${idDateMatch[5]}`;
+        }
+
+        const dbDateMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})/);
+        if (dbDateMatch) {
+            return `${dbDateMatch[3]}-${dbDateMatch[2]}-${dbDateMatch[1]} ${dbDateMatch[4]}:${dbDateMatch[5]}`;
+        }
+
+        const date = new Date(raw.includes('T') ? raw : raw.replace(' ', 'T'));
+        if (!Number.isNaN(date.getTime())) {
+            const dd = String(date.getDate()).padStart(2, '0');
+            const mm = String(date.getMonth() + 1).padStart(2, '0');
+            const yyyy = date.getFullYear();
+            const hh = String(date.getHours()).padStart(2, '0');
+            const min = String(date.getMinutes()).padStart(2, '0');
+
+            return `${dd}-${mm}-${yyyy} ${hh}:${min}`;
+        }
+
+        return raw;
+    }
+
+    function cashierPadRow(left, right, width = 32) {
+        let leftText = cashierCleanLine(left);
+        let rightText = cashierCleanLine(right);
+
+        if (rightText.length > width - 4) {
+            rightText = rightText.slice(0, width - 4);
+        }
+
+        const maxLeftLength = Math.max(1, width - rightText.length - 1);
+
+        if (leftText.length > maxLeftLength) {
+            leftText = leftText.slice(0, maxLeftLength);
+        }
+
+        const space = Math.max(1, width - leftText.length - rightText.length);
+
+        return leftText + ' '.repeat(space) + rightText;
+    }
+
+    function cashierWrapText(value, width = 32) {
+        const words = cashierCleanLine(value).split(' ').filter(Boolean);
+        const lines = [];
+        let current = '';
+
+        words.forEach((word) => {
+            const next = current ? current + ' ' + word : word;
+
+            if (next.length <= width) {
+                current = next;
+                return;
+            }
+
+            if (current) {
+                lines.push(current);
+                current = word;
+                return;
+            }
+
+            lines.push(word.slice(0, width));
+        });
+
+        if (current) {
+            lines.push(current);
+        }
+
+        return lines.length ? lines : [''];
+    }
+
+    async function cashierFindWritableCharacteristic(server) {
+        const services = await server.getPrimaryServices();
+
+        for (const service of services) {
+            let characteristics = [];
+
+            try {
+                characteristics = await service.getCharacteristics();
+            } catch (error) {
+                continue;
+            }
+
+            for (const characteristic of characteristics) {
+                if (characteristic.properties.write || characteristic.properties.writeWithoutResponse) {
+                    return characteristic;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    async function cashierConnectBluetoothPrinter() {
+        if (!navigator.bluetooth) {
+            throw new Error('Browser tidak support Web Bluetooth.');
+        }
+
+        cashierPrintStatus('Mencari printer Bluetooth...', 'info');
+
+        cashierBluetoothDevice = await navigator.bluetooth.requestDevice({
+            acceptAllDevices: true,
+            optionalServices: [
+                0x1800,
+                0x1801,
+                '0000ffe0-0000-1000-8000-00805f9b34fb',
+                '0000fff0-0000-1000-8000-00805f9b34fb',
+                '0000ff00-0000-1000-8000-00805f9b34fb',
+                '49535343-fe7d-4ae5-8fa9-9fafd205e455',
+                'e7810a71-73ae-499d-8c15-faa9aef0c3f2'
+            ]
+        });
+
+        cashierPrintStatus('Menghubungkan ke ' + (cashierBluetoothDevice.name || 'printer') + '...', 'info');
+
+        const server = await cashierBluetoothDevice.gatt.connect();
+        cashierBluetoothWriteCharacteristic = await cashierFindWritableCharacteristic(server);
+
+        if (!cashierBluetoothWriteCharacteristic) {
+            throw new Error('Printer connect, tapi writable characteristic tidak ditemukan.');
+        }
+
+        return cashierBluetoothWriteCharacteristic;
+    }
+
+    async function cashierWriteBluetoothInChunks(characteristic, data) {
+        const chunkSize = 180;
+
+        for (let i = 0; i < data.length; i += chunkSize) {
+            const chunk = data.slice(i, i + chunkSize);
+
+            if (characteristic.writeValueWithoutResponse) {
+                await characteristic.writeValueWithoutResponse(chunk);
+            } else {
+                await characteristic.writeValue(chunk);
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 40));
+        }
+    }
+
+    async function fetchReceiptPayload(receiptUrl) {
+        const response = await fetch(receiptUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            credentials: 'same-origin',
+        });
+
+        if (!response.ok) {
+            throw new Error('Gagal mengambil data receipt.');
+        }
+
+        const html = await response.text();
+        const documentFromReceipt = new DOMParser().parseFromString(html, 'text/html');
+        const payloadScript = documentFromReceipt.getElementById('receipt-payload-json');
+
+        if (!payloadScript) {
+            throw new Error('Payload receipt tidak ditemukan.');
+        }
+
+        return JSON.parse(payloadScript.textContent || '{}');
+    }
+
+    function buildCashierReceiptEscposBytes(receipt) {
+        const ESC = 0x1B;
+        const GS = 0x1D;
+        const widthChars = 32;
+        const chunks = [];
+
+        function raw(bytes) {
+            chunks.push(new Uint8Array(bytes));
+        }
+
+        function line(value = '') {
+            chunks.push(cashierBytesFromText(String(value) + '\n'));
+        }
+
+        function wrapped(value = '') {
+            cashierWrapText(value, widthChars).forEach(line);
+        }
+
+        function divider() {
+            line('-'.repeat(widthChars));
+        }
+
+        function row(left, right) {
+            line(cashierPadRow(left, right, widthChars));
+        }
+
+        raw([ESC, 0x40]);
+        raw([ESC, 0x61, 0x01]);
+
+        cashierWrapText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach(line);
+
+        if (receipt.address) {
+            cashierWrapText(receipt.address, widthChars).forEach(line);
+        }
+
+        line(cashierFormatDateTime(receipt.created_at));
+
+        if (receipt.is_void) {
+            line('*** VOID ***');
+        }
+
+        raw([ESC, 0x61, 0x00]);
+        divider();
+
+        row('No', receipt.transaction_number || '-');
+        row('Cashier', receipt.cashier_name || '-');
+        row('Payment', receipt.payment_method || '-');
+        row('Status', receipt.status || '-');
+
+        if (receipt.member_name || receipt.member_phone) {
+            row('Member', receipt.member_name || '-');
+
+            if (receipt.member_phone) {
+                row('Phone', receipt.member_phone);
+            }
+        }
+
+        divider();
+
+        if (Array.isArray(receipt.items) && receipt.items.length) {
+            let lastPrintedPromoName = null;
+
+            receipt.items.forEach((item) => {
+                const itemPromoDiscount = Number(item.promo_discount_amount || 0);
+                const itemFinalTotal = Number(item.final_line_total || item.line_total || 0);
+                const itemPromoName = item.promo_name ? String(item.promo_name).trim() : '';
+
+                if (itemPromoName && itemPromoDiscount > 0 && itemPromoName !== lastPrintedPromoName) {
+                    wrapped('PROMO ' + itemPromoName);
+                    lastPrintedPromoName = itemPromoName;
+                }
+
+                const productName = item.product_name || '-';
+                const variantName = item.variant_name ? String(item.variant_name).trim() : '';
+                const productNameWithVariant = variantName ? productName + ' ' + variantName : productName;
+
+                cashierWrapText(String(cashierMoney(item.qty)) + ' x ' + productNameWithVariant, widthChars - 10)
+                    .forEach((value, index) => {
+                        if (index === 0) {
+                            line(cashierPadRow(value, cashierMoney(item.line_total), widthChars));
+                        } else {
+                            line(value);
+                        }
+                    });
+
+                if (Array.isArray(item.modifiers) && item.modifiers.length) {
+                    item.modifiers.forEach((modifier) => {
+                        cashierWrapText('  ' + modifier, widthChars).forEach(line);
+                    });
+                }
+
+                if (itemPromoDiscount > 0) {
+                    row('Promo Discount', '-' + cashierMoney(itemPromoDiscount));
+                    row('Subtotal Item', cashierMoney(itemFinalTotal));
+                }
+            });
+        } else {
+            raw([ESC, 0x61, 0x01]);
+            line('Tidak ada item.');
+            raw([ESC, 0x61, 0x00]);
+        }
+
+        divider();
+
+        const itemPromoDiscountTotal = Array.isArray(receipt.items)
+            ? receipt.items.reduce((total, item) => total + Number(item.promo_discount_amount || 0), 0)
+            : 0;
+
+        const subtotalAfterItemPromo = Array.isArray(receipt.items)
+            ? receipt.items.reduce((total, item) => total + Number(item.final_line_total || item.line_total || 0), 0)
+            : Number(receipt.subtotal || 0);
+
+        const globalDiscountAmount = Math.max(0, Number(receipt.discount_amount || 0) - itemPromoDiscountTotal);
+
+        row('Subtotal', cashierMoney(subtotalAfterItemPromo));
+
+        if (globalDiscountAmount > 0) {
+            row('Discount', '-' + cashierMoney(globalDiscountAmount));
+        }
+
+        if (Number(receipt.tax_amount || 0) > 0) {
+            row('Tax', cashierMoney(receipt.tax_amount));
+        }
+
+        divider();
+        raw([ESC, 0x45, 0x01]);
+        row('TOTAL', cashierMoney(receipt.grand_total));
+        raw([ESC, 0x45, 0x00]);
+        divider();
+
+        row('Paid', cashierMoney(receipt.amount_paid));
+        row('Change', cashierMoney(receipt.change_amount));
+
+        divider();
+        raw([ESC, 0x61, 0x01]);
+        line('Terima kasih');
+        cashierWrapText('Simpan struk ini sebagai bukti transaksi', widthChars).forEach(line);
+
+        line('');
+        line('');
+        line('');
+        raw([GS, 0x56, 0x42, 0x00]);
+
+        return cashierMergeChunks(chunks);
+    }
+
+    async function directPrintReceiptFromCashier(receiptUrl) {
+        if (!receiptUrl) {
+            throw new Error('URL receipt tidak tersedia.');
+        }
+
+        if (!cashierBluetoothWriteCharacteristic || !cashierBluetoothDevice?.gatt?.connected) {
+            await cashierConnectBluetoothPrinter();
+        }
+
+        cashierPrintStatus('Mengambil data receipt...', 'info');
+        const receiptPayload = await fetchReceiptPayload(receiptUrl);
+
+        cashierPrintStatus('Mengirim receipt ke printer...', 'info');
+        await cashierWriteBluetoothInChunks(
+            cashierBluetoothWriteCharacteristic,
+            buildCashierReceiptEscposBytes(receiptPayload)
+        );
+
+        cashierPrintStatus('Receipt berhasil dikirim ke printer.', 'success');
+    }
+
+    const checkoutDirectReceiptPrintButton = document.getElementById('checkout-direct-receipt-print-btn');
+
+    if (checkoutDirectReceiptPrintButton) {
+        checkoutDirectReceiptPrintButton.addEventListener('click', async function () {
+            const button = this;
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = 'Printing...';
+
+            try {
+                await directPrintReceiptFromCashier(button.dataset.receiptUrl);
+            } catch (error) {
+                cashierPrintStatus(error.message || 'Gagal print receipt.', 'error');
+            } finally {
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        });
+    }
 
 
     document.querySelectorAll('.cashier-reprint-form').forEach((form) => {

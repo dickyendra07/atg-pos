@@ -296,6 +296,8 @@
         <img id="receipt-image" alt="Thermal Receipt Preview">
         <canvas id="receipt-canvas"></canvas>
     </div>
+
+    <script type="application/json" id="receipt-payload-json">@json($receiptPayload)</script>
 </div>
 
 <script>
