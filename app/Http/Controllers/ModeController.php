@@ -14,12 +14,22 @@ class ModeController extends Controller
             return redirect()->route('backoffice.login');
         }
 
-        if ($user->canAccessCashier()) {
+        $portal = session('auth_portal');
+
+        if ($portal === 'backoffice' && $user->canAccessBackofficeDashboard()) {
+            return redirect()->route('backoffice.index');
+        }
+
+        if ($portal === 'cashier' && $user->canAccessCashier()) {
             return redirect()->route('cashier.index');
         }
 
         if ($user->canAccessBackofficeDashboard()) {
             return redirect()->route('backoffice.index');
+        }
+
+        if ($user->canAccessCashier()) {
+            return redirect()->route('cashier.index');
         }
 
         Auth::logout();

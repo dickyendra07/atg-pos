@@ -105,8 +105,9 @@ class LoginController extends Controller
         }
 
         session()->forget('cashier_outlet_id');
+        session()->forget('url.intended');
 
-        return redirect()->intended(route('backoffice.index'));
+        return redirect()->route('backoffice.index');
     }
 
     protected function rejectLogin(Request $request, string $message)

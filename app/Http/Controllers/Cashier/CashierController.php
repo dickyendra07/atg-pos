@@ -16,6 +16,10 @@ class CashierController extends Controller
 
     public function selectOutletForm()
     {
+        if (session('auth_portal') !== 'cashier') {
+            return redirect()->route('backoffice.index');
+        }
+
         $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets']);
 
         if (! $user->canAccessCashier()) {
@@ -49,6 +53,10 @@ class CashierController extends Controller
 
     public function selectOutletStore(Request $request)
     {
+        if (session('auth_portal') !== 'cashier') {
+            return redirect()->route('backoffice.index');
+        }
+
         $user = Auth::user()->load(['role', 'roles', 'outlet', 'outlets']);
 
         if (! $user->canAccessCashier()) {
