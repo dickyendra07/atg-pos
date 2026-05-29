@@ -96,7 +96,7 @@ class LoginController extends Controller
             if ($outlets->count() === 1) {
                 session(['cashier_outlet_id' => $outlets->first()->id]);
 
-                return redirect()->intended(route('cashier.index'));
+                return redirect()->route('cashier.index');
             }
 
             session()->forget('cashier_outlet_id');
