@@ -226,6 +226,27 @@ class RecipeViewController extends Controller
             ->with('success', 'Recipe item berhasil ditambahkan.');
     }
 
+    public function updateItem(Request $request, Recipe $recipe, RecipeItem $item)
+    {
+        $this->authorizeAccess();
+
+        if ((int) $item->recipe_id !== (int) $recipe->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'qty' => 'required|numeric|min:0.01',
+        ]);
+
+        $item->update([
+            'qty' => $validated['qty'],
+        ]);
+
+        return redirect()
+            ->route('backoffice.recipes.edit', $recipe->id)
+            ->with('success', 'Qty recipe item berhasil diupdate.');
+    }
+
     public function destroyItem(Recipe $recipe, RecipeItem $item)
     {
         $this->authorizeAccess();

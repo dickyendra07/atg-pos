@@ -106,6 +106,7 @@ Route::prefix('backoffice')->name('backoffice.')->group(function () {
     Route::put('/recipes/{recipe}', [RecipeViewController::class, 'update'])->name('recipes.update');
     Route::delete('/recipes/{recipe}', [RecipeViewController::class, 'destroy'])->name('recipes.destroy');
     Route::post('/recipes/{recipe}/items', [RecipeViewController::class, 'storeItem'])->name('recipes.items.store');
+    Route::put('/recipes/{recipe}/items/{item}', [RecipeViewController::class, 'updateItem'])->name('recipes.items.update');
     Route::delete('/recipes/{recipe}/items/{item}', [RecipeViewController::class, 'destroyItem'])->name('recipes.items.destroy');
 
     Route::get('/production-recipes', [IngredientProductionRecipeController::class, 'index'])->name('production-recipes.index');
