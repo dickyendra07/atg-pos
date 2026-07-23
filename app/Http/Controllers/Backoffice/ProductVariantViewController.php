@@ -94,7 +94,7 @@ class ProductVariantViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        $variants = ProductVariant::with(['product.brand', 'product.category', 'outlet'])
+        $variants = ProductVariant::with(['product.brand', 'product.category', 'outlet', 'outlets'])
             ->orderBy('product_id')
             ->orderBy('name')
             ->get();
@@ -211,7 +211,7 @@ class ProductVariantViewController extends Controller
 
         DB::transaction(function () use ($validated, $rows) {
             foreach ($rows as $row) {
-                ProductVariant::create([
+                $variant = ProductVariant::create([
                     'product_id' => $validated['product_id'],
                     'outlet_id' => $row['outlet_id'],
                     'name' => $row['name'],
@@ -221,6 +221,8 @@ class ProductVariantViewController extends Controller
                     'price_delivery' => $row['price_delivery'],
                     'is_active' => $row['is_active'],
                 ]);
+
+                $variant->outlets()->sync($row['outlet_ids']);
             }
         });
 
@@ -240,7 +242,7 @@ class ProductVariantViewController extends Controller
 
         $outlets = Outlet::orderBy('name')->get();
 
-        $variant->load(['product.brand', 'product.category', 'outlet']);
+        $variant->load(['product.brand', 'product.category', 'outlet', 'outlets']);
 
         $productVariants = ProductVariant::with(['product.brand', 'product.category', 'outlet'])
             ->where('product_id', $variant->product_id)
@@ -389,8 +391,12 @@ class ProductVariantViewController extends Controller
                         'price_delivery' => $row['price_delivery'],
                         'is_active' => $row['is_active'],
                     ]);
+
+                    $existingGroup[$row['id']]
+                        ->outlets()
+                        ->sync($row['outlet_ids']);
                 } else {
-                    ProductVariant::create([
+                    $newVariant = ProductVariant::create([
                         'product_id' => $validated['product_id'],
                         'outlet_id' => $row['outlet_id'],
                         'name' => $row['name'],
@@ -400,6 +406,8 @@ class ProductVariantViewController extends Controller
                         'price_delivery' => $row['price_delivery'],
                         'is_active' => $row['is_active'],
                     ]);
+
+                    $newVariant->outlets()->sync($row['outlet_ids']);
                 }
             }
         });

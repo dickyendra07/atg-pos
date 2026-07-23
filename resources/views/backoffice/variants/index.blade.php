@@ -585,7 +585,16 @@
                                 <div class="group-meta group-meta-inline">
                                     <span>Brand: {{ $group['product']->brand->name ?? '-' }}</span>
                                     <span>Category: {{ $group['product']->category->name ?? '-' }}</span>
-                                    <span>Outlet: {{ $group['variants']->pluck('outlet.name')->filter()->unique()->implode(', ') ?: 'Semua Outlet' }}</span>
+                                    <span>
+    Outlet:
+    {{
+        $group['variants']
+            ->flatMap(fn ($variant) => $variant->outlets->pluck('name'))
+            ->filter()
+            ->unique()
+            ->implode(', ') ?: 'Semua Outlet'
+    }}
+</span>
                                     <span>Total Variant: {{ $group['variants']->count() }}</span>
                                     <span>Active: {{ $group['active_count'] }}</span>
                                 </div>
@@ -617,7 +626,15 @@
                                 <tbody>
                                     @foreach($group['variants'] as $variant)
                                         <tr>
-                                            <td>{{ $variant->outlet->name ?? 'Semua Outlet' }}</td>
+                                            <td>
+    {{
+        $variant->outlets
+            ->pluck('name')
+            ->filter()
+            ->unique()
+            ->implode(', ') ?: 'Semua Outlet'
+    }}
+</td>
                                             <td>{{ $variant->name }}</td>
                                             <td class="price-text">
                                                 Rp {{ number_format((float) ($variant->price_dine_in ?? $variant->price ?? 0), 0, ',', '.') }}
