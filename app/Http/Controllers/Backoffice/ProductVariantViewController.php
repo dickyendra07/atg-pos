@@ -468,7 +468,7 @@ class ProductVariantViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $filename = 'variants_export_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'pos_product_master_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -476,30 +476,53 @@ class ProductVariantViewController extends Controller
         ];
 
         return response()->stream(function () {
+
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, ['product_code', 'product_name', 'outlet_code', 'outlet_name', 'name', 'code', 'price_dine_in', 'price_delivery', 'is_active']);
+            fputcsv($handle, [
+                'no',
+                'brand',
+                'category',
+                'product_code',
+                'product_name',
+                'variant_name',
+                'variant_code',
+                'price',
+                'delivery_price',
+                'status',
+            ]);
 
-            ProductVariant::with(['product', 'outlet'])
+            $no = 1;
+
+            ProductVariant::with([
+                'product.brand',
+                'product.category',
+            ])
                 ->orderBy('product_id')
                 ->orderBy('name')
-                ->chunk(200, function ($variants) use ($handle) {
+                ->chunk(200, function ($variants) use ($handle, &$no) {
+
                     foreach ($variants as $variant) {
+
                         fputcsv($handle, [
-                            $variant->product->code ?? '',
-                            $variant->product->name ?? '',
-                            $variant->outlet->code ?? '',
-                            $variant->outlet->name ?? 'Semua Outlet',
+                            $no++,
+                            $variant->product?->brand?->name ?? '',
+                            $variant->product?->category?->name ?? '',
+                            $variant->product?->code ?? '',
+                            $variant->product?->name ?? '',
                             $variant->name,
                             $variant->code,
                             (float) ($variant->price_dine_in ?? $variant->price ?? 0),
                             (float) ($variant->price_delivery ?? $variant->price ?? 0),
-                            $variant->is_active ? '1' : '0',
+                            $variant->is_active ? 'Aktif' : 'Non Aktif',
                         ]);
+
                     }
+
                 });
 
             fclose($handle);
+
         }, 200, $headers);
     }
 

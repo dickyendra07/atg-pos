@@ -280,7 +280,7 @@ class RecipeViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $filename = 'recipes_export_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'pos_recipe_master_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -288,62 +288,54 @@ class RecipeViewController extends Controller
         ];
 
         return response()->stream(function () {
+
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, [
-                'recipe_name',
+                'no',
+                'product_code',
                 'product_name',
-                'variant_name',
                 'variant_code',
+                'variant_name',
+                'ingredient_code',
                 'ingredient_name',
-                'ingredient_category',
-                'ingredient_type',
                 'qty',
                 'unit',
-                'is_active',
             ]);
+
+            $no = 1;
 
             Recipe::with([
                 'variant.product',
-                'items.ingredient.category',
+                'items.ingredient',
             ])
                 ->orderBy('name')
-                ->chunk(200, function ($recipes) use ($handle) {
+                ->chunk(200, function ($recipes) use ($handle, &$no) {
+
                     foreach ($recipes as $recipe) {
-                        if ($recipe->items->count() === 0) {
-                            fputcsv($handle, [
-                                $recipe->name,
-                                $recipe->variant->product->name ?? '',
-                                $recipe->variant->name ?? '',
-                                $recipe->variant->code ?? '',
-                                '',
-                                '',
-                                '',
-                                '',
-                                '',
-                                $recipe->is_active ? '1' : '0',
-                            ]);
-                            continue;
-                        }
 
                         foreach ($recipe->items as $item) {
+
                             fputcsv($handle, [
-                                $recipe->name,
-                                $recipe->variant->product->name ?? '',
-                                $recipe->variant->name ?? '',
-                                $recipe->variant->code ?? '',
-                                $item->ingredient->name ?? '',
-                                $item->ingredient->category->name ?? '',
-                                $item->ingredient?->ingredientTypeLabel() ?? '',
+                                $no++,
+                                $recipe->variant?->product?->code ?? '',
+                                $recipe->variant?->product?->name ?? '',
+                                $recipe->variant?->code ?? '',
+                                $recipe->variant?->name ?? '',
+                                $item->ingredient?->code ?? '',
+                                $item->ingredient?->name ?? '',
                                 (float) $item->qty,
-                                $item->unit ?? $item->ingredient->unit ?? '',
-                                $recipe->is_active ? '1' : '0',
+                                $item->unit ?? $item->ingredient?->unit ?? '',
                             ]);
+
                         }
+
                     }
+
                 });
 
             fclose($handle);
+
         }, 200, $headers);
     }
 
