@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ingredient extends Model
@@ -79,5 +80,13 @@ class Ingredient extends Model
     public function productionRecipeItems(): HasMany
     {
         return $this->hasMany(IngredientProductionRecipeItem::class, 'input_ingredient_id');
+    }
+
+    public function outlets(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Outlet::class,
+            'ingredient_outlet'
+        )->withTimestamps();
     }
 }

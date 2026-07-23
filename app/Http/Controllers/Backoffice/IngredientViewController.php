@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\IngredientCategory;
+use App\Models\Outlet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -127,10 +128,12 @@ class IngredientViewController extends Controller
         $user = $this->authorizeAccess();
 
         $categories = IngredientCategory::orderBy('name')->get();
+        $outlets = Outlet::orderBy('name')->get();
 
         return view('backoffice.ingredients.create', [
             'user' => $user,
             'categories' => $categories,
+            'outlets' => $outlets,
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
         ]);
     }
@@ -147,18 +150,28 @@ class IngredientViewController extends Controller
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
+            'outlet_ids' => 'nullable|array',
+            'outlet_ids.*' => 'exists:outlets,id',
         ]);
 
-        Ingredient::create([
-            'ingredient_category_id' => $validated['ingredient_category_id'],
-            'code' => $this->makeIngredientCode($validated['name']),
-            'name' => $validated['name'],
-            'unit' => $validated['unit'],
-            'ingredient_type' => $validated['ingredient_type'],
-            'minimum_stock' => $validated['minimum_stock'],
-            'cost_per_unit' => $validated['cost_per_unit'],
-            'is_active' => $validated['is_active'],
-        ]);
+        DB::transaction(function () use ($validated) {
+
+            $ingredient = Ingredient::create([
+                'ingredient_category_id' => $validated['ingredient_category_id'],
+                'code' => $this->makeIngredientCode($validated['name']),
+                'name' => $validated['name'],
+                'unit' => $validated['unit'],
+                'ingredient_type' => $validated['ingredient_type'],
+                'minimum_stock' => $validated['minimum_stock'],
+                'cost_per_unit' => $validated['cost_per_unit'],
+                'is_active' => $validated['is_active'],
+            ]);
+
+            if (!empty($validated['outlet_ids'])) {
+                $ingredient->outlets()->sync($validated['outlet_ids']);
+            }
+
+        });
 
         return redirect()
             ->route('backoffice.ingredients.index')
@@ -170,11 +183,15 @@ class IngredientViewController extends Controller
         $user = $this->authorizeAccess();
 
         $categories = IngredientCategory::orderBy('name')->get();
+        $outlets = Outlet::orderBy('name')->get();
+
+        $ingredient->load('outlets');
 
         return view('backoffice.ingredients.edit', [
             'user' => $user,
             'ingredient' => $ingredient,
             'categories' => $categories,
+            'outlets' => $outlets,
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
         ]);
     }
@@ -191,6 +208,8 @@ class IngredientViewController extends Controller
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
+            'outlet_ids' => 'nullable|array',
+            'outlet_ids.*' => 'exists:outlets,id',
         ]);
 
         $newCode = $ingredient->code;
@@ -209,6 +228,10 @@ class IngredientViewController extends Controller
             'cost_per_unit' => $validated['cost_per_unit'],
             'is_active' => $validated['is_active'],
         ]);
+
+        $ingredient->outlets()->sync(
+            $validated['outlet_ids'] ?? []
+        );
 
         return redirect()
             ->route('backoffice.ingredients.index')
