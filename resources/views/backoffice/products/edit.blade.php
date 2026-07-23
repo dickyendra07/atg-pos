@@ -1,203 +1,431 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Edit Product - Back Office ATG POS</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #f4f6fb;
-            color: #222;
-        }
+@extends('backoffice.layouts.app')
 
-        .wrap {
-            max-width: 900px;
-            margin: 40px auto;
-            padding: 0 20px;
-        }
+@php
+    $pageTitle = 'Edit Product - Back Office ATG POS';
+@endphp
 
-        .topbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 24px;
-        }
+@section('content')
 
-        .title {
-            font-size: 28px;
-            font-weight: bold;
-        }
+<style>
+    .product-shell {
+        display:grid;
+        gap:22px;
+    }
 
-        .btn {
-            text-decoration: none;
-            background: #111827;
-            color: white;
-            padding: 10px 16px;
-            border-radius: 10px;
-            font-weight: bold;
-            display: inline-block;
-            border: 0;
-            cursor: pointer;
-        }
+    .page-header {
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:16px;
+        flex-wrap:wrap;
+    }
 
-        .btn-success {
-            background: #166534;
-        }
+    .page-title {
+        margin:0;
+        font-size:38px;
+        font-weight:800;
+        letter-spacing:-0.04em;
+        color:#111827;
+    }
 
-        .card {
-            background: white;
-            border-radius: 18px;
-            box-shadow: 0 12px 30px rgba(0,0,0,0.06);
-            padding: 24px;
-        }
+    .page-subtitle {
+        margin-top:8px;
+        color:#6b7280;
+        font-size:15px;
+    }
 
-        .info {
-            margin-bottom: 18px;
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 16px;
-        }
+    .btn {
+        min-height:42px;
+        padding:0 18px;
+        border-radius:14px;
+        border:0;
+        cursor:pointer;
+        font-size:13px;
+        font-weight:800;
+        text-decoration:none;
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        color:white;
+    }
 
-        .field {
-            margin-bottom: 16px;
-        }
+    .btn-dark {
+        background:#111827;
+    }
 
-        .field label {
-            display: block;
-            font-size: 13px;
-            font-weight: bold;
-            margin-bottom: 6px;
-        }
+    .btn-primary {
+        background:linear-gradient(135deg,#1d4ed8,#2563eb);
+    }
 
-        .field input,
-        .field select,
-        .field textarea {
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid #d1d5db;
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 14px;
-        }
+    .card {
+        background:white;
+        border-radius:24px;
+        border:1px solid #e8edf4;
+        padding:24px;
+        box-shadow:0 12px 30px rgba(15,23,42,.05);
+    }
 
-        .field textarea {
-            min-height: 110px;
-            resize: vertical;
-        }
+    .grid {
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        gap:18px;
+    }
 
-        .error-box {
-            margin-bottom: 18px;
-            background: #ffe8e8;
-            color: #9b1c1c;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
-        }
+    .field.full {
+        grid-column:1/-1;
+    }
 
-        .actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 8px;
-        }
+    label {
+        display:block;
+        margin-bottom:8px;
+        font-size:13px;
+        font-weight:800;
+        color:#111827;
+    }
 
-        .note {
-            margin-top: 20px;
-            background: #eef2ff;
-            color: #3730a3;
-            padding: 14px 16px;
-            border-radius: 12px;
-            font-weight: bold;
+    input,
+    select,
+    textarea {
+        width:100%;
+        box-sizing:border-box;
+        border:1px solid #d1d5db;
+        border-radius:14px;
+        padding:13px;
+        font-size:14px;
+    }
+
+    textarea {
+        min-height:120px;
+    }
+
+    .outlet-grid {
+        display:grid;
+        grid-template-columns:repeat(2,1fr);
+        gap:12px;
+    }
+
+    .outlet-card {
+        display:flex;
+        align-items:center;
+        gap:12px;
+        border:1px solid #e5e7eb;
+        padding:14px;
+        border-radius:16px;
+        cursor:pointer;
+    }
+
+    .outlet-card:hover {
+        background:#f8fafc;
+    }
+
+    .outlet-card input {
+        width:auto;
+    }
+
+    .outlet-name {
+        font-weight:800;
+        color:#111827;
+    }
+
+    .outlet-desc {
+        font-size:12px;
+        color:#6b7280;
+    }
+
+    .actions {
+        display:flex;
+        gap:12px;
+        margin-top:24px;
+    }
+
+    .alert {
+        background:#fff1f1;
+        color:#b42318;
+        border-radius:16px;
+        padding:16px;
+        margin-bottom:20px;
+        font-weight:700;
+    }
+
+    @media(max-width:800px){
+        .grid,
+        .outlet-grid {
+            grid-template-columns:1fr;
         }
-    </style>
-</head>
-<body>
-    <div class="wrap">
-        <div class="topbar">
-            <div class="title">Edit Product</div>
-            <a href="{{ route('backoffice.products.index') }}" class="btn">Kembali</a>
+    }
+</style>
+
+
+<div class="product-shell">
+
+    <div class="page-header">
+
+        <div>
+            <h1 class="page-title">
+                Edit Product
+            </h1>
+
+            <p class="page-subtitle">
+                Update product information and outlet availability.
+            </p>
         </div>
 
-        @if($errors->any())
-            <div class="error-box">
-                <div>Form belum valid:</div>
-                <ul style="margin:10px 0 0 18px;">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
 
-        <div class="card">
-            <div class="info">
-                <strong>User:</strong> {{ $user->name }}<br>
-                <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
-            </div>
+        <a href="{{ route('backoffice.products.index') }}"
+           class="btn btn-dark">
+            Kembali
+        </a>
 
-            <form method="POST" action="{{ route('backoffice.products.update', $product->id) }}">
-                @csrf
-                @method('PUT')
-
-                <div class="field">
-                    <label>Brand</label>
-                    <select name="brand_id" required>
-                        <option value="">Pilih brand</option>
-                        @foreach($brands as $brand)
-                            <option value="{{ $brand->id }}" @selected(old('brand_id', $product->brand_id) == $brand->id)>
-                                {{ $brand->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label>Category</label>
-                    <select name="product_category_id" required>
-                        <option value="">Pilih category</option>
-                        @foreach($categories as $category)
-                            <option value="{{ $category->id }}" @selected(old('product_category_id', $product->product_category_id) == $category->id)>
-                                {{ $category->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-
-                <div class="field">
-                    <label>Product Name</label>
-                    <input type="text" name="name" value="{{ old('name', $product->name) }}" required>
-                </div>
-
-                <div class="field">
-                    <label>Product Code</label>
-                    <input type="text" name="code" value="{{ old('code', $product->code) }}" required>
-                </div>
-
-                <div class="field">
-                    <label>Description</label>
-                    <textarea name="description">{{ old('description', $product->description) }}</textarea>
-                </div>
-
-                <div class="field">
-                    <label>Status</label>
-                    <select name="is_active" required>
-                        <option value="1" @selected(old('is_active', (string) $product->is_active) == '1')>Active</option>
-                        <option value="0" @selected(old('is_active', (string) $product->is_active) == '0')>Inactive</option>
-                    </select>
-                </div>
-
-                <div class="actions">
-                    <button type="submit" class="btn btn-success">Update Product</button>
-                    <a href="{{ route('backoffice.products.index') }}" class="btn">Batal</a>
-                </div>
-            </form>
-
-            <div class="note">
-                CRUD Products 1B fokus ke edit product. Delete kita lanjut di tahap berikutnya.
-            </div>
-        </div>
     </div>
-</body>
-</html>
+
+
+    @if($errors->any())
+
+        <div class="alert">
+
+            <ul style="margin:0;padding-left:18px;">
+
+                @foreach($errors->all() as $error)
+
+                    <li>
+                        {{ $error }}
+                    </li>
+
+                @endforeach
+
+            </ul>
+
+        </div>
+
+    @endif
+
+
+
+    <div class="card">
+
+
+        <form method="POST"
+              action="{{ route('backoffice.products.update', $product->id) }}">
+
+            @csrf
+            @method('PUT')
+
+
+            <div class="grid">
+
+
+                <div class="field">
+
+                    <label>
+                        Brand
+                    </label>
+
+                    <select name="brand_id" required>
+
+                        @foreach($brands as $brand)
+
+                            <option value="{{ $brand->id }}"
+                                @selected(old('brand_id',$product->brand_id)==$brand->id)>
+
+                                {{ $brand->name }}
+
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
+                </div>
+
+
+
+                <div class="field">
+
+                    <label>
+                        Category
+                    </label>
+
+
+                    <select name="product_category_id" required>
+
+                        @foreach($categories as $category)
+
+                            <option value="{{ $category->id }}"
+                                @selected(old('product_category_id',$product->product_category_id)==$category->id)>
+
+                                {{ $category->name }}
+
+                            </option>
+
+                        @endforeach
+
+                    </select>
+
+                </div>
+
+
+
+                <div class="field full">
+
+                    <label>
+                        Product Name
+                    </label>
+
+
+                    <input
+                        type="text"
+                        name="name"
+                        value="{{ old('name',$product->name) }}"
+                        required>
+
+                </div>
+
+
+
+                <div class="field">
+
+                    <label>
+                        Product Code
+                    </label>
+
+
+                    <input
+                        type="text"
+                        name="code"
+                        value="{{ old('code',$product->code) }}"
+                        required>
+
+                </div>
+
+
+
+                <div class="field full">
+
+                    <label>
+                        Description
+                    </label>
+
+
+                    <textarea name="description">{{ old('description',$product->description) }}</textarea>
+
+                </div>
+
+
+
+
+                <div class="field full">
+
+                    <label>
+                        Outlet Availability
+                    </label>
+
+
+                    <div class="outlet-grid">
+
+
+                        @foreach($outlets as $outlet)
+
+
+                            <label class="outlet-card">
+
+
+                                <input
+                                    type="checkbox"
+                                    name="outlet_ids[]"
+                                    value="{{ $outlet->id }}"
+
+                                    @checked(
+                                        $product->outlets->contains('id',$outlet->id)
+                                    )
+                                >
+
+
+                                <div>
+
+                                    <div class="outlet-name">
+                                        {{ $outlet->name }}
+                                    </div>
+
+
+                                    <div class="outlet-desc">
+                                        Active Outlet
+                                    </div>
+
+                                </div>
+
+
+                            </label>
+
+
+                        @endforeach
+
+
+                    </div>
+
+
+                </div>
+
+
+
+                <div class="field">
+
+                    <label>
+                        Status
+                    </label>
+
+
+                    <select name="is_active" required>
+
+                        <option value="1"
+                            @selected(old('is_active',(string)$product->is_active)=='1')>
+                            Active
+                        </option>
+
+
+                        <option value="0"
+                            @selected(old('is_active',(string)$product->is_active)=='0')>
+                            Inactive
+                        </option>
+
+
+                    </select>
+
+                </div>
+
+
+            </div>
+
+
+
+            <div class="actions">
+
+
+                <button type="submit"
+                        class="btn btn-primary">
+
+                    Update Product
+
+                </button>
+
+
+                <a href="{{ route('backoffice.products.index') }}"
+                   class="btn btn-dark">
+
+                    Batal
+
+                </a>
+
+
+            </div>
+
+
+        </form>
+
+
+    </div>
+
+
+</div>
+
+
+@endsection

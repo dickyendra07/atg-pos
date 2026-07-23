@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\Outlet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -36,7 +37,7 @@ class ProductViewController extends Controller
 
         $categories = ProductCategory::orderBy('name')->get();
 
-        $products = Product::with(['brand', 'category', 'variants'])
+        $products = Product::with(['brand', 'category', 'variants', 'outlets'])
             ->when($request->filled('category_id'), function ($query) use ($request) {
                 $query->where('product_category_id', $request->category_id);
             })
@@ -87,11 +88,13 @@ class ProductViewController extends Controller
 
         $brands = Brand::orderBy('name')->get();
         $categories = ProductCategory::orderBy('name')->get();
+        $outlets = Outlet::orderBy('name')->get();
 
         return view('backoffice.products.create', [
             'user' => $user,
             'brands' => $brands,
             'categories' => $categories,
+            'outlets' => $outlets,
         ]);
     }
 
@@ -106,9 +109,17 @@ class ProductViewController extends Controller
             'code' => 'required|string|max:255|unique:products,code',
             'description' => 'nullable|string',
             'is_active' => 'required|boolean',
+            'outlet_ids' => 'nullable|array',
+            'outlet_ids.*' => 'exists:outlets,id',
         ]);
 
-        Product::create($validated);
+        $product = Product::create(
+            collect($validated)
+                ->except('outlet_ids')
+                ->toArray()
+        );
+
+        $product->outlets()->sync($validated['outlet_ids'] ?? []);
 
         return redirect()
             ->route('backoffice.products.index')
@@ -122,12 +133,16 @@ class ProductViewController extends Controller
 
         $brands = Brand::orderBy('name')->get();
         $categories = ProductCategory::orderBy('name')->get();
+        $outlets = Outlet::orderBy('name')->get();
+
+        $product->load('outlets');
 
         return view('backoffice.products.edit', [
             'user' => $user,
             'product' => $product,
             'brands' => $brands,
             'categories' => $categories,
+            'outlets' => $outlets,
         ]);
     }
 
@@ -142,9 +157,17 @@ class ProductViewController extends Controller
             'code' => 'required|string|max:255|unique:products,code,' . $product->id,
             'description' => 'nullable|string',
             'is_active' => 'required|boolean',
+            'outlet_ids' => 'nullable|array',
+            'outlet_ids.*' => 'exists:outlets,id',
         ]);
 
-        $product->update($validated);
+        $product->update(
+            collect($validated)
+                ->except('outlet_ids')
+                ->toArray()
+        );
+
+        $product->outlets()->sync($validated['outlet_ids'] ?? []);
 
         return redirect()
             ->route('backoffice.products.index')
