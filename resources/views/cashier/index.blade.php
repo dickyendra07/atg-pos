@@ -3954,9 +3954,134 @@
             }
         }
 
+
+        /* Fix cashier transaction history scroll */
+        #tab-panel-history {
+            min-height: 0;
+        }
+
+        #tab-panel-history .history-panel-wrap {
+            min-height: 0;
+        }
+
+        #tab-panel-history .history-panel-box {
+            min-height: 0;
+        }
+
+        #tab-panel-history .receipt-history-list {
+            max-height: calc(100vh - 260px);
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 8px;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior: contain;
+        }
+
+        @media (max-width: 900px) {
+            #tab-panel-history .receipt-history-list {
+                max-height: calc(100vh - 220px);
+            }
+        }
+
+
+        /* Cashier Lite Mode - lighter rendering for outlet tablets / unstable network */
+        body.cashier-lite-mode {
+            background: #f5f6f8 !important;
+        }
+
+        body.cashier-lite-mode *,
+        body.cashier-lite-mode *::before,
+        body.cashier-lite-mode *::after {
+            transition: none !important;
+            animation: none !important;
+            scroll-behavior: auto !important;
+        }
+
+        body.cashier-lite-mode .shell,
+        body.cashier-lite-mode .brand,
+        body.cashier-lite-mode .mini-info,
+        body.cashier-lite-mode .panel,
+        body.cashier-lite-mode .summary-card,
+        body.cashier-lite-mode .product-card,
+        body.cashier-lite-mode .cart-panel,
+        body.cashier-lite-mode .modal-card,
+        body.cashier-lite-mode .receipt-card,
+        body.cashier-lite-mode .shift-card,
+        body.cashier-lite-mode .checkout-card {
+            backdrop-filter: none !important;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08) !important;
+        }
+
+        body.cashier-lite-mode .shell {
+            border-radius: 18px !important;
+            background: #ffffff !important;
+        }
+
+        body.cashier-lite-mode .page {
+            padding: 10px !important;
+        }
+
+        body.cashier-lite-mode .topbar {
+            padding: 14px 14px 0 !important;
+        }
+
+        body.cashier-lite-mode .product-card {
+            border-radius: 14px !important;
+            padding: 12px !important;
+        }
+
+        body.cashier-lite-mode .product-card-title {
+            font-size: 14px !important;
+            line-height: 1.25 !important;
+        }
+
+        body.cashier-lite-mode .product-card-meta {
+            font-size: 11px !important;
+        }
+
+        body.cashier-lite-mode .btn:hover,
+        body.cashier-lite-mode .mini-btn:hover,
+        body.cashier-lite-mode .product-pick-btn:hover,
+        body.cashier-lite-mode .tab-btn:hover {
+            transform: none !important;
+        }
+
+        .lite-mode-badge {
+            position: fixed;
+            right: 14px;
+            bottom: 14px;
+            z-index: 9999;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 12px;
+            border-radius: 999px;
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 12px;
+            font-weight: 800;
+            box-shadow: 0 8px 18px rgba(15, 23, 42, 0.18);
+            text-decoration: none;
+        }
+
+        .lite-mode-badge span {
+            width: 8px;
+            height: 8px;
+            border-radius: 999px;
+            background: #22c55e;
+            display: inline-block;
+        }
+
 </style>
 </head>
-<body>
+<body class="{{ ($isLiteMode ?? false) ? 'cashier-lite-mode' : '' }}">
+
+@if($isLiteMode ?? false)
+    <a class="lite-mode-badge" href="{{ route('cashier.index', ['lite' => 0]) }}">
+        <span></span> Lite Mode ON
+    </a>
+@endif
+
 @php
     $cartItemsJson = json_encode(
         collect($cart)->values()->map(function ($item) {
@@ -4006,6 +4131,10 @@
         'transfer_sales' => (float) ($shiftSummary['transfer_sales'] ?? 0),
         'debit_sales' => (float) ($shiftSummary['debit_sales'] ?? 0),
         'credit_sales' => (float) ($shiftSummary['credit_sales'] ?? 0),
+        'gojek_sales' => (float) ($shiftSummary['gojek_sales'] ?? 0),
+        'grabfood_sales' => (float) ($shiftSummary['grabfood_sales'] ?? 0),
+        'shopeefood_sales' => (float) ($shiftSummary['shopeefood_sales'] ?? 0),
+        'online_sales' => (float) ($shiftSummary['online_sales'] ?? 0),
         'void_transactions' => (int) ($shiftSummary['void_transactions'] ?? 0),
         'expected_cash' => (float) ($shiftSummary['expected_cash'] ?? 0),
         'difference' => 0,
@@ -4348,6 +4477,7 @@
 
                                                     <div class="receipt-history-actions">
                                                         <form method="GET" action="{{ route('cashier.transactions.receipt', ['transaction' => $receipt->id]) }}" target="_blank" class="cashier-reprint-form" data-print-count="{{ (int) ($receipt->receipt_print_count ?? 0) }}">
+                                                            <input type="hidden" name="reprint" value="1">
                                                             <input type="hidden" name="approval_pin" value="">
                                                             <button type="submit" class="receipt-action-btn green">Print Receipt</button>
                                                         </form>
@@ -4427,6 +4557,26 @@
                                     <div class="shift-stat">
                                         <div class="shift-stat-label">Total Sales</div>
                                         <div class="shift-stat-value" id="shift-total-sales">Rp {{ number_format((float) ($shiftSummary['total_sales'] ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Online Sales</div>
+                                        <div class="shift-stat-value" id="shift-online-sales">Rp {{ number_format((float) ($shiftSummary['online_sales'] ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Gojek Sales</div>
+                                        <div class="shift-stat-value" id="shift-gojek-sales">Rp {{ number_format((float) ($shiftSummary['gojek_sales'] ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Grabfood Sales</div>
+                                        <div class="shift-stat-value" id="shift-grabfood-sales">Rp {{ number_format((float) ($shiftSummary['grabfood_sales'] ?? 0), 0, ',', '.') }}</div>
+                                    </div>
+
+                                    <div class="shift-stat">
+                                        <div class="shift-stat-label">Shopeefood Sales</div>
+                                        <div class="shift-stat-value" id="shift-shopeefood-sales">Rp {{ number_format((float) ($shiftSummary['shopeefood_sales'] ?? 0), 0, ',', '.') }}</div>
                                     </div>
 
                                     <div class="shift-stat">
@@ -4710,6 +4860,9 @@
                                                 <option value="transfer" {{ $oldPaymentMethod === 'transfer' ? 'selected' : '' }}>Transfer</option>
                                                 <option value="debit" {{ $oldPaymentMethod === 'debit' ? 'selected' : '' }}>Debit</option>
                                                 <option value="credit" {{ $oldPaymentMethod === 'credit' ? 'selected' : '' }}>Credit</option>
+                                                <option value="gojek" {{ $oldPaymentMethod === 'gojek' ? 'selected' : '' }}>Gojek</option>
+                                                <option value="grabfood" {{ $oldPaymentMethod === 'grabfood' ? 'selected' : '' }}>Grabfood</option>
+                                                <option value="shopeefood" {{ $oldPaymentMethod === 'shopeefood' ? 'selected' : '' }}>Shopeefood</option>
                                             </select>
                                         </div>
 
@@ -4878,6 +5031,10 @@
     const shiftExpectedCash = document.getElementById('shift-expected-cash');
     const shiftTotalTransactions = document.getElementById('shift-total-transactions');
     const shiftTotalSales = document.getElementById('shift-total-sales');
+    const shiftOnlineSales = document.getElementById('shift-online-sales');
+    const shiftGojekSales = document.getElementById('shift-gojek-sales');
+    const shiftGrabfoodSales = document.getElementById('shift-grabfood-sales');
+    const shiftShopeefoodSales = document.getElementById('shift-shopeefood-sales');
     const shiftVoidTransactions = document.getElementById('shift-void-transactions');
     const shiftOrderTypePreview = document.getElementById('shift-order-type-preview');
 
@@ -4986,6 +5143,22 @@
             shiftExpectedCash.textContent = formatCurrency(cashierState.shiftSummary.expected_cash || 0);
             shiftTotalTransactions.textContent = String(cashierState.shiftSummary.total_transactions || 0);
             shiftTotalSales.textContent = formatCurrency(cashierState.shiftSummary.total_sales || 0);
+
+            if (shiftOnlineSales) {
+                shiftOnlineSales.textContent = formatCurrency(cashierState.shiftSummary.online_sales || 0);
+            }
+
+            if (shiftGojekSales) {
+                shiftGojekSales.textContent = formatCurrency(cashierState.shiftSummary.gojek_sales || 0);
+            }
+
+            if (shiftGrabfoodSales) {
+                shiftGrabfoodSales.textContent = formatCurrency(cashierState.shiftSummary.grabfood_sales || 0);
+            }
+
+            if (shiftShopeefoodSales) {
+                shiftShopeefoodSales.textContent = formatCurrency(cashierState.shiftSummary.shopeefood_sales || 0);
+            }
 
             if (shiftVoidTransactions) {
                 shiftVoidTransactions.textContent = String(cashierState.shiftSummary.void_transactions || 0);
@@ -5216,7 +5389,7 @@
 
         const grandTotalValue = calculateCheckoutPreview().grandTotalValue;
 
-        if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
+        if (['qris', 'transfer', 'debit', 'credit', 'gojek', 'grabfood', 'shopeefood'].includes(paymentMethod.value)) {
             setAmountPaidValue(grandTotalValue);
             amountPaidDisplay.readOnly = true;
         } else {
@@ -5588,6 +5761,10 @@
                 transfer_sales: 0,
                 debit_sales: 0,
                 credit_sales: 0,
+                gojek_sales: 0,
+                grabfood_sales: 0,
+                shopeefood_sales: 0,
+                online_sales: 0,
                 void_transactions: 0,
                 expected_cash: 0,
                 difference: 0,
@@ -5646,7 +5823,7 @@
         }
 
         if (!amountPaidDisplay) return;
-        if (['qris', 'transfer', 'debit', 'credit'].includes(paymentMethod.value)) {
+        if (['qris', 'transfer', 'debit', 'credit', 'gojek', 'grabfood', 'shopeefood'].includes(paymentMethod.value)) {
             showAlert('info', 'Quick amount dipakai untuk pembayaran cash.');
             return;
         }
@@ -5867,17 +6044,42 @@
 
 
     async function submitFormForApprovalRequest(form) {
-        const response = await fetch(form.action, {
-            method: form.method || 'POST',
+        const method = String(form.method || 'POST').toUpperCase();
+        const formData = new FormData(form);
+
+        if (method === 'GET') {
+            const url = new URL(form.action, window.location.origin);
+
+            formData.forEach((value, key) => {
+                if (value !== null && String(value).trim() !== '') {
+                    url.searchParams.set(key, String(value).trim());
+                }
+            });
+
+            url.searchParams.set('approval_request', '1');
+
+            return fetch(url.toString(), {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html,application/xhtml+xml',
+                },
+                credentials: 'same-origin',
+            });
+        }
+
+        formData.set('approval_request', '1');
+
+        return fetch(form.action, {
+            method,
             headers: {
                 'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'text/html,application/xhtml+xml',
             },
-            body: new FormData(form),
+            body: formData,
+            credentials: 'same-origin',
         });
-
-        return response;
     }
 
 
@@ -6328,6 +6530,14 @@
 
         line(cashierFormatDateTime(receipt.created_at));
 
+        if (receipt.is_reprint) {
+            line('');
+            raw([ESC, 0x45, 0x01]);
+            line('*** REPRINT ***');
+            raw([ESC, 0x45, 0x00]);
+            line(cashierFormatDateTime(receipt.reprint_printed_at || new Date()));
+        }
+
         if (receipt.is_void) {
             line('*** VOID ***');
         }
@@ -6437,22 +6647,52 @@
         return cashierMergeChunks(chunks);
     }
 
+    function cashierBytesToBase64(bytes) {
+        let binary = '';
+        const chunkSize = 0x8000;
+
+        for (let i = 0; i < bytes.length; i += chunkSize) {
+            const chunk = bytes.subarray(i, i + chunkSize);
+            binary += String.fromCharCode.apply(null, chunk);
+        }
+
+        return btoa(binary);
+    }
+
+    function hasAndroidNativePrinter() {
+        return !!(window.AndroidPrinter && typeof window.AndroidPrinter.printBase64 === 'function');
+    }
+
     async function directPrintReceiptFromCashier(receiptUrl) {
         if (!receiptUrl) {
             throw new Error('URL receipt tidak tersedia.');
+        }
+
+        cashierPrintStatus('Mengambil data receipt...', 'info');
+        const receiptPayload = await fetchReceiptPayload(receiptUrl);
+        const receiptBytes = buildCashierReceiptEscposBytes(receiptPayload);
+
+        if (hasAndroidNativePrinter()) {
+            cashierPrintStatus('Mengirim receipt ke printer Android...', 'info');
+
+            const result = window.AndroidPrinter.printBase64(cashierBytesToBase64(receiptBytes));
+
+            if (typeof result === 'string' && result.indexOf('ERROR') === 0) {
+                throw new Error(result.replace('ERROR:', '').trim() || 'Gagal print via Android.');
+            }
+
+            cashierPrintStatus('Receipt berhasil dikirim via Android printer.', 'success');
+            return;
         }
 
         if (!cashierBluetoothWriteCharacteristic || !cashierBluetoothDevice?.gatt?.connected) {
             await cashierConnectBluetoothPrinter();
         }
 
-        cashierPrintStatus('Mengambil data receipt...', 'info');
-        const receiptPayload = await fetchReceiptPayload(receiptUrl);
-
         cashierPrintStatus('Mengirim receipt ke printer...', 'info');
         await cashierWriteBluetoothInChunks(
             cashierBluetoothWriteCharacteristic,
-            buildCashierReceiptEscposBytes(receiptPayload)
+            receiptBytes
         );
 
         cashierPrintStatus('Receipt berhasil dikirim ke printer.', 'success');
@@ -6498,6 +6738,44 @@
 
     document.querySelectorAll('.cashier-reprint-form').forEach((form) => {
         form.addEventListener('submit', async function (event) {
+            if (!hasAndroidNativePrinter()) {
+                return;
+            }
+
+            const printCount = Number(form.dataset.printCount || 0);
+
+            // Reprint pertama dan kedua langsung pakai Android native printer.
+            // Reprint ke-3 tetap pakai flow approval PIN lama.
+            if (printCount >= 2) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const button = form.querySelector('button[type="submit"]');
+            const originalText = button ? button.textContent : '';
+
+            if (button) {
+                button.disabled = true;
+                button.textContent = 'Printing...';
+            }
+
+            try {
+                await directPrintReceiptFromCashier(form.action);
+                form.dataset.printCount = String(printCount + 1);
+            } catch (error) {
+                cashierPrintStatus(error.message || 'Gagal reprint receipt.', 'error');
+            } finally {
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
+            }
+        }, true);
+    });
+
+    document.querySelectorAll('.cashier-reprint-form').forEach((form) => {
+        form.addEventListener('submit', async function (event) {
             const printCount = Number(form.dataset.printCount || 0);
 
             // Print pertama dan kedua bebas PIN. Mulai print ke-3 wajib approval.
@@ -6535,6 +6813,41 @@
 
             if (pinInput) {
                 pinInput.value = String(approvalPin).trim();
+            }
+
+            if (hasAndroidNativePrinter()) {
+                event.preventDefault();
+
+                const button = form.querySelector('button[type="submit"]');
+                const originalText = button ? button.textContent : '';
+
+                if (button) {
+                    button.disabled = true;
+                    button.textContent = 'Printing...';
+                }
+
+                try {
+                    const receiptUrl = new URL(form.action);
+
+                    const formData = new FormData(form);
+                    formData.forEach((value, key) => {
+                        if (value !== null && String(value).trim() !== '') {
+                            receiptUrl.searchParams.set(key, String(value).trim());
+                        }
+                    });
+
+                    await directPrintReceiptFromCashier(receiptUrl.toString());
+                    form.dataset.printCount = String(printCount + 1);
+                } catch (error) {
+                    cashierPrintStatus(error.message || 'Gagal reprint receipt dengan approval PIN.', 'error');
+                } finally {
+                    if (button) {
+                        button.disabled = false;
+                        button.textContent = originalText;
+                    }
+                }
+
+                return;
             }
 
             form.submit();

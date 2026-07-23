@@ -211,6 +211,7 @@
     $isReprintReceipt = (bool) (
         ($isReprintReceipt ?? false)
         || request()->filled('approval_pin')
+        || request()->boolean('reprint')
         || ($source === 'cashier' && (int) ($transaction->receipt_print_count ?? 0) >= 3)
     );
     $reprintPrintedAt = $reprintPrintedAt ?? now()->format('d/m/Y H:i:s');
@@ -306,7 +307,7 @@
 
         // REPRINT_FORCE_FROM_URL_MARKER
         const reprintUrlParams = new URLSearchParams(window.location.search);
-        if (reprintUrlParams.has('approval_pin')) {
+        if (reprintUrlParams.has('approval_pin') || reprintUrlParams.get('reprint') === '1') {
             receipt.is_reprint = true;
             receipt.reprint_printed_at = formatAtgDateTime(new Date());
         }

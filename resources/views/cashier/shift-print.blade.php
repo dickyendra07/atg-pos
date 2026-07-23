@@ -826,8 +826,39 @@ $completedTransactions = $transactions
                 setBluetoothStatus('Printer siap: ' + (bluetoothDevice.name || 'Bluetooth Printer'));
             }
 
+            function bytesToBase64(bytes) {
+                let binary = '';
+                const chunkSize = 0x8000;
+
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    const chunk = bytes.subarray(i, i + chunkSize);
+                    binary += String.fromCharCode.apply(null, chunk);
+                }
+
+                return btoa(binary);
+            }
+
+            function hasAndroidNativePrinter() {
+                return !!(window.AndroidPrinter && typeof window.AndroidPrinter.printBase64 === 'function');
+            }
+
             async function directBluetoothPrintShift() {
                 try {
+                    const shiftBytes = buildShiftEscposBytes();
+
+                    if (hasAndroidNativePrinter()) {
+                        setBluetoothStatus('Mengirim shift summary via Android printer...');
+
+                        const result = window.AndroidPrinter.printBase64(bytesToBase64(shiftBytes));
+
+                        if (typeof result === 'string' && result.indexOf('ERROR') === 0) {
+                            throw new Error(result.replace('ERROR:', '').trim() || 'Gagal print shift via Android.');
+                        }
+
+                        setBluetoothStatus('Shift summary berhasil dikirim via Android printer.');
+                        return;
+                    }
+
                     if (!bluetoothWriteCharacteristic || !bluetoothDevice?.gatt?.connected) {
                         await connectBluetoothPrinter();
                     }
@@ -837,7 +868,7 @@ $completedTransactions = $transactions
                     }
 
                     setBluetoothStatus('Mengirim shift summary ke printer...');
-                    await writeBluetoothInChunks(bluetoothWriteCharacteristic, buildShiftEscposBytes());
+                    await writeBluetoothInChunks(bluetoothWriteCharacteristic, shiftBytes);
                     setBluetoothStatus('Shift summary berhasil dikirim ke printer.');
                 } catch (error) {
                     setBluetoothStatus('Print error: ' + error.message);

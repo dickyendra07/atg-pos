@@ -135,6 +135,10 @@ class CashierController extends Controller
                 'transfer_sales' => 0,
                 'debit_sales' => 0,
                 'credit_sales' => 0,
+                'gojek_sales' => 0,
+                'grabfood_sales' => 0,
+                'shopeefood_sales' => 0,
+                'online_sales' => 0,
                 'void_transactions' => 0,
                 'expected_cash' => 0,
             ];
@@ -168,6 +172,20 @@ class CashierController extends Controller
             ->where('payment_method', 'credit')
             ->sum('grand_total');
 
+        $gojekSales = (float) $completedTransactions
+            ->where('payment_method', 'gojek')
+            ->sum('grand_total');
+
+        $grabfoodSales = (float) $completedTransactions
+            ->where('payment_method', 'grabfood')
+            ->sum('grand_total');
+
+        $shopeefoodSales = (float) $completedTransactions
+            ->where('payment_method', 'shopeefood')
+            ->sum('grand_total');
+
+        $onlineSales = $gojekSales + $grabfoodSales + $shopeefoodSales;
+
         return [
             'total_transactions' => $completedTransactions->count(),
             'total_sales' => (float) $completedTransactions->sum('grand_total'),
@@ -176,6 +194,10 @@ class CashierController extends Controller
             'transfer_sales' => $transferSales,
             'debit_sales' => $debitSales,
             'credit_sales' => $creditSales,
+            'gojek_sales' => $gojekSales,
+            'grabfood_sales' => $grabfoodSales,
+            'shopeefood_sales' => $shopeefoodSales,
+            'online_sales' => $onlineSales,
             'void_transactions' => $voidTransactions->count(),
             'expected_cash' => (float) $activeShift->opening_cash + $cashSales,
         ];
@@ -183,13 +205,19 @@ class CashierController extends Controller
 
     protected function getRecentReceipts($user)
     {
+        $activeShift = $this->getActiveShift($user);
+
         return SalesTransaction::with(['items', 'outlet'])
             ->where('user_id', $user->id)
             ->when($user->outlet_id, function ($query) use ($user) {
                 $query->where('outlet_id', $user->outlet_id);
             })
-            ->latest()
-            ->take(10)
+            ->when($activeShift, function ($query) use ($activeShift) {
+                $query->where('cashier_shift_id', $activeShift->id);
+            }, function ($query) {
+                $query->whereDate('created_at', now()->toDateString());
+            })
+            ->orderBy('created_at')
             ->get();
     }
 
@@ -259,15 +287,22 @@ class CashierController extends Controller
             ->values();
     }
 
-    public function __invoke()
+    public function __invoke(Request $request)
     {
         $user = $this->authorizeCashierAccess();
+
 
         if (! $user) {
             return redirect()
                 ->route('dashboard')
                 ->with('error', 'Role kamu tidak punya akses ke Cashier.');
         }
+
+        if ($request->has('lite')) {
+            session(['cashier_lite_mode' => $request->boolean('lite')]);
+        }
+
+        $isLiteMode = (bool) session('cashier_lite_mode', false);
 
         $products = Product::with([
                 'brand',
@@ -322,6 +357,7 @@ class CashierController extends Controller
             'recentReceipts' => $recentReceipts,
             'discountOptions' => $discountOptions,
             'promoOptions' => $promoOptions,
+            'isLiteMode' => $isLiteMode,
         ]);
     }
 

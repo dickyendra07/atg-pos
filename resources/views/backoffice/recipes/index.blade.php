@@ -927,7 +927,7 @@
                             @foreach($recipes as $recipe)
                                 <tr>
                                     <td>
-                                        <div class="recipe-name">{{ $recipe->name }}</div>
+                                        <div class="recipe-name">{{ preg_replace('/^Recipe\s*-\s*/i', '', $recipe->name) }}</div>
                                     </td>
                                     <td class="recipe-items-cell recipe-items-list-cell">
                                         <div class="recipe-items-scroll">
@@ -976,7 +976,19 @@
                                         @endif
                                     </td>
                                     <td>
-                                        <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small">Edit</a>
+                                        <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                                            <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small">Edit</a>
+
+                                            @if($recipe->is_active)
+                                                <form method="POST" action="{{ route('backoffice.recipes.destroy', $recipe->id) }}" onsubmit="return confirm('Yakin ingin menonaktifkan recipe ini?');" style="margin: 0;">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-small" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach

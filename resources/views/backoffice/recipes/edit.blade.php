@@ -279,7 +279,7 @@
 
                     <div class="field">
                         <label>Recipe Name</label>
-                        <input type="text" name="name" value="{{ old('name', $recipe->name) }}" required>
+                        <input type="text" name="name" value="{{ old('name', preg_replace('/^Recipe\s*-\s*/i', '', $recipe->name)) }}" required>
                     </div>
 
                     <div class="field">

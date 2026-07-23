@@ -68,12 +68,6 @@ class RecipeViewController extends Controller
                                 ->orWhereHas('product', function ($productQuery) use ($keyword) {
                                     $productQuery->where('name', 'like', '%' . $keyword . '%');
                                 });
-                        })
-                        ->orWhereHas('items.ingredient', function ($ingredientQuery) use ($keyword) {
-                            $ingredientQuery->where('name', 'like', '%' . $keyword . '%')
-                                ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
-                                    $categoryQuery->where('name', 'like', '%' . $keyword . '%');
-                                });
                         });
                 });
             })
@@ -185,6 +179,19 @@ class RecipeViewController extends Controller
         return redirect()
             ->route('backoffice.recipes.edit', $recipe->id)
             ->with('success', 'Recipe header berhasil diupdate.');
+    }
+
+    public function destroy(Recipe $recipe)
+    {
+        $this->authorizeAccess();
+
+        $recipe->update([
+            'is_active' => false,
+        ]);
+
+        return redirect()
+            ->route('backoffice.recipes.index')
+            ->with('success', 'Recipe berhasil dinonaktifkan.');
     }
 
     public function storeItem(Request $request, Recipe $recipe)

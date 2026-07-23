@@ -2,7 +2,7 @@
   "name": "ATG POS Cashier",
   "short_name": "ATG Cashier",
   "description": "ATG POS cashier workspace for outlet transactions.",
-  "start_url": "/cashier/login",
+  "start_url": "/cashier?lite=1",
   "scope": "/cashier",
   "display": "standalone",
   "orientation": "landscape",

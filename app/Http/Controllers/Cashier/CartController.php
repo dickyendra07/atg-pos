@@ -806,7 +806,7 @@ class CartController extends Controller
         }
 
         $request->validate([
-            'payment_method' => 'required|in:cash,qris,transfer,debit,credit',
+            'payment_method' => 'required|in:cash,qris,transfer,debit,credit,gojek,grabfood,shopeefood',
             'amount_paid' => 'required|numeric|min:0',
             'order_type' => 'required|in:dine_in,delivery',
             'discount_id' => 'nullable|exists:discounts,id',
@@ -854,7 +854,7 @@ class CartController extends Controller
                 ->with('error', 'Nominal cash kurang dari total transaksi.');
         }
 
-        if (in_array($paymentMethod, ['qris', 'transfer', 'debit', 'credit'], true)) {
+        if (in_array($paymentMethod, ['qris', 'transfer', 'debit', 'credit', 'gojek', 'grabfood', 'shopeefood'], true)) {
             $amountPaid = $grandTotal;
         }
 

@@ -642,6 +642,30 @@
                         <div class="summary-desc">Total transaksi transfer.</div>
                     </div>
 
+                    <div class="summary-card violet">
+                        <div class="summary-label">Online Sales</div>
+                        <div class="summary-value">Rp{{ number_format((float) ($metrics['online_sales'] ?? 0), 0, ',', '.') }}</div>
+                        <div class="summary-desc">Total transaksi Gojek, Grabfood, dan Shopeefood.</div>
+                    </div>
+
+                    <div class="summary-card violet">
+                        <div class="summary-label">Gojek Sales</div>
+                        <div class="summary-value">Rp{{ number_format((float) ($metrics['gojek_sales'] ?? 0), 0, ',', '.') }}</div>
+                        <div class="summary-desc">Total transaksi Gojek.</div>
+                    </div>
+
+                    <div class="summary-card violet">
+                        <div class="summary-label">Grabfood Sales</div>
+                        <div class="summary-value">Rp{{ number_format((float) ($metrics['grabfood_sales'] ?? 0), 0, ',', '.') }}</div>
+                        <div class="summary-desc">Total transaksi Grabfood.</div>
+                    </div>
+
+                    <div class="summary-card violet">
+                        <div class="summary-label">Shopeefood Sales</div>
+                        <div class="summary-value">Rp{{ number_format((float) ($metrics['shopeefood_sales'] ?? 0), 0, ',', '.') }}</div>
+                        <div class="summary-desc">Total transaksi Shopeefood.</div>
+                    </div>
+
                     <div class="summary-card green">
                         <div class="summary-label">Completed Transactions</div>
                         <div class="summary-value">{{ $metrics['completed_transactions_count'] }}</div>

@@ -1786,6 +1786,18 @@
             }
         }
 
+
+            .desktop-approval-pin-card {
+                margin: 0 0 18px;
+                display: block;
+            }
+
+            @media (max-width: 900px) {
+                .desktop-approval-pin-card {
+                    display: none;
+                }
+            }
+
         @media (max-width: 620px) {
             .dashboard-topbar-actions {
                 grid-template-columns: 1fr 1fr !important;
@@ -1844,6 +1856,20 @@
             </div>
         </div>
 
+
+
+        @if(session('approval_pin'))
+            <div class="approval-pin-card desktop-approval-pin-card">
+                <div class="approval-pin-title">PIN Approval</div>
+                <div class="approval-pin-code">{{ session('approval_pin.pin_code') }}</div>
+                <div style="color:#6b7280; font-size:13px; font-weight:800;">
+                    {{ strtoupper(session('approval_pin.purpose')) }}
+                    • {{ session('approval_pin.transaction_number') }}
+                    • {{ session('approval_pin.outlet_name') }}
+                    • Expired: {{ session('approval_pin.expires_at') }}
+                </div>
+            </div>
+        @endif
 
         <div class="mobile-quick-actions">
             <div class="mobile-quick-actions-head">

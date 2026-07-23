@@ -76,6 +76,10 @@ class CashierShiftController extends Controller
                 'transfer_sales' => 0,
                 'debit_sales' => 0,
                 'credit_sales' => 0,
+                'gojek_sales' => 0,
+                'grabfood_sales' => 0,
+                'shopeefood_sales' => 0,
+                'online_sales' => 0,
                 'void_transactions' => 0,
                 'expected_cash' => 0,
                 'difference' => 0,
@@ -110,6 +114,20 @@ class CashierShiftController extends Controller
             ->where('payment_method', 'credit')
             ->sum('grand_total');
 
+        $gojekSales = (float) $completedTransactions
+            ->where('payment_method', 'gojek')
+            ->sum('grand_total');
+
+        $grabfoodSales = (float) $completedTransactions
+            ->where('payment_method', 'grabfood')
+            ->sum('grand_total');
+
+        $shopeefoodSales = (float) $completedTransactions
+            ->where('payment_method', 'shopeefood')
+            ->sum('grand_total');
+
+        $onlineSales = $gojekSales + $grabfoodSales + $shopeefoodSales;
+
         $expectedCash = (float) ($shift->opening_cash ?? 0) + $cashSales;
         $closingCashActual = $shift->closing_cash_actual !== null
             ? (float) $shift->closing_cash_actual
@@ -123,6 +141,10 @@ class CashierShiftController extends Controller
             'transfer_sales' => $transferSales,
             'debit_sales' => $debitSales,
             'credit_sales' => $creditSales,
+            'gojek_sales' => $gojekSales,
+            'grabfood_sales' => $grabfoodSales,
+            'shopeefood_sales' => $shopeefoodSales,
+            'online_sales' => $onlineSales,
             'void_transactions' => $voidTransactions->count(),
             'expected_cash' => $expectedCash,
             'difference' => $closingCashActual !== null ? ($closingCashActual - $expectedCash) : 0,

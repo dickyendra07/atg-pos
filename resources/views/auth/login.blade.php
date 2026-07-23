@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - ATG POS</title>
+    <link rel="icon" href="{{ asset('images/atg-icon.png') }}">
     <style>
         :root {
             --bg: #f3f5fa;
@@ -384,7 +385,7 @@
             color: #111827;
         }
 
-    
+
         /* Portal-specific login design */
         body.login-portal-backoffice {
             background:
@@ -483,7 +484,7 @@
             align-items: flex-start !important;
         }
 
-    
+
         /* Keep orange brand, flip layout only for cashier */
         body.login-portal-cashier {
             background:
@@ -547,7 +548,7 @@
             }
         }
 
-    
+
         /* Login cover image */
         .visual-side {
             position: relative !important;
@@ -587,7 +588,7 @@
             backdrop-filter: blur(8px);
         }
 
-    
+
         /* Professional login polish */
         .page {
             padding: 28px !important;
@@ -816,7 +817,7 @@
             }
         }
 
-    
+
         /* LOGIN_TABLET_MOBILE_FIX_V2 */
         @media (max-width: 1100px) and (min-width: 701px) {
             html,
@@ -1426,7 +1427,994 @@
             }
         }
 
-</style>
+
+        /* Compact tablet / APK login layout */
+        @media (min-width: 860px) {
+            .page {
+                padding: 14px;
+            }
+
+            .shell {
+                min-height: min(680px, calc(100vh - 28px));
+                grid-template-columns: 1fr 0.86fr;
+            }
+
+            .visual-side {
+                min-height: min(680px, calc(100vh - 28px));
+            }
+
+            .form-side {
+                padding: 28px 30px;
+                overflow-y: auto;
+            }
+
+            .form-card {
+                max-width: 380px;
+            }
+        }
+
+        @media (min-width: 860px) and (max-height: 820px) {
+            .shell {
+                min-height: calc(100vh - 24px);
+                border-radius: 28px;
+            }
+
+            .visual-side {
+                min-height: calc(100vh - 24px);
+            }
+
+            .brand-badge {
+                top: 20px;
+                left: 20px;
+                padding: 8px 12px;
+            }
+
+            .visual-copy {
+                left: 24px;
+                bottom: 24px;
+            }
+
+            .visual-title {
+                font-size: 34px;
+                margin-bottom: 8px;
+            }
+
+            .visual-subtitle {
+                font-size: 13px;
+                line-height: 1.55;
+            }
+
+            .form-side {
+                padding: 22px 28px;
+                align-items: center;
+            }
+
+            .top-row {
+                margin-bottom: 18px;
+            }
+
+            .form-title {
+                font-size: 28px;
+                margin-bottom: 6px;
+            }
+
+            .form-subtitle {
+                font-size: 13px;
+                line-height: 1.5;
+                margin-bottom: 16px;
+            }
+
+            .form-group {
+                margin-bottom: 14px;
+            }
+
+            .form-input {
+                min-height: 46px;
+            }
+
+            .btn-login {
+                min-height: 48px;
+            }
+
+            .footer-note {
+                margin-top: 14px;
+            }
+        }
+
+
+        /* APK / Tablet Landscape Final Login Layout */
+        @media (orientation: landscape) and (min-width: 700px) {
+            html,
+            body {
+                width: 100%;
+                min-height: 100%;
+                overflow: hidden;
+            }
+
+            .page {
+                width: 100vw !important;
+                height: 100vh !important;
+                min-height: 100vh !important;
+                padding: 16px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+            }
+
+            .shell {
+                width: min(1120px, calc(100vw - 32px)) !important;
+                height: min(620px, calc(100vh - 32px)) !important;
+                min-height: 0 !important;
+                max-height: calc(100vh - 32px) !important;
+                display: grid !important;
+                grid-template-columns: 1.05fr 0.95fr !important;
+                border-radius: 28px !important;
+                overflow: hidden !important;
+            }
+
+            .visual-side {
+                display: block !important;
+                min-height: 0 !important;
+                height: 100% !important;
+            }
+
+            .visual-copy {
+                left: 26px !important;
+                bottom: 26px !important;
+                max-width: 420px !important;
+            }
+
+            .visual-title {
+                font-size: clamp(28px, 4vw, 42px) !important;
+                line-height: 1.02 !important;
+                margin-bottom: 8px !important;
+            }
+
+            .visual-subtitle {
+                font-size: 13px !important;
+                line-height: 1.55 !important;
+                max-width: 360px !important;
+            }
+
+            .brand-badge {
+                top: 22px !important;
+                left: 22px !important;
+                padding: 8px 12px !important;
+                font-size: 11px !important;
+            }
+
+            .form-side {
+                min-height: 0 !important;
+                height: 100% !important;
+                padding: 22px 30px !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+            }
+
+            .form-card {
+                width: 100% !important;
+                max-width: 380px !important;
+                max-height: 100% !important;
+                overflow-y: auto !important;
+                padding-right: 2px !important;
+            }
+
+            .top-row {
+                margin-bottom: 16px !important;
+                align-items: flex-start !important;
+            }
+
+            .logo-box {
+                width: 40px !important;
+                height: 40px !important;
+                border-radius: 12px !important;
+            }
+
+            .logo-box img {
+                width: 24px !important;
+                height: 24px !important;
+            }
+
+            .login-chip {
+                font-size: 11px !important;
+                padding: 7px 10px !important;
+            }
+
+            .portal-switch {
+                display: none !important;
+            }
+
+            .form-title {
+                font-size: 28px !important;
+                line-height: 1.05 !important;
+                margin-bottom: 6px !important;
+            }
+
+            .form-subtitle {
+                font-size: 13px !important;
+                line-height: 1.5 !important;
+                margin-bottom: 15px !important;
+            }
+
+            .alert {
+                padding: 10px 12px !important;
+                margin-bottom: 12px !important;
+                font-size: 12px !important;
+            }
+
+            .form-group {
+                margin-bottom: 13px !important;
+            }
+
+            .form-label {
+                font-size: 12px !important;
+                margin-bottom: 6px !important;
+            }
+
+            .form-input {
+                height: 46px !important;
+                min-height: 46px !important;
+                padding: 0 14px !important;
+                font-size: 14px !important;
+                border-radius: 14px !important;
+            }
+
+            .password-toggle {
+                height: 34px !important;
+                padding: 0 10px !important;
+                font-size: 11px !important;
+                right: 7px !important;
+            }
+
+            .form-row {
+                margin: 4px 0 14px !important;
+            }
+
+            .remember-wrap {
+                font-size: 12px !important;
+            }
+
+            .btn-login {
+                height: 48px !important;
+                min-height: 48px !important;
+                border-radius: 16px !important;
+                font-size: 14px !important;
+            }
+
+            .footer-note {
+                margin-top: 12px !important;
+                font-size: 11px !important;
+            }
+        }
+
+        @media (orientation: landscape) and (min-width: 700px) and (max-height: 520px) {
+            .shell {
+                width: calc(100vw - 20px) !important;
+                height: calc(100vh - 20px) !important;
+                max-height: calc(100vh - 20px) !important;
+                grid-template-columns: 0.95fr 1.05fr !important;
+                border-radius: 22px !important;
+            }
+
+            .page {
+                padding: 10px !important;
+            }
+
+            .visual-title {
+                font-size: 28px !important;
+            }
+
+            .visual-subtitle {
+                display: none !important;
+            }
+
+            .form-side {
+                padding: 16px 24px !important;
+            }
+
+            .form-title {
+                font-size: 24px !important;
+            }
+
+            .form-subtitle {
+                margin-bottom: 10px !important;
+            }
+
+            .form-group {
+                margin-bottom: 10px !important;
+            }
+
+            .form-input {
+                height: 42px !important;
+                min-height: 42px !important;
+            }
+
+            .btn-login {
+                height: 44px !important;
+                min-height: 44px !important;
+            }
+
+            .footer-note {
+                display: none !important;
+            }
+        }
+
+
+        /* FORCE Cashier Login Split Layout - APK Tablet */
+        body.login-portal-cashier {
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .page {
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            padding: 12px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .shell {
+            width: calc(100vw - 24px) !important;
+            height: calc(100vh - 24px) !important;
+            min-height: 0 !important;
+            max-height: calc(100vh - 24px) !important;
+            display: grid !important;
+            grid-template-columns: 48% 52% !important;
+            grid-template-rows: 1fr !important;
+            border-radius: 24px !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .visual-side {
+            display: block !important;
+            grid-column: 1 !important;
+            grid-row: 1 !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+        }
+
+        body.login-portal-cashier .form-side {
+            grid-column: 2 !important;
+            grid-row: 1 !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            padding: 18px 26px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .form-card {
+            width: 100% !important;
+            max-width: 390px !important;
+            max-height: 100% !important;
+            overflow-y: auto !important;
+        }
+
+        body.login-portal-cashier .visual-title {
+            font-size: 30px !important;
+            line-height: 1.05 !important;
+        }
+
+        body.login-portal-cashier .visual-subtitle {
+            font-size: 13px !important;
+            line-height: 1.5 !important;
+        }
+
+        body.login-portal-cashier .form-title {
+            font-size: 26px !important;
+            margin-bottom: 6px !important;
+        }
+
+        body.login-portal-cashier .form-subtitle {
+            font-size: 13px !important;
+            line-height: 1.45 !important;
+            margin-bottom: 14px !important;
+        }
+
+        body.login-portal-cashier .top-row {
+            margin-bottom: 14px !important;
+        }
+
+        body.login-portal-cashier .form-group {
+            margin-bottom: 12px !important;
+        }
+
+        body.login-portal-cashier .form-input {
+            height: 42px !important;
+            min-height: 42px !important;
+            padding: 0 14px !important;
+            border-radius: 14px !important;
+            font-size: 13px !important;
+        }
+
+        body.login-portal-cashier .btn-login {
+            height: 44px !important;
+            min-height: 44px !important;
+            border-radius: 16px !important;
+        }
+
+        body.login-portal-cashier .portal-switch,
+        body.login-portal-cashier .footer-note {
+            display: none !important;
+        }
+
+        @media (max-width: 520px) {
+            body.login-portal-cashier {
+                overflow: auto !important;
+            }
+
+            body.login-portal-cashier .page {
+                height: auto !important;
+                min-height: 100vh !important;
+                overflow: auto !important;
+            }
+
+            body.login-portal-cashier .shell {
+                height: auto !important;
+                min-height: 0 !important;
+                display: grid !important;
+                grid-template-columns: 1fr !important;
+                grid-template-rows: auto auto !important;
+            }
+
+            body.login-portal-cashier .visual-side {
+                min-height: 180px !important;
+                grid-column: 1 !important;
+                grid-row: 1 !important;
+            }
+
+            body.login-portal-cashier .form-side {
+                grid-column: 1 !important;
+                grid-row: 2 !important;
+            }
+        }
+
+
+        /* FINAL Full Split Cashier Login - Tablet APK */
+        body.login-portal-cashier {
+            background: #f4f6fb !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .page {
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: stretch !important;
+            justify-content: stretch !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .shell {
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            max-height: 100vh !important;
+            border-radius: 0 !important;
+            border: 0 !important;
+            box-shadow: none !important;
+            background: #ffffff !important;
+            display: grid !important;
+            grid-template-columns: 50% 50% !important;
+            grid-template-rows: 100vh !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .visual-side {
+            grid-column: 1 !important;
+            grid-row: 1 !important;
+            display: block !important;
+            width: 100% !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            border-radius: 0 !important;
+            background:
+                linear-gradient(180deg, rgba(17,24,39,0.12), rgba(17,24,39,0.38)),
+                url('{{ asset('images/login-cover.jpg') }}') center center / cover no-repeat !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .visual-side::after {
+            background: linear-gradient(135deg, rgba(15,23,42,0.10), rgba(232,106,58,0.18)) !important;
+        }
+
+        body.login-portal-cashier .brand-badge {
+            top: 32px !important;
+            left: 34px !important;
+            padding: 10px 15px !important;
+            font-size: 12px !important;
+        }
+
+        body.login-portal-cashier .visual-copy {
+            left: 38px !important;
+            right: 38px !important;
+            bottom: 38px !important;
+            max-width: 520px !important;
+        }
+
+        body.login-portal-cashier .visual-title {
+            font-size: clamp(34px, 5vw, 58px) !important;
+            line-height: 0.98 !important;
+            letter-spacing: -0.05em !important;
+            margin: 0 0 12px !important;
+        }
+
+        body.login-portal-cashier .visual-subtitle {
+            display: block !important;
+            font-size: 14px !important;
+            line-height: 1.65 !important;
+            max-width: 420px !important;
+        }
+
+        body.login-portal-cashier .form-side {
+            grid-column: 2 !important;
+            grid-row: 1 !important;
+            width: 100% !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            padding: 34px 54px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background:
+                radial-gradient(circle at top right, rgba(232,106,58,0.09), transparent 30%),
+                #ffffff !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .form-card {
+            width: 100% !important;
+            max-width: 430px !important;
+            max-height: calc(100vh - 68px) !important;
+            overflow-y: auto !important;
+            padding: 0 !important;
+        }
+
+        body.login-portal-cashier .top-row {
+            display: grid !important;
+            grid-template-columns: 1fr auto !important;
+            align-items: center !important;
+            gap: 14px !important;
+            margin-bottom: 22px !important;
+        }
+
+        body.login-portal-cashier .logo-box {
+            width: 44px !important;
+            height: 44px !important;
+            border-radius: 14px !important;
+        }
+
+        body.login-portal-cashier .logo-box img {
+            width: 27px !important;
+            height: 27px !important;
+        }
+
+        body.login-portal-cashier .logo-text {
+            font-size: 14px !important;
+        }
+
+        body.login-portal-cashier .login-chip {
+            font-size: 12px !important;
+            padding: 8px 12px !important;
+        }
+
+        body.login-portal-cashier .portal-switch {
+            display: none !important;
+        }
+
+        body.login-portal-cashier .form-title {
+            font-size: 34px !important;
+            line-height: 1.05 !important;
+            letter-spacing: -0.04em !important;
+            margin: 0 0 8px !important;
+        }
+
+        body.login-portal-cashier .form-subtitle {
+            font-size: 14px !important;
+            line-height: 1.6 !important;
+            margin: 0 0 24px !important;
+        }
+
+        body.login-portal-cashier .form-group {
+            margin-bottom: 17px !important;
+        }
+
+        body.login-portal-cashier .form-label {
+            font-size: 12px !important;
+            margin-bottom: 8px !important;
+            font-weight: 800 !important;
+        }
+
+        body.login-portal-cashier .form-input {
+            width: 100% !important;
+            height: 50px !important;
+            min-height: 50px !important;
+            padding: 0 16px !important;
+            border-radius: 15px !important;
+            font-size: 14px !important;
+            background: #ffffff !important;
+        }
+
+        body.login-portal-cashier .password-wrap .form-input {
+            padding-right: 76px !important;
+        }
+
+        body.login-portal-cashier .password-toggle {
+            height: 34px !important;
+            right: 8px !important;
+            border-radius: 999px !important;
+            padding: 0 13px !important;
+            font-size: 11px !important;
+        }
+
+        body.login-portal-cashier .form-row {
+            margin: 2px 0 18px !important;
+        }
+
+        body.login-portal-cashier .remember-wrap {
+            font-size: 13px !important;
+        }
+
+        body.login-portal-cashier .btn-login {
+            width: 100% !important;
+            height: 52px !important;
+            min-height: 52px !important;
+            border-radius: 16px !important;
+            font-size: 15px !important;
+            font-weight: 800 !important;
+        }
+
+        body.login-portal-cashier .footer-note {
+            margin-top: 18px !important;
+            font-size: 12px !important;
+        }
+
+        @media (max-height: 540px) {
+            body.login-portal-cashier .form-side {
+                padding: 22px 46px !important;
+            }
+
+            body.login-portal-cashier .form-card {
+                max-width: 420px !important;
+                max-height: calc(100vh - 44px) !important;
+            }
+
+            body.login-portal-cashier .top-row {
+                margin-bottom: 14px !important;
+            }
+
+            body.login-portal-cashier .form-title {
+                font-size: 28px !important;
+            }
+
+            body.login-portal-cashier .form-subtitle {
+                font-size: 13px !important;
+                line-height: 1.45 !important;
+                margin-bottom: 14px !important;
+            }
+
+            body.login-portal-cashier .form-group {
+                margin-bottom: 11px !important;
+            }
+
+            body.login-portal-cashier .form-input {
+                height: 42px !important;
+                min-height: 42px !important;
+            }
+
+            body.login-portal-cashier .btn-login {
+                height: 44px !important;
+                min-height: 44px !important;
+            }
+
+            body.login-portal-cashier .footer-note {
+                display: none !important;
+            }
+
+            body.login-portal-cashier .visual-title {
+                font-size: 34px !important;
+            }
+
+            body.login-portal-cashier .visual-subtitle {
+                font-size: 12px !important;
+                line-height: 1.45 !important;
+            }
+        }
+
+
+        /* FINAL Centered 50:50 Cashier Login */
+        body.login-portal-cashier {
+            background:
+                radial-gradient(circle at top left, rgba(232,106,58,0.08), transparent 28%),
+                linear-gradient(180deg, #f7f8fc 0%, #eef2f8 100%) !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .page {
+            width: 100vw !important;
+            height: 100vh !important;
+            min-height: 100vh !important;
+            padding: 0 !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .shell {
+            width: min(980px, calc(100vw - 56px)) !important;
+            height: min(560px, calc(100vh - 56px)) !important;
+            min-height: 0 !important;
+            max-height: calc(100vh - 56px) !important;
+            display: grid !important;
+            grid-template-columns: 50% 50% !important;
+            grid-template-rows: 1fr !important;
+            border-radius: 22px !important;
+            border: 1px solid rgba(255,255,255,0.86) !important;
+            box-shadow: 0 28px 80px rgba(15, 23, 42, 0.16) !important;
+            background: #ffffff !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .visual-side {
+            grid-column: 1 !important;
+            grid-row: 1 !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            border-radius: 0 !important;
+            display: block !important;
+            background:
+                linear-gradient(180deg, rgba(17,24,39,0.06), rgba(17,24,39,0.28)),
+                url('{{ asset('images/login-cover.jpg') }}') center center / cover no-repeat !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .form-side {
+            grid-column: 2 !important;
+            grid-row: 1 !important;
+            width: 100% !important;
+            height: 100% !important;
+            min-height: 0 !important;
+            padding: 34px 50px !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            background:
+                radial-gradient(circle at top right, rgba(232,106,58,0.08), transparent 32%),
+                #ffffff !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .form-card {
+            width: 100% !important;
+            max-width: 360px !important;
+            max-height: 100% !important;
+            overflow-y: auto !important;
+            margin: 0 auto !important;
+        }
+
+        body.login-portal-cashier .brand-badge {
+            top: 30px !important;
+            left: 30px !important;
+            padding: 9px 14px !important;
+            font-size: 11px !important;
+        }
+
+        body.login-portal-cashier .visual-copy {
+            left: 30px !important;
+            right: 30px !important;
+            bottom: 28px !important;
+            max-width: 360px !important;
+        }
+
+        body.login-portal-cashier .visual-title {
+            font-size: 32px !important;
+            line-height: 1 !important;
+            margin: 0 !important;
+            letter-spacing: -0.04em !important;
+        }
+
+        body.login-portal-cashier .visual-subtitle {
+            display: none !important;
+        }
+
+        body.login-portal-cashier .top-row {
+            display: grid !important;
+            grid-template-columns: 1fr auto !important;
+            align-items: center !important;
+            gap: 12px !important;
+            margin-bottom: 22px !important;
+        }
+
+        body.login-portal-cashier .logo-box {
+            width: 38px !important;
+            height: 38px !important;
+            border-radius: 12px !important;
+        }
+
+        body.login-portal-cashier .logo-box img {
+            width: 23px !important;
+            height: 23px !important;
+        }
+
+        body.login-portal-cashier .logo-text {
+            font-size: 13px !important;
+        }
+
+        body.login-portal-cashier .login-chip {
+            font-size: 11px !important;
+            padding: 7px 10px !important;
+        }
+
+        body.login-portal-cashier .portal-switch {
+            display: none !important;
+        }
+
+        body.login-portal-cashier .form-title {
+            font-size: 30px !important;
+            line-height: 1.05 !important;
+            margin: 0 0 8px !important;
+            letter-spacing: -0.04em !important;
+        }
+
+        body.login-portal-cashier .form-subtitle {
+            font-size: 13px !important;
+            line-height: 1.55 !important;
+            margin: 0 0 22px !important;
+        }
+
+        body.login-portal-cashier .form-group {
+            margin-bottom: 15px !important;
+        }
+
+        body.login-portal-cashier .form-label {
+            font-size: 12px !important;
+            margin-bottom: 7px !important;
+        }
+
+        body.login-portal-cashier .form-input {
+            height: 46px !important;
+            min-height: 46px !important;
+            border-radius: 15px !important;
+            font-size: 13px !important;
+            padding: 0 14px !important;
+        }
+
+        body.login-portal-cashier .password-wrap .form-input {
+            padding-right: 72px !important;
+        }
+
+        body.login-portal-cashier .password-toggle {
+            right: 7px !important;
+            height: 32px !important;
+            padding: 0 12px !important;
+            font-size: 11px !important;
+            border-radius: 999px !important;
+        }
+
+        body.login-portal-cashier .form-row {
+            margin: 2px 0 16px !important;
+        }
+
+        body.login-portal-cashier .remember-wrap {
+            font-size: 12px !important;
+        }
+
+        body.login-portal-cashier .btn-login {
+            height: 48px !important;
+            min-height: 48px !important;
+            border-radius: 16px !important;
+            font-size: 14px !important;
+            font-weight: 800 !important;
+        }
+
+        body.login-portal-cashier .footer-note {
+            display: none !important;
+        }
+
+        @media (max-height: 520px) {
+            body.login-portal-cashier .shell {
+                width: min(940px, calc(100vw - 40px)) !important;
+                height: min(500px, calc(100vh - 40px)) !important;
+                max-height: calc(100vh - 40px) !important;
+            }
+
+            body.login-portal-cashier .form-side {
+                padding: 24px 46px !important;
+            }
+
+            body.login-portal-cashier .form-title {
+                font-size: 26px !important;
+            }
+
+            body.login-portal-cashier .form-subtitle {
+                margin-bottom: 14px !important;
+            }
+
+            body.login-portal-cashier .form-group {
+                margin-bottom: 10px !important;
+            }
+
+            body.login-portal-cashier .form-input {
+                height: 42px !important;
+                min-height: 42px !important;
+            }
+
+            body.login-portal-cashier .btn-login {
+                height: 44px !important;
+                min-height: 44px !important;
+            }
+        }
+
+
+        /* FINAL Force Full Image Split */
+        body.login-portal-cashier .shell {
+            position: relative !important;
+            display: block !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .visual-side {
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            width: 50% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+            max-height: none !important;
+            display: block !important;
+            border-radius: 0 !important;
+            background:
+                linear-gradient(180deg, rgba(17,24,39,0.06), rgba(17,24,39,0.32)),
+                url('{{ asset('images/login-cover.jpg') }}') center center / cover no-repeat !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .form-side {
+            position: absolute !important;
+            right: 0 !important;
+            top: 0 !important;
+            bottom: 0 !important;
+            width: 50% !important;
+            height: 100% !important;
+            min-height: 100% !important;
+            max-height: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            padding: 34px 50px !important;
+            overflow: hidden !important;
+        }
+
+        body.login-portal-cashier .visual-copy {
+            position: absolute !important;
+            left: 30px !important;
+            right: 30px !important;
+            bottom: 28px !important;
+            z-index: 3 !important;
+        }
+
+        body.login-portal-cashier .brand-badge {
+            position: absolute !important;
+            top: 30px !important;
+            left: 30px !important;
+            z-index: 3 !important;
+        }
+
+    </style>
     @if(($portal ?? 'backoffice') === 'cashier')
         <link rel="manifest" href="{{ asset('manifest-cashier.json') }}">
         <meta name="theme-color" content="#e86a3a">
@@ -1592,6 +2580,234 @@
             }
         </script>
     @endif
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!document.body.classList.contains('login-portal-cashier')) {
+            return;
+        }
+
+        if (window.innerWidth <= 520) {
+            return;
+        }
+
+        const shell = document.querySelector('.shell');
+        const visual = document.querySelector('.visual-side');
+        const form = document.querySelector('.form-side');
+
+        if (shell) {
+            shell.style.display = 'grid';
+            shell.style.gridTemplateColumns = '48% 52%';
+            shell.style.gridTemplateRows = '1fr';
+            shell.style.width = 'calc(100vw - 24px)';
+            shell.style.height = 'calc(100vh - 24px)';
+            shell.style.minHeight = '0';
+            shell.style.maxHeight = 'calc(100vh - 24px)';
+            shell.style.overflow = 'hidden';
+        }
+
+        if (visual) {
+            visual.style.display = 'block';
+            visual.style.gridColumn = '1';
+            visual.style.gridRow = '1';
+            visual.style.height = '100%';
+            visual.style.minHeight = '0';
+        }
+
+        if (form) {
+            form.style.gridColumn = '2';
+            form.style.gridRow = '1';
+            form.style.height = '100%';
+            form.style.minHeight = '0';
+            form.style.overflow = 'hidden';
+        }
+    });
+</script>
+
+
+<script>
+    /* FINAL_FULL_SPLIT_LOGIN_JS */
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!document.body.classList.contains('login-portal-cashier')) {
+            return;
+        }
+
+        const page = document.querySelector('.page');
+        const shell = document.querySelector('.shell');
+        const visual = document.querySelector('.visual-side');
+        const form = document.querySelector('.form-side');
+        const formCard = document.querySelector('.form-card');
+
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+
+        if (page) {
+            page.style.width = '100vw';
+            page.style.height = '100vh';
+            page.style.padding = '0';
+            page.style.overflow = 'hidden';
+        }
+
+        if (shell) {
+            shell.style.width = '100vw';
+            shell.style.height = '100vh';
+            shell.style.minHeight = '100vh';
+            shell.style.maxHeight = '100vh';
+            shell.style.display = 'grid';
+            shell.style.gridTemplateColumns = '50% 50%';
+            shell.style.gridTemplateRows = '100vh';
+            shell.style.borderRadius = '0';
+            shell.style.boxShadow = 'none';
+            shell.style.overflow = 'hidden';
+        }
+
+        if (visual) {
+            visual.style.gridColumn = '1';
+            visual.style.gridRow = '1';
+            visual.style.width = '100%';
+            visual.style.height = '100vh';
+            visual.style.minHeight = '100vh';
+            visual.style.borderRadius = '0';
+            visual.style.display = 'block';
+            visual.style.backgroundSize = 'cover';
+            visual.style.backgroundPosition = 'center center';
+        }
+
+        if (form) {
+            form.style.gridColumn = '2';
+            form.style.gridRow = '1';
+            form.style.width = '100%';
+            form.style.height = '100vh';
+            form.style.minHeight = '100vh';
+            form.style.display = 'flex';
+            form.style.alignItems = 'center';
+            form.style.justifyContent = 'center';
+            form.style.overflow = 'hidden';
+        }
+
+        if (formCard) {
+            formCard.style.width = '100%';
+            formCard.style.maxWidth = '430px';
+            formCard.style.maxHeight = 'calc(100vh - 68px)';
+            formCard.style.overflowY = 'auto';
+        }
+    });
+</script>
+
+
+<script>
+    /* CENTERED_50_50_LOGIN_JS */
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!document.body.classList.contains('login-portal-cashier')) {
+            return;
+        }
+
+        const page = document.querySelector('.page');
+        const shell = document.querySelector('.shell');
+        const visual = document.querySelector('.visual-side');
+        const form = document.querySelector('.form-side');
+        const formCard = document.querySelector('.form-card');
+
+        document.documentElement.style.overflow = 'hidden';
+        document.body.style.overflow = 'hidden';
+
+        if (page) {
+            page.style.width = '100vw';
+            page.style.height = '100vh';
+            page.style.display = 'flex';
+            page.style.alignItems = 'center';
+            page.style.justifyContent = 'center';
+            page.style.padding = '0';
+        }
+
+        if (shell) {
+            shell.style.width = 'min(980px, calc(100vw - 56px))';
+            shell.style.height = 'min(560px, calc(100vh - 56px))';
+            shell.style.minHeight = '0';
+            shell.style.display = 'grid';
+            shell.style.gridTemplateColumns = '50% 50%';
+            shell.style.gridTemplateRows = '1fr';
+            shell.style.borderRadius = '22px';
+            shell.style.overflow = 'hidden';
+        }
+
+        if (visual) {
+            visual.style.gridColumn = '1';
+            visual.style.gridRow = '1';
+            visual.style.width = '100%';
+            visual.style.height = '100%';
+            visual.style.minHeight = '0';
+            visual.style.backgroundSize = 'cover';
+            visual.style.backgroundPosition = 'center center';
+        }
+
+        if (form) {
+            form.style.gridColumn = '2';
+            form.style.gridRow = '1';
+            form.style.width = '100%';
+            form.style.height = '100%';
+            form.style.minHeight = '0';
+            form.style.display = 'flex';
+            form.style.alignItems = 'center';
+            form.style.justifyContent = 'center';
+            form.style.padding = '34px 50px';
+        }
+
+        if (formCard) {
+            formCard.style.maxWidth = '360px';
+            formCard.style.margin = '0 auto';
+        }
+    });
+</script>
+
+
+<script>
+    /* ABSOLUTE_FULL_IMAGE_SPLIT_JS */
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!document.body.classList.contains('login-portal-cashier')) {
+            return;
+        }
+
+        const shell = document.querySelector('.shell');
+        const visual = document.querySelector('.visual-side');
+        const form = document.querySelector('.form-side');
+
+        if (shell) {
+            shell.style.position = 'relative';
+            shell.style.display = 'block';
+            shell.style.overflow = 'hidden';
+        }
+
+        if (visual) {
+            visual.style.position = 'absolute';
+            visual.style.left = '0';
+            visual.style.top = '0';
+            visual.style.bottom = '0';
+            visual.style.width = '50%';
+            visual.style.height = '100%';
+            visual.style.minHeight = '100%';
+            visual.style.maxHeight = 'none';
+            visual.style.display = 'block';
+            visual.style.backgroundSize = 'cover';
+            visual.style.backgroundPosition = 'center center';
+        }
+
+        if (form) {
+            form.style.position = 'absolute';
+            form.style.right = '0';
+            form.style.top = '0';
+            form.style.bottom = '0';
+            form.style.width = '50%';
+            form.style.height = '100%';
+            form.style.minHeight = '100%';
+            form.style.maxHeight = 'none';
+            form.style.display = 'flex';
+            form.style.alignItems = 'center';
+            form.style.justifyContent = 'center';
+        }
+    });
+</script>
 
 </body>
 </html>

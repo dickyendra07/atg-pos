@@ -10,8 +10,10 @@ return new class extends Migration
     {
         Schema::create('ingredient_production_recipe_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('ingredient_production_recipe_id')
-                ->constrained('ingredient_production_recipes')
+            $table->unsignedBigInteger('ingredient_production_recipe_id');
+            $table->foreign('ingredient_production_recipe_id', 'ipr_items_recipe_id_fk')
+                ->references('id')
+                ->on('ingredient_production_recipes')
                 ->cascadeOnDelete();
 
             $table->foreignId('input_ingredient_id')
