@@ -13,7 +13,6 @@ use Illuminate\Support\Facades\Auth;
 
 class CashierController extends Controller
 {
-
     public function selectOutletForm()
     {
         if (session('auth_portal') !== 'cashier') {
@@ -245,11 +244,11 @@ class CashierController extends Controller
         $currentDay = strtolower(now()->format('l'));
 
         return Promo::with([
-                'outlet',
-                'outlets',
-                'requirements.variant.product',
-                'rewards.variant.product',
-            ])
+            'outlet',
+            'outlets',
+            'requirements.variant.product',
+            'rewards.variant.product',
+        ])
             ->where('is_active', true)
             ->where('status', 'active')
             ->where(function ($query) use ($user) {
@@ -291,7 +290,6 @@ class CashierController extends Controller
     {
         $user = $this->authorizeCashierAccess();
 
-
         if (! $user) {
             return redirect()
                 ->route('dashboard')
@@ -305,21 +303,34 @@ class CashierController extends Controller
         $isLiteMode = (bool) session('cashier_lite_mode', false);
 
         $products = Product::with([
-                'brand',
-                'category',
-                'variants' => function ($query) use ($user) {
-                    $query->where('is_active', true)
-                        ->where(function ($variantQuery) use ($user) {
-                            $variantQuery
-                                ->doesntHave('outlets')
-                                ->orWhereHas('outlets', function ($outletQuery) use ($user) {
-                                    $outletQuery->where('outlets.id', $user->outlet_id);
-                                });
-                        })
-                        ->orderBy('name');
-                },
-            ])
+            'brand',
+            'category',
+            'variants' => function ($query) use ($user) {
+                $query->where('is_active', true)
+                    ->where(function ($variantQuery) use ($user) {
+                        $variantQuery
+                            ->doesntHave('outlets')
+                            ->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                                $outletQuery->where('outlets.id', $user->outlet_id);
+                            });
+                    })
+                    ->orderBy('name');
+            },
+        ])
             ->where('is_active', true)
+            ->whereHas('outlets', function ($outletQuery) use ($user) {
+                $outletQuery->where('outlets.id', $user->outlet_id);
+            })
+            ->whereHas('variants', function ($variantQuery) use ($user) {
+                $variantQuery->where('is_active', true)
+                    ->where(function ($availabilityQuery) use ($user) {
+                        $availabilityQuery
+                            ->doesntHave('outlets')
+                            ->orWhereHas('outlets', function ($outletQuery) use ($user) {
+                                $outletQuery->where('outlets.id', $user->outlet_id);
+                            });
+                    });
+            })
             ->orderBy('name')
             ->get();
 
@@ -382,7 +393,7 @@ class CashierController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Order type berhasil diganti ke ' . strtoupper(str_replace('_', ' ', $validated['order_type'])) . '.',
+                'message' => 'Order type berhasil diganti ke '.strtoupper(str_replace('_', ' ', $validated['order_type'])).'.',
                 'cart' => [
                     'order_type' => $validated['order_type'],
                     'cart_count' => 0,
@@ -396,7 +407,7 @@ class CashierController extends Controller
 
         return redirect()
             ->route('cashier.index')
-            ->with('success', 'Order type berhasil diganti ke ' . strtoupper(str_replace('_', ' ', $validated['order_type'])) . '.');
+            ->with('success', 'Order type berhasil diganti ke '.strtoupper(str_replace('_', ' ', $validated['order_type'])).'.');
     }
 
     public function newTransaction()

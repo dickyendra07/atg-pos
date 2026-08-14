@@ -445,8 +445,8 @@
                     <div class="field">
                         <label>Status</label>
                         <select name="is_active" required>
-                            <option value="1" @selected(old('is_active', (string) $recipe->is_active) == '1')>Active</option>
-                            <option value="0" @selected(old('is_active', (string) $recipe->is_active) == '0')>Inactive</option>
+                            <option value="1" @selected(old('is_active', (string) (int) $recipe->is_active) == '1')>Active</option>
+                            <option value="0" @selected(old('is_active', (string) (int) $recipe->is_active) == '0')>Inactive</option>
                         </select>
                     </div>
 

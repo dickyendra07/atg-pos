@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductVariantViewController extends Controller
@@ -85,7 +86,34 @@ class ProductVariantViewController extends Controller
             ->values();
 
         if ($duplicates->isNotEmpty()) {
-            abort(422, 'Ada kode variant yang duplikat di form: ' . $duplicates->implode(', '));
+            abort(422, 'Ada kode variant yang duplikat di form: '.$duplicates->implode(', '));
+        }
+    }
+
+    protected function validateVariantOutletScope(Product $product, array $rows): void
+    {
+        $parentOutletIds = $product->outlets()
+            ->pluck('outlets.id')
+            ->map(fn ($id) => (int) $id);
+
+        foreach ($rows as $index => $row) {
+            $requestedOutletIds = collect($row['outlet_ids'] ?? [])
+                ->when(! empty($row['outlet_id']), fn ($ids) => $ids->push((int) $row['outlet_id']))
+                ->map(fn ($id) => (int) $id)
+                ->unique();
+
+            $invalidOutletIds = $requestedOutletIds->diff($parentOutletIds);
+
+            if ($invalidOutletIds->isNotEmpty()) {
+                $invalidOutletNames = Outlet::whereIn('id', $invalidOutletIds->all())
+                    ->orderBy('name')
+                    ->pluck('name')
+                    ->implode(', ');
+
+                throw ValidationException::withMessages([
+                    'variants.'.$index.'.outlet_ids' => 'Outlet variant harus merupakan subset outlet Product. Outlet tidak valid: '.$invalidOutletNames,
+                ]);
+            }
         }
     }
 
@@ -162,6 +190,8 @@ class ProductVariantViewController extends Controller
         ]);
 
         $rows = $this->normalizeVariantRows($validated['variants'] ?? []);
+        $product = Product::findOrFail($validated['product_id']);
+        $this->validateVariantOutletScope($product, $rows);
 
         if (count($rows) === 0) {
             return back()
@@ -170,7 +200,7 @@ class ProductVariantViewController extends Controller
         }
 
         $duplicateKeys = collect($rows)
-            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL') . '|' . strtoupper(trim((string) $row['code'])))
+            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL').'|'.strtoupper(trim((string) $row['code'])))
             ->values();
 
         $duplicateCodes = $duplicateKeys
@@ -184,7 +214,7 @@ class ProductVariantViewController extends Controller
         if ($duplicateCodes->isNotEmpty()) {
             return back()
                 ->withErrors([
-                    'variants' => 'Ada kode variant yang duplikat di form: ' . $duplicateCodes->implode(', '),
+                    'variants' => 'Ada kode variant yang duplikat di form: '.$duplicateCodes->implode(', '),
                 ])
                 ->withInput();
         }
@@ -204,7 +234,7 @@ class ProductVariantViewController extends Controller
         if ($existingCodes->isNotEmpty()) {
             return back()
                 ->withErrors([
-                    'variants' => 'Kode variant sudah dipakai pada product ini: ' . $existingCodes->implode(', '),
+                    'variants' => 'Kode variant sudah dipakai pada product ini: '.$existingCodes->implode(', '),
                 ])
                 ->withInput();
         }
@@ -228,7 +258,7 @@ class ProductVariantViewController extends Controller
 
         return redirect()
             ->route('backoffice.variants.index')
-            ->with('success', count($rows) . ' variant baru berhasil ditambahkan.');
+            ->with('success', count($rows).' variant baru berhasil ditambahkan.');
     }
 
     public function edit(ProductVariant $variant)
@@ -244,7 +274,7 @@ class ProductVariantViewController extends Controller
 
         $variant->load(['product.brand', 'product.category', 'outlet', 'outlets']);
 
-        $productVariants = ProductVariant::with(['product.brand', 'product.category', 'outlet'])
+        $productVariants = ProductVariant::with(['product.brand', 'product.category', 'outlet', 'outlets'])
             ->where('product_id', $variant->product_id)
             ->orderBy('name')
             ->get();
@@ -288,6 +318,8 @@ class ProductVariantViewController extends Controller
         ]);
 
         $rows = $this->normalizeVariantRows($validated['variants'] ?? []);
+        $product = Product::findOrFail($validated['product_id']);
+        $this->validateVariantOutletScope($product, $rows);
 
         if (count($rows) === 0) {
             return back()
@@ -301,7 +333,7 @@ class ProductVariantViewController extends Controller
             ->values();
 
         $duplicateKeys = collect($rows)
-            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL') . '|' . strtoupper(trim((string) $row['code'])))
+            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL').'|'.strtoupper(trim((string) $row['code'])))
             ->values();
 
         $duplicateCodes = $duplicateKeys
@@ -318,7 +350,7 @@ class ProductVariantViewController extends Controller
         if ($duplicateCodes->isNotEmpty()) {
             return back()
                 ->withErrors([
-                    'variants' => 'Ada kode variant yang duplikat di form: ' . $duplicateCodes->implode(', '),
+                    'variants' => 'Ada kode variant yang duplikat di form: '.$duplicateCodes->implode(', '),
                 ])
                 ->withInput();
         }
@@ -342,7 +374,7 @@ class ProductVariantViewController extends Controller
         if ($conflictingCodes->isNotEmpty()) {
             return back()
                 ->withErrors([
-                    'variants' => 'Kode variant sudah dipakai pada product tujuan: ' . $conflictingCodes->implode(', '),
+                    'variants' => 'Kode variant sudah dipakai pada product tujuan: '.$conflictingCodes->implode(', '),
                 ])
                 ->withInput();
         }
@@ -364,7 +396,7 @@ class ProductVariantViewController extends Controller
             if ($removedVariant->recipe_count > 0 || $removedVariant->sales_transaction_items_count > 0) {
                 return back()
                     ->withErrors([
-                        'variants' => 'Variant "' . $removedVariant->name . '" tidak bisa dihapus karena masih dipakai di recipe / transaksi.',
+                        'variants' => 'Variant "'.$removedVariant->name.'" tidak bisa dihapus karena masih dipakai di recipe / transaksi.',
                     ])
                     ->withInput();
             }
@@ -437,7 +469,7 @@ class ProductVariantViewController extends Controller
 
         return redirect()
             ->route('backoffice.variants.index')
-            ->with('success', 'Variant "' . $variantName . '" berhasil dihapus.');
+            ->with('success', 'Variant "'.$variantName.'" berhasil dihapus.');
     }
 
     public function importForm()
@@ -458,7 +490,7 @@ class ProductVariantViewController extends Controller
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () {
@@ -476,11 +508,11 @@ class ProductVariantViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $filename = 'pos_product_master_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'pos_product_master_'.now()->format('Ymd_His').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () {
@@ -603,6 +635,7 @@ class ProductVariantViewController extends Controller
             if (trim($line) === '') {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: baris kosong.";
+
                 continue;
             }
 
@@ -611,6 +644,7 @@ class ProductVariantViewController extends Controller
             if (count($row) < 7) {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 7.";
+
                 continue;
             }
 
@@ -625,6 +659,7 @@ class ProductVariantViewController extends Controller
             if ($productCode === '' || $name === '' || $code === '') {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: product_code, name, dan code wajib diisi.";
+
                 continue;
             }
 
@@ -634,12 +669,14 @@ class ProductVariantViewController extends Controller
             if ($priceDineIn === null || $priceDineIn < 0) {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: price_dine_in tidak valid.";
+
                 continue;
             }
 
             if ($priceDelivery === null || $priceDelivery < 0) {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: price_delivery tidak valid.";
+
                 continue;
             }
 
@@ -648,6 +685,7 @@ class ProductVariantViewController extends Controller
             if (! $product) {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: product code '{$productCode}' tidak ditemukan.";
+
                 continue;
             }
 
@@ -659,16 +697,23 @@ class ProductVariantViewController extends Controller
                 if (! $outlet) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: outlet code '{$outletCode}' tidak ditemukan.";
+
                     continue;
                 }
 
                 $outletId = $outlet->id;
+
+                if (! $product->outlets()->whereKey($outletId)->exists()) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: outlet '{$outletCode}' belum tersedia pada Product '{$product->name}'.";
+
+                    continue;
+                }
             }
 
             $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
 
             $variant = ProductVariant::where('product_id', $product->id)
-                ->where('outlet_id', $outletId)
                 ->whereRaw('UPPER(code) = ?', [strtoupper($code)])
                 ->first();
 
@@ -680,9 +725,10 @@ class ProductVariantViewController extends Controller
                     'price_delivery' => $priceDelivery,
                     'is_active' => $isActive,
                 ]);
+                $variant->outlets()->sync($outletId ? [$outletId] : []);
                 $updated++;
             } else {
-                ProductVariant::create([
+                $variant = ProductVariant::create([
                     'product_id' => $product->id,
                     'outlet_id' => null,
                     'name' => $name,
@@ -692,6 +738,7 @@ class ProductVariantViewController extends Controller
                     'price_delivery' => $priceDelivery,
                     'is_active' => $isActive,
                 ]);
+                $variant->outlets()->sync($outletId ? [$outletId] : []);
                 $imported++;
             }
         }

@@ -3,14 +3,15 @@
 namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApprovalPin;
+use App\Models\BackofficeNotification;
 use App\Models\CashierShift;
 use App\Models\Discount;
 use App\Models\Member;
 use App\Models\ProductVariant;
 use App\Models\Promo;
-use App\Models\BackofficeNotification;
-use App\Models\ApprovalPin;
 use App\Models\SalesTransaction;
+use App\Services\SaleEligibilityService;
 use App\Services\StockDeductionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -56,7 +57,7 @@ class CartController extends Controller
             'order_type' => $orderType,
             'cart_count' => count($cart),
             'subtotal' => (float) $subtotal,
-            'subtotal_formatted' => 'Rp ' . number_format((float) $subtotal, 0, ',', '.'),
+            'subtotal_formatted' => 'Rp '.number_format((float) $subtotal, 0, ',', '.'),
             'member' => $member,
             'items' => collect($cart)->values()->map(function ($item) {
                 return [
@@ -93,10 +94,10 @@ class CartController extends Controller
     protected function generateDailyTransactionNumber(): string
     {
         $today = now()->format('Ymd');
-        $prefix = 'TRX-' . $today . '-';
+        $prefix = 'TRX-'.$today.'-';
 
         $lastTransactionToday = SalesTransaction::whereDate('created_at', now()->toDateString())
-            ->where('transaction_number', 'like', $prefix . '%')
+            ->where('transaction_number', 'like', $prefix.'%')
             ->orderByDesc('id')
             ->first();
 
@@ -111,7 +112,7 @@ class CartController extends Controller
             }
         }
 
-        return $prefix . str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) $nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     protected function shiftBlockedResponse(Request $request, string $message)
@@ -145,7 +146,7 @@ class CartController extends Controller
         session(['cashier_order_type' => $orderType]);
 
         $cart = session('cashier_cart', []);
-        $cartKey = 'variant_' . $variant->id . '_' . $orderType;
+        $cartKey = 'variant_'.$variant->id.'_'.$orderType;
 
         $price = method_exists($variant, 'getPriceByOrderType')
             ? $variant->getPriceByOrderType($orderType)
@@ -364,8 +365,6 @@ class CartController extends Controller
             ->with('success', 'Keranjang berhasil dikosongkan.');
     }
 
-
-
     protected function promoAppliesToUserOutlet(Promo $promo, $user): bool
     {
         $promo->loadMissing(['outlets']);
@@ -385,7 +384,7 @@ class CartController extends Controller
     {
         $variant->loadMissing(['product.brand', 'product.category']);
 
-        $cartKey = ($isReward ? 'promo_reward_' : 'variant_') . $variant->id . '_' . $orderType . ($isReward && $promo ? '_promo_' . $promo->id : '');
+        $cartKey = ($isReward ? 'promo_reward_' : 'variant_').$variant->id.'_'.$orderType.($isReward && $promo ? '_promo_'.$promo->id : '');
 
         $price = $isReward
             ? 0
@@ -398,6 +397,7 @@ class CartController extends Controller
         if (isset($cart[$cartKey])) {
             $cart[$cartKey]['qty'] = (float) ($cart[$cartKey]['qty'] ?? 0) + $qty;
             $cart[$cartKey]['line_total'] = (float) $cart[$cartKey]['qty'] * (float) $cart[$cartKey]['price'];
+
             return $cart;
         }
 
@@ -408,7 +408,7 @@ class CartController extends Controller
             'product_name' => $variant->product?->name,
             'brand_name' => $variant->product?->brand?->name,
             'category_name' => $variant->product?->category?->name,
-            'variant_name' => $variant->name . ($isReward ? ' [PROMO FREE ITEM]' : ''),
+            'variant_name' => $variant->name.($isReward ? ' [PROMO FREE ITEM]' : ''),
             'order_type' => $orderType,
             'less_sugar' => false,
             'less_ice' => false,
@@ -507,7 +507,7 @@ class CartController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => 'Promo ' . $promo->name . ' berhasil dimasukkan ke cart.',
+                'message' => 'Promo '.$promo->name.' berhasil dimasukkan ke cart.',
                 'cart' => $payload,
                 'promo_id' => $promo->id,
             ]);
@@ -515,10 +515,8 @@ class CartController extends Controller
 
         return redirect()
             ->route('cashier.index')
-            ->with('success', 'Promo ' . $promo->name . ' berhasil dimasukkan ke cart.');
+            ->with('success', 'Promo '.$promo->name.' berhasil dimasukkan ke cart.');
     }
-
-
 
     protected function getPromoEligibleVariantIds(array $cart, Promo $promo)
     {
@@ -793,8 +791,11 @@ class CartController extends Controller
         return $matches->every(fn ($matched) => $matched === true);
     }
 
-    public function checkout(Request $request, StockDeductionService $stockDeductionService)
-    {
+    public function checkout(
+        Request $request,
+        SaleEligibilityService $saleEligibilityService,
+        StockDeductionService $stockDeductionService
+    ) {
         $user = $this->authorizeCashierAccess();
         $activeShift = $this->getActiveShift($user);
 
@@ -875,8 +876,17 @@ class CartController extends Controller
                 $amountPaid,
                 $changeAmount,
                 $memberSession,
+                $saleEligibilityService,
+                $stockDeductionService,
                 &$earnedPoints
             ) {
+                $requirements = $saleEligibilityService->requirementsForCart($cart, (int) $user->outlet_id);
+                $stockDeductionService->validateRequirementsStock(
+                    $requirements,
+                    (int) $user->outlet_id,
+                    true
+                );
+
                 $transaction = SalesTransaction::create([
                     'transaction_number' => $this->generateDailyTransactionNumber(),
                     'user_id' => $user->id,
@@ -900,7 +910,7 @@ class CartController extends Controller
                     $itemOrderType = $item['order_type'] ?? 'dine_in';
 
                     if ($variantName) {
-                        $variantName .= ' [' . strtoupper(str_replace('_', ' ', $itemOrderType)) . ']';
+                        $variantName .= ' ['.strtoupper(str_replace('_', ' ', $itemOrderType)).']';
                     } else {
                         $variantName = strtoupper(str_replace('_', ' ', $itemOrderType));
                     }
@@ -924,6 +934,8 @@ class CartController extends Controller
                     ]);
                 }
 
+                $stockDeductionService->deductRequirements($transaction, $requirements);
+
                 if (! empty($memberSession['id'])) {
                     $member = Member::find($memberSession['id']);
 
@@ -935,11 +947,10 @@ class CartController extends Controller
                 return $transaction;
             });
 
-            $stockDeductionService->deductFromTransaction($transaction);
         } catch (\Throwable $e) {
             return redirect()
                 ->route('cashier.index')
-                ->with('error', 'Checkout gagal diproses: ' . $e->getMessage());
+                ->with('error', 'Checkout gagal diproses: '.$e->getMessage());
         }
 
         session()->forget('cashier_cart');
@@ -959,7 +970,7 @@ class CartController extends Controller
         $message = 'Checkout berhasil.';
 
         if ($earnedPoints > 0) {
-            $message .= ' Member mendapat ' . $earnedPoints . ' poin.';
+            $message .= ' Member mendapat '.$earnedPoints.' poin.';
         } else {
             $message .= ' Tidak ada poin tambahan untuk transaksi ini.';
         }
@@ -970,7 +981,6 @@ class CartController extends Controller
             ->route('cashier.index')
             ->with('success', $message);
     }
-
 
     protected function consumeApprovalPin(string $pinCode, string $purpose, $user, ?SalesTransaction $transaction = null): ApprovalPin
     {
@@ -1019,7 +1029,7 @@ class CartController extends Controller
         BackofficeNotification::create([
             'type' => $type,
             'title' => $title,
-            'message' => 'Kasir ' . ($user->name ?? 'user') . ' meminta PIN untuk ' . $actionLabel . ' transaksi ' . ($transaction->transaction_number ?? '-') . ($reason ? '. Alasan: ' . $reason : ''),
+            'message' => 'Kasir '.($user->name ?? 'user').' meminta PIN untuk '.$actionLabel.' transaksi '.($transaction->transaction_number ?? '-').($reason ? '. Alasan: '.$reason : ''),
             'sales_transaction_id' => $transaction->id,
             'outlet_id' => $transaction->outlet_id,
             'created_by_user_id' => $user->id,
@@ -1081,7 +1091,7 @@ class CartController extends Controller
             BackofficeNotification::create([
                 'type' => 'receipt_reprint',
                 'title' => 'Receipt di-reprint',
-                'message' => 'Receipt transaksi ' . ($transaction->transaction_number ?? '-') . ' di-reprint dari kasir oleh ' . ($user->name ?? 'user') . '.',
+                'message' => 'Receipt transaksi '.($transaction->transaction_number ?? '-').' di-reprint dari kasir oleh '.($user->name ?? 'user').'.',
                 'sales_transaction_id' => $transaction->id,
                 'outlet_id' => $transaction->outlet_id,
                 'created_by_user_id' => $user->id,
@@ -1155,7 +1165,7 @@ class CartController extends Controller
                 BackofficeNotification::create([
                     'type' => 'transaction_void',
                     'title' => 'Transaksi di-void',
-                    'message' => 'Transaksi ' . ($lockedTransaction->transaction_number ?? '-') . ' di-void dari kasir oleh ' . ($user->name ?? 'user') . '. Alasan: ' . $validated['void_reason'],
+                    'message' => 'Transaksi '.($lockedTransaction->transaction_number ?? '-').' di-void dari kasir oleh '.($user->name ?? 'user').'. Alasan: '.$validated['void_reason'],
                     'sales_transaction_id' => $lockedTransaction->id,
                     'outlet_id' => $lockedTransaction->outlet_id,
                     'created_by_user_id' => $user->id,
@@ -1164,12 +1174,11 @@ class CartController extends Controller
         } catch (\Throwable $e) {
             return redirect()
                 ->route('cashier.index')
-                ->with('error', 'Void gagal diproses: ' . $e->getMessage());
+                ->with('error', 'Void gagal diproses: '.$e->getMessage());
         }
 
         return redirect()
             ->route('cashier.index')
             ->with('success', 'Transaksi berhasil di-void dari kasir dan notifikasi sudah masuk back office.');
     }
-
 }

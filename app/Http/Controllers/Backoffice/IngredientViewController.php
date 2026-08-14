@@ -51,7 +51,7 @@ class IngredientViewController extends Controller
                 })
                 ->exists()
         ) {
-            $code = $base . '_' . $counter;
+            $code = $base.'_'.$counter;
             $counter++;
         }
 
@@ -77,7 +77,7 @@ class IngredientViewController extends Controller
                 })
                 ->exists()
         ) {
-            $code = $base . '_' . $counter;
+            $code = $base.'_'.$counter;
             $counter++;
         }
 
@@ -103,11 +103,11 @@ class IngredientViewController extends Controller
             $keyword = trim((string) $request->search);
 
             $ingredientsQuery->where(function ($query) use ($keyword) {
-                $query->where('name', 'like', '%' . $keyword . '%')
-                    ->orWhere('code', 'like', '%' . $keyword . '%')
-                    ->orWhere('unit', 'like', '%' . $keyword . '%')
+                $query->where('name', 'like', '%'.$keyword.'%')
+                    ->orWhere('code', 'like', '%'.$keyword.'%')
+                    ->orWhere('unit', 'like', '%'.$keyword.'%')
                     ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
-                        $categoryQuery->where('name', 'like', '%' . $keyword . '%');
+                        $categoryQuery->where('name', 'like', '%'.$keyword.'%');
                     });
             });
         }
@@ -146,7 +146,7 @@ class IngredientViewController extends Controller
             'ingredient_category_id' => 'required|exists:ingredient_categories,id',
             'name' => 'required|string|max:255|unique:ingredients,name',
             'unit' => 'required|string|max:50',
-            'ingredient_type' => 'required|in:' . implode(',', array_keys($this->ingredientTypeOptions())),
+            'ingredient_type' => 'required|in:'.implode(',', array_keys($this->ingredientTypeOptions())),
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
@@ -167,9 +167,7 @@ class IngredientViewController extends Controller
                 'is_active' => $validated['is_active'],
             ]);
 
-            if (!empty($validated['outlet_ids'])) {
-                $ingredient->outlets()->sync($validated['outlet_ids']);
-            }
+            $ingredient->outlets()->sync($validated['outlet_ids'] ?? []);
 
         });
 
@@ -202,9 +200,9 @@ class IngredientViewController extends Controller
 
         $validated = $request->validate([
             'ingredient_category_id' => 'required|exists:ingredient_categories,id',
-            'name' => 'required|string|max:255|unique:ingredients,name,' . $ingredient->id,
+            'name' => 'required|string|max:255|unique:ingredients,name,'.$ingredient->id,
             'unit' => 'required|string|max:50',
-            'ingredient_type' => 'required|in:' . implode(',', array_keys($this->ingredientTypeOptions())),
+            'ingredient_type' => 'required|in:'.implode(',', array_keys($this->ingredientTypeOptions())),
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
@@ -218,20 +216,20 @@ class IngredientViewController extends Controller
             $newCode = $this->makeIngredientCode($validated['name'], $ingredient->id);
         }
 
-        $ingredient->update([
-            'ingredient_category_id' => $validated['ingredient_category_id'],
-            'code' => $newCode,
-            'name' => $validated['name'],
-            'unit' => $validated['unit'],
-            'ingredient_type' => $validated['ingredient_type'],
-            'minimum_stock' => $validated['minimum_stock'],
-            'cost_per_unit' => $validated['cost_per_unit'],
-            'is_active' => $validated['is_active'],
-        ]);
+        DB::transaction(function () use ($ingredient, $validated, $newCode) {
+            $ingredient->update([
+                'ingredient_category_id' => $validated['ingredient_category_id'],
+                'code' => $newCode,
+                'name' => $validated['name'],
+                'unit' => $validated['unit'],
+                'ingredient_type' => $validated['ingredient_type'],
+                'minimum_stock' => $validated['minimum_stock'],
+                'cost_per_unit' => $validated['cost_per_unit'],
+                'is_active' => $validated['is_active'],
+            ]);
 
-        $ingredient->outlets()->sync(
-            $validated['outlet_ids'] ?? []
-        );
+            $ingredient->outlets()->sync($validated['outlet_ids'] ?? []);
+        });
 
         return redirect()
             ->route('backoffice.ingredients.index')
@@ -270,30 +268,30 @@ class IngredientViewController extends Controller
 
         $ingredients = $ingredientsQuery->get();
 
-                if ($request->filled('search')) {
+        if ($request->filled('search')) {
             $keyword = trim((string) $request->search);
 
             $ingredientsQuery->where(function ($query) use ($keyword) {
-                $query->where('name', 'like', '%' . $keyword . '%')
-                    ->orWhere('code', 'like', '%' . $keyword . '%')
-                    ->orWhere('unit', 'like', '%' . $keyword . '%')
+                $query->where('name', 'like', '%'.$keyword.'%')
+                    ->orWhere('code', 'like', '%'.$keyword.'%')
+                    ->orWhere('unit', 'like', '%'.$keyword.'%')
                     ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
-                        $categoryQuery->where('name', 'like', '%' . $keyword . '%');
+                        $categoryQuery->where('name', 'like', '%'.$keyword.'%');
                     });
             });
         }
 
-$filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'ingredients_export_'.now()->format('Ymd_His').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () use ($ingredients) {
             $handle = fopen('php://output', 'w');
 
-            fprintf($handle, chr(0xEF) . chr(0xBB) . chr(0xBF));
+            fprintf($handle, chr(0xEF).chr(0xBB).chr(0xBF));
 
             fputcsv($handle, [
                 'name',
@@ -329,7 +327,7 @@ $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () {
@@ -416,6 +414,7 @@ $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
                 if (trim($line) === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: baris kosong.";
+
                     continue;
                 }
 
@@ -424,6 +423,7 @@ $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
                 if (count($row) < 7) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 7.";
+
                     continue;
                 }
 
@@ -438,36 +438,42 @@ $filename = 'ingredients_export_' . now()->format('Ymd_His') . '.csv';
                 if ($name === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: name kosong.";
+
                     continue;
                 }
 
                 if ($categoryName === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: category_name kosong.";
+
                     continue;
                 }
 
                 if ($unit === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: unit kosong.";
+
                     continue;
                 }
 
                 if (! in_array($ingredientType, [Ingredient::TYPE_RAW, Ingredient::TYPE_SEMI_FINISHED], true)) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: ingredient_type harus raw atau semi_finished.";
+
                     continue;
                 }
 
                 if (! is_numeric($minimumStockRaw)) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: minimum_stock tidak valid.";
+
                     continue;
                 }
 
                 if (! is_numeric($costPerUnitRaw)) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: cost_per_unit tidak valid.";
+
                     continue;
                 }
 

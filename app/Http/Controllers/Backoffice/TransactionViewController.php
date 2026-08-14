@@ -484,16 +484,17 @@ class TransactionViewController extends Controller
 
         try {
             DB::transaction(function () use ($transaction, $validated, $user, $stockDeductionService) {
-                $transaction->refresh();
-                $transaction->load(['items']);
+                $lockedTransaction = SalesTransaction::whereKey($transaction->id)
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-                if (strtolower((string) $transaction->status) === 'void') {
+                if (strtolower((string) $lockedTransaction->status) === 'void') {
                     throw new RuntimeException('Transaksi ini sudah void.');
                 }
 
-                $stockDeductionService->restoreFromVoidedTransaction($transaction);
+                $stockDeductionService->restoreFromVoidedTransaction($lockedTransaction);
 
-                $transaction->update([
+                $lockedTransaction->update([
                     'status' => 'void',
                     'void_at' => now(),
                     'void_reason' => $validated['void_reason'],
@@ -503,9 +504,9 @@ class TransactionViewController extends Controller
                 BackofficeNotification::create([
                     'type' => 'transaction_void',
                     'title' => 'Transaksi di-void',
-                    'message' => 'Transaksi ' . ($transaction->transaction_number ?? '-') . ' di-void oleh ' . ($user->name ?? 'user') . '. Alasan: ' . $validated['void_reason'],
-                    'sales_transaction_id' => $transaction->id,
-                    'outlet_id' => $transaction->outlet_id,
+                    'message' => 'Transaksi ' . ($lockedTransaction->transaction_number ?? '-') . ' di-void oleh ' . ($user->name ?? 'user') . '. Alasan: ' . $validated['void_reason'],
+                    'sales_transaction_id' => $lockedTransaction->id,
+                    'outlet_id' => $lockedTransaction->outlet_id,
                     'created_by_user_id' => $user->id,
                 ]);
             });

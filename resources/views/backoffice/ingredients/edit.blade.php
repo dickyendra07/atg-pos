@@ -191,7 +191,13 @@
                             gap:14px;
                         ">
 
-                            @foreach($outlets as $outlet)
+                        @php
+                            $selectedOutletIds = collect(old('outlet_ids', $ingredient->outlets->pluck('id')->all()))
+                                ->map(fn ($id) => (int) $id)
+                                ->all();
+                        @endphp
+
+                        @foreach($outlets as $outlet)
 
                             <label style="
                                 border:1px solid #e5e7eb;
@@ -208,7 +214,7 @@
                                     type="checkbox"
                                     name="outlet_ids[]"
                                     value="{{ $outlet->id }}"
-                                    @checked($ingredient->outlets->contains('id',$outlet->id))
+                                    @checked(in_array((int) $outlet->id, $selectedOutletIds, true))
                                 >
 
                                 <div>

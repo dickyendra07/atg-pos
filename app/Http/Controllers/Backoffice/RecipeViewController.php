@@ -61,12 +61,12 @@ class RecipeViewController extends Controller
                 $keyword = trim((string) $request->search);
 
                 $query->where(function ($q) use ($keyword) {
-                    $q->where('name', 'like', '%' . $keyword . '%')
+                    $q->where('name', 'like', '%'.$keyword.'%')
                         ->orWhereHas('variant', function ($variantQuery) use ($keyword) {
-                            $variantQuery->where('name', 'like', '%' . $keyword . '%')
-                                ->orWhere('code', 'like', '%' . $keyword . '%')
+                            $variantQuery->where('name', 'like', '%'.$keyword.'%')
+                                ->orWhere('code', 'like', '%'.$keyword.'%')
                                 ->orWhereHas('product', function ($productQuery) use ($keyword) {
-                                    $productQuery->where('name', 'like', '%' . $keyword . '%');
+                                    $productQuery->where('name', 'like', '%'.$keyword.'%');
                                 });
                         });
                 });
@@ -162,7 +162,7 @@ class RecipeViewController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
-            'product_variant_id' => 'required|exists:product_variants,id|unique:recipes,product_variant_id,' . $recipe->id,
+            'product_variant_id' => 'required|exists:product_variants,id|unique:recipes,product_variant_id,'.$recipe->id,
             'name' => 'required|string|max:255',
             'is_active' => 'required|boolean',
         ]);
@@ -177,8 +177,8 @@ class RecipeViewController extends Controller
         ]);
 
         return redirect()
-            ->route('backoffice.recipes.edit', $recipe->id)
-            ->with('success', 'Recipe header berhasil diupdate.');
+            ->route('backoffice.recipes.index')
+            ->with('success', 'Recipe berhasil diupdate dan status terbaru sudah diterapkan ke Cashier.');
     }
 
     public function destroy(Recipe $recipe)
@@ -260,7 +260,7 @@ class RecipeViewController extends Controller
 
         return redirect()
             ->route('backoffice.recipes.edit', $recipe->id)
-            ->with('success', 'Recipe item "' . $ingredientName . '" berhasil dihapus.');
+            ->with('success', 'Recipe item "'.$ingredientName.'" berhasil dihapus.');
     }
 
     public function importForm()
@@ -281,7 +281,7 @@ class RecipeViewController extends Controller
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () {
@@ -301,11 +301,11 @@ class RecipeViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $filename = 'pos_recipe_master_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'pos_recipe_master_'.now()->format('Ymd_His').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () {
@@ -439,6 +439,7 @@ class RecipeViewController extends Controller
                 if (trim($line) === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: baris kosong.";
+
                     continue;
                 }
 
@@ -447,6 +448,7 @@ class RecipeViewController extends Controller
                 if (count($row) < 4) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 4.";
+
                     continue;
                 }
 
@@ -458,18 +460,21 @@ class RecipeViewController extends Controller
                 if ($variantCode === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: variant_code kosong.";
+
                     continue;
                 }
 
                 if ($ingredientName === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: ingredient_name kosong.";
+
                     continue;
                 }
 
                 if ($qty === null || $qty <= 0) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: qty tidak valid.";
+
                     continue;
                 }
 
@@ -480,6 +485,7 @@ class RecipeViewController extends Controller
                 if (! $variant) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: variant code '{$variantCode}' tidak ditemukan.";
+
                     continue;
                 }
 
@@ -488,6 +494,7 @@ class RecipeViewController extends Controller
                 if (! $ingredient) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: ingredient '{$ingredientName}' tidak ditemukan.";
+
                     continue;
                 }
 
@@ -497,7 +504,7 @@ class RecipeViewController extends Controller
                     ['product_variant_id' => $variant->id],
                     [
                         'product_id' => $variant->product_id,
-                        'name' => ($variant->product->name ?? 'Recipe') . ' - ' . $variant->name,
+                        'name' => ($variant->product->name ?? 'Recipe').' - '.$variant->name,
                         'is_active' => $isActive,
                     ]
                 );
@@ -518,6 +525,7 @@ class RecipeViewController extends Controller
                         'unit' => $ingredient->unit,
                     ]);
                     $updated++;
+
                     continue;
                 }
 
@@ -575,6 +583,7 @@ class RecipeViewController extends Controller
                     if (! $currentProduct) {
                         $skipped++;
                         $errors[] = "Baris {$rowNumber}: product/menu '{$currentProductName}' tidak ditemukan di master Product.";
+
                         continue;
                     }
                 }
@@ -589,6 +598,7 @@ class RecipeViewController extends Controller
                     if (! $currentVariant) {
                         $skipped++;
                         $errors[] = "Baris {$rowNumber}: variant '{$currentVariantName}' untuk product '{$currentProductName}' tidak ditemukan.";
+
                         continue;
                     }
                 }
@@ -599,6 +609,7 @@ class RecipeViewController extends Controller
                     if ($possibleVariant) {
                         $currentVariantName = $ingredientName;
                         $currentVariant = $possibleVariant;
+
                         continue;
                     }
                 }
@@ -610,24 +621,28 @@ class RecipeViewController extends Controller
                 if (! $currentProduct || ! $currentVariant) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: product/variant belum terbaca. Pastikan kolom A berisi *Nama Menu dan kolom B berisi variant.";
+
                     continue;
                 }
 
                 if ($ingredientName === '') {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: ingredient kosong.";
+
                     continue;
                 }
 
                 if ($qty === null || $qty <= 0) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: qty untuk ingredient '{$ingredientName}' tidak valid.";
+
                     continue;
                 }
 
                 if ($qty > 5000) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: qty '{$qty}' untuk '{$ingredientName}' terlalu besar. Cek kemungkinan cell Excel salah format.";
+
                     continue;
                 }
 
@@ -636,6 +651,7 @@ class RecipeViewController extends Controller
                 if (! $ingredient) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: ingredient '{$ingredientName}' tidak ditemukan di master Ingredient.";
+
                     continue;
                 }
 
@@ -643,7 +659,7 @@ class RecipeViewController extends Controller
                     ['product_variant_id' => $currentVariant->id],
                     [
                         'product_id' => $currentVariant->product_id,
-                        'name' => ($currentProduct->name ?? $currentProductName) . ' - ' . $currentVariant->name,
+                        'name' => ($currentProduct->name ?? $currentProductName).' - '.$currentVariant->name,
                         'is_active' => true,
                     ]
                 );
@@ -662,6 +678,7 @@ class RecipeViewController extends Controller
                         'unit' => $ingredient->unit ?: $unitCell,
                     ]);
                     $updated++;
+
                     continue;
                 }
 
@@ -710,7 +727,7 @@ class RecipeViewController extends Controller
 
     protected function looksLikeRecipeHeader(string $productCell, string $variantCell, string $ingredientName): bool
     {
-        $joined = $this->normalizeRecipeName($productCell . ' ' . $variantCell . ' ' . $ingredientName);
+        $joined = $this->normalizeRecipeName($productCell.' '.$variantCell.' '.$ingredientName);
 
         return str_contains($joined, 'produk')
             || str_contains($joined, 'product')
@@ -748,5 +765,4 @@ class RecipeViewController extends Controller
             ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
             ->first();
     }
-
 }

@@ -323,6 +323,12 @@
                     <div class="outlet-grid">
 
 
+                        @php
+                            $selectedOutletIds = collect(old('outlet_ids', $product->outlets->pluck('id')->all()))
+                                ->map(fn ($id) => (int) $id)
+                                ->all();
+                        @endphp
+
                         @foreach($outlets as $outlet)
 
 
@@ -334,9 +340,7 @@
                                     name="outlet_ids[]"
                                     value="{{ $outlet->id }}"
 
-                                    @checked(
-                                        $product->outlets->contains('id',$outlet->id)
-                                    )
+                                    @checked(in_array((int) $outlet->id, $selectedOutletIds, true))
                                 >
 
 

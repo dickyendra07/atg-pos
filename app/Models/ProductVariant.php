@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -62,5 +63,19 @@ class ProductVariant extends Model
         }
 
         return (float) ($this->price_dine_in ?? $this->price ?? 0);
+    }
+
+    public function scopeAvailableAtOutlet(Builder $query, int $outletId): Builder
+    {
+        return $query
+            ->whereHas('product.outlets', function (Builder $outletQuery) use ($outletId) {
+                $outletQuery->where('outlets.id', $outletId);
+            })
+            ->where(function (Builder $variantQuery) use ($outletId) {
+                $variantQuery->doesntHave('outlets')
+                    ->orWhereHas('outlets', function (Builder $outletQuery) use ($outletId) {
+                        $outletQuery->where('outlets.id', $outletId);
+                    });
+            });
     }
 }

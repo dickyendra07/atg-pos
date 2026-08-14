@@ -4,11 +4,12 @@ namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
+use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\Outlet;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductViewController extends Controller
@@ -45,17 +46,17 @@ class ProductViewController extends Controller
                 $keyword = trim((string) $request->search);
 
                 $query->where(function ($q) use ($keyword) {
-                    $q->where('name', 'like', '%' . $keyword . '%')
-                        ->orWhere('code', 'like', '%' . $keyword . '%')
+                    $q->where('name', 'like', '%'.$keyword.'%')
+                        ->orWhere('code', 'like', '%'.$keyword.'%')
                         ->orWhereHas('brand', function ($brandQuery) use ($keyword) {
-                            $brandQuery->where('name', 'like', '%' . $keyword . '%');
+                            $brandQuery->where('name', 'like', '%'.$keyword.'%');
                         })
                         ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
-                            $categoryQuery->where('name', 'like', '%' . $keyword . '%');
+                            $categoryQuery->where('name', 'like', '%'.$keyword.'%');
                         })
                         ->orWhereHas('variants', function ($variantQuery) use ($keyword) {
-                            $variantQuery->where('name', 'like', '%' . $keyword . '%')
-                                ->orWhere('code', 'like', '%' . $keyword . '%');
+                            $variantQuery->where('name', 'like', '%'.$keyword.'%')
+                                ->orWhere('code', 'like', '%'.$keyword.'%');
                         });
                 });
             })
@@ -113,13 +114,15 @@ class ProductViewController extends Controller
             'outlet_ids.*' => 'exists:outlets,id',
         ]);
 
-        $product = Product::create(
-            collect($validated)
-                ->except('outlet_ids')
-                ->toArray()
-        );
+        DB::transaction(function () use ($validated) {
+            $product = Product::create(
+                collect($validated)
+                    ->except('outlet_ids')
+                    ->toArray()
+            );
 
-        $product->outlets()->sync($validated['outlet_ids'] ?? []);
+            $product->outlets()->sync($validated['outlet_ids'] ?? []);
+        });
 
         return redirect()
             ->route('backoffice.products.index')
@@ -154,20 +157,46 @@ class ProductViewController extends Controller
             'brand_id' => 'required|exists:brands,id',
             'product_category_id' => 'required|exists:product_categories,id',
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:products,code,' . $product->id,
+            'code' => 'required|string|max:255|unique:products,code,'.$product->id,
             'description' => 'nullable|string',
             'is_active' => 'required|boolean',
             'outlet_ids' => 'nullable|array',
             'outlet_ids.*' => 'exists:outlets,id',
         ]);
 
-        $product->update(
-            collect($validated)
-                ->except('outlet_ids')
-                ->toArray()
-        );
+        DB::transaction(function () use ($product, $validated) {
+            $product->update(
+                collect($validated)
+                    ->except('outlet_ids')
+                    ->toArray()
+            );
 
-        $product->outlets()->sync($validated['outlet_ids'] ?? []);
+            $productOutletIds = collect($validated['outlet_ids'] ?? [])
+                ->map(fn ($id) => (int) $id)
+                ->unique()
+                ->values();
+
+            $product->outlets()->sync($productOutletIds->all());
+
+            $product->variants()->with('outlets')->get()->each(function ($variant) use ($productOutletIds) {
+                if ($variant->outlets->isEmpty()) {
+                    return;
+                }
+
+                $validVariantOutletIds = $variant->outlets
+                    ->pluck('id')
+                    ->map(fn ($id) => (int) $id)
+                    ->intersect($productOutletIds)
+                    ->values()
+                    ->all();
+
+                $variant->outlets()->sync($validVariantOutletIds);
+
+                if (empty($validVariantOutletIds)) {
+                    $variant->update(['is_active' => false]);
+                }
+            });
+        });
 
         return redirect()
             ->route('backoffice.products.index')
@@ -191,7 +220,7 @@ class ProductViewController extends Controller
 
         return redirect()
             ->route('backoffice.products.index')
-            ->with('success', 'Product "' . $productName . '" berhasil dihapus.');
+            ->with('success', 'Product "'.$productName.'" berhasil dihapus.');
     }
 
     public function importForm()
@@ -212,7 +241,7 @@ class ProductViewController extends Controller
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () {
@@ -230,11 +259,11 @@ class ProductViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $filename = 'products_export_' . now()->format('Ymd_His') . '.csv';
+        $filename = 'products_export_'.now()->format('Ymd_His').'.csv';
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
         return response()->stream(function () {
@@ -329,6 +358,7 @@ class ProductViewController extends Controller
             if (trim($line) === '') {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: baris kosong.";
+
                 continue;
             }
 
@@ -337,6 +367,7 @@ class ProductViewController extends Controller
             if (count($row) < 6) {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 6.";
+
                 continue;
             }
 
@@ -350,6 +381,7 @@ class ProductViewController extends Controller
             if ($brandName === '' || $categoryName === '' || $name === '' || $code === '') {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: brand, category, name, dan code wajib diisi.";
+
                 continue;
             }
 
@@ -357,6 +389,7 @@ class ProductViewController extends Controller
             if (! $brand) {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: brand '{$brandName}' tidak ditemukan.";
+
                 continue;
             }
 
@@ -364,6 +397,7 @@ class ProductViewController extends Controller
             if (! $category) {
                 $skipped++;
                 $errors[] = "Baris {$rowNumber}: category '{$categoryName}' tidak ditemukan.";
+
                 continue;
             }
 
