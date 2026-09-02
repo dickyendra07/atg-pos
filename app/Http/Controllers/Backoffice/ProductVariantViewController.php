@@ -453,23 +453,12 @@ class ProductVariantViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $variant->loadCount([
-            'recipe',
-            'salesTransactionItems',
-        ]);
-
-        if ($variant->recipe_count > 0 || $variant->sales_transaction_items_count > 0) {
-            return redirect()
-                ->route('backoffice.variants.index')
-                ->with('error', 'Variant tidak bisa dihapus karena masih dipakai di recipe / transaksi.');
-        }
-
         $variantName = $variant->name;
-        $variant->delete();
+        $variant->update(['is_active' => false]);
 
         return redirect()
             ->route('backoffice.variants.index')
-            ->with('success', 'Variant "'.$variantName.'" berhasil dihapus.');
+            ->with('success', 'Variant "'.$variantName.'" berhasil dinonaktifkan. Product, outlet, recipe, dan riwayat transaksi tetap tersimpan.');
     }
 
     public function importForm()

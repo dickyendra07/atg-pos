@@ -650,11 +650,13 @@
                                                 <div class="action-stack">
                                                     <a href="{{ route('backoffice.products.edit', $product->id) }}" class="btn btn-small btn-small-blue">Edit</a>
 
-                                                    <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form" onsubmit="return confirm('Yakin mau hapus product ini?')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-small btn-small-red">Hapus</button>
-                                                    </form>
+                                                    @if($product->is_active)
+                                                        <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form" onsubmit="return confirm('Yakin ingin menonaktifkan product ini? Product tidak akan tampil di Cashier, tetapi variant, outlet, recipe, dan riwayat transaksi tetap disimpan.')">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <button type="submit" class="btn btn-small btn-small-red">Nonaktifkan</button>
+                                                        </form>
+                                                    @endif
                                                 </div>
                                             </td>
                                         </tr>

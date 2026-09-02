@@ -450,6 +450,109 @@ class PosBusinessRulesTest extends TestCase
         $this->assertTrue($variantCodeSearch->viewData('recipes')->contains('id', $recipe->id));
     }
 
+    public function test_product_delete_action_inactivates_without_destroying_dependencies_or_history(): void
+    {
+        $recipe = $this->makeRecipe();
+        $recipeItem = $recipe->items()->firstOrFail();
+        $transaction = $this->makeHistoricalSale();
+
+        $this->actingAs($this->user)
+            ->delete(route('backoffice.products.destroy', $this->product))
+            ->assertRedirect(route('backoffice.products.index'))
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'dinonaktifkan'));
+
+        $this->assertFalse($this->product->fresh()->is_active);
+        $this->assertTrue($this->variant->fresh()->is_active);
+        $this->assertSame([$this->outletA->id], $this->product->fresh()->outlets()->pluck('outlets.id')->all());
+        $this->assertDatabaseHas('recipes', ['id' => $recipe->id, 'product_id' => $this->product->id]);
+        $this->assertDatabaseHas('recipe_items', ['id' => $recipeItem->id, 'recipe_id' => $recipe->id]);
+        $this->assertDatabaseHas('sales_transaction_items', [
+            'sales_transaction_id' => $transaction->id,
+            'product_id' => $this->product->id,
+            'product_variant_id' => $this->variant->id,
+        ]);
+
+        $index = $this->get(route('backoffice.products.index'));
+        $this->assertFalse($index->viewData('products')->firstWhere('id', $this->product->id)->is_active);
+
+        $cashier = $this->withSession([
+            'auth_portal' => 'cashier',
+            'cashier_outlet_id' => $this->outletA->id,
+        ])->get(route('cashier.index'));
+        $this->assertFalse($cashier->viewData('products')->contains('id', $this->product->id));
+
+        $this->checkout($this->outletA, 1)
+            ->assertSessionHas('error', fn ($message) => str_contains($message, 'tidak aktif'));
+        $this->assertDatabaseCount('sales_transactions', 1);
+    }
+
+    public function test_variant_delete_action_inactivates_without_destroying_scope_recipe_parent_or_history(): void
+    {
+        $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->variant->outlets()->sync([$this->outletA->id]);
+        $recipe = $this->makeRecipe();
+        $recipeItem = $recipe->items()->firstOrFail();
+        $transaction = $this->makeHistoricalSale();
+
+        $this->actingAs($this->user)
+            ->delete(route('backoffice.variants.destroy', $this->variant))
+            ->assertRedirect(route('backoffice.variants.index'))
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'dinonaktifkan'));
+
+        $this->assertFalse($this->variant->fresh()->is_active);
+        $this->assertTrue($this->product->fresh()->is_active);
+        $this->assertSame([$this->outletA->id], $this->variant->fresh()->outlets()->pluck('outlets.id')->all());
+        $this->assertDatabaseHas('recipes', ['id' => $recipe->id, 'product_variant_id' => $this->variant->id]);
+        $this->assertDatabaseHas('recipe_items', ['id' => $recipeItem->id, 'recipe_id' => $recipe->id]);
+        $this->assertDatabaseHas('sales_transaction_items', [
+            'sales_transaction_id' => $transaction->id,
+            'product_id' => $this->product->id,
+            'product_variant_id' => $this->variant->id,
+        ]);
+
+        $cashier = $this->withSession([
+            'auth_portal' => 'cashier',
+            'cashier_outlet_id' => $this->outletA->id,
+        ])->get(route('cashier.index'));
+        $this->assertFalse($cashier->viewData('products')->contains('id', $this->product->id));
+
+        $this->checkout($this->outletA, 1)
+            ->assertSessionHas('error', fn ($message) => str_contains($message, 'Variant') && str_contains($message, 'tidak aktif'));
+        $this->assertDatabaseCount('sales_transactions', 1);
+    }
+
+    public function test_recipe_delete_action_inactivates_persistently_and_preserves_items_and_history(): void
+    {
+        $recipe = $this->makeRecipe();
+        $recipeItem = $recipe->items()->firstOrFail();
+        $transaction = $this->makeHistoricalSale();
+
+        $this->actingAs($this->user)
+            ->delete(route('backoffice.recipes.destroy', $recipe))
+            ->assertRedirect(route('backoffice.recipes.index'))
+            ->assertSessionHas('success', fn ($message) => str_contains($message, 'dinonaktifkan'));
+
+        $this->assertFalse($recipe->fresh()->is_active);
+        $this->assertDatabaseHas('recipe_items', [
+            'id' => $recipeItem->id,
+            'recipe_id' => $recipe->id,
+            'ingredient_id' => $this->ingredient->id,
+        ]);
+        $this->assertDatabaseHas('sales_transaction_items', [
+            'sales_transaction_id' => $transaction->id,
+            'product_id' => $this->product->id,
+            'product_variant_id' => $this->variant->id,
+        ]);
+
+        $index = $this->get(route('backoffice.recipes.index', ['status' => 'inactive']));
+        $this->assertTrue($index->viewData('recipes')->contains('id', $recipe->id));
+        $this->assertFalse($index->viewData('recipes')->firstWhere('id', $recipe->id)->is_active);
+
+        $this->checkout($this->outletA, 1)
+            ->assertSessionHas('error', fn ($message) => str_contains($message, 'belum memiliki recipe aktif'));
+        $this->assertDatabaseCount('sales_transactions', 1);
+    }
+
     private function makeRecipe(bool $active = true, bool $withItem = true, float $qty = 100): Recipe
     {
         $recipe = Recipe::create([
@@ -469,6 +572,30 @@ class PosBusinessRulesTest extends TestCase
         }
 
         return $recipe;
+    }
+
+    private function makeHistoricalSale(): SalesTransaction
+    {
+        $transaction = SalesTransaction::create([
+            'transaction_number' => 'TRX-HISTORY-'.fake()->unique()->numerify('####'),
+            'user_id' => $this->user->id,
+            'outlet_id' => $this->outletA->id,
+            'subtotal' => 50000,
+            'grand_total' => 50000,
+            'status' => 'completed',
+        ]);
+
+        $transaction->items()->create([
+            'product_id' => $this->product->id,
+            'product_variant_id' => $this->variant->id,
+            'product_name' => $this->product->name,
+            'variant_name' => $this->variant->name,
+            'qty' => 1,
+            'price' => 50000,
+            'line_total' => 50000,
+        ]);
+
+        return $transaction;
     }
 
     private function cart(float $qty): array

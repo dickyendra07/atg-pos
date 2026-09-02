@@ -984,7 +984,7 @@
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-small" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);">
-                                                        Delete
+                                                        Nonaktifkan
                                                     </button>
                                                 </form>
                                             @endif

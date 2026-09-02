@@ -620,7 +620,7 @@
                                         <th>Price Dine In</th>
                                         <th>Price Delivery</th>
                                         <th>Status</th>
-                                        <th>Delete Single</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -650,11 +650,13 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                <form method="POST" action="{{ route('backoffice.variants.destroy', $variant->id) }}" class="inline-form" onsubmit="return confirm('Yakin hapus variant ini?');">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="btn btn-small btn-small-red">Hapus</button>
-                                                </form>
+                                                @if($variant->is_active)
+                                                    <form method="POST" action="{{ route('backoffice.variants.destroy', $variant->id) }}" class="inline-form" onsubmit="return confirm('Yakin ingin menonaktifkan variant ini? Variant tidak akan tampil di Cashier, tetapi outlet, recipe, dan riwayat transaksi tetap disimpan.');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="btn btn-small btn-small-red">Nonaktifkan</button>
+                                                    </form>
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

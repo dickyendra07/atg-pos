@@ -207,20 +207,12 @@ class ProductViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $product->loadCount('variants');
-
-        if ($product->variants_count > 0) {
-            return redirect()
-                ->route('backoffice.products.index')
-                ->with('error', 'Product tidak bisa dihapus karena masih punya variants. Hapus variants dulu.');
-        }
-
         $productName = $product->name;
-        $product->delete();
+        $product->update(['is_active' => false]);
 
         return redirect()
             ->route('backoffice.products.index')
-            ->with('success', 'Product "'.$productName.'" berhasil dihapus.');
+            ->with('success', 'Product "'.$productName.'" berhasil dinonaktifkan. Variant, outlet, recipe, dan riwayat transaksi tetap tersimpan.');
     }
 
     public function importForm()
