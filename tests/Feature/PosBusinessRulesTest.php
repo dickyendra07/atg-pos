@@ -463,6 +463,49 @@ class PosBusinessRulesTest extends TestCase
             ->assertSessionMissing('cashier_member');
     }
 
+    public function test_inactive_outlet_is_hidden_and_cannot_be_selected_by_cashier(): void
+    {
+        $outletC = Outlet::create(['name' => 'Outlet C', 'code' => 'OC', 'is_active' => true]);
+        $this->user->outlets()->attach($outletC->id);
+        $this->outletB->update(['is_active' => false]);
+
+        $form = $this->actingAs($this->user)
+            ->withSession(['auth_portal' => 'cashier'])
+            ->get(route('cashier.select-outlet'));
+
+        $form->assertOk()
+            ->assertSee($this->outletA->name)
+            ->assertDontSee($this->outletB->name);
+
+        $this->actingAs($this->user)
+            ->withSession(['auth_portal' => 'cashier'])
+            ->post(route('cashier.select-outlet.store'), ['outlet_id' => $this->outletB->id])
+            ->assertSessionHasErrors('outlet_id');
+    }
+
+    public function test_inactive_cashier_outlet_session_does_not_fall_back_to_legacy_user_outlet(): void
+    {
+        $this->outletB->update(['is_active' => false]);
+
+        $this->withSession(['cashier_outlet_id' => $this->outletB->id]);
+
+        $resolvedUser = $this->user->fresh()
+            ->load(['outlet', 'outlets'])
+            ->applyCashierOutletFromSession();
+
+        $this->assertNull($resolvedUser->outlet_id);
+        $this->assertNull($resolvedUser->outlet);
+    }
+
+    public function test_inventory_page_does_not_include_legacy_summary_select_script(): void
+    {
+        $this->actingAs($this->user)
+            ->withSession(['auth_portal' => 'backoffice'])
+            ->get(route('backoffice.stock-balances.index'))
+            ->assertOk()
+            ->assertDontSee('summaryLocationSelect.options', false);
+    }
+
     public function test_free_item_still_deducts_recipe_stock(): void
     {
         $this->makeRecipe(true, true, 25);
@@ -786,6 +829,98 @@ class PosBusinessRulesTest extends TestCase
         $this->checkout($this->outletA, 1)
             ->assertSessionHas('error', fn ($message) => str_contains($message, 'belum memiliki recipe aktif'));
         $this->assertDatabaseCount('sales_transactions', 1);
+    }
+
+    public function test_new_shift_response_exposes_its_own_print_url_for_live_ui_refresh(): void
+    {
+        CashierShift::query()->update([
+            'status' => 'closed',
+            'ended_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->user)
+            ->withSession([
+                'auth_portal' => 'cashier',
+                'cashier_outlet_id' => $this->outletA->id,
+            ])
+            ->postJson(route('cashier.shift.start'), ['opening_cash' => 25000]);
+
+        $shift = CashierShift::query()->where('status', 'open')->sole();
+
+        $response->assertOk()
+            ->assertJsonPath('shift.active_shift.id', $shift->id)
+            ->assertJsonPath('shift.active_shift.print_url', route('cashier.shift.print', $shift));
+
+        $this->actingAs($this->user)
+            ->withSession([
+                'auth_portal' => 'cashier',
+                'cashier_outlet_id' => $this->outletA->id,
+            ])
+            ->get(route('cashier.index'))
+            ->assertOk()
+            ->assertSee('id="shift-print-link"', false);
+
+        $this->assertStringContainsString(
+            "closingNoteInput.value = ''",
+            $this->actingAs($this->user)
+                ->withSession([
+                    'auth_portal' => 'cashier',
+                    'cashier_outlet_id' => $this->outletA->id,
+                ])
+                ->get(route('cashier.index'))
+                ->getContent()
+        );
+    }
+
+    public function test_cashier_checkout_form_has_immediate_double_submit_guard(): void
+    {
+        $this->actingAs($this->user)
+            ->withSession([
+                'auth_portal' => 'cashier',
+                'cashier_outlet_id' => $this->outletA->id,
+            ])
+            ->get(route('cashier.index'))
+            ->assertOk()
+            ->assertSee('if (checkoutSubmitting)', false)
+            ->assertSee("checkoutButton.textContent = 'Processing...'", false);
+    }
+
+    public function test_variant_and_recipe_exports_keep_legacy_pos_csv_headers(): void
+    {
+        $variantExport = $this->actingAs($this->user)
+            ->withSession(['auth_portal' => 'backoffice'])
+            ->get(route('backoffice.variants.export.csv'));
+
+        $variantExport->assertOk();
+        $this->assertSame([
+            'no',
+            'brand',
+            'category',
+            'product_code',
+            'product_name',
+            'variant_name',
+            'variant_code',
+            'price',
+            'delivery_price',
+            'status',
+        ], str_getcsv(strtok($variantExport->streamedContent(), "\n")));
+
+        $recipeExport = $this->actingAs($this->user)
+            ->withSession(['auth_portal' => 'backoffice'])
+            ->get(route('backoffice.recipes.export.csv'));
+
+        $recipeExport->assertOk();
+        $this->assertSame([
+            'no',
+            'product_code',
+            'product_name',
+            'variant_code',
+            'variant_name',
+            'ingredient_code',
+            'ingredient_name',
+            'qty',
+            'unit',
+        ], str_getcsv(strtok($recipeExport->streamedContent(), "\n")));
     }
 
     private function makeRecipe(bool $active = true, bool $withItem = true, float $qty = 100): Recipe

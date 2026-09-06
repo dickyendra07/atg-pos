@@ -1183,39 +1183,6 @@
             </table>
         </div>
     </div>
-        <script>
-        (function () {
-            const summaryTypeSelect = document.getElementById('summary_location_type');
-            const summaryLocationSelect = document.getElementById('summary_location_id');
-
-            if (!summaryTypeSelect || !summaryLocationSelect) {
-                return;
-            }
-
-            const summaryLocationOptions = Array.from(summaryLocationSelect.querySelectorAll('option'));
-
-            function filterSummaryLocationOptions() {
-                const selectedType = summaryTypeSelect.value;
-
-                summaryLocationOptions.forEach((option, index) => {
-                    if (index === 0) {
-                        option.hidden = false;
-                        return;
-                    }
-
-                    option.hidden = selectedType !== '' && option.getAttribute('data-type') !== selectedType;
-                });
-
-                const selectedOption = summaryLocationSelect.options[summaryLocationSelect.selectedIndex];
-                if (selectedOption && selectedOption.hidden) {
-                    summaryLocationSelect.selectedIndex = 0;
-                }
-            }
-
-            summaryTypeSelect.addEventListener('change', filterSummaryLocationOptions);
-            filterSummaryLocationOptions();
-        })();
-    </script>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const combined = document.getElementById('summary_location_combined');

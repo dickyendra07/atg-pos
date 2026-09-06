@@ -4114,6 +4114,7 @@
     $activeShiftJson = json_encode(
         $activeShift ? [
             'id' => $activeShift->id,
+            'print_url' => route('cashier.shift.print', $activeShift),
             'status' => $activeShift->status,
             'started_at' => optional($activeShift->started_at)->format('Y-m-d H:i:s'),
             'ended_at' => optional($activeShift->ended_at)->format('Y-m-d H:i:s'),
@@ -4615,11 +4616,14 @@
                                     </div>
 
                                     <div class="shift-actions">
-                                        @if($activeShift)
-                                            <a href="{{ route('cashier.shift.print', $activeShift) }}" target="_blank" class="btn btn-dark">
-                                                Print Shift
-                                            </a>
-                                        @endif
+                                        <a
+                                            id="shift-print-link"
+                                            href="{{ $activeShift ? route('cashier.shift.print', $activeShift) : '#' }}"
+                                            target="_blank"
+                                            class="btn btn-dark {{ $activeShift ? '' : 'hidden' }}"
+                                        >
+                                            Print Shift
+                                        </a>
 
                                         <button type="submit" id="end-shift-button" class="shift-btn end">End Shift</button>
                                     </div>
@@ -5015,6 +5019,7 @@
     const paymentHelperText = document.getElementById('payment-helper-text');
     const checkoutButton = document.getElementById('checkout-button');
     const changeHighlightRow = document.getElementById('change-highlight-row');
+    let checkoutSubmitting = false;
 
     const shiftStartBox = document.getElementById('shift-start-box');
     const shiftActiveBox = document.getElementById('shift-active-box');
@@ -5038,6 +5043,7 @@
     const shiftShopeefoodSales = document.getElementById('shift-shopeefood-sales');
     const shiftVoidTransactions = document.getElementById('shift-void-transactions');
     const shiftOrderTypePreview = document.getElementById('shift-order-type-preview');
+    const shiftPrintLink = document.getElementById('shift-print-link');
 
     const variantModalBackdrop = document.getElementById('variant-modal-backdrop');
     const variantModalClose = document.getElementById('variant-modal-close');
@@ -5137,6 +5143,11 @@
         shiftStartBox.classList.toggle('hidden', open);
         shiftActiveBox.classList.toggle('hidden', !open);
 
+        if (shiftPrintLink) {
+            shiftPrintLink.classList.toggle('hidden', !open);
+            shiftPrintLink.href = open ? (cashierState.activeShift.print_url || '#') : '#';
+        }
+
         if (open) {
             shiftStartedAt.textContent = cashierState.activeShift.started_at || '-';
             shiftOpeningCash.textContent = formatCurrency(cashierState.activeShift.opening_cash || 0);
@@ -5170,6 +5181,12 @@
             }
 
             setClosingCashActualValue(Number(cashierState.shiftSummary.expected_cash || 0));
+        } else {
+            setClosingCashActualValue(0);
+
+            if (closingNoteInput) {
+                closingNoteInput.value = '';
+            }
         }
     }
 
@@ -6262,7 +6279,19 @@
         setClosingCashActualValue(getClosingCashActualValue());
     });
 
-    checkoutForm?.addEventListener('submit', function () {
+    checkoutForm?.addEventListener('submit', function (event) {
+        if (checkoutSubmitting) {
+            event.preventDefault();
+            return;
+        }
+
+        checkoutSubmitting = true;
+
+        if (checkoutButton) {
+            checkoutButton.disabled = true;
+            checkoutButton.textContent = 'Processing...';
+        }
+
         amountPaidNumeric.value = Number(getAmountPaidValue()).toFixed(2);
     });
 

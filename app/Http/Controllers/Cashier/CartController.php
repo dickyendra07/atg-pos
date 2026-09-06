@@ -29,7 +29,7 @@ class CartController extends Controller
         }
 
         if (! $user->outlet_id || ! $user->hasCashierOutletAccess((int) $user->outlet_id)) {
-            session()->forget('cashier_outlet_id');
+            session()->forget(['cashier_outlet_id', 'cashier_cart', 'cashier_member']);
 
             redirect()->route('cashier.select-outlet')->send();
             exit;

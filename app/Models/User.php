@@ -62,9 +62,11 @@ class User extends Authenticatable
     {
         $outlets = $this->relationLoaded('outlets')
             ? $this->outlets
-            : $this->outlets()->orderBy('name')->get();
+            : $this->outlets()->where('outlets.is_active', true)->orderBy('name')->get();
 
-        if ($outlets->isEmpty() && $this->outlet) {
+        $outlets = $outlets->filter(fn ($outlet) => (bool) $outlet?->is_active);
+
+        if ($outlets->isEmpty() && $this->outlet?->is_active) {
             $outlets = collect([$this->outlet]);
         }
 
@@ -85,6 +87,9 @@ class User extends Authenticatable
         $outletId = (int) session('cashier_outlet_id');
 
         if (! $outletId || ! $this->hasCashierOutletAccess($outletId)) {
+            $this->forceFill(['outlet_id' => null]);
+            $this->unsetRelation('outlet');
+
             return $this;
         }
 

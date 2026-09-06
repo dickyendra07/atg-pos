@@ -19,7 +19,7 @@ class CashierShiftController extends Controller
         }
 
         if (! $user->outlet_id || ! $user->hasCashierOutletAccess((int) $user->outlet_id)) {
-            session()->forget('cashier_outlet_id');
+            session()->forget(['cashier_outlet_id', 'cashier_cart', 'cashier_member']);
 
             redirect()->route('cashier.select-outlet')->send();
             exit;
@@ -160,6 +160,7 @@ class CashierShiftController extends Controller
 
         return [
             'id' => $shift->id,
+            'print_url' => route('cashier.shift.print', $shift),
             'status' => $shift->status,
             'started_at' => optional($shift->started_at)->format('Y-m-d H:i:s'),
             'ended_at' => optional($shift->ended_at)->format('Y-m-d H:i:s'),
