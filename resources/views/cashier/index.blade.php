@@ -786,6 +786,7 @@
             display: flex;
             flex-direction: column;
             min-height: 100%;
+            cursor: pointer;
         }
 
         .hidden { display: none !important; }
@@ -5429,7 +5430,8 @@
         });
 
         document.querySelectorAll('.modal-add-btn').forEach((button) => {
-            button.disabled = !isShiftOpen();
+            button.disabled = false;
+            button.removeAttribute('disabled');
         });
     }
 
@@ -5974,6 +5976,21 @@
 
             if (!isShiftOpen()) {
                 showAlert('error', 'Shift belum dibuka. Kamu bisa lihat variant, tapi Start Shift dulu untuk tambah item.');
+            }
+
+            return;
+        }
+
+        const productCard = event.target.closest('[data-product-card]');
+        if (productCard && !event.target.closest('button, a, input, select, textarea')) {
+            const opener = productCard.querySelector('[data-open-variant-modal]');
+
+            if (opener) {
+                openVariantModal(opener);
+
+                if (!isShiftOpen()) {
+                    showAlert('error', 'Shift belum dibuka. Kamu bisa lihat variant, tapi Start Shift dulu untuk tambah item.');
+                }
             }
 
             return;

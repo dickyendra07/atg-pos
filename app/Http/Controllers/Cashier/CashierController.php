@@ -74,7 +74,13 @@ class CashierController extends Controller
                 ->withInput();
         }
 
+        $previousOutletId = (int) session('cashier_outlet_id');
+
         session(['cashier_outlet_id' => $outletId]);
+
+        if ($previousOutletId !== $outletId) {
+            session()->forget(['cashier_cart', 'cashier_member']);
+        }
 
         return redirect()->route('cashier.index');
     }
@@ -117,6 +123,7 @@ class CashierController extends Controller
     {
         return CashierShift::with(['salesTransactions'])
             ->where('user_id', $user->id)
+            ->where('outlet_id', $user->outlet_id)
             ->where('status', 'open')
             ->whereNull('ended_at')
             ->latest('id')

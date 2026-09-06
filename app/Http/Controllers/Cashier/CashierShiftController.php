@@ -37,6 +37,7 @@ class CashierShiftController extends Controller
             'outlet',
         ])
             ->where('user_id', $user->id)
+            ->where('outlet_id', $user->outlet_id)
             ->where('status', 'open')
             ->whereNull('ended_at')
             ->latest('id')

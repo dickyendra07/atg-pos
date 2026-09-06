@@ -41,6 +41,7 @@ class CartController extends Controller
     protected function getActiveShift($user): ?CashierShift
     {
         return CashierShift::where('user_id', $user->id)
+            ->where('outlet_id', $user->outlet_id)
             ->where('status', 'open')
             ->whereNull('ended_at')
             ->latest('id')
@@ -129,7 +130,7 @@ class CartController extends Controller
             ->with('error', $message);
     }
 
-    public function add(Request $request, ProductVariant $variant)
+    public function add(Request $request, ProductVariant $variant, SaleEligibilityService $saleEligibilityService)
     {
         $user = $this->authorizeCashierAccess();
 
@@ -173,6 +174,21 @@ class CartController extends Controller
                 'price' => (float) $price,
                 'line_total' => (float) $price,
             ];
+        }
+
+        try {
+            $saleEligibilityService->requirementsForCart($cart, (int) $user->outlet_id);
+        } catch (RuntimeException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 422);
+            }
+
+            return redirect()
+                ->route('cashier.index')
+                ->with('error', $e->getMessage());
         }
 
         session(['cashier_cart' => $cart]);
@@ -881,12 +897,6 @@ class CartController extends Controller
                 &$earnedPoints
             ) {
                 $requirements = $saleEligibilityService->requirementsForCart($cart, (int) $user->outlet_id);
-                $stockDeductionService->validateRequirementsStock(
-                    $requirements,
-                    (int) $user->outlet_id,
-                    true
-                );
-
                 $transaction = SalesTransaction::create([
                     'transaction_number' => $this->generateDailyTransactionNumber(),
                     'user_id' => $user->id,

@@ -2,8 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Ingredient;
-use App\Models\Outlet;
 use App\Models\SalesTransaction;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
@@ -22,37 +20,8 @@ class StockDeductionService
 
     public function validateRequirementsStock(array $requirements, int $outletId, bool $lockForUpdate = false): void
     {
-        $outletName = Outlet::find($outletId)?->name ?? ('Outlet ID '.$outletId);
-        $ingredientNames = Ingredient::whereIn('id', array_keys($requirements))->pluck('name', 'id');
-        $errors = [];
-
-        foreach ($requirements as $ingredientId => $qtyNeeded) {
-            $query = StockBalance::query()
-                ->where('ingredient_id', $ingredientId)
-                ->where('location_type', 'outlet')
-                ->where('location_id', $outletId);
-
-            if ($lockForUpdate) {
-                $query->lockForUpdate();
-            }
-
-            $stockBalance = $query->first();
-            $availableQty = (float) ($stockBalance?->qty_on_hand ?? 0);
-            $ingredientName = $ingredientNames[$ingredientId] ?? ('Ingredient ID '.$ingredientId);
-
-            if ($availableQty < (float) $qtyNeeded) {
-                $errors[] = $ingredientName
-                    .' di '.$outletName
-                    .' tidak cukup. Butuh '
-                    .number_format((float) $qtyNeeded, 2, ',', '.')
-                    .', tersedia '
-                    .number_format($availableQty, 2, ',', '.');
-            }
-        }
-
-        if (! empty($errors)) {
-            throw new RuntimeException(implode(' | ', $errors));
-        }
+        // Sales are allowed to take outlet stock below zero. Recipe/outlet validity is
+        // enforced by SaleEligibilityService and the deduction is still fully recorded.
     }
 
     public function deductRequirements(SalesTransaction $transaction, array $requirements): void
@@ -69,18 +38,22 @@ class StockDeductionService
         }
 
         foreach ($requirements as $ingredientId => $qtyUsed) {
+            StockBalance::firstOrCreate(
+                [
+                    'ingredient_id' => $ingredientId,
+                    'location_type' => 'outlet',
+                    'location_id' => $transaction->outlet_id,
+                ],
+                ['qty_on_hand' => 0]
+            );
+
             $stockBalance = StockBalance::where('ingredient_id', $ingredientId)
                 ->where('location_type', 'outlet')
                 ->where('location_id', $transaction->outlet_id)
                 ->lockForUpdate()
-                ->first();
+                ->firstOrFail();
 
-            $availableQty = (float) ($stockBalance?->qty_on_hand ?? 0);
-
-            if (! $stockBalance || $availableQty < (float) $qtyUsed) {
-                $ingredientName = Ingredient::find($ingredientId)?->name ?? ('Ingredient ID '.$ingredientId);
-                throw new RuntimeException('Stock '.$ingredientName.' berubah atau tidak mencukupi. Silakan ulangi checkout.');
-            }
+            $availableQty = (float) $stockBalance->qty_on_hand;
 
             $stockBalance->update([
                 'qty_on_hand' => $availableQty - (float) $qtyUsed,

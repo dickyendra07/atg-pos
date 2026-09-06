@@ -253,22 +253,214 @@ class PosBusinessRulesTest extends TestCase
         ]);
     }
 
-    public function test_insufficient_stock_rolls_back_completed_sale(): void
+    public function test_zero_stock_allows_sale_records_negative_balance_and_movement(): void
     {
         $this->makeRecipe(true, true, 100);
         StockBalance::create([
             'ingredient_id' => $this->ingredient->id,
             'location_type' => 'outlet',
             'location_id' => $this->outletA->id,
-            'qty_on_hand' => 50,
+            'qty_on_hand' => 0,
         ]);
 
         $response = $this->checkout($this->outletA, 1);
 
-        $response->assertSessionHas('error', fn ($message) => str_contains($message, 'tidak cukup'));
-        $this->assertDatabaseCount('sales_transactions', 0);
-        $this->assertDatabaseCount('sales_transaction_items', 0);
-        $this->assertDatabaseCount('stock_movements', 0);
+        $response->assertSessionHas('success');
+        $this->assertDatabaseHas('sales_transactions', ['status' => 'completed', 'outlet_id' => $this->outletA->id]);
+        $this->assertDatabaseHas('stock_balances', [
+            'ingredient_id' => $this->ingredient->id,
+            'location_type' => 'outlet',
+            'location_id' => $this->outletA->id,
+            'qty_on_hand' => -100,
+        ]);
+        $this->assertDatabaseHas('stock_movements', [
+            'ingredient_id' => $this->ingredient->id,
+            'location_id' => $this->outletA->id,
+            'movement_type' => 'sales_usage',
+            'qty_out' => 100,
+        ]);
+    }
+
+    public function test_missing_stock_balance_is_created_negative_during_sale(): void
+    {
+        $this->makeRecipe(true, true, 25);
+
+        $this->checkout($this->outletA, 2)->assertSessionHas('success');
+
+        $this->assertDatabaseHas('stock_balances', [
+            'ingredient_id' => $this->ingredient->id,
+            'location_type' => 'outlet',
+            'location_id' => $this->outletA->id,
+            'qty_on_hand' => -50,
+        ]);
+        $this->assertDatabaseHas('stock_movements', [
+            'ingredient_id' => $this->ingredient->id,
+            'location_id' => $this->outletA->id,
+            'movement_type' => 'sales_usage',
+            'qty_out' => 50,
+        ]);
+    }
+
+    public function test_valid_assigned_product_can_be_added_to_cart(): void
+    {
+        $this->makeRecipe();
+
+        $this->addToCart($this->outletA)
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('cart.cart_count', 1)
+            ->assertJsonPath('cart.items.0.variant_id', $this->variant->id);
+    }
+
+    public function test_add_to_cart_rejects_product_not_assigned_to_cashier_outlet(): void
+    {
+        $this->makeRecipe();
+        CashierShift::create([
+            'user_id' => $this->user->id,
+            'outlet_id' => $this->outletB->id,
+            'started_at' => now(),
+            'opening_cash' => 0,
+            'status' => 'open',
+        ]);
+
+        $this->addToCart($this->outletB)
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'Produk “Matcha Kafei - 1L” tidak tersedia untuk Outlet B.');
+    }
+
+    public function test_variant_without_outlet_scope_inherits_product_outlets_when_adding(): void
+    {
+        $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->ingredient->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->makeRecipe();
+        CashierShift::create([
+            'user_id' => $this->user->id,
+            'outlet_id' => $this->outletB->id,
+            'started_at' => now(),
+            'opening_cash' => 0,
+            'status' => 'open',
+        ]);
+
+        $this->addToCart($this->outletB)->assertOk()->assertJsonPath('success', true);
+    }
+
+    public function test_explicit_variant_outlet_scope_is_enforced_when_adding(): void
+    {
+        $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->variant->outlets()->sync([$this->outletA->id]);
+        $this->makeRecipe();
+        CashierShift::create([
+            'user_id' => $this->user->id,
+            'outlet_id' => $this->outletB->id,
+            'started_at' => now(),
+            'opening_cash' => 0,
+            'status' => 'open',
+        ]);
+
+        $this->addToCart($this->outletA)->assertOk()->assertJsonPath('success', true);
+        $this->addToCart($this->outletB)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Variant “Matcha Kafei - 1L” tidak tersedia untuk Outlet B.');
+    }
+
+    public function test_add_to_cart_returns_clear_recipe_errors(): void
+    {
+        $this->addToCart($this->outletA)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Produk “Matcha Kafei - 1L” belum memiliki recipe. Transaksi tidak dapat dilanjutkan.');
+
+        $recipe = $this->makeRecipe(true, false);
+        $this->addToCart($this->outletA)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Recipe aktif untuk produk “Matcha Kafei - 1L” belum memiliki bahan. Transaksi tidak dapat dilanjutkan.');
+
+        $recipe->update(['is_active' => false]);
+        $this->addToCart($this->outletA)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Produk “Matcha Kafei - 1L” belum memiliki recipe aktif. Transaksi tidak dapat dilanjutkan.');
+    }
+
+    public function test_add_to_cart_returns_clear_ingredient_outlet_error(): void
+    {
+        $this->makeRecipe();
+        $this->ingredient->outlets()->sync([$this->outletB->id]);
+
+        $this->addToCart($this->outletA)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Ingredient “Fresh Milk” belum tersedia untuk Outlet A.');
+    }
+
+    public function test_inactive_product_and_variant_are_rejected_during_add_to_cart(): void
+    {
+        $this->makeRecipe();
+        $this->product->update(['is_active' => false]);
+
+        $this->addToCart($this->outletA)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Produk “Matcha Kafei - 1L” tidak aktif. Transaksi tidak dapat dilanjutkan.');
+
+        $this->product->update(['is_active' => true]);
+        $this->variant->update(['is_active' => false]);
+
+        $this->addToCart($this->outletA)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Variant “Matcha Kafei - 1L” tidak aktif. Transaksi tidak dapat dilanjutkan.');
+    }
+
+    public function test_named_cashier_outlet_context_resolves_bxc_and_bazaar_tiktok(): void
+    {
+        $this->outletA->update(['name' => 'Outlet Bintaro Xchange']);
+        $this->outletB->update(['name' => 'Bazaar TikTok']);
+        $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->makeRecipe();
+        CashierShift::create([
+            'user_id' => $this->user->id,
+            'outlet_id' => $this->outletB->id,
+            'started_at' => now(),
+            'opening_cash' => 0,
+            'status' => 'open',
+        ]);
+
+        foreach ([$this->outletA, $this->outletB] as $outlet) {
+            $catalog = $this->actingAs($this->user)
+                ->withSession(['auth_portal' => 'cashier', 'cashier_outlet_id' => $outlet->id])
+                ->get(route('cashier.index'));
+
+            $catalog->assertOk();
+            $this->assertSame($outlet->id, $catalog->viewData('user')->outlet_id);
+            $this->assertSame($outlet->name, $catalog->viewData('user')->outlet->name);
+            $this->assertTrue($catalog->viewData('products')->contains('id', $this->product->id));
+        }
+    }
+
+    public function test_open_shift_from_bxc_does_not_authorize_bazaar_tiktok_cart(): void
+    {
+        $this->outletA->update(['name' => 'Outlet Bintaro Xchange']);
+        $this->outletB->update(['name' => 'Bazaar TikTok']);
+        $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->ingredient->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->makeRecipe();
+
+        $this->addToCart($this->outletB)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Shift belum dibuka. Start shift dulu sebelum melakukan transaksi.');
+    }
+
+    public function test_switching_cashier_outlet_clears_previous_outlet_cart(): void
+    {
+        $this->actingAs($this->user)
+            ->withSession([
+                'auth_portal' => 'cashier',
+                'cashier_outlet_id' => $this->outletA->id,
+                'cashier_cart' => $this->cart(1),
+                'cashier_member' => ['id' => 99, 'name' => 'Old Outlet Member'],
+            ])
+            ->post(route('cashier.select-outlet.store'), ['outlet_id' => $this->outletB->id])
+            ->assertRedirect(route('cashier.index'))
+            ->assertSessionHas('cashier_outlet_id', $this->outletB->id)
+            ->assertSessionMissing('cashier_cart')
+            ->assertSessionMissing('cashier_member');
     }
 
     public function test_free_item_still_deducts_recipe_stock(): void
@@ -351,6 +543,49 @@ class PosBusinessRulesTest extends TestCase
         $this->put(route('backoffice.products.update', $this->product), $this->productPayload([$this->outletB->id]))
             ->assertSessionHasNoErrors();
         $this->assertSame([$this->outletB->id], $this->product->fresh()->outlets()->pluck('outlets.id')->all());
+    }
+
+    public function test_product_edit_reloads_saved_outlets_as_checked(): void
+    {
+        $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+
+        $response = $this->actingAs($this->user)
+            ->get(route('backoffice.products.edit', $this->product))
+            ->assertOk();
+
+        $document = new \DOMDocument;
+        @$document->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($document);
+
+        foreach ([$this->outletA->id, $this->outletB->id] as $outletId) {
+            $nodes = $xpath->query('//input[@name="outlet_ids[]" and @value="'.$outletId.'" and @checked]');
+            $this->assertSame(1, $nodes->length);
+        }
+    }
+
+    public function test_duplicate_username_is_rejected_without_changing_outlet_assignment(): void
+    {
+        $beforeUserCount = User::count();
+
+        $this->actingAs($this->user)
+            ->from(route('backoffice.users.create'))
+            ->post(route('backoffice.users.store'), [
+                'name' => 'Duplicate Username Cashier',
+                'username' => $this->user->username,
+                'email' => 'different-cashier@example.test',
+                'password' => 'password123',
+                'role_ids' => [$this->user->role_id],
+                'outlet_ids' => [$this->outletB->id],
+                'is_active' => 1,
+            ])
+            ->assertRedirect(route('backoffice.users.create'))
+            ->assertSessionHasErrors('username');
+
+        $this->assertSame($beforeUserCount, User::count());
+        $this->assertEqualsCanonicalizing(
+            [$this->outletA->id, $this->outletB->id],
+            $this->user->fresh()->outlets()->pluck('outlets.id')->all()
+        );
     }
 
     public function test_ingredient_outlet_relations_persist_across_add_and_remove_updates(): void
@@ -625,6 +860,19 @@ class PosBusinessRulesTest extends TestCase
             ->post(route('cashier.checkout'), [
                 'payment_method' => 'cash',
                 'amount_paid' => 50000 * $qty,
+                'order_type' => 'dine_in',
+            ]);
+    }
+
+    private function addToCart(Outlet $outlet)
+    {
+        return $this->actingAs($this->user)
+            ->withSession([
+                'auth_portal' => 'cashier',
+                'cashier_outlet_id' => $outlet->id,
+                'cashier_order_type' => 'dine_in',
+            ])
+            ->postJson(route('cashier.cart.add', $this->variant), [
                 'order_type' => 'dine_in',
             ]);
     }
