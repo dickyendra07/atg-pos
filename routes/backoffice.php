@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Backoffice\BackofficeController;
+use App\Http\Controllers\Backoffice\ActiveOutletController;
 use App\Http\Controllers\Backoffice\CashierShiftViewController;
 use App\Http\Controllers\Backoffice\DiscountViewController;
 use App\Http\Controllers\Backoffice\IngredientProductionController;
@@ -18,9 +19,12 @@ use App\Http\Controllers\Backoffice\TransferViewController;
 use App\Http\Controllers\Backoffice\UserManagementController;
 use App\Http\Controllers\Backoffice\WarehouseTransferViewController;
 use App\Http\Controllers\Backoffice\WarehouseViewController;
+use App\Http\Controllers\Backoffice\PurchaseReceiptController;
+use App\Http\Middleware\ResolveBackofficeOutlet;
 use Illuminate\Support\Facades\Route;
 
-Route::prefix('backoffice')->name('backoffice.')->group(function () {
+Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOutlet::class)->group(function () {
+    Route::post('/active-outlet', ActiveOutletController::class)->name('active-outlet.update');
     Route::get('/', BackofficeController::class)->name('index');
     Route::post('/approval-pins/generate', [BackofficeController::class, 'generateApprovalPin'])->name('approval-pins.generate');
     Route::get('/print-summary', [BackofficeController::class, 'printSummary'])->name('print-summary');
@@ -133,6 +137,9 @@ Route::prefix('backoffice')->name('backoffice.')->group(function () {
     Route::post('/stock-balances/adjustment', [StockBalanceViewController::class, 'storeAdjustment'])->name('stock-balances.adjustment.store');
     Route::get('/stock-balances/opname', [StockBalanceViewController::class, 'createOpname'])->name('stock-balances.opname.create');
     Route::post('/stock-balances/opname', [StockBalanceViewController::class, 'storeOpname'])->name('stock-balances.opname.store');
+
+    Route::get('/purchase-history', [PurchaseReceiptController::class, 'index'])->name('purchase-history.index');
+    Route::get('/purchase-history/{purchaseReceipt}', [PurchaseReceiptController::class, 'show'])->name('purchase-history.show');
 
     Route::get('/stock-movements/export/csv', [StockMovementViewController::class, 'exportCsv'])->name('stock-movements.export.csv');
     Route::get('/stock-movements', StockMovementViewController::class)->name('stock-movements.index');

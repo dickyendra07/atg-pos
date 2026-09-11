@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductVariant;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductVariantViewController extends Controller
 {
+    protected function outletContext(): BackofficeOutletContext
+    {
+        return app(BackofficeOutletContext::class);
+    }
+
     protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role']);
@@ -104,6 +110,19 @@ class ProductVariantViewController extends Controller
 
             $invalidOutletIds = $requestedOutletIds->diff($parentOutletIds);
 
+            if ($requestedOutletIds->isEmpty()) {
+                throw ValidationException::withMessages([
+                    'variants.'.$index.'.outlet_ids' => 'Minimal pilih 1 outlet untuk setiap Variant.',
+                ]);
+            }
+
+            $accessibleIds = $this->outletContext()->accessibleOutlets(Auth::user())->pluck('id')->map(fn ($id) => (int) $id);
+            if ($requestedOutletIds->diff($accessibleIds)->isNotEmpty()) {
+                throw ValidationException::withMessages([
+                    'variants.'.$index.'.outlet_ids' => 'Ada outlet tidak aktif atau tidak tersedia untuk akun ini.',
+                ]);
+            }
+
             if ($invalidOutletIds->isNotEmpty()) {
                 $invalidOutletNames = Outlet::whereIn('id', $invalidOutletIds->all())
                     ->orderBy('name')
@@ -122,7 +141,9 @@ class ProductVariantViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
         $variants = ProductVariant::with(['product.brand', 'product.category', 'outlet', 'outlets'])
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('product_id')
             ->orderBy('name')
             ->get();
@@ -153,11 +174,13 @@ class ProductVariantViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        $products = Product::with(['brand', 'category'])
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
+        $products = Product::with(['brand', 'category', 'outlets'])
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('name')
             ->get();
 
-        $outlets = Outlet::orderBy('name')->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         return view('backoffice.variants.create', [
             'user' => $user,
@@ -176,7 +199,7 @@ class ProductVariantViewController extends Controller
             'variants.*.outlet_id' => 'nullable|exists:outlets,id',
             'variants.*.name' => 'required|string|max:255',
             'variants.*.code' => 'required|string|max:50',
-            'variants.*.outlet_ids' => 'nullable|array',
+            'variants.*.outlet_ids' => 'required|array|min:1',
             'variants.*.outlet_ids.*' => 'nullable|exists:outlets,id',
             'variants.*.price_dine_in' => 'required|numeric|min:0',
             'variants.*.price_delivery' => 'required|numeric|min:0',
@@ -266,11 +289,13 @@ class ProductVariantViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        $products = Product::with(['brand', 'category'])
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
+        $products = Product::with(['brand', 'category', 'outlets'])
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('name')
             ->get();
 
-        $outlets = Outlet::orderBy('name')->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         $variant->load(['product.brand', 'product.category', 'outlet', 'outlets']);
 
@@ -304,7 +329,7 @@ class ProductVariantViewController extends Controller
             'variants.*.outlet_id' => 'nullable|exists:outlets,id',
             'variants.*.name' => 'required|string|max:255',
             'variants.*.code' => 'required|string|max:50',
-            'variants.*.outlet_ids' => 'nullable|array',
+            'variants.*.outlet_ids' => 'required|array|min:1',
             'variants.*.outlet_ids.*' => 'nullable|exists:outlets,id',
             'variants.*.price_dine_in' => 'required|numeric|min:0',
             'variants.*.price_delivery' => 'required|numeric|min:0',
@@ -486,7 +511,7 @@ class ProductVariantViewController extends Controller
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, ['product_code', 'outlet_code', 'name', 'code', 'price_dine_in', 'price_delivery', 'is_active']);
-            fputcsv($handle, ['black_tea', '', 'Regular', 'R', '14000', '14000', '1']);
+            fputcsv($handle, ['black_tea', 'outlet_bintaro', 'Regular', 'R', '14000', '14000', '1']);
             fputcsv($handle, ['black_tea', 'outlet_bintaro', 'Large', 'L', '16000', '16000', '1']);
 
             fclose($handle);
@@ -495,7 +520,8 @@ class ProductVariantViewController extends Controller
 
     public function exportCsv(): StreamedResponse
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $filename = 'pos_product_master_'.now()->format('Ymd_His').'.csv';
 
@@ -504,7 +530,7 @@ class ProductVariantViewController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        return response()->stream(function () {
+        return response()->stream(function () use ($activeOutletId) {
 
             $handle = fopen('php://output', 'w');
 
@@ -527,6 +553,7 @@ class ProductVariantViewController extends Controller
                 'product.brand',
                 'product.category',
             ])
+                ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
                 ->orderBy('product_id')
                 ->orderBy('name')
                 ->chunk(200, function ($variants) use ($handle, &$no) {
@@ -557,7 +584,7 @@ class ProductVariantViewController extends Controller
 
     public function importStore(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt',
@@ -645,9 +672,9 @@ class ProductVariantViewController extends Controller
             $priceDeliveryRaw = trim($row[5] ?? '');
             $isActiveRaw = trim($row[6] ?? '');
 
-            if ($productCode === '' || $name === '' || $code === '') {
+            if ($productCode === '' || $outletCode === '' || $name === '' || $code === '') {
                 $skipped++;
-                $errors[] = "Baris {$rowNumber}: product_code, name, dan code wajib diisi.";
+                $errors[] = "Baris {$rowNumber}: product_code, outlet_code, name, dan code wajib diisi.";
 
                 continue;
             }
@@ -678,26 +705,22 @@ class ProductVariantViewController extends Controller
                 continue;
             }
 
-            $outletId = null;
+            $outlet = Outlet::whereRaw('LOWER(code) = ?', [mb_strtolower($outletCode)])->first();
 
-            if ($outletCode !== '') {
-                $outlet = Outlet::whereRaw('LOWER(code) = ?', [mb_strtolower($outletCode)])->first();
+            if (! $outlet || ! $outlet->is_active || ! $this->outletContext()->canAccess($user, (int) $outlet->id)) {
+                $skipped++;
+                $errors[] = "Baris {$rowNumber}: outlet code '{$outletCode}' tidak aktif atau tidak tersedia untuk akun ini.";
 
-                if (! $outlet) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: outlet code '{$outletCode}' tidak ditemukan.";
+                continue;
+            }
 
-                    continue;
-                }
+            $outletId = $outlet->id;
 
-                $outletId = $outlet->id;
+            if (! $product->outlets()->whereKey($outletId)->exists()) {
+                $skipped++;
+                $errors[] = "Baris {$rowNumber}: outlet '{$outletCode}' belum tersedia pada Product '{$product->name}'.";
 
-                if (! $product->outlets()->whereKey($outletId)->exists()) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: outlet '{$outletCode}' belum tersedia pada Product '{$product->name}'.";
-
-                    continue;
-                }
+                continue;
             }
 
             $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
@@ -714,7 +737,7 @@ class ProductVariantViewController extends Controller
                     'price_delivery' => $priceDelivery,
                     'is_active' => $isActive,
                 ]);
-                $variant->outlets()->sync($outletId ? [$outletId] : []);
+                $variant->outlets()->syncWithoutDetaching([$outletId]);
                 $updated++;
             } else {
                 $variant = ProductVariant::create([
@@ -727,7 +750,7 @@ class ProductVariantViewController extends Controller
                     'price_delivery' => $priceDelivery,
                     'is_active' => $isActive,
                 ]);
-                $variant->outlets()->sync($outletId ? [$outletId] : []);
+                $variant->outlets()->sync([$outletId]);
                 $imported++;
             }
         }

@@ -9,6 +9,7 @@ use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\StockTransfer;
 use App\Models\Warehouse;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -73,7 +74,7 @@ class TransferViewController extends Controller
         return '-';
     }
 
-    protected function buildLocationOptions()
+    protected function buildLocationOptions($user)
     {
         $warehouses = Warehouse::where('is_active', true)
             ->orderBy('name')
@@ -85,9 +86,8 @@ class TransferViewController extends Controller
                 ];
             });
 
-        $outlets = Outlet::where('is_active', true)
-            ->orderBy('name')
-            ->get()
+        $context = app(BackofficeOutletContext::class);
+        $outlets = $context->accessibleOutlets($user)
             ->map(function ($outlet) {
                 return [
                     'value' => 'outlet:' . $outlet->id,
@@ -243,6 +243,14 @@ class TransferViewController extends Controller
         $query = StockTransfer::with(['ingredient.category', 'warehouse', 'outlet', 'transferredBy'])
             ->latest();
 
+        $activeOutletId = app(BackofficeOutletContext::class)->activeOutletId($user);
+        if ($activeOutletId) {
+            $query->where(function ($scope) use ($activeOutletId) {
+                $scope->where(fn ($q) => $q->where('from_location_type', 'outlet')->where('from_location_id', $activeOutletId))
+                    ->orWhere(fn ($q) => $q->where('to_location_type', 'outlet')->where('to_location_id', $activeOutletId));
+            });
+        }
+
         if ($request->filled('from_location')) {
             $fromFilter = $this->parseLocation($request->from_location);
             $query->where('from_location_type', $fromFilter['type'])
@@ -324,7 +332,7 @@ class TransferViewController extends Controller
             'transfers' => $transfers,
             'transferGroups' => $transferGroups,
             'summary' => $summary,
-            'locationOptions' => $this->buildLocationOptions(),
+            'locationOptions' => $this->buildLocationOptions($user),
             'filters' => [
                 'from_location_type' => $request->from_location_type,
                 'to_location_type' => $request->to_location_type,
@@ -339,10 +347,18 @@ class TransferViewController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
         $query = StockTransfer::with(['ingredient.category', 'transferredBy'])
             ->latest();
+
+        $activeOutletId = app(BackofficeOutletContext::class)->activeOutletId($user);
+        if ($activeOutletId) {
+            $query->where(function ($scope) use ($activeOutletId) {
+                $scope->where(fn ($q) => $q->where('from_location_type', 'outlet')->where('from_location_id', $activeOutletId))
+                    ->orWhere(fn ($q) => $q->where('to_location_type', 'outlet')->where('to_location_id', $activeOutletId));
+            });
+        }
 
         if ($request->filled('from_location')) {
             $fromFilter = $this->parseLocation($request->from_location);
@@ -525,6 +541,18 @@ class TransferViewController extends Controller
 
         $from = $this->parseLocation($validated['from_location']);
         $to = $this->parseLocation($validated['to_location']);
+        $context = app(BackofficeOutletContext::class);
+
+        foreach ([$from, $to] as $locationContext) {
+            if ($locationContext['type'] === 'outlet' && ! $context->canAccess($user, $locationContext['id'])) {
+                return back()->withErrors(['from_location' => 'Lokasi transfer memuat outlet yang tidak tersedia untuk akun ini.'])->withInput();
+            }
+        }
+
+        $activeOutletId = $context->activeOutletId($user);
+        if ($activeOutletId && ! (($from['type'] === 'outlet' && $from['id'] === $activeOutletId) || ($to['type'] === 'outlet' && $to['id'] === $activeOutletId))) {
+            return back()->withErrors(['from_location' => 'Transfer harus melibatkan Active Outlet Backoffice.'])->withInput();
+        }
 
         if ($from['type'] === $to['type'] && $from['id'] === $to['id']) {
             return back()

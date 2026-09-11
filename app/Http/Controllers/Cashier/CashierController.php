@@ -312,15 +312,9 @@ class CashierController extends Controller
         $products = Product::with([
             'brand',
             'category',
-            'variants' => function ($query) use ($user) {
-                $query->where('is_active', true)
-                    ->where(function ($variantQuery) use ($user) {
-                        $variantQuery
-                            ->doesntHave('outlets')
-                            ->orWhereHas('outlets', function ($outletQuery) use ($user) {
-                                $outletQuery->where('outlets.id', $user->outlet_id);
-                            });
-                    })
+                'variants' => function ($query) use ($user) {
+                    $query->where('is_active', true)
+                    ->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', $user->outlet_id))
                     ->orderBy('name');
             },
         ])
@@ -330,13 +324,7 @@ class CashierController extends Controller
             })
             ->whereHas('variants', function ($variantQuery) use ($user) {
                 $variantQuery->where('is_active', true)
-                    ->where(function ($availabilityQuery) use ($user) {
-                        $availabilityQuery
-                            ->doesntHave('outlets')
-                            ->orWhereHas('outlets', function ($outletQuery) use ($user) {
-                                $outletQuery->where('outlets.id', $user->outlet_id);
-                            });
-                    });
+                    ->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', $user->outlet_id));
             })
             ->orderBy('name')
             ->get();

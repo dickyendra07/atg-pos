@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\StockMovement;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -33,6 +34,11 @@ class StockMovementViewController extends Controller
     {
         $query = StockMovement::with(['ingredient'])
             ->orderByDesc('id');
+
+        $activeOutletId = app(BackofficeOutletContext::class)->activeOutletId(Auth::user());
+        if ($activeOutletId) {
+            $query->where('location_type', 'outlet')->where('location_id', $activeOutletId);
+        }
 
         if ($request->filled('ingredient_id')) {
             $query->where('ingredient_id', $request->ingredient_id);
@@ -66,7 +72,8 @@ class StockMovementViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $ingredients = Ingredient::orderBy('name')->get();
+        $activeOutletId = app(BackofficeOutletContext::class)->activeOutletId($user);
+        $ingredients = Ingredient::when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))->orderBy('name')->get();
 
         $stockMovements = $this->buildFilteredQuery($request)->get();
 

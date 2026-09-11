@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -16,6 +17,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class RecipeViewController extends Controller
 {
+    protected function outletContext(): BackofficeOutletContext
+    {
+        return app(BackofficeOutletContext::class);
+    }
+
     protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role']);
@@ -38,11 +44,13 @@ class RecipeViewController extends Controller
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $recipes = Recipe::with([
             'variant.product',
             'items.ingredient.category',
         ])
+            ->when($activeOutletId, fn ($query) => $query->whereHas('variant', fn ($variantQuery) => $variantQuery->availableAtOutlet($activeOutletId)))
             ->when($request->filled('status'), function ($query) use ($request) {
                 if ($request->status === 'active') {
                     $query->where('is_active', true);
@@ -89,8 +97,10 @@ class RecipeViewController extends Controller
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $variants = ProductVariant::with(['product'])
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('name')
             ->get();
 
@@ -102,7 +112,7 @@ class RecipeViewController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
         $validated = $request->validate([
             'product_variant_id' => 'required|exists:product_variants,id|unique:recipes,product_variant_id',
@@ -111,7 +121,13 @@ class RecipeViewController extends Controller
         ]);
 
         $variant = ProductVariant::findOrFail($validated['product_variant_id']);
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
+        if ($activeOutletId && ! ProductVariant::whereKey($variant->id)->availableAtOutlet($activeOutletId)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'product_variant_id' => 'Variant tidak tersedia pada Active Outlet.',
+            ]);
+        }
         Recipe::create([
             'product_id' => $variant->product_id,
             'product_variant_id' => $validated['product_variant_id'],
@@ -128,6 +144,7 @@ class RecipeViewController extends Controller
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $recipe->load([
             'items.ingredient.category',
@@ -135,11 +152,13 @@ class RecipeViewController extends Controller
         ]);
 
         $variants = ProductVariant::with(['product'])
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('name')
             ->get();
 
         $ingredients = Ingredient::with(['category'])
             ->where('is_active', true)
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderByRaw("
                 CASE
                     WHEN ingredient_type = 'semi_finished' THEN 0
@@ -159,7 +178,7 @@ class RecipeViewController extends Controller
 
     public function update(Request $request, Recipe $recipe)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
         $validated = $request->validate([
             'product_variant_id' => 'required|exists:product_variants,id|unique:recipes,product_variant_id,'.$recipe->id,
@@ -168,6 +187,13 @@ class RecipeViewController extends Controller
         ]);
 
         $variant = ProductVariant::findOrFail($validated['product_variant_id']);
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
+
+        if ($activeOutletId && ! ProductVariant::whereKey($variant->id)->availableAtOutlet($activeOutletId)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'product_variant_id' => 'Variant tidak tersedia pada Active Outlet.',
+            ]);
+        }
 
         $recipe->update([
             'product_id' => $variant->product_id,
@@ -214,6 +240,14 @@ class RecipeViewController extends Controller
         }
 
         $ingredient = Ingredient::findOrFail($validated['ingredient_id']);
+        $variantOutletIds = $recipe->variant()->with('outlets')->firstOrFail()->outlets->pluck('id')->map(fn ($id) => (int) $id);
+        $ingredientOutletIds = $ingredient->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id);
+
+        if ($variantOutletIds->diff($ingredientOutletIds)->isNotEmpty()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'ingredient_id' => 'Ingredient harus tersedia di seluruh outlet Variant recipe ini.',
+            ]);
+        }
 
         $recipe->items()->create([
             'ingredient_id' => $validated['ingredient_id'],

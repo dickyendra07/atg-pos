@@ -15,6 +15,7 @@ use App\Models\SalesTransaction;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -73,14 +74,12 @@ class BackofficeController extends Controller
                 ->with('error', 'Akses back office penuh hanya untuk owner / admin pusat. Gunakan cashier untuk operasional harian.');
         }
 
-        $outletOptions = Outlet::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $context = app(BackofficeOutletContext::class);
+        $outletOptions = $context->accessibleOutlets($user);
 
-        $selectedOutletId = $request->filled('outlet_id')
+        $selectedOutletId = $request->filled('outlet_id') && $context->canAccess($user, (int) $request->outlet_id)
             ? (int) $request->outlet_id
-            : null;
+            : $context->activeOutletId($user);
 
         $dateFrom = $request->input('date_from') ?: now()->startOfMonth()->toDateString();
         $dateTo = $request->input('date_to') ?: now()->toDateString();
@@ -92,10 +91,10 @@ class BackofficeController extends Controller
             $selectedOutletId = $userOutletId;
         }
 
-        $productCount = Product::count();
-        $variantCount = ProductVariant::count();
-        $ingredientCount = Ingredient::count();
-        $recipeCount = Recipe::count();
+        $productCount = Product::when($selectedOutletId, fn ($query) => $query->availableAtOutlet($selectedOutletId))->count();
+        $variantCount = ProductVariant::when($selectedOutletId, fn ($query) => $query->availableAtOutlet($selectedOutletId))->count();
+        $ingredientCount = Ingredient::when($selectedOutletId, fn ($query) => $query->availableAtOutlet($selectedOutletId))->count();
+        $recipeCount = Recipe::when($selectedOutletId, fn ($query) => $query->whereHas('variant', fn ($variantQuery) => $variantQuery->availableAtOutlet($selectedOutletId)))->count();
         $outletCount = Outlet::count();
         $warehouseCount = Warehouse::count();
 

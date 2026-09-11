@@ -171,6 +171,13 @@
             </span>
             <span>Transfers</span>
         </a>
+
+        <a href="{{ route('backoffice.purchase-history.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.purchase-history.*') ? 'active' : '' }}">
+            <span class="sidebar-nav-icon green">
+                <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"></path><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
+            </span>
+            <span>Purchase History</span>
+        </a>
     </div>
 </div>
 

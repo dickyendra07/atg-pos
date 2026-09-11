@@ -8,6 +8,8 @@ use App\Models\Outlet;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Models\PurchaseReceipt;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -17,6 +19,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class StockBalanceViewController extends Controller
 {
+    protected function outletContext(): BackofficeOutletContext
+    {
+        return app(BackofficeOutletContext::class);
+    }
+
     protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role', 'outlet']);
@@ -39,6 +46,11 @@ class StockBalanceViewController extends Controller
     {
         $baseQuery = StockBalance::with(['ingredient.category', 'warehouse', 'outlet'])
             ->orderByDesc('id');
+
+        $activeOutletId = $this->outletContext()->activeOutletId(Auth::user());
+        if ($activeOutletId) {
+            $baseQuery->where('location_type', 'outlet')->where('location_id', $activeOutletId);
+        }
 
         if ($request->filled('ingredient_id')) {
             $baseQuery->where('ingredient_id', $request->ingredient_id);
@@ -157,6 +169,12 @@ class StockBalanceViewController extends Controller
 
     protected function applySummaryLocationFilters($query, Request $request)
     {
+        $activeOutletId = $this->outletContext()->activeOutletId(Auth::user());
+
+        if ($activeOutletId) {
+            return $query->where('location_type', 'outlet')->where('location_id', $activeOutletId);
+        }
+
         if ($request->filled('summary_location_type')) {
             $query->where('location_type', $request->summary_location_type);
         }
@@ -384,6 +402,7 @@ class StockBalanceViewController extends Controller
         $user = $this->authorizeAccess();
 
         $ingredients = Ingredient::with('category')
+            ->when($this->outletContext()->activeOutletId($user), fn ($query, $outletId) => $query->availableAtOutlet($outletId))
             ->orderBy('name')
             ->get();
 
@@ -392,10 +411,7 @@ class StockBalanceViewController extends Controller
             ->orderBy('name')
             ->get();
 
-        $outlets = Outlet::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         $stockBalances = $this->applyStockFilters($request);
 
@@ -547,6 +563,7 @@ class StockBalanceViewController extends Controller
         $user = $this->authorizeAccess();
 
         $ingredients = Ingredient::with(['category'])
+            ->when($this->outletContext()->activeOutletId($user), fn ($query, $outletId) => $query->availableAtOutlet($outletId))
             ->orderBy('name')
             ->get();
 
@@ -555,10 +572,7 @@ class StockBalanceViewController extends Controller
             ->orderBy('name')
             ->get();
 
-        $outlets = Outlet::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         return view('backoffice.stock-balances.create', [
             'user' => $user,
@@ -570,11 +584,20 @@ class StockBalanceViewController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+
+        $inputItems = collect((array) $request->input('items', []))->map(function ($item) {
+            $item['unit_price'] = $this->normalizeMoney((string) ($item['unit_price'] ?? ''));
+            return $item;
+        })->all();
+        $request->merge(['items' => $inputItems]);
 
         $validated = $request->validate([
             'location_type' => 'required|in:warehouse,outlet',
             'location_id' => 'required|integer|min:1',
+            'supplier_name' => 'nullable|string|max:255',
+            'received_date' => 'required|date',
+            'notes' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
             'items.*.ingredient_id' => 'required|exists:ingredients,id',
             'items.*.qty_in' => 'required|numeric|min:0.01',
@@ -607,6 +630,15 @@ class StockBalanceViewController extends Controller
                     ->withErrors(['location_id' => 'Outlet tujuan tidak ditemukan atau tidak aktif.'])
                     ->withInput();
             }
+
+            if (! $this->outletContext()->canAccess($user, (int) $location->id)) {
+                return back()->withErrors(['location_id' => 'Outlet tujuan tidak tersedia untuk akun ini.'])->withInput();
+            }
+
+            $activeOutletId = $this->outletContext()->activeOutletId($user);
+            if ($activeOutletId && $activeOutletId !== (int) $location->id) {
+                return back()->withErrors(['location_id' => 'Outlet tujuan harus sama dengan Active Outlet Backoffice.'])->withInput();
+            }
         }
 
         $items = collect($validated['items'])
@@ -623,11 +655,26 @@ class StockBalanceViewController extends Controller
                 ->withInput();
         }
 
-        DB::transaction(function () use ($validated, $items) {
+        DB::transaction(function () use ($validated, $items, $user) {
+            $receipt = PurchaseReceipt::create([
+                'reference_number' => $this->nextReceiptNumber(),
+                'supplier_name' => trim((string) ($validated['supplier_name'] ?? '')) ?: null,
+                'destination_type' => $validated['location_type'],
+                'destination_id' => $validated['location_id'],
+                'received_date' => $validated['received_date'] ?? now()->toDateString(),
+                'status' => 'received',
+                'total_amount' => '0.00',
+                'notes' => trim((string) ($validated['notes'] ?? '')) ?: null,
+                'created_by_user_id' => $user->id,
+            ]);
+            $receiptTotalCents = 0;
+
             foreach ($items as $item) {
-                $qtyIn = (float) ($item['qty_in'] ?? 0);
-                $unitPrice = (float) ($item['unit_price'] ?? 0);
-                $lineTotal = $qtyIn * $unitPrice;
+                $qtyIn = (string) ($item['qty_in'] ?? '0');
+                $unitPrice = (string) ($item['unit_price'] ?? '0');
+                $lineTotalCents = $this->lineTotalCents($qtyIn, $unitPrice);
+                $lineTotal = $this->centsToDecimal($lineTotalCents);
+                $receiptTotalCents += $lineTotalCents;
 
                 $stockBalance = StockBalance::firstOrCreate(
                     [
@@ -641,7 +688,7 @@ class StockBalanceViewController extends Controller
                 );
 
                 $currentQty = (float) $stockBalance->qty_on_hand;
-                $newQty = $currentQty + $qtyIn;
+                $newQty = $currentQty + (float) $qtyIn;
 
                 $stockBalance->update([
                     'qty_on_hand' => $newQty,
@@ -649,9 +696,9 @@ class StockBalanceViewController extends Controller
 
                 $baseNote = trim((string) ($item['note'] ?? ''));
                 $purchaseNote = 'Purchase order dari luar sistem'
-                    . ' | Harga Satuan: Rp ' . number_format($unitPrice, 0, ',', '.')
-                    . ' | Qty: ' . number_format($qtyIn, 2, ',', '.')
-                    . ' | Total: Rp ' . number_format($lineTotal, 0, ',', '.');
+                    . ' | Harga Satuan: Rp ' . number_format((float) $unitPrice, 2, ',', '.')
+                    . ' | Qty: ' . number_format((float) $qtyIn, 3, ',', '.')
+                    . ' | Total: Rp ' . number_format((float) $lineTotal, 2, ',', '.');
 
                 StockMovement::create([
                     'ingredient_id' => $item['ingredient_id'],
@@ -660,11 +707,23 @@ class StockBalanceViewController extends Controller
                     'movement_type' => 'stock_in',
                     'qty_in' => $qtyIn,
                     'qty_out' => 0,
-                    'reference_type' => 'manual_stock_in',
-                    'reference_id' => null,
+                    'reference_type' => 'purchase_receipt',
+                    'reference_id' => $receipt->id,
                     'note' => $baseNote !== '' ? $baseNote . ' | ' . $purchaseNote : $purchaseNote,
                 ]);
+
+                $ingredient = Ingredient::findOrFail($item['ingredient_id']);
+                $receipt->items()->create([
+                    'ingredient_id' => $ingredient->id,
+                    'qty' => $qtyIn,
+                    'unit' => $ingredient->unit,
+                    'unit_price' => $unitPrice,
+                    'line_total' => $lineTotal,
+                    'notes' => $baseNote ?: null,
+                ]);
             }
+
+            $receipt->update(['total_amount' => $this->centsToDecimal($receiptTotalCents)]);
         });
 
         $locationLabel = $validated['location_type'] === 'warehouse' ? 'warehouse' : 'outlet';
@@ -679,6 +738,7 @@ class StockBalanceViewController extends Controller
         $user = $this->authorizeAccess();
 
         $ingredients = Ingredient::with(['category'])
+            ->when($this->outletContext()->activeOutletId($user), fn ($query, $outletId) => $query->availableAtOutlet($outletId))
             ->orderBy('name')
             ->get();
 
@@ -687,13 +747,11 @@ class StockBalanceViewController extends Controller
             ->orderBy('name')
             ->get();
 
-        $outlets = Outlet::query()
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         $stockMap = StockBalance::query()
             ->select('ingredient_id', 'location_type', 'location_id', 'qty_on_hand')
+            ->when($this->outletContext()->activeOutletId($user), fn ($query, $outletId) => $query->where('location_type', 'outlet')->where('location_id', $outletId))
             ->get()
             ->groupBy(function ($row) {
                 return $row->location_type . ':' . $row->location_id;
@@ -718,7 +776,7 @@ class StockBalanceViewController extends Controller
 
     public function storeAdjustment(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
         $validated = $request->validate([
             'location_type' => 'required|in:warehouse,outlet',
@@ -753,6 +811,14 @@ class StockBalanceViewController extends Controller
                 return back()
                     ->withErrors(['location_id' => 'Outlet tujuan tidak ditemukan atau tidak aktif.'])
                     ->withInput();
+            }
+
+            if (! $this->outletContext()->canAccess($user, (int) $location->id)) {
+                return back()->withErrors(['location_id' => 'Outlet tujuan tidak tersedia untuk akun ini.'])->withInput();
+            }
+            $activeOutletId = $this->outletContext()->activeOutletId($user);
+            if ($activeOutletId && $activeOutletId !== (int) $location->id) {
+                return back()->withErrors(['location_id' => 'Outlet adjustment harus sama dengan Active Outlet Backoffice.'])->withInput();
             }
         }
 
@@ -1132,5 +1198,74 @@ class StockBalanceViewController extends Controller
 
             fclose($handle);
         }, 200, $headers);
+    }
+
+    protected function normalizeMoney(string $value): string
+    {
+        $value = preg_replace('/[^0-9,.-]/', '', trim($value)) ?? '';
+        $lastComma = strrpos($value, ',');
+        $lastDot = strrpos($value, '.');
+
+        if ($lastComma !== false && $lastDot !== false) {
+            $decimal = $lastComma > $lastDot ? ',' : '.';
+            $thousands = $decimal === ',' ? '.' : ',';
+            $value = str_replace($thousands, '', $value);
+            $value = str_replace($decimal, '.', $value);
+        } elseif ($lastComma !== false) {
+            $value = str_replace(',', '.', $value);
+        }
+
+        if (! is_numeric($value)) {
+            return '';
+        }
+
+        return $this->scaledIntToDecimal($this->decimalToScaledInt($value, 2), 2);
+    }
+
+    protected function decimalToScaledInt(string $value, int $scale): int
+    {
+        $negative = str_starts_with($value, '-');
+        $value = ltrim($value, '+-');
+        [$whole, $fraction] = array_pad(explode('.', $value, 2), 2, '');
+        $fraction = preg_replace('/\D/', '', $fraction) ?? '';
+        $roundDigit = (int) ($fraction[$scale] ?? 0);
+        $fraction = str_pad(substr($fraction, 0, $scale), $scale, '0');
+        $scaled = ((int) ($whole ?: 0) * (10 ** $scale)) + (int) $fraction;
+        if ($roundDigit >= 5) {
+            $scaled++;
+        }
+
+        return $negative ? -$scaled : $scaled;
+    }
+
+    protected function scaledIntToDecimal(int $value, int $scale): string
+    {
+        $negative = $value < 0 ? '-' : '';
+        $value = abs($value);
+        $factor = 10 ** $scale;
+
+        return $negative.intdiv($value, $factor).'.'.str_pad((string) ($value % $factor), $scale, '0', STR_PAD_LEFT);
+    }
+
+    protected function lineTotalCents(string $qty, string $unitPrice): int
+    {
+        $qtyMills = $this->decimalToScaledInt($qty, 3);
+        $priceCents = $this->decimalToScaledInt($unitPrice, 2);
+
+        return intdiv(($qtyMills * $priceCents) + 500, 1000);
+    }
+
+    protected function centsToDecimal(int $cents): string
+    {
+        return $this->scaledIntToDecimal($cents, 2);
+    }
+
+    protected function nextReceiptNumber(): string
+    {
+        do {
+            $reference = 'GR-'.now()->format('Ymd').'-'.strtoupper(\Illuminate\Support\Str::random(8));
+        } while (PurchaseReceipt::where('reference_number', $reference)->exists());
+
+        return $reference;
     }
 }

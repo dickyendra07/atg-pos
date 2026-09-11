@@ -657,7 +657,7 @@
                     <div class="field">
                         <label for="outlet_id">Outlet</label>
                         <select name="outlet_id" id="outlet_id">
-                            <option value="">Semua outlet</option>
+                            <option value="all" @selected(($filters['outlet_id'] ?? 'all') === 'all')>Semua outlet</option>
                             @foreach($outletOptions as $outlet)
                                 <option value="{{ $outlet->id }}" @selected((string) ($filters['outlet_id'] ?? '') === (string) $outlet->id)>
                                     {{ $outlet->name }}

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\IngredientCategory;
 use App\Models\Outlet;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IngredientViewController extends Controller
 {
+    protected function outletContext(): BackofficeOutletContext
+    {
+        return app(BackofficeOutletContext::class);
+    }
+
     protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role', 'outlet']);
@@ -92,8 +98,11 @@ class IngredientViewController extends Controller
     public function index(Request $request)
     {
         $user = $this->authorizeAccess();
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
-        $ingredientsQuery = Ingredient::with('category')->latest();
+        $ingredientsQuery = Ingredient::with(['category', 'outlets'])
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
+            ->latest();
 
         if ($request->filled('ingredient_type')) {
             $ingredientsQuery->where('ingredient_type', $request->ingredient_type);
@@ -128,7 +137,7 @@ class IngredientViewController extends Controller
         $user = $this->authorizeAccess();
 
         $categories = IngredientCategory::orderBy('name')->get();
-        $outlets = Outlet::orderBy('name')->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         return view('backoffice.ingredients.create', [
             'user' => $user,
@@ -150,9 +159,11 @@ class IngredientViewController extends Controller
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
-            'outlet_ids' => 'nullable|array',
+            'outlet_ids' => 'required|array|min:1',
             'outlet_ids.*' => 'exists:outlets,id',
         ]);
+
+        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
 
         DB::transaction(function () use ($validated) {
 
@@ -181,7 +192,7 @@ class IngredientViewController extends Controller
         $user = $this->authorizeAccess();
 
         $categories = IngredientCategory::orderBy('name')->get();
-        $outlets = Outlet::orderBy('name')->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         $ingredient->load('outlets');
 
@@ -206,9 +217,13 @@ class IngredientViewController extends Controller
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
             'is_active' => 'required|boolean',
-            'outlet_ids' => 'nullable|array',
+            'outlet_ids' => 'required|array|min:1',
             'outlet_ids.*' => 'exists:outlets,id',
         ]);
+
+        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
+
+        $editableOutletIds = $this->outletContext()->accessibleOutlets(Auth::user())->pluck('id')->map(fn ($id) => (int) $id);
 
         $newCode = $ingredient->code;
 
@@ -216,7 +231,7 @@ class IngredientViewController extends Controller
             $newCode = $this->makeIngredientCode($validated['name'], $ingredient->id);
         }
 
-        DB::transaction(function () use ($ingredient, $validated, $newCode) {
+        DB::transaction(function () use ($ingredient, $validated, $newCode, $editableOutletIds) {
             $ingredient->update([
                 'ingredient_category_id' => $validated['ingredient_category_id'],
                 'code' => $newCode,
@@ -228,7 +243,11 @@ class IngredientViewController extends Controller
                 'is_active' => $validated['is_active'],
             ]);
 
-            $ingredient->outlets()->sync($validated['outlet_ids'] ?? []);
+            $finalOutletIds = collect($validated['outlet_ids'])
+                ->map(fn ($id) => (int) $id)
+                ->merge($ingredient->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id)->diff($editableOutletIds))
+                ->unique()->values()->all();
+            $ingredient->outlets()->sync($finalOutletIds);
         });
 
         return redirect()
@@ -258,15 +277,16 @@ class IngredientViewController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
-        $ingredientsQuery = Ingredient::with('category')->orderBy('name');
+        $ingredientsQuery = Ingredient::with('category')
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
+            ->orderBy('name');
 
         if ($request->filled('ingredient_type')) {
             $ingredientsQuery->where('ingredient_type', $request->ingredient_type);
         }
-
-        $ingredients = $ingredientsQuery->get();
 
         if ($request->filled('search')) {
             $keyword = trim((string) $request->search);
@@ -280,6 +300,8 @@ class IngredientViewController extends Controller
                     });
             });
         }
+
+        $ingredients = $ingredientsQuery->get();
 
         $filename = 'ingredients_export_'.now()->format('Ymd_His').'.csv';
 
@@ -344,7 +366,12 @@ class IngredientViewController extends Controller
 
     public function importStore(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
+
+        if (! $activeOutletId) {
+            return back()->with('error', 'Pilih Active Outlet terlebih dahulu. Import Ingredient tidak boleh membuat availability global.');
+        }
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt',
@@ -407,7 +434,7 @@ class IngredientViewController extends Controller
         $skipped = 0;
         $errors = [];
 
-        DB::transaction(function () use ($lines, $delimiter, &$imported, &$updated, &$skipped, &$errors) {
+        DB::transaction(function () use ($lines, $delimiter, $activeOutletId, &$imported, &$updated, &$skipped, &$errors) {
             foreach (array_slice($lines, 1) as $index => $line) {
                 $rowNumber = $index + 2;
 
@@ -510,10 +537,11 @@ class IngredientViewController extends Controller
                         'cost_per_unit' => $costPerUnit,
                         'is_active' => $isActive,
                     ]);
+                    $existingIngredient->outlets()->syncWithoutDetaching([$activeOutletId]);
 
                     $updated++;
                 } else {
-                    Ingredient::create([
+                    $ingredient = Ingredient::create([
                         'ingredient_category_id' => $category->id,
                         'code' => $this->makeIngredientCode($name),
                         'name' => $name,
@@ -523,6 +551,7 @@ class IngredientViewController extends Controller
                         'cost_per_unit' => $costPerUnit,
                         'is_active' => $isActive,
                     ]);
+                    $ingredient->outlets()->sync([$activeOutletId]);
 
                     $imported++;
                 }
@@ -533,5 +562,16 @@ class IngredientViewController extends Controller
             ->route('backoffice.ingredients.index')
             ->with('success', "Import ingredients selesai. Baru: {$imported}. Update: {$updated}. Dilewati: {$skipped}.")
             ->with('import_errors', $errors);
+    }
+
+    protected function validateAccessibleOutletIds($user, array $outletIds): void
+    {
+        $allowed = $this->outletContext()->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id);
+
+        if (collect($outletIds)->map(fn ($id) => (int) $id)->diff($allowed)->isNotEmpty()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'outlet_ids' => 'Ada outlet tidak aktif atau tidak tersedia untuk akun ini.',
+            ]);
+        }
     }
 }

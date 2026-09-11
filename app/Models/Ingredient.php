@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -88,5 +89,10 @@ class Ingredient extends Model
             Outlet::class,
             'ingredient_outlet'
         )->withTimestamps();
+    }
+
+    public function scopeAvailableAtOutlet(Builder $query, int $outletId): Builder
+    {
+        return $query->whereHas('outlets', fn (Builder $outletQuery) => $outletQuery->where('outlets.id', $outletId));
     }
 }

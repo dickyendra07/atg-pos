@@ -460,7 +460,7 @@
                                                 @endforeach
                                             </div>
                                         </div>
-                                        <small class="variant-outlet-help">Kosongkan jika berlaku untuk semua outlet.</small>
+                                        <small class="variant-outlet-help">Pilih minimal 1 outlet dan harus berada dalam scope Product.</small>
                                     </div>
 
                                     <div class="field">
@@ -539,7 +539,7 @@
                             @endforeach
                         </div>
                     </div>
-                    <small class="variant-outlet-help">Kosongkan jika berlaku untuk semua outlet.</small>
+                    <small class="variant-outlet-help">Pilih minimal 1 outlet dan harus berada dalam scope Product.</small>
                 </div>
 
                 <div class="field">

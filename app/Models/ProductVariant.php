@@ -71,11 +71,8 @@ class ProductVariant extends Model
             ->whereHas('product.outlets', function (Builder $outletQuery) use ($outletId) {
                 $outletQuery->where('outlets.id', $outletId);
             })
-            ->where(function (Builder $variantQuery) use ($outletId) {
-                $variantQuery->doesntHave('outlets')
-                    ->orWhereHas('outlets', function (Builder $outletQuery) use ($outletId) {
-                        $outletQuery->where('outlets.id', $outletId);
-                    });
+            ->whereHas('outlets', function (Builder $outletQuery) use ($outletId) {
+                $outletQuery->where('outlets.id', $outletId);
             });
     }
 }

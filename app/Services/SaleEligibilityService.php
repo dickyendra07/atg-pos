@@ -78,7 +78,7 @@ class SaleEligibilityService
                 throw new RuntimeException('Produk “'.$displayName.'” tidak tersedia untuk '.$outlet->name.'.');
             }
 
-            if ($variant->outlets->isNotEmpty() && ! $variant->outlets->contains('id', $outletId)) {
+            if (! $variant->outlets->contains('id', $outletId)) {
                 throw new RuntimeException('Variant “'.$displayName.'” tidak tersedia untuk '.$outlet->name.'.');
             }
 

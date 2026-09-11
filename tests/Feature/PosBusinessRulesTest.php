@@ -10,6 +10,7 @@ use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductVariant;
+use App\Models\PurchaseReceipt;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Models\Role;
@@ -81,6 +82,7 @@ class PosBusinessRulesTest extends TestCase
             'price_delivery' => 55000,
             'is_active' => true,
         ]);
+        $this->variant->outlets()->sync([$this->outletA->id]);
 
         $this->ingredient = Ingredient::create([
             'ingredient_category_id' => $this->ingredientCategory->id,
@@ -329,10 +331,11 @@ class PosBusinessRulesTest extends TestCase
             ->assertJsonPath('message', 'Produk “Matcha Kafei - 1L” tidak tersedia untuk Outlet B.');
     }
 
-    public function test_variant_without_outlet_scope_inherits_product_outlets_when_adding(): void
+    public function test_variant_without_outlet_scope_is_not_available_when_adding(): void
     {
         $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
         $this->ingredient->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->variant->outlets()->detach();
         $this->makeRecipe();
         CashierShift::create([
             'user_id' => $this->user->id,
@@ -342,7 +345,9 @@ class PosBusinessRulesTest extends TestCase
             'status' => 'open',
         ]);
 
-        $this->addToCart($this->outletB)->assertOk()->assertJsonPath('success', true);
+        $this->addToCart($this->outletB)
+            ->assertStatus(422)
+            ->assertJsonPath('message', 'Variant “Matcha Kafei - 1L” tidak tersedia untuk Outlet B.');
     }
 
     public function test_explicit_variant_outlet_scope_is_enforced_when_adding(): void
@@ -413,6 +418,7 @@ class PosBusinessRulesTest extends TestCase
         $this->outletA->update(['name' => 'Outlet Bintaro Xchange']);
         $this->outletB->update(['name' => 'Bazaar TikTok']);
         $this->product->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->variant->outlets()->sync([$this->outletA->id, $this->outletB->id]);
         $this->makeRecipe();
         CashierShift::create([
             'user_id' => $this->user->id,
@@ -921,6 +927,121 @@ class PosBusinessRulesTest extends TestCase
             'qty',
             'unit',
         ], str_getcsv(strtok($recipeExport->streamedContent(), "\n")));
+    }
+
+    public function test_master_creation_requires_explicit_outlet_and_active_context_filters_indexes(): void
+    {
+        $this->actingAs($this->user);
+
+        $payload = $this->productPayload([]);
+        $payload['name'] = 'Bazaar Only Product';
+        $payload['code'] = 'BAZAAR-ONLY';
+        $this->post(route('backoffice.products.store'), $payload)->assertSessionHasErrors('outlet_ids');
+
+        $payload['outlet_ids'] = [$this->outletB->id];
+        $this->post(route('backoffice.products.store'), $payload)->assertSessionHasNoErrors();
+        $created = Product::where('code', 'BAZAAR-ONLY')->firstOrFail();
+        $this->assertSame([$this->outletB->id], $created->outlets()->pluck('outlets.id')->all());
+
+        $atA = $this->withSession(['active_backoffice_outlet_id' => $this->outletA->id])->get(route('backoffice.products.index'));
+        $this->assertFalse($atA->viewData('products')->contains('id', $created->id));
+
+        $atB = $this->withSession(['active_backoffice_outlet_id' => $this->outletB->id])->get(route('backoffice.products.index'));
+        $this->assertTrue($atB->viewData('products')->contains('id', $created->id));
+    }
+
+    public function test_ingredient_creation_is_explicit_and_filtered_by_active_outlet(): void
+    {
+        $this->actingAs($this->user);
+        $payload = $this->ingredientPayload([$this->outletB->id]);
+        $payload['name'] = 'Bazaar Water';
+
+        $this->post(route('backoffice.ingredients.store'), $payload)->assertSessionHasNoErrors();
+        $ingredient = Ingredient::where('name', 'Bazaar Water')->firstOrFail();
+        $this->assertSame([$this->outletB->id], $ingredient->outlets()->pluck('outlets.id')->all());
+
+        $atA = $this->withSession(['active_backoffice_outlet_id' => $this->outletA->id])->get(route('backoffice.ingredients.index'));
+        $this->assertFalse($atA->viewData('ingredients')->contains('id', $ingredient->id));
+        $atB = $this->withSession(['active_backoffice_outlet_id' => $this->outletB->id])->get(route('backoffice.ingredients.index'));
+        $this->assertTrue($atB->viewData('ingredients')->contains('id', $ingredient->id));
+    }
+
+    public function test_backoffice_outlet_switch_uses_separate_session_and_clears_inactive_selection(): void
+    {
+        $this->actingAs($this->user)
+            ->post(route('backoffice.active-outlet.update'), ['outlet_id' => $this->outletB->id])
+            ->assertSessionHas('active_backoffice_outlet_id', $this->outletB->id);
+
+        $this->assertNull(session('cashier_outlet_id'));
+        $this->outletB->update(['is_active' => false]);
+
+        $this->get(route('backoffice.products.index'))
+            ->assertOk()
+            ->assertSessionMissing('active_backoffice_outlet_id')
+            ->assertSessionHas('warning');
+    }
+
+    public function test_transaction_report_lists_zero_transaction_outlet_and_returns_zero_summary(): void
+    {
+        $this->actingAs($this->user);
+        $response = $this->get(route('backoffice.transactions.index', ['outlet_id' => $this->outletB->id]));
+
+        $response->assertOk()->assertSee($this->outletB->name);
+        $this->assertCount(0, $response->viewData('transactions'));
+        $this->assertSame(0, $response->viewData('totalTransactions'));
+        $this->assertSame(0.0, $response->viewData('totalSales'));
+    }
+
+    public function test_purchase_receipt_preserves_decimal_prices_totals_and_history(): void
+    {
+        $this->ingredient->outlets()->sync([$this->outletA->id, $this->outletB->id]);
+        $this->actingAs($this->user)->withSession(['active_backoffice_outlet_id' => $this->outletB->id]);
+
+        $this->post(route('backoffice.stock-balances.store'), [
+            'location_type' => 'outlet',
+            'location_id' => $this->outletB->id,
+            'supplier_name' => 'Supplier Test',
+            'received_date' => '2026-09-11',
+            'items' => [
+                [
+                    'ingredient_id' => $this->ingredient->id,
+                    'qty_in' => '3',
+                    'unit_price' => '10,25',
+                    'note' => 'Decimal persistence',
+                ],
+                [
+                    'ingredient_id' => $this->ingredient->id,
+                    'qty_in' => '10',
+                    'unit_price' => '31.50',
+                    'note' => 'Decimal multiplication',
+                ],
+            ],
+        ])->assertSessionHasNoErrors();
+
+        $receipt = PurchaseReceipt::with('items')->firstOrFail();
+        $this->assertSame('345.75', $receipt->total_amount);
+        $this->assertSame('10.25', $receipt->items->first()->unit_price);
+        $this->assertSame('30.75', $receipt->items->first()->line_total);
+        $this->assertSame('31.50', $receipt->items->last()->unit_price);
+        $this->assertSame('315.00', $receipt->items->last()->line_total);
+        $this->assertDatabaseHas('stock_movements', ['reference_type' => 'purchase_receipt', 'reference_id' => $receipt->id]);
+
+        $this->get(route('backoffice.purchase-history.index', ['search' => $receipt->reference_number, 'status' => 'received']))
+            ->assertOk()->assertSee($receipt->reference_number);
+        $this->get(route('backoffice.purchase-history.show', $receipt))
+            ->assertOk()->assertSee('10,25')->assertSee('30,75')->assertSee('31,50')->assertSee('315,00');
+    }
+
+    public function test_stock_summary_uses_two_decimals_and_never_negative_zero(): void
+    {
+        $this->ingredient->outlets()->sync([$this->outletA->id]);
+        StockBalance::create(['ingredient_id' => $this->ingredient->id, 'location_type' => 'outlet', 'location_id' => $this->outletA->id, 'qty_on_hand' => 0.2]);
+
+        $response = $this->actingAs($this->user)
+            ->withSession(['active_backoffice_outlet_id' => $this->outletA->id])
+            ->get(route('backoffice.stock-balances.index'));
+
+        $response->assertOk()->assertSee('0,20')->assertDontSee('-0,00');
     }
 
     private function makeRecipe(bool $active = true, bool $withItem = true, float $qty = 100): Recipe

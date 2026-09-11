@@ -953,9 +953,7 @@
                                     $salesQty = (float) ($row['sales'] ?? 0);
                                     $adjustmentQty = (float) ($row['adjustment'] ?? 0);
 
-                                    $formatSummaryQty = function ($value) {
-                                        return number_format((float) $value, 0, ',', '.');
-                                    };
+                                    $formatSummaryQty = fn ($value) => \App\Support\QuantityFormatter::twoDecimals($value);
                                 @endphp
                                 <tr>
                                     <td class="text-left-cell">{{ $row['ingredient_name'] ?? '-' }}</td>

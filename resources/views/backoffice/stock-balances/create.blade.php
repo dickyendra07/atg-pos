@@ -466,12 +466,23 @@
                     <form method="POST" action="{{ route('backoffice.stock-balances.store') }}">
                         @csrf
 
+                        <div class="form-grid">
+                            <div class="field">
+                                <label for="supplier_name">Supplier (opsional)</label>
+                                <input type="text" name="supplier_name" id="supplier_name" value="{{ old('supplier_name') }}" placeholder="Nama supplier">
+                            </div>
+                            <div class="field">
+                                <label for="received_date">Tanggal Penerimaan</label>
+                                <input type="date" name="received_date" id="received_date" value="{{ old('received_date', now()->toDateString()) }}" required>
+                            </div>
+                        </div>
+
                         <div class="field">
                             <label for="location_type">Tipe Lokasi Tujuan</label>
                             <select name="location_type" id="location_type" required>
                                 <option value="">Pilih tipe lokasi</option>
                                 <option value="warehouse" {{ old('location_type') === 'warehouse' ? 'selected' : '' }}>Warehouse</option>
-                                <option value="outlet" {{ old('location_type') === 'outlet' ? 'selected' : '' }}>Outlet</option>
+                                <option value="outlet" {{ old('location_type', $activeBackofficeOutlet ? 'outlet' : '') === 'outlet' ? 'selected' : '' }}>Outlet</option>
                             </select>
                         </div>
 
@@ -494,7 +505,7 @@
                                     <option
                                         value="{{ $outlet->id }}"
                                         data-type="outlet"
-                                        {{ old('location_type') === 'outlet' && (string) old('location_id') === (string) $outlet->id ? 'selected' : '' }}
+                                        {{ old('location_type', $activeBackofficeOutlet ? 'outlet' : '') === 'outlet' && (string) old('location_id', $activeBackofficeOutlet?->id) === (string) $outlet->id ? 'selected' : '' }}
                                     >
                                         Outlet - {{ $outlet->name }}
                                     </option>
@@ -512,6 +523,11 @@
                         </div>
 
                         <div id="items-wrapper"></div>
+
+                        <div class="field">
+                            <label for="notes">Catatan Penerimaan (opsional)</label>
+                            <textarea name="notes" id="notes" rows="3" placeholder="Catatan umum penerimaan">{{ old('notes') }}</textarea>
+                        </div>
 
                         <div class="actions">
                             <button type="submit" class="btn btn-green">Simpan Penerimaan Barang</button>
@@ -539,7 +555,7 @@
 
                 <div class="field" style="margin-bottom:0;">
                     <label>Harga Satuan</label>
-                    <input type="text" class="unit-price-display-input" inputmode="numeric" placeholder="Rp 0" required>
+                    <input type="text" class="unit-price-display-input" inputmode="decimal" placeholder="31,50 atau 31.25" required>
                     <input type="hidden" class="unit-price-input">
                 </div>
 
@@ -581,14 +597,24 @@
 
             function formatRupiah(value) {
                 return 'Rp ' + new Intl.NumberFormat('id-ID', {
-                    minimumFractionDigits: 0,
-                    maximumFractionDigits: 0,
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
                 }).format(Number(value || 0));
             }
 
             function parseRupiah(value) {
-                const raw = String(value || '').replace(/[^\d]/g, '');
-                return raw ? Number(raw) : 0;
+                let raw = String(value || '').replace(/[^\d,.-]/g, '');
+                const comma = raw.lastIndexOf(',');
+                const dot = raw.lastIndexOf('.');
+                if (comma >= 0 && dot >= 0) {
+                    const decimal = comma > dot ? ',' : '.';
+                    raw = raw.replace(decimal === ',' ? /\./g : /,/g, '');
+                    raw = raw.replace(decimal, '.');
+                } else if (comma >= 0) {
+                    raw = raw.replace(',', '.');
+                }
+                const parsed = Number(raw);
+                return Number.isFinite(parsed) ? parsed : 0;
             }
 
             function filterLocationOptions() {
@@ -673,15 +699,14 @@
 
                 unitPriceDisplayInput.addEventListener('input', function () {
                     const parsed = parseRupiah(this.value);
-                    unitPriceInput.value = parsed > 0 ? parsed : '';
-                    this.value = parsed > 0 ? formatRupiah(parsed) : '';
+                    unitPriceInput.value = parsed >= 0 ? parsed.toFixed(2) : '';
                     updateRowTotal(row);
                 });
 
                 unitPriceDisplayInput.addEventListener('blur', function () {
                     const parsed = parseRupiah(this.value);
-                    unitPriceInput.value = parsed > 0 ? parsed : '';
-                    this.value = parsed > 0 ? formatRupiah(parsed) : '';
+                    unitPriceInput.value = parsed >= 0 ? parsed.toFixed(2) : '';
+                    this.value = parsed >= 0 ? formatRupiah(parsed) : '';
                     updateRowTotal(row);
                 });
 

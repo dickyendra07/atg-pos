@@ -72,6 +72,24 @@
             padding: 24px;
         }
 
+        .backoffice-context-bar {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-bottom: 18px;
+            padding: 12px 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 14px;
+            background: #fff;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, .05);
+        }
+
+        .backoffice-context-bar label { font-size: 12px; font-weight: 800; color: #64748b; letter-spacing: .06em; }
+        .backoffice-context-bar select { min-width: 280px; border: 1px solid #cbd5e1; border-radius: 10px; padding: 10px 12px; background: #fff; color: #0f172a; font-weight: 700; }
+        .backoffice-context-bar button { border: 0; border-radius: 10px; padding: 10px 15px; background: #f97316; color: #fff; font-weight: 800; cursor: pointer; }
+        .context-warning { margin-bottom: 14px; padding: 12px 15px; border-radius: 12px; background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+
         .content-card {
             background: rgba(255,255,255,0.92);
             border: 1px solid #e8edf4;
@@ -597,6 +615,25 @@
                 </aside>
 
                 <main class="content">
+                    @isset($backofficeOutletOptions)
+                        <form class="backoffice-context-bar" method="POST" action="{{ route('backoffice.active-outlet.update') }}">
+                            @csrf
+                            <label for="active-backoffice-outlet">OUTLET</label>
+                            <select id="active-backoffice-outlet" name="outlet_id" onchange="this.form.submit()">
+                                <option value="">Semua Outlet yang Diizinkan</option>
+                                @foreach($backofficeOutletOptions as $contextOutlet)
+                                    <option value="{{ $contextOutlet->id }}" @selected((int) ($activeBackofficeOutlet?->id ?? 0) === (int) $contextOutlet->id)>
+                                        {{ $contextOutlet->name }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <noscript><button type="submit">Terapkan</button></noscript>
+                        </form>
+                    @endisset
+
+                    @if(session('warning'))
+                        <div class="context-warning">{{ session('warning') }}</div>
+                    @endif
                     @yield('content')
                 </main>
             </div>

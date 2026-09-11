@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\BackofficeNotification;
 use App\Models\SalesTransaction;
+use App\Models\Outlet;
+use App\Services\BackofficeOutletContext;
 use App\Services\StockDeductionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -103,8 +105,11 @@ class TransactionViewController extends Controller
     {
         $user = Auth::user()->load(['role', 'outlet']);
         $roleCode = $user->role?->code;
+        $context = app(BackofficeOutletContext::class);
+        $permittedOutletIds = $context->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id);
 
         $query = SalesTransaction::with(['user', 'outlet', 'member', 'items', 'voidBy'])
+            ->whereIn('outlet_id', $permittedOutletIds)
             ->latest();
 
         if ($roleCode === 'admin_outlet' && ! empty($user->outlet_id)) {
@@ -137,8 +142,9 @@ class TransactionViewController extends Controller
             $query->where('status', $request->status);
         }
 
-        if ($request->filled('outlet_id') && $roleCode !== 'admin_outlet' && $roleCode !== 'kasir') {
-            $query->where('outlet_id', $request->outlet_id);
+        $effectiveOutletId = $this->effectiveOutletFilter($request, $user);
+        if ($effectiveOutletId) {
+            $query->where('outlet_id', $effectiveOutletId);
         }
 
         return $query;
@@ -205,13 +211,9 @@ class TransactionViewController extends Controller
             ->take(5)
             ->values();
 
-        $outletOptions = SalesTransaction::with('outlet')
-            ->get()
-            ->pluck('outlet')
-            ->filter()
-            ->unique('id')
-            ->sortBy('name')
-            ->values();
+        $user = Auth::user();
+        $outletOptions = app(BackofficeOutletContext::class)->accessibleOutlets($user);
+        $effectiveOutletId = $this->effectiveOutletFilter($request, $user);
 
         return [
             'transactions' => $transactions,
@@ -229,7 +231,7 @@ class TransactionViewController extends Controller
                 'date_to' => $request->date_to,
                 'payment_method' => $request->payment_method,
                 'status' => $request->status,
-                'outlet_id' => $request->outlet_id,
+                'outlet_id' => $effectiveOutletId ?: 'all',
             ],
             'validTransactionsCount' => $validTransactions->count(),
             'problemTransactionsCount' => $problemTransactions->count(),
@@ -241,6 +243,24 @@ class TransactionViewController extends Controller
                 return (float) ($transaction->grand_total ?? 0) <= 0;
             })->count(),
         ];
+    }
+
+    protected function effectiveOutletFilter(Request $request, $user): ?int
+    {
+        $context = app(BackofficeOutletContext::class);
+        $requested = $request->input('outlet_id');
+
+        if ($requested === 'all' || $requested === '') {
+            return null;
+        }
+
+        if ($requested !== null) {
+            $requestedId = (int) $requested;
+
+            return $context->canAccess($user, $requestedId) ? $requestedId : null;
+        }
+
+        return $context->activeOutletId($user);
     }
 
     protected function buildLegacyCsvRows($transactions)

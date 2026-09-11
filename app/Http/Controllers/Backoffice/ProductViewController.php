@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -14,6 +15,11 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductViewController extends Controller
 {
+    protected function outletContext(): BackofficeOutletContext
+    {
+        return app(BackofficeOutletContext::class);
+    }
+
     protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role']);
@@ -37,8 +43,10 @@ class ProductViewController extends Controller
         $user->load(['outlet']);
 
         $categories = ProductCategory::orderBy('name')->get();
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $products = Product::with(['brand', 'category', 'variants', 'outlets'])
+            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->when($request->filled('category_id'), function ($query) use ($request) {
                 $query->where('product_category_id', $request->category_id);
             })
@@ -89,7 +97,7 @@ class ProductViewController extends Controller
 
         $brands = Brand::orderBy('name')->get();
         $categories = ProductCategory::orderBy('name')->get();
-        $outlets = Outlet::orderBy('name')->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         return view('backoffice.products.create', [
             'user' => $user,
@@ -110,9 +118,11 @@ class ProductViewController extends Controller
             'code' => 'required|string|max:255|unique:products,code',
             'description' => 'nullable|string',
             'is_active' => 'required|boolean',
-            'outlet_ids' => 'nullable|array',
+            'outlet_ids' => 'required|array|min:1',
             'outlet_ids.*' => 'exists:outlets,id',
         ]);
+
+        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
 
         DB::transaction(function () use ($validated) {
             $product = Product::create(
@@ -136,7 +146,7 @@ class ProductViewController extends Controller
 
         $brands = Brand::orderBy('name')->get();
         $categories = ProductCategory::orderBy('name')->get();
-        $outlets = Outlet::orderBy('name')->get();
+        $outlets = $this->outletContext()->accessibleOutlets($user);
 
         $product->load('outlets');
 
@@ -160,11 +170,15 @@ class ProductViewController extends Controller
             'code' => 'required|string|max:255|unique:products,code,'.$product->id,
             'description' => 'nullable|string',
             'is_active' => 'required|boolean',
-            'outlet_ids' => 'nullable|array',
+            'outlet_ids' => 'required|array|min:1',
             'outlet_ids.*' => 'exists:outlets,id',
         ]);
 
-        DB::transaction(function () use ($product, $validated) {
+        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
+
+        $editableOutletIds = $this->outletContext()->accessibleOutlets(Auth::user())->pluck('id')->map(fn ($id) => (int) $id);
+
+        DB::transaction(function () use ($product, $validated, $editableOutletIds) {
             $product->update(
                 collect($validated)
                     ->except('outlet_ids')
@@ -173,6 +187,7 @@ class ProductViewController extends Controller
 
             $productOutletIds = collect($validated['outlet_ids'] ?? [])
                 ->map(fn ($id) => (int) $id)
+                ->merge($product->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id)->diff($editableOutletIds))
                 ->unique()
                 ->values();
 
@@ -249,7 +264,8 @@ class ProductViewController extends Controller
 
     public function exportCsv(): StreamedResponse
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $filename = 'products_export_'.now()->format('Ymd_His').'.csv';
 
@@ -258,12 +274,13 @@ class ProductViewController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        return response()->stream(function () {
+        return response()->stream(function () use ($activeOutletId) {
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, ['brand_name', 'category_name', 'name', 'code', 'description', 'is_active']);
 
             Product::with(['brand', 'category'])
+                ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
                 ->orderBy('name')
                 ->chunk(200, function ($products) use ($handle) {
                     foreach ($products as $product) {
@@ -284,7 +301,12 @@ class ProductViewController extends Controller
 
     public function importStore(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $activeOutletId = $this->outletContext()->activeOutletId($user);
+
+        if (! $activeOutletId) {
+            return back()->with('error', 'Pilih Active Outlet terlebih dahulu. Import Product tidak boleh membuat availability global.');
+        }
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt',
@@ -405,9 +427,10 @@ class ProductViewController extends Controller
                     'description' => $description !== '' ? $description : null,
                     'is_active' => $isActive,
                 ]);
+                $product->outlets()->syncWithoutDetaching([$activeOutletId]);
                 $updated++;
             } else {
-                Product::create([
+                $product = Product::create([
                     'brand_id' => $brand->id,
                     'product_category_id' => $category->id,
                     'name' => $name,
@@ -415,6 +438,7 @@ class ProductViewController extends Controller
                     'description' => $description !== '' ? $description : null,
                     'is_active' => $isActive,
                 ]);
+                $product->outlets()->sync([$activeOutletId]);
                 $imported++;
             }
         }
@@ -423,5 +447,17 @@ class ProductViewController extends Controller
             ->route('backoffice.products.index')
             ->with('success', "Import products selesai. Baru: {$imported}. Update: {$updated}. Dilewati: {$skipped}.")
             ->with('import_errors', $errors);
+    }
+
+    protected function validateAccessibleOutletIds($user, array $outletIds): void
+    {
+        $allowed = $this->outletContext()->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id);
+        $invalid = collect($outletIds)->map(fn ($id) => (int) $id)->diff($allowed);
+
+        if ($invalid->isNotEmpty()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'outlet_ids' => 'Ada outlet tidak aktif atau tidak tersedia untuk akun ini.',
+            ]);
+        }
     }
 }
