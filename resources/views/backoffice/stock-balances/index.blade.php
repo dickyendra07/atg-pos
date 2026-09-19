@@ -988,6 +988,7 @@
                 </div>
             </div>
 
+{{-- HIDDEN per client revision: 'All Stock Balances' is redundant now that stock is per outlet. StockBalance engine and controller data ($stocks) are untouched.
             <div class="section-card">
                 <div class="section-head">
                     <h2 class="section-title">All Stock Balances</h2>
@@ -1098,6 +1099,7 @@
                     </table>
                 </div>
             </div>
+--}}
 
 
     <div class="section-card" id="need-action-list">

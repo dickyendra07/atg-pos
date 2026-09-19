@@ -15,6 +15,10 @@ class ProductCategory extends Model
         'is_active',
     ];
 
+    protected $casts = [
+        'is_active' => 'boolean',
+    ];
+
     public function brand(): BelongsTo
     {
         return $this->belongsTo(Brand::class);

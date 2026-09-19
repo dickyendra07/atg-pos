@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\Outlet;
+use App\Models\StockAdjustment;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
@@ -781,15 +782,14 @@ class StockBalanceViewController extends Controller
         $validated = $request->validate([
             'location_type' => 'required|in:warehouse,outlet',
             'location_id' => 'required|integer|min:1',
+            'note' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
             'items.*.ingredient_id' => 'required|exists:ingredients,id',
             'items.*.actual_qty' => 'required|numeric|min:0',
-            'items.*.note' => 'required|string|max:255',
         ], [
             'items.required' => 'Minimal harus ada 1 item adjustment.',
             'items.*.ingredient_id.required' => 'Ingredient wajib dipilih di setiap baris.',
             'items.*.actual_qty.required' => 'Stok aktual wajib diisi di setiap baris.',
-            'items.*.note.required' => 'Keterangan wajib diisi di setiap baris.',
         ]);
 
         if ($validated['location_type'] === 'warehouse') {
@@ -834,9 +834,39 @@ class StockBalanceViewController extends Controller
                 ->withInput();
         }
 
-        $changedCount = 0;
+        if ($items->pluck('ingredient_id')->duplicates()->isNotEmpty()) {
+            return back()
+                ->withErrors(['items' => 'Ingredient yang sama tidak boleh dipilih lebih dari satu kali dalam satu adjustment.'])
+                ->withInput();
+        }
 
-        DB::transaction(function () use ($validated, $items, &$changedCount) {
+        if ($validated['location_type'] === 'outlet') {
+            $unavailable = Ingredient::query()
+                ->whereIn('id', $items->pluck('ingredient_id'))
+                ->whereDoesntHave('outlets', fn ($q) => $q->where('outlets.id', (int) $validated['location_id']))
+                ->pluck('name');
+
+            if ($unavailable->isNotEmpty()) {
+                return back()
+                    ->withErrors(['items' => 'Ingredient tidak tersedia di outlet ini: '.$unavailable->implode(', ')])
+                    ->withInput();
+            }
+        }
+
+        $changedCount = 0;
+        $adjustment = null;
+
+        DB::transaction(function () use ($validated, $items, $user, &$changedCount, &$adjustment) {
+            $note = trim((string) ($validated['note'] ?? ''));
+
+            $adjustment = StockAdjustment::create([
+                'reference' => StockAdjustment::nextReference(),
+                'location_type' => $validated['location_type'],
+                'location_id' => $validated['location_id'],
+                'user_id' => $user->id,
+                'note' => $note !== '' ? $note : null,
+            ]);
+
             foreach ($items as $item) {
                 $stockBalance = StockBalance::firstOrCreate(
                     [
@@ -857,8 +887,10 @@ class StockBalanceViewController extends Controller
                     'qty_on_hand' => $actualQty,
                 ]);
 
+                $movement = null;
+
                 if ($diff != 0.0) {
-                    StockMovement::create([
+                    $movement = StockMovement::create([
                         'ingredient_id' => $item['ingredient_id'],
                         'location_type' => $validated['location_type'],
                         'location_id' => $validated['location_id'],
@@ -866,14 +898,24 @@ class StockBalanceViewController extends Controller
                         'qty_in' => $diff > 0 ? $diff : 0,
                         'qty_out' => $diff < 0 ? abs($diff) : 0,
                         'reference_type' => 'manual_adjustment',
-                        'reference_id' => null,
-                        'note' => ($item['note'] ?? 'Adjustment manual')
+                        'reference_id' => $adjustment->id,
+                        'note' => $adjustment->reference
+                            . ($adjustment->note ? ' | '.$adjustment->note : '')
                             . ' | System: ' . $systemQty
                             . ' | Aktual: ' . $actualQty,
                     ]);
 
                     $changedCount++;
                 }
+
+                $adjustment->items()->create([
+                    'ingredient_id' => $item['ingredient_id'],
+                    'stock_movement_id' => $movement?->id,
+                    'unit' => Ingredient::query()->whereKey($item['ingredient_id'])->value('unit'),
+                    'system_qty' => $systemQty,
+                    'actual_qty' => $actualQty,
+                    'difference' => $diff,
+                ]);
             }
         });
 
@@ -881,13 +923,13 @@ class StockBalanceViewController extends Controller
 
         if ($changedCount === 0) {
             return redirect()
-                ->route('backoffice.stock-balances.index')
-                ->with('success', 'Adjustment selesai, tetapi tidak ada perubahan stok karena semua nilai aktual sama dengan stok sistem di ' . $locationLabel . ' tujuan.');
+                ->route('backoffice.stock-adjustments.show', $adjustment)
+                ->with('success', 'Adjustment '.$adjustment->reference.' selesai, tetapi tidak ada perubahan stok karena semua nilai aktual sama dengan stok sistem di ' . $locationLabel . ' tujuan.');
         }
 
         return redirect()
-            ->route('backoffice.stock-balances.index')
-            ->with('success', 'Adjustment bulk berhasil disimpan ke ' . $locationLabel . ' tujuan.');
+            ->route('backoffice.stock-adjustments.show', $adjustment)
+            ->with('success', 'Adjustment '.$adjustment->reference.' berhasil disimpan ke ' . $locationLabel . ' tujuan.');
     }
 
     public function createOpname(Request $request)

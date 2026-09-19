@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\Outlet;
 use App\Models\Product;
+use App\Models\ProductCategory;
 use App\Models\ProductVariant;
 use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
@@ -136,7 +137,7 @@ class ProductVariantViewController extends Controller
         }
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
@@ -144,6 +145,7 @@ class ProductVariantViewController extends Controller
         $activeOutletId = $this->outletContext()->activeOutletId($user);
         $variants = ProductVariant::with(['product.brand', 'product.category', 'outlet', 'outlets'])
             ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
+            ->when($request->filled('category_id'), fn ($query) => $query->whereHas('product', fn ($productQuery) => $productQuery->where('product_category_id', (int) $request->input('category_id'))))
             ->orderBy('product_id')
             ->orderBy('name')
             ->get();
@@ -166,6 +168,8 @@ class ProductVariantViewController extends Controller
             'user' => $user,
             'variants' => $variants,
             'groupedProducts' => $groupedProducts,
+            'categories' => ProductCategory::orderBy('name')->get(),
+            'selectedCategoryId' => $request->input('category_id'),
         ]);
     }
 

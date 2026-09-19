@@ -30,6 +30,35 @@ class Ingredient extends Model
         'is_active' => 'boolean',
     ];
 
+    /**
+     * Canonical base units. Recipe qty, purchase, inventory, adjustment and stock all use the
+     * ingredient's own unit; there is no unit-conversion engine.
+     */
+    public const UNITS = ['gram', 'ml', 'pcs'];
+
+    private const UNIT_ALIASES = [
+        'g' => 'gram', 'gr' => 'gram', 'grm' => 'gram', 'gram' => 'gram',
+        'ml' => 'ml',
+        'pc' => 'pcs', 'pcs' => 'pcs', 'piece' => 'pcs', 'pieces' => 'pcs',
+    ];
+
+    public static function normalizeUnit(?string $unit): ?string
+    {
+        return self::UNIT_ALIASES[mb_strtolower(trim((string) $unit))] ?? null;
+    }
+
+    /** Units offered in a select; a legacy non-canonical unit stays selectable only for its own ingredient. */
+    public static function unitOptions(?string $current = null): array
+    {
+        $options = self::UNITS;
+
+        if ($current && ! in_array($current, $options, true)) {
+            $options[] = $current;
+        }
+
+        return $options;
+    }
+
     public static function ingredientTypeOptions(): array
     {
         return [

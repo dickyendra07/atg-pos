@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -96,7 +97,7 @@ class ProductViewController extends Controller
         $user->load(['outlet']);
 
         $brands = Brand::orderBy('name')->get();
-        $categories = ProductCategory::orderBy('name')->get();
+        $categories = ProductCategory::where('is_active', true)->orderBy('name')->get();
         $outlets = $this->outletContext()->accessibleOutlets($user);
 
         return view('backoffice.products.create', [
@@ -113,7 +114,7 @@ class ProductViewController extends Controller
 
         $validated = $request->validate([
             'brand_id' => 'required|exists:brands,id',
-            'product_category_id' => 'required|exists:product_categories,id',
+            'product_category_id' => ['required', Rule::exists('product_categories', 'id')->where('is_active', true)],
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:255|unique:products,code',
             'description' => 'nullable|string',
@@ -145,7 +146,7 @@ class ProductViewController extends Controller
         $user->load(['outlet']);
 
         $brands = Brand::orderBy('name')->get();
-        $categories = ProductCategory::orderBy('name')->get();
+        $categories = ProductCategory::where('is_active', true)->orWhere('id', $product->product_category_id)->orderBy('name')->get();
         $outlets = $this->outletContext()->accessibleOutlets($user);
 
         $product->load('outlets');
@@ -165,7 +166,7 @@ class ProductViewController extends Controller
 
         $validated = $request->validate([
             'brand_id' => 'required|exists:brands,id',
-            'product_category_id' => 'required|exists:product_categories,id',
+            'product_category_id' => ['required', Rule::exists('product_categories', 'id')->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $product->product_category_id))],
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:255|unique:products,code,'.$product->id,
             'description' => 'nullable|string',

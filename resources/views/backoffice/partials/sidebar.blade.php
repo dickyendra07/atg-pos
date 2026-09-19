@@ -87,6 +87,13 @@
             <span>Variants</span>
         </a>
 
+        <a href="{{ route('backoffice.menu-categories.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.menu-categories.*') ? 'active' : '' }}">
+            <span class="sidebar-nav-icon blue">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+            </span>
+            <span>Menu Categories</span>
+        </a>
+
         <a href="{{ route('backoffice.ingredients.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.ingredients.*') ? 'active' : '' }}">
             <span class="sidebar-nav-icon green">
                 <svg viewBox="0 0 24 24">
@@ -96,6 +103,13 @@
                 </svg>
             </span>
             <span>Ingredients</span>
+        </a>
+
+        <a href="{{ route('backoffice.ingredient-categories.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.ingredient-categories.*') ? 'active' : '' }}">
+            <span class="sidebar-nav-icon green">
+                <svg viewBox="0 0 24 24"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path></svg>
+            </span>
+            <span>Ingredient Categories</span>
         </a>
     </div>
 </div>
@@ -177,6 +191,13 @@
                 <svg viewBox="0 0 24 24"><path d="M5 4h14v16H5z"></path><path d="M8 8h8M8 12h8M8 16h5"></path></svg>
             </span>
             <span>Purchase History</span>
+        </a>
+
+        <a href="{{ route('backoffice.stock-adjustments.index') }}" class="sidebar-link {{ request()->routeIs('backoffice.stock-adjustments.*') ? 'active' : '' }}">
+            <span class="sidebar-nav-icon orange">
+                <svg viewBox="0 0 24 24"><path d="M4 7h10"></path><path d="M18 7h2"></path><circle cx="16" cy="7" r="2"></circle><path d="M4 17h2"></path><path d="M10 17h10"></path><circle cx="8" cy="17" r="2"></circle></svg>
+            </span>
+            <span>Adjustment History</span>
         </a>
     </div>
 </div>
