@@ -4,7 +4,9 @@ use App\Http\Controllers\Backoffice\BackofficeController;
 use App\Http\Controllers\Backoffice\ActiveOutletController;
 use App\Http\Controllers\Backoffice\CashierShiftViewController;
 use App\Http\Controllers\Backoffice\DiscountViewController;
+use App\Http\Controllers\Backoffice\IngredientCategoryController;
 use App\Http\Controllers\Backoffice\IngredientProductionController;
+use App\Http\Controllers\Backoffice\MenuCategoryController;
 use App\Http\Controllers\Backoffice\IngredientProductionRecipeController;
 use App\Http\Controllers\Backoffice\IngredientViewController;
 use App\Http\Controllers\Backoffice\OutletViewController;
@@ -12,6 +14,7 @@ use App\Http\Controllers\Backoffice\ProductVariantViewController;
 use App\Http\Controllers\Backoffice\ProductViewController;
 use App\Http\Controllers\Backoffice\PromoViewController;
 use App\Http\Controllers\Backoffice\RecipeViewController;
+use App\Http\Controllers\Backoffice\StockAdjustmentController;
 use App\Http\Controllers\Backoffice\StockBalanceViewController;
 use App\Http\Controllers\Backoffice\StockMovementViewController;
 use App\Http\Controllers\Backoffice\TransactionViewController;
@@ -65,6 +68,18 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::post('/transfers/{transfer}/mark-received', [TransferViewController::class, 'markReceived'])->name('transfers.mark-received');
     Route::post('/transfers/{transfer}/mark-cancelled', [TransferViewController::class, 'markCancelled'])->name('transfers.mark-cancelled');
     Route::post('/transfers/{transfer}/mark-in-transit', [TransferViewController::class, 'markInTransit'])->name('transfers.mark-in-transit');
+
+    Route::get('/ingredient-categories', [IngredientCategoryController::class, 'index'])->name('ingredient-categories.index');
+    Route::get('/ingredient-categories/create', [IngredientCategoryController::class, 'create'])->name('ingredient-categories.create');
+    Route::post('/ingredient-categories', [IngredientCategoryController::class, 'store'])->name('ingredient-categories.store');
+    Route::get('/ingredient-categories/{category}/edit', [IngredientCategoryController::class, 'edit'])->name('ingredient-categories.edit');
+    Route::put('/ingredient-categories/{category}', [IngredientCategoryController::class, 'update'])->name('ingredient-categories.update');
+
+    Route::get('/menu-categories', [MenuCategoryController::class, 'index'])->name('menu-categories.index');
+    Route::get('/menu-categories/create', [MenuCategoryController::class, 'create'])->name('menu-categories.create');
+    Route::post('/menu-categories', [MenuCategoryController::class, 'store'])->name('menu-categories.store');
+    Route::get('/menu-categories/{category}/edit', [MenuCategoryController::class, 'edit'])->name('menu-categories.edit');
+    Route::put('/menu-categories/{category}', [MenuCategoryController::class, 'update'])->name('menu-categories.update');
 
     Route::get('/products/import', [ProductViewController::class, 'importForm'])->name('products.import');
     Route::get('/products/import/template', [ProductViewController::class, 'downloadTemplate'])->name('products.import.template');
@@ -137,6 +152,9 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::post('/stock-balances/adjustment', [StockBalanceViewController::class, 'storeAdjustment'])->name('stock-balances.adjustment.store');
     Route::get('/stock-balances/opname', [StockBalanceViewController::class, 'createOpname'])->name('stock-balances.opname.create');
     Route::post('/stock-balances/opname', [StockBalanceViewController::class, 'storeOpname'])->name('stock-balances.opname.store');
+
+    Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index'])->name('stock-adjustments.index');
+    Route::get('/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'show'])->name('stock-adjustments.show');
 
     Route::get('/purchase-history', [PurchaseReceiptController::class, 'index'])->name('purchase-history.index');
     Route::get('/purchase-history/{purchaseReceipt}', [PurchaseReceiptController::class, 'show'])->name('purchase-history.show');

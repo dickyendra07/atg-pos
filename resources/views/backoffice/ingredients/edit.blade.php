@@ -70,6 +70,7 @@
                         <label style="font-weight:800;">
                             Category
                         </label>
+                        <a href="{{ route('backoffice.ingredient-categories.index') }}" style="float:right;font-size:12px;font-weight:700;color:#ea580c;">Kelola Category Bahan</a>
 
                         <select name="ingredient_category_id"
                                 required
@@ -95,12 +96,13 @@
                             Unit
                         </label>
 
-                        <input
-                            type="text"
-                            name="unit"
-                            value="{{ old('unit',$ingredient->unit) }}"
-                            required
+                        <select name="unit" required
                             style="width:100%;margin-top:8px;padding:14px;border-radius:14px;border:1px solid #d1d5db;">
+                            <option value="">Pilih unit</option>
+                            @foreach($unitOptions as $unitOption)
+                                <option value="{{ $unitOption }}" @selected(old('unit', $ingredient->unit) === $unitOption)>{{ $unitOption }}</option>
+                            @endforeach
+                        </select>
                     </div>
 
 

@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IngredientViewController extends Controller
@@ -136,12 +137,13 @@ class IngredientViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $categories = IngredientCategory::orderBy('name')->get();
+        $categories = IngredientCategory::where('is_active', true)->orderBy('name')->get();
         $outlets = $this->outletContext()->accessibleOutlets($user);
 
         return view('backoffice.ingredients.create', [
             'user' => $user,
             'categories' => $categories,
+            'unitOptions' => Ingredient::unitOptions(),
             'outlets' => $outlets,
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
         ]);
@@ -152,9 +154,9 @@ class IngredientViewController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
-            'ingredient_category_id' => 'required|exists:ingredient_categories,id',
+            'ingredient_category_id' => ['required', Rule::exists('ingredient_categories', 'id')->where('is_active', true)],
             'name' => 'required|string|max:255|unique:ingredients,name',
-            'unit' => 'required|string|max:50',
+            'unit' => ['required', 'string', Rule::in(Ingredient::UNITS)],
             'ingredient_type' => 'required|in:'.implode(',', array_keys($this->ingredientTypeOptions())),
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
@@ -191,7 +193,9 @@ class IngredientViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $categories = IngredientCategory::orderBy('name')->get();
+        $categories = IngredientCategory::where('is_active', true)
+            ->orWhere('id', $ingredient->ingredient_category_id)
+            ->orderBy('name')->get();
         $outlets = $this->outletContext()->accessibleOutlets($user);
 
         $ingredient->load('outlets');
@@ -200,6 +204,7 @@ class IngredientViewController extends Controller
             'user' => $user,
             'ingredient' => $ingredient,
             'categories' => $categories,
+            'unitOptions' => Ingredient::unitOptions($ingredient->unit),
             'outlets' => $outlets,
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
         ]);
@@ -210,9 +215,9 @@ class IngredientViewController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
-            'ingredient_category_id' => 'required|exists:ingredient_categories,id',
+            'ingredient_category_id' => ['required', Rule::exists('ingredient_categories', 'id')->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $ingredient->ingredient_category_id))],
             'name' => 'required|string|max:255|unique:ingredients,name,'.$ingredient->id,
-            'unit' => 'required|string|max:50',
+            'unit' => ['required', 'string', Rule::in(Ingredient::unitOptions($ingredient->unit))],
             'ingredient_type' => 'required|in:'.implode(',', array_keys($this->ingredientTypeOptions())),
             'minimum_stock' => 'required|numeric|min:0',
             'cost_per_unit' => 'required|numeric|min:0',
@@ -476,9 +481,11 @@ class IngredientViewController extends Controller
                     continue;
                 }
 
-                if ($unit === '') {
+                $unit = Ingredient::normalizeUnit($unit);
+
+                if ($unit === null) {
                     $skipped++;
-                    $errors[] = "Baris {$rowNumber}: unit kosong.";
+                    $errors[] = "Baris {$rowNumber}: unit harus salah satu dari ".implode(', ', Ingredient::UNITS).'.';
 
                     continue;
                 }

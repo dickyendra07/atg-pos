@@ -280,6 +280,7 @@
         }
 
         .field input,
+        .field textarea,
         .field select {
             width: 100%;
             box-sizing: border-box;
@@ -293,6 +294,7 @@
         }
 
         .field input:focus,
+        .field textarea:focus,
         .field select:focus {
             border-color: rgba(232,106,58,0.75);
             box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
@@ -348,7 +350,7 @@
 
         .item-grid {
             display: grid;
-            grid-template-columns: 1.2fr 0.85fr 0.85fr 0.95fr 1.15fr auto;
+            grid-template-columns: 1.4fr 0.9fr 0.9fr 0.9fr auto;
             gap: 12px;
             align-items: end;
         }
@@ -526,6 +528,13 @@
                             </div>
                         </div>
 
+                        <div class="field" style="margin-bottom:18px;">
+                            <label for="note">Keterangan Adjustment (opsional)</label>
+                            <textarea name="note" id="note" rows="2" maxlength="500" placeholder="Contoh: Koreksi stock opname outlet Carstensz">{{ old('note') }}</textarea>
+                            @error('note')<div class="muted" style="color:#b91c1c;">{{ $message }}</div>@enderror
+                            <div class="muted">Satu keterangan berlaku untuk seluruh item adjustment ini.</div>
+                        </div>
+
                         <div class="items-head">
                             <div>
                                 <div class="items-title">Daftar Item Adjustment</div>
@@ -562,7 +571,7 @@
 
                 <div class="field" style="margin-bottom:0;">
                     <label>Stok Sistem Saat Ini</label>
-                    <div class="readonly-box current-stock-box">Rp 0</div>
+                    <div class="readonly-box current-stock-box">0</div>
                 </div>
 
                 <div class="field" style="margin-bottom:0;">
@@ -573,11 +582,6 @@
                 <div class="field" style="margin-bottom:0;">
                     <label>Selisih</label>
                     <div class="readonly-box delta-box delta-equal">0</div>
-                </div>
-
-                <div class="field" style="margin-bottom:0;">
-                    <label>Keterangan</label>
-                    <input type="text" class="note-input" placeholder="Contoh: selisih hitung / bahan rusak" required>
                 </div>
 
                 <div class="field" style="margin-bottom:0;">
@@ -724,8 +728,7 @@
                     row.querySelector('.item-number').textContent = index + 1;
                     row.querySelector('.ingredient-select').name = 'items[' + index + '][ingredient_id]';
                     row.querySelector('.actual-qty-input').name = 'items[' + index + '][actual_qty]';
-                    row.querySelector('.note-input').name = 'items[' + index + '][note]';
-                });
+                                    });
             }
 
             function addRow(data = {}) {
@@ -733,12 +736,10 @@
                 const row = fragment.querySelector('.item-row');
                 const ingredientSelect = row.querySelector('.ingredient-select');
                 const actualQtyInput = row.querySelector('.actual-qty-input');
-                const noteInput = row.querySelector('.note-input');
                 const removeBtn = row.querySelector('.remove-item-btn');
 
                 buildIngredientSelect(ingredientSelect, data.ingredient_id || '');
                 actualQtyInput.value = data.actual_qty || '';
-                noteInput.value = data.note || '';
 
                 ingredientSelect.addEventListener('change', function () {
                     updateRowComputed(row);

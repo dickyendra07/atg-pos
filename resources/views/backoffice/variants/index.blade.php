@@ -209,9 +209,18 @@
             padding: 18px;
         }
 
+        .search-form select {
+            width: 100%;
+            min-height: 46px;
+            border: 1px solid #d8e1ec;
+            border-radius: 14px;
+            padding: 0 12px;
+            background: #fff;
+        }
+
         .search-form {
             display: grid;
-            grid-template-columns: 1fr auto auto;
+            grid-template-columns: 1fr minmax(180px, 260px) auto auto;
             gap: 12px;
             align-items: end;
         }
@@ -564,6 +573,16 @@
                         value="{{ request('search') }}"
                         placeholder="Contoh: Black Tea / Hazelnut / Regular / Lee Ong's Tea"
                     >
+                </div>
+
+                <div class="field">
+                    <label for="category_id">Category Menu</label>
+                    <select name="category_id" id="category_id" onchange="this.form.submit()">
+                        <option value="">Semua Category</option>
+                        @foreach($categories as $category)
+                            <option value="{{ $category->id }}" @selected((string) $selectedCategoryId === (string) $category->id)>{{ $category->name }}</option>
+                        @endforeach
+                    </select>
                 </div>
 
                 <button type="submit" class="btn btn-blue">Cari</button>

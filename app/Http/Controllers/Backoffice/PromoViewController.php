@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Models\Outlet;
 use App\Models\ProductVariant;
 use App\Models\Promo;
+use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class PromoViewController extends Controller
 {
@@ -21,6 +23,11 @@ class PromoViewController extends Controller
         'friday' => 'Jumat',
         'saturday' => 'Sabtu',
     ];
+
+    protected function outletContext(): BackofficeOutletContext
+    {
+        return app(BackofficeOutletContext::class);
+    }
 
     protected function authorizeAccess()
     {
@@ -57,7 +64,7 @@ class PromoViewController extends Controller
 
     protected function validatePromo(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'outlet_id' => 'nullable|exists:outlets,id',
             'outlet_ids' => 'nullable|array',
             'outlet_ids.*' => 'nullable|exists:outlets,id',
@@ -89,6 +96,58 @@ class PromoViewController extends Controller
             'end_date.after_or_equal' => 'Tanggal akhir promo tidak boleh lebih awal dari tanggal mulai.',
             'status.required' => 'Status promo wajib dipilih.',
         ]);
+
+        $this->validateOutletAssignment($request, $validated);
+
+        return $validated;
+    }
+
+    /**
+     * Promo availability is explicit: outlets must be accessible to the user, an active promo needs at
+     * least one outlet, and every product/variant used by the promo must be available at each outlet.
+     */
+    protected function validateOutletAssignment(Request $request, array $validated): void
+    {
+        $outletIds = $this->normalizeOutletIds($validated);
+        $needsOutlet = ($validated['status'] ?? null) === 'active' || $request->boolean('is_active');
+
+        if ($needsOutlet && empty($outletIds)) {
+            throw ValidationException::withMessages(['outlet_ids' => 'Pilih minimal satu outlet untuk promo aktif.']);
+        }
+
+        if (empty($outletIds)) {
+            return;
+        }
+
+        $accessibleIds = $this->outletContext()->accessibleOutlets($request->user())->pluck('id')->map(fn ($id) => (int) $id);
+
+        if (collect($outletIds)->diff($accessibleIds)->isNotEmpty()) {
+            throw ValidationException::withMessages(['outlet_ids' => 'Ada outlet yang tidak aktif atau tidak tersedia untuk akun ini.']);
+        }
+
+        $variantIds = collect($validated['requirements'] ?? [])->pluck('product_variant_id')
+            ->merge(collect($validated['rewards'] ?? [])->where('reward_type', 'free_item')->pluck('product_variant_id'))
+            ->filter()->map(fn ($id) => (int) $id)->unique();
+
+        if ($variantIds->isEmpty()) {
+            return;
+        }
+
+        $variants = ProductVariant::with(['product.outlets:id', 'outlets:id'])->whereIn('id', $variantIds)->get();
+        $outletNames = Outlet::whereIn('id', $outletIds)->pluck('name', 'id');
+        $problems = [];
+
+        foreach ($variants as $variant) {
+            foreach ($outletIds as $outletId) {
+                if (! $variant->outlets->contains('id', $outletId) || ! ($variant->product?->outlets->contains('id', $outletId))) {
+                    $problems[] = trim(($variant->product?->name ?? '').' - '.$variant->name, ' -').' tidak tersedia di '.($outletNames[$outletId] ?? $outletId);
+                }
+            }
+        }
+
+        if ($problems) {
+            throw ValidationException::withMessages(['outlet_ids' => 'Product/variant promo harus tersedia di semua outlet promo: '.implode('; ', $problems).'.']);
+        }
     }
 
     protected function normalizePromoData(array $validated, Request $request): array
@@ -202,12 +261,19 @@ class PromoViewController extends Controller
             $query->where('name', 'like', '%' . $request->search . '%');
         }
 
-        if ($request->filled('outlet_id')) {
-            $query->where(function ($outletQuery) use ($request) {
-                $outletQuery->where('outlet_id', $request->outlet_id)
-                    ->orWhereHas('outlets', function ($pivotQuery) use ($request) {
-                        $pivotQuery->where('outlets.id', $request->outlet_id);
-                    });
+        $context = $this->outletContext();
+        $accessibleOutlets = $context->accessibleOutlets($user);
+        $accessibleIds = $accessibleOutlets->pluck('id')->map(fn ($id) => (int) $id);
+        $outletFilter = $request->input('outlet_id', $context->activeOutletId($user) ?: 'all');
+
+        if ($outletFilter === 'unassigned') {
+            $query->whereDoesntHave('outlets');
+        } elseif (is_numeric($outletFilter) && $accessibleIds->contains((int) $outletFilter)) {
+            $query->whereHas('outlets', fn ($pivotQuery) => $pivotQuery->where('outlets.id', (int) $outletFilter));
+        } elseif (! $user->isFullAccessUser()) {
+            $query->where(function ($scope) use ($accessibleIds) {
+                $scope->whereHas('outlets', fn ($pivotQuery) => $pivotQuery->whereIn('outlets.id', $accessibleIds))
+                    ->orWhereDoesntHave('outlets');
             });
         }
 
@@ -218,10 +284,10 @@ class PromoViewController extends Controller
         return view('backoffice.promos.index', [
             'user' => $user,
             'promos' => $query->get(),
-            'outletOptions' => Outlet::where('is_active', true)->orderBy('name')->get(),
+            'outletOptions' => $accessibleOutlets,
             'filters' => [
                 'search' => $request->search,
-                'outlet_id' => $request->outlet_id,
+                'outlet_id' => $outletFilter,
                 'status' => $request->status,
             ],
             'dayOptions' => $this->dayOptions,
@@ -240,7 +306,7 @@ class PromoViewController extends Controller
 
         return view('backoffice.promos.create', [
             'user' => $user,
-            'outletOptions' => Outlet::where('is_active', true)->orderBy('name')->get(),
+            'outletOptions' => $this->outletContext()->accessibleOutlets($user),
             'variantOptions' => $this->productVariantOptions(),
             'dayOptions' => $this->dayOptions,
         ]);
@@ -288,7 +354,7 @@ class PromoViewController extends Controller
                 'requirementVariant.product',
                 'rewardVariant.product',
             ]),
-            'outletOptions' => Outlet::where('is_active', true)->orderBy('name')->get(),
+            'outletOptions' => $this->outletContext()->accessibleOutlets($user),
             'variantOptions' => $this->productVariantOptions(),
             'dayOptions' => $this->dayOptions,
         ]);

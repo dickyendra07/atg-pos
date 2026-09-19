@@ -175,6 +175,11 @@
         </div>
 
         <div class="card">
+                @if($errors->any())
+                    <div style="background:#ffe8e8;color:#9b1c1c;border:1px solid #fecaca;border-radius:14px;padding:14px 16px;margin-bottom:16px;font-size:14px;font-weight:700;line-height:1.7;">
+                        @foreach($errors->all() as $error)<div>{{ $error }}</div>@endforeach
+                    </div>
+                @endif
             <form method="POST" action="{{ route('backoffice.promos.store') }}">
                 @csrf
 
@@ -190,7 +195,7 @@
                         </div>
 
                         <div class="field">
-                            <label>Outlet</label>
+                            <label>Outlet Availability</label>
                             @php
                                 $selectedOutletIds = collect(old('outlet_ids', []))
                                     ->map(fn ($id) => (int) $id)
@@ -199,7 +204,7 @@
 
                             <div class="promo-outlet-dropdown" data-promo-outlet-dropdown>
                                 <button type="button" class="promo-outlet-button" data-promo-outlet-button>
-                                    Semua Outlet
+                                    Pilih outlet
                                 </button>
 
                                 <div class="promo-outlet-panel">
@@ -216,6 +221,7 @@
                                     @endforeach
                                 </div>
                             </div>
+                            <div style="color:#6b7280;font-size:12px;margin-top:6px;">Promo hanya berlaku di outlet yang dipilih. Promo aktif wajib punya minimal satu outlet.</div>
                         </div>
 
                         <div class="field">
@@ -426,8 +432,21 @@
             });
         }
 
-        addRequirement();
-        addReward();
+        // Restore rows the user already filled in when validation fails and the form is re-rendered.
+        const oldRequirements = @json(array_values((array) old('requirements', [])));
+        const oldRewards = @json(array_values((array) old('rewards', [])));
+
+        if (oldRequirements.length) {
+            oldRequirements.forEach((row) => addRequirement(row));
+        } else {
+            addRequirement();
+        }
+
+        if (oldRewards.length) {
+            oldRewards.forEach((row) => addReward(row));
+        } else {
+            addReward();
+        }
     </script>
 
     <script>
@@ -440,7 +459,7 @@
                     const selected = Array.from(checkboxes).filter((checkbox) => checkbox.checked);
 
                     if (selected.length === 0) {
-                        button.textContent = 'Semua Outlet';
+                        button.textContent = 'Pilih outlet';
                     } else if (selected.length === 1) {
                         button.textContent = selected[0].closest('label').querySelector('span').textContent.trim();
                     } else {

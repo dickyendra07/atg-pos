@@ -385,10 +385,7 @@ class CartController extends Controller
     {
         $promo->loadMissing(['outlets']);
 
-        if ($promo->outlets->isEmpty()) {
-            return true;
-        }
-
+        // A promo is only valid at outlets it is explicitly assigned to; no assignment means unavailable.
         if (empty($user->outlet_id)) {
             return false;
         }
@@ -571,15 +568,7 @@ class CartController extends Controller
         $promo = Promo::with(['requirements', 'rewards', 'outlets'])
             ->where('is_active', true)
             ->where('status', 'active')
-            ->where(function ($query) use ($user) {
-                $query->whereDoesntHave('outlets');
-
-                if (! empty($user->outlet_id)) {
-                    $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
-                        $outletQuery->where('outlets.id', $user->outlet_id);
-                    });
-                }
-            })
+            ->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', (int) $user->outlet_id))
             ->find($promoId);
 
         if (! $promo || ! $this->promoIsCurrentlyActive($promo) || ! $this->cartMeetsPromoRequirements($cart, $promo)) {
@@ -708,15 +697,7 @@ class CartController extends Controller
             $promo = Promo::with(['requirements', 'rewards', 'outlets'])
                 ->where('is_active', true)
                 ->where('status', 'active')
-                ->where(function ($query) use ($user) {
-                    $query->whereDoesntHave('outlets');
-
-                    if (! empty($user->outlet_id)) {
-                        $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
-                            $outletQuery->where('outlets.id', $user->outlet_id);
-                        });
-                    }
-                })
+                ->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', (int) $user->outlet_id))
                 ->find($promoId);
 
             if ($promo && $this->promoIsCurrentlyActive($promo) && $this->cartMeetsPromoRequirements($cart, $promo)) {
@@ -844,6 +825,21 @@ class CartController extends Controller
         $subtotal = collect($cart)->sum(function ($item) {
             return (float) ($item['line_total'] ?? 0);
         });
+
+        if ($request->filled('promo_id')) {
+            $requestedPromo = Promo::with('outlets')->find((int) $request->input('promo_id'));
+
+            if (
+                ! $requestedPromo
+                || ! $requestedPromo->isActiveStatus()
+                || ! $this->promoAppliesToUserOutlet($requestedPromo, $user)
+                || ! $this->promoIsCurrentlyActive($requestedPromo)
+            ) {
+                return redirect()
+                    ->route('cashier.index')
+                    ->with('error', 'Promo tidak aktif atau tidak berlaku untuk outlet ini.');
+            }
+        }
 
         $discountResult = $this->calculateDiscountAmount(
             cart: $cart,

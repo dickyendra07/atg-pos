@@ -258,15 +258,7 @@ class CashierController extends Controller
         ])
             ->where('is_active', true)
             ->where('status', 'active')
-            ->where(function ($query) use ($user) {
-                $query->whereDoesntHave('outlets');
-
-                if (! empty($user->outlet_id)) {
-                    $query->orWhereHas('outlets', function ($outletQuery) use ($user) {
-                        $outletQuery->where('outlets.id', $user->outlet_id);
-                    });
-                }
-            })
+            ->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', (int) $user->outlet_id))
             ->where(function ($query) use ($today) {
                 $query->whereNull('start_date')
                     ->orWhereDate('start_date', '<=', $today);

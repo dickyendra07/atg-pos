@@ -242,7 +242,7 @@
                 <div class="field">
 
                     <label>
-                        Category
+                        Category Menu <a href="{{ route('backoffice.menu-categories.index') }}" style="float:right;font-size:12px;font-weight:700;color:#ea580c;">Kelola Category Menu</a>
                     </label>
 
 

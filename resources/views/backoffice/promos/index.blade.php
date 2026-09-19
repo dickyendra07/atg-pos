@@ -210,7 +210,8 @@
                 <div class="field">
                     <label for="outlet_id">Outlet</label>
                     <select name="outlet_id" id="outlet_id">
-                        <option value="">Semua Outlet</option>
+                        <option value="all" @selected((string) $filters['outlet_id'] === 'all')>Semua Outlet</option>
+                        <option value="unassigned" @selected((string) $filters['outlet_id'] === 'unassigned')>Belum ada outlet</option>
                         @foreach($outletOptions as $outlet)
                             <option value="{{ $outlet->id }}" @selected((string) $filters['outlet_id'] === (string) $outlet->id)>
                                 {{ $outlet->name }}
@@ -266,7 +267,7 @@
                                     @if($promo->outlets->count())
                                         {{ $promo->outlets->pluck('name')->implode(', ') }}
                                     @else
-                                        All Outlets
+                                        <span class="badge badge-draft" title="Promo tanpa outlet tidak tampil dan tidak bisa dipakai di Cashier">Belum ada outlet</span>
                                     @endif
                                 </td>
                                 <td>
