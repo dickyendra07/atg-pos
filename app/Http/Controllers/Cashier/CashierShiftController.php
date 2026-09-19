@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cashier;
 
 use App\Http\Controllers\Controller;
 use App\Models\CashierShift;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +22,7 @@ class CashierShiftController extends Controller
         if (! $user->outlet_id || ! $user->hasCashierOutletAccess((int) $user->outlet_id)) {
             session()->forget(['cashier_outlet_id', 'cashier_cart', 'cashier_member']);
 
-            redirect()->route('cashier.select-outlet')->send();
-            exit;
+            throw new HttpResponseException(redirect()->route('cashier.select-outlet'));
         }
 
         return $user;

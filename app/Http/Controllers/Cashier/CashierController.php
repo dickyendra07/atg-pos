@@ -8,6 +8,7 @@ use App\Models\Discount;
 use App\Models\Product;
 use App\Models\Promo;
 use App\Models\SalesTransaction;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -96,7 +97,10 @@ class CashierController extends Controller
         $outlets = $user->cashierAccessibleOutlets();
 
         if ($outlets->isEmpty()) {
-            return null;
+            // Redirecting to the dashboard would bounce straight back here (auth_portal=cashier).
+            throw new HttpResponseException(
+                response()->view('cashier.no-outlet-access', ['user' => $user], 403)
+            );
         }
 
         if (! session('cashier_outlet_id')) {
@@ -104,16 +108,14 @@ class CashierController extends Controller
                 session(['cashier_outlet_id' => $outlets->first()->id]);
                 $user->applyCashierOutletFromSession();
             } else {
-                redirect()->route('cashier.select-outlet')->send();
-                exit;
+                throw new HttpResponseException(redirect()->route('cashier.select-outlet'));
             }
         }
 
         if (! $user->outlet_id || ! $user->hasCashierOutletAccess((int) $user->outlet_id)) {
             session()->forget(['cashier_outlet_id', 'cashier_cart', 'cashier_member']);
 
-            redirect()->route('cashier.select-outlet')->send();
-            exit;
+            throw new HttpResponseException(redirect()->route('cashier.select-outlet'));
         }
 
         return $user;
@@ -290,6 +292,8 @@ class CashierController extends Controller
         $user = $this->authorizeCashierAccess();
 
         if (! $user) {
+            abort_if(session('auth_portal') === 'cashier', 403, 'Role kamu tidak punya akses ke Cashier.');
+
             return redirect()
                 ->route('dashboard')
                 ->with('error', 'Role kamu tidak punya akses ke Cashier.');

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -58,14 +59,22 @@ class User extends Authenticatable
     }
 
 
+    /** Cashier outlets resolved before applyCashierOutletFromSession() overwrites outlet_id/outlet. */
+    protected ?Collection $resolvedCashierOutlets = null;
+
     public function cashierAccessibleOutlets()
     {
+        if ($this->resolvedCashierOutlets !== null) {
+            return $this->resolvedCashierOutlets;
+        }
+
         $outlets = $this->relationLoaded('outlets')
             ? $this->outlets
             : $this->outlets()->where('outlets.is_active', true)->orderBy('name')->get();
 
         $outlets = $outlets->filter(fn ($outlet) => (bool) $outlet?->is_active);
 
+        // Only the user's own home outlet is used as fallback; never every outlet.
         if ($outlets->isEmpty() && $this->outlet?->is_active) {
             $outlets = collect([$this->outlet]);
         }
@@ -84,6 +93,9 @@ class User extends Authenticatable
 
     public function applyCashierOutletFromSession(): self
     {
+        // Resolve access (incl. the home-outlet fallback) before outlet_id/outlet are overwritten below.
+        $this->resolvedCashierOutlets = $this->cashierAccessibleOutlets();
+
         $outletId = (int) session('cashier_outlet_id');
 
         if (! $outletId || ! $this->hasCashierOutletAccess($outletId)) {

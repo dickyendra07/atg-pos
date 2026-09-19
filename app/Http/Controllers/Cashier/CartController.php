@@ -13,6 +13,7 @@ use App\Models\Promo;
 use App\Models\SalesTransaction;
 use App\Services\SaleEligibilityService;
 use App\Services\StockDeductionService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -31,8 +32,7 @@ class CartController extends Controller
         if (! $user->outlet_id || ! $user->hasCashierOutletAccess((int) $user->outlet_id)) {
             session()->forget(['cashier_outlet_id', 'cashier_cart', 'cashier_member']);
 
-            redirect()->route('cashier.select-outlet')->send();
-            exit;
+            throw new HttpResponseException(redirect()->route('cashier.select-outlet'));
         }
 
         return $user;
