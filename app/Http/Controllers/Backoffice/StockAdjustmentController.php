@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\StockAdjustment;
 use App\Models\User;
-use App\Models\Warehouse;
 use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
 
@@ -25,23 +24,20 @@ class StockAdjustmentController extends Controller
         $user = $this->authorizeAccess($request);
         $activeOutletId = $context->activeOutletId($user);
         $permittedOutletIds = $context->accessibleOutlets($user)->pluck('id');
-        $locationFilter = $request->input('outlet_id');
 
         $query = StockAdjustment::with(['items', 'user', 'outlet', 'warehouse'])->latest()->latest('id');
 
-        $query->where(function ($scope) use ($permittedOutletIds) {
-            $scope->where('location_type', 'warehouse')
-                ->orWhere(function ($outletScope) use ($permittedOutletIds) {
-                    $outletScope->where('location_type', 'outlet')->whereIn('location_id', $permittedOutletIds);
-                });
-        });
-
-        if ($locationFilter === 'warehouse') {
-            $query->where('location_type', 'warehouse');
-        } elseif (is_numeric($locationFilter) && $permittedOutletIds->contains((int) $locationFilter)) {
-            $query->where('location_type', 'outlet')->where('location_id', (int) $locationFilter);
-        } elseif ($locationFilter === null && $activeOutletId) {
+        // Single source of truth: the global Active Outlet Backoffice selector (no separate
+        // location dropdown on this page). A query string outlet_id is intentionally ignored.
+        if ($activeOutletId) {
             $query->where('location_type', 'outlet')->where('location_id', $activeOutletId);
+        } else {
+            $query->where(function ($scope) use ($permittedOutletIds) {
+                $scope->where('location_type', 'warehouse')
+                    ->orWhere(function ($outletScope) use ($permittedOutletIds) {
+                        $outletScope->where('location_type', 'outlet')->whereIn('location_id', $permittedOutletIds);
+                    });
+            });
         }
 
         $query
@@ -57,8 +53,7 @@ class StockAdjustmentController extends Controller
             'user' => $user,
             'adjustments' => $query->get(),
             'users' => User::whereIn('id', StockAdjustment::query()->whereNotNull('user_id')->select('user_id'))->orderBy('name')->get(['id', 'name']),
-            'warehouses' => Warehouse::where('is_active', true)->orderBy('name')->get(),
-            'filters' => $request->only(['outlet_id', 'date_from', 'date_to', 'user_id', 'search']),
+            'filters' => $request->only(['date_from', 'date_to', 'user_id', 'search']),
         ]);
     }
 

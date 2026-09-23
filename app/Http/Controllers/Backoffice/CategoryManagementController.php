@@ -155,4 +155,28 @@ abstract class CategoryManagementController extends Controller
 
         return redirect()->route($this->config()['route'].'.index')->with('success', 'Category berhasil diupdate.');
     }
+
+    public function destroy(Request $request, int $category)
+    {
+        $this->authorizeAccess($request);
+        abort_unless($this->config()['deletable'] ?? false, 404);
+
+        $model = $this->modelClass();
+        $countKey = $this->usageRelation().'_count';
+        $category = $model::withCount($this->usageRelation())->findOrFail($category);
+
+        // The FK to this table cascade-deletes its usage relation, so a category still in
+        // use is never handed to delete() — this is the safety guard, not just a UX message.
+        if ($category->{$countKey} > 0) {
+            $noun = $this->config()['usage_noun'] ?? 'item';
+
+            return redirect()
+                ->route($this->config()['route'].'.index')
+                ->with('error', 'Kategori masih digunakan oleh '.$category->{$countKey}.' '.$noun.'. Pindahkan kategori '.$noun.' terlebih dahulu sebelum menghapus.');
+        }
+
+        $category->delete();
+
+        return redirect()->route($this->config()['route'].'.index')->with('success', 'Category berhasil dihapus.');
+    }
 }

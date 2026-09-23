@@ -223,7 +223,7 @@
         .stats-grid {
             padding: 20px 24px 0;
             display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             gap: 16px;
         }
 
@@ -813,13 +813,9 @@
                     <div class="stat-desc">Stok yang masih aman di atas minimum stock.</div>
                 </div>
 
-                <a href="#need-action-list" class="stat-card-link">
-                    <div class="stat-card violet">
-                    <div class="stat-label">Need Action</div>
-                    <div class="stat-value">{{ $summary['need_action'] ?? 0 }}</div>
-                    <div class="stat-desc">Klik untuk melihat item yang perlu restock, transfer, atau adjustment.</div>
-                 </div>
-                </a>
+                {{-- HIDDEN per client revision: "Need Action" mixes into the initial Stock Summary view.
+                     $summary['need_action'] is still computed below and used by the Need Action List
+                     section further down, which is hidden the same way rather than removed. --}}
 
                 <div class="stat-card red">
                     <div class="stat-label">Zero Stock</div>
@@ -1102,6 +1098,7 @@
 --}}
 
 
+{{-- HIDDEN per client revision: 'Need Action' must not appear inside the Stock Summary page. Controller data ($summary['need_action'], getNeedActionType/getNeedActionRecommendation, need_action_location filter) is untouched; only this section's markup is hidden.
     <div class="section-card" id="need-action-list">
         <div class="section-head need-action-head">
             <div>
@@ -1183,6 +1180,7 @@
             </table>
         </div>
     </div>
+--}}
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             const combined = document.getElementById('summary_location_combined');

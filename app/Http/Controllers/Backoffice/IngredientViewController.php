@@ -101,24 +101,29 @@ class IngredientViewController extends Controller
         $user = $this->authorizeAccess();
         $activeOutletId = $this->outletContext()->activeOutletId($user);
 
-        $ingredientsQuery = Ingredient::with(['category', 'outlets'])
+        // Join (not just eager-load) ingredient_categories so the category name is sortable in
+        // the same query; select ingredients.* to avoid column clashes between the two tables.
+        $ingredientsQuery = Ingredient::query()
+            ->select('ingredients.*')
+            ->with(['category', 'outlets'])
+            ->join('ingredient_categories', 'ingredient_categories.id', '=', 'ingredients.ingredient_category_id')
             ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
-            ->latest();
+            ->orderByRaw('LOWER(ingredients.name) asc')
+            ->orderByRaw('LOWER(ingredient_categories.name) asc');
 
         if ($request->filled('ingredient_type')) {
-            $ingredientsQuery->where('ingredient_type', $request->ingredient_type);
+            $ingredientsQuery->where('ingredients.ingredient_type', $request->ingredient_type);
         }
 
         if ($request->filled('search')) {
             $keyword = trim((string) $request->search);
 
+            // Columns are qualified because the query above joins ingredient_categories.
             $ingredientsQuery->where(function ($query) use ($keyword) {
-                $query->where('name', 'like', '%'.$keyword.'%')
-                    ->orWhere('code', 'like', '%'.$keyword.'%')
-                    ->orWhere('unit', 'like', '%'.$keyword.'%')
-                    ->orWhereHas('category', function ($categoryQuery) use ($keyword) {
-                        $categoryQuery->where('name', 'like', '%'.$keyword.'%');
-                    });
+                $query->where('ingredients.name', 'like', '%'.$keyword.'%')
+                    ->orWhere('ingredients.code', 'like', '%'.$keyword.'%')
+                    ->orWhere('ingredients.unit', 'like', '%'.$keyword.'%')
+                    ->orWhere('ingredient_categories.name', 'like', '%'.$keyword.'%');
             });
         }
 
