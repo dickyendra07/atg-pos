@@ -111,16 +111,58 @@ class BackofficeCategoryAndListingTest extends TestCase
         $this->assertDatabaseHas('products', ['id' => $unrelatedProduct->id, 'product_category_id' => $untouched->id]);
     }
 
-    public function test_ingredient_category_has_no_delete_route_wired(): void
+    // ---- Ingredient Category delete ---------------------------------------------------------
+
+    public function test_unused_ingredient_category_can_be_deleted(): void
     {
         $category = IngredientCategory::create(['name' => 'Unused Bahan', 'code' => 'UNUSED_BAHAN', 'is_active' => true]);
 
-        // Only GET (index/create/edit) and PUT (update) are routed for ingredient categories, so
-        // an unrouted DELETE resolves to 405, confirming no delete endpoint exists for this domain.
-        $this->actingAs($this->owner)
-            ->delete(route('backoffice.ingredient-categories.index').'/'.$category->id)
-            ->assertMethodNotAllowed();
+        $response = $this->actingAs($this->owner)
+            ->delete(route('backoffice.ingredient-categories.destroy', $category->id));
 
+        $response->assertRedirect(route('backoffice.ingredient-categories.index'));
+        $response->assertSessionHas('success');
+        $this->assertDatabaseMissing('ingredient_categories', ['id' => $category->id]);
+
+        $this->get(route('backoffice.ingredient-categories.index'))
+            ->assertOk()->assertDontSee('Unused Bahan');
+    }
+
+    public function test_ingredient_category_still_used_by_ingredients_cannot_be_deleted(): void
+    {
+        $category = IngredientCategory::create(['name' => 'In Use Bahan', 'code' => 'INUSE_BAHAN', 'is_active' => true]);
+        $ingredient = $this->ingredient('Milk', $category);
+
+        $response = $this->actingAs($this->owner)
+            ->delete(route('backoffice.ingredient-categories.destroy', $category->id));
+
+        $response->assertRedirect(route('backoffice.ingredient-categories.index'));
+        $response->assertSessionHas('error', fn ($message) => str_contains($message, 'digunakan oleh 1 ingredient')
+            && str_contains($message, 'Pindahkan kategori ingredient terlebih dahulu sebelum menghapus'));
+
+        // Not deleted, and the FK's cascadeOnDelete never fired: the ingredient still has its category.
+        $this->assertDatabaseHas('ingredient_categories', ['id' => $category->id]);
+        $this->assertDatabaseHas('ingredients', ['id' => $ingredient->id, 'ingredient_category_id' => $category->id]);
+    }
+
+    public function test_deleting_one_ingredient_category_does_not_affect_unrelated_category_or_ingredients(): void
+    {
+        $target = IngredientCategory::create(['name' => 'Delete Me Bahan', 'code' => 'DELME_BAHAN', 'is_active' => true]);
+        $untouched = IngredientCategory::create(['name' => 'Keep Me Bahan', 'code' => 'KEEPME_BAHAN', 'is_active' => true]);
+        $unrelatedIngredient = $this->ingredient('Sugar', $untouched);
+
+        $this->actingAs($this->owner)->delete(route('backoffice.ingredient-categories.destroy', $target->id));
+
+        $this->assertDatabaseMissing('ingredient_categories', ['id' => $target->id]);
+        $this->assertDatabaseHas('ingredient_categories', ['id' => $untouched->id, 'name' => 'Keep Me Bahan']);
+        $this->assertDatabaseHas('ingredients', ['id' => $unrelatedIngredient->id, 'ingredient_category_id' => $untouched->id]);
+    }
+
+    public function test_ingredient_category_delete_requires_the_delete_http_method(): void
+    {
+        $category = IngredientCategory::create(['name' => 'Csrf Check Bahan', 'code' => 'CSRFCHK_BAHAN', 'is_active' => true]);
+
+        $this->actingAs($this->owner)->get(route('backoffice.ingredient-categories.destroy', $category->id))->assertMethodNotAllowed();
         $this->assertDatabaseHas('ingredient_categories', ['id' => $category->id]);
     }
 
