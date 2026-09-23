@@ -24,6 +24,9 @@ class IngredientCategoryController extends CategoryManagementController
             'route' => 'backoffice.ingredient-categories',
             'usage_label' => 'Jumlah Ingredient',
             'needs_brand' => false,
+            // Not wired to a delete route yet; only Menu Category delete was requested.
+            'deletable' => false,
+            'usage_noun' => 'ingredient',
         ];
     }
 }

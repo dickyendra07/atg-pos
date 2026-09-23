@@ -279,18 +279,32 @@ class ClientRevisionTest extends TestCase
         ]);
         $bxc = StockAdjustment::where('location_id', $this->bxc->id)->firstOrFail();
 
+        // Adjustment History has no location dropdown of its own; the global Active Outlet
+        // selector in the top bar is the single source of outlet context for this page.
         $this->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
             ->get(route('backoffice.stock-adjustments.index'))
-            ->assertOk()->assertSee('Catatan BXC')->assertDontSee('Catatan Bazaar');
+            ->assertOk()->assertSee('Catatan BXC')->assertDontSee('Catatan Bazaar')
+            // The page's own second location dropdown is gone; only the global selector remains.
+            ->assertDontSee('Semua lokasi')->assertDontSee('Semua Warehouse');
 
         $this->withSession(['active_backoffice_outlet_id' => $this->bazaar->id])
             ->get(route('backoffice.stock-adjustments.index'))
             ->assertOk()->assertSee('Catatan Bazaar')->assertDontSee('Catatan BXC');
 
-        $this->get(route('backoffice.stock-adjustments.index', ['outlet_id' => 'all', 'search' => $bxc->reference]))
-            ->assertOk()->assertSee('Catatan BXC')->assertDontSee('Catatan Bazaar');
+        // A forged outlet_id query string is ignored; Active Outlet (session) still governs.
+        $this->get(route('backoffice.stock-adjustments.index', ['outlet_id' => $this->bxc->id, 'search' => $bxc->reference]))
+            ->assertOk()->assertDontSee('Catatan BXC')->assertDontSee('Catatan Bazaar');
 
-        $this->get(route('backoffice.stock-adjustments.index', ['outlet_id' => 'all', 'date_from' => now()->addDay()->toDateString()]))
+        // No Active Outlet selected ("Semua Outlet yang Diizinkan") -> every permitted outlet shows.
+        $this->withSession(['active_backoffice_outlet_id' => null])
+            ->get(route('backoffice.stock-adjustments.index'))
+            ->assertOk()->assertSee('Catatan BXC')->assertSee('Catatan Bazaar');
+
+        $this->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
+            ->get(route('backoffice.stock-adjustments.index', ['search' => $bxc->reference]))
+            ->assertOk()->assertSee('Catatan BXC');
+
+        $this->get(route('backoffice.stock-adjustments.index', ['date_from' => now()->addDay()->toDateString()]))
             ->assertOk()->assertDontSee('Catatan BXC');
 
         $this->get(route('backoffice.stock-adjustments.show', $bxc))
@@ -307,6 +321,10 @@ class ClientRevisionTest extends TestCase
         ]);
 
         $this->actingAs($admin)->get(route('backoffice.stock-adjustments.show', $adjustment))->assertForbidden();
+
+        // Admin only has BXC access; Bazaar's adjustment must never appear, with or without an
+        // active outlet selected, and a forged outlet_id query string changes nothing.
+        $this->get(route('backoffice.stock-adjustments.index'))->assertOk()->assertDontSee('Rahasia Bazaar');
         $this->get(route('backoffice.stock-adjustments.index', ['outlet_id' => $this->bazaar->id]))
             ->assertOk()->assertDontSee('Rahasia Bazaar');
     }
@@ -318,6 +336,24 @@ class ClientRevisionTest extends TestCase
         $this->actingAs($this->owner)->get(route('backoffice.stock-balances.index'))
             ->assertOk()->assertDontSee('All Stock Balances')->assertSee('Stock Summary');
 
+        $this->assertSame(10.0, $this->balance($this->air, $this->bxc));
+    }
+
+    public function test_need_action_is_hidden_from_stock_summary_but_numbers_are_unchanged(): void
+    {
+        $this->seedStock($this->air, $this->bxc, 10);
+        $this->air->update(['minimum_stock' => 100]); // makes this row need-action eligible
+
+        $response = $this->actingAs($this->owner)
+            ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
+            ->get(route('backoffice.stock-balances.index'));
+
+        $response->assertOk()
+            ->assertDontSee('Need Action List')
+            ->assertDontSee('need_action_location', false)
+            ->assertSee('Stock Summary');
+
+        // The stock number itself is untouched by hiding the section.
         $this->assertSame(10.0, $this->balance($this->air, $this->bxc));
     }
 

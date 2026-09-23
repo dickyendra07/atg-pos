@@ -24,6 +24,8 @@ class MenuCategoryController extends CategoryManagementController
             'route' => 'backoffice.menu-categories',
             'usage_label' => 'Jumlah Product',
             'needs_brand' => true,
+            'deletable' => true,
+            'usage_noun' => 'produk',
         ];
     }
 }

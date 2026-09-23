@@ -80,6 +80,7 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::post('/menu-categories', [MenuCategoryController::class, 'store'])->name('menu-categories.store');
     Route::get('/menu-categories/{category}/edit', [MenuCategoryController::class, 'edit'])->name('menu-categories.edit');
     Route::put('/menu-categories/{category}', [MenuCategoryController::class, 'update'])->name('menu-categories.update');
+    Route::delete('/menu-categories/{category}', [MenuCategoryController::class, 'destroy'])->name('menu-categories.destroy');
 
     Route::get('/products/import', [ProductViewController::class, 'importForm'])->name('products.import');
     Route::get('/products/import/template', [ProductViewController::class, 'downloadTemplate'])->name('products.import.template');
