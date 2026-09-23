@@ -74,6 +74,7 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::post('/ingredient-categories', [IngredientCategoryController::class, 'store'])->name('ingredient-categories.store');
     Route::get('/ingredient-categories/{category}/edit', [IngredientCategoryController::class, 'edit'])->name('ingredient-categories.edit');
     Route::put('/ingredient-categories/{category}', [IngredientCategoryController::class, 'update'])->name('ingredient-categories.update');
+    Route::delete('/ingredient-categories/{category}', [IngredientCategoryController::class, 'destroy'])->name('ingredient-categories.destroy');
 
     Route::get('/menu-categories', [MenuCategoryController::class, 'index'])->name('menu-categories.index');
     Route::get('/menu-categories/create', [MenuCategoryController::class, 'create'])->name('menu-categories.create');
