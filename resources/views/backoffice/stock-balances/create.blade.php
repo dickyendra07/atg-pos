@@ -497,7 +497,7 @@
                                         data-type="warehouse"
                                         {{ old('location_type') === 'warehouse' && (string) old('location_id') === (string) $warehouse->id ? 'selected' : '' }}
                                     >
-                                        Warehouse - {{ $warehouse->name }}
+                                        Gudang – {{ $warehouse->name }}
                                     </option>
                                 @endforeach
 
@@ -507,7 +507,7 @@
                                         data-type="outlet"
                                         {{ old('location_type', $activeBackofficeOutlet ? 'outlet' : '') === 'outlet' && (string) old('location_id', $activeBackofficeOutlet?->id) === (string) $outlet->id ? 'selected' : '' }}
                                     >
-                                        Outlet - {{ $outlet->name }}
+                                        Outlet – {{ $outlet->name }}
                                     </option>
                                 @endforeach
                             </select>

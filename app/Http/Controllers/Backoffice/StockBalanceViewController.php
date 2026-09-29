@@ -447,6 +447,12 @@ class StockBalanceViewController extends Controller
 
         $stockSummaryRows = $this->buildStockSummaryRows($request, $ingredients);
 
+        // applySummaryLocationFilters() pins the summary to a specific Active Outlet and ignores
+        // summary_location_*, so only offer that outlet there; warehouses stay for "Semua Outlet".
+        $activeOutlet = $this->outletContext()->activeOutlet($user);
+        $summaryLocationWarehouses = $activeOutlet ? collect() : $warehouses;
+        $summaryLocationOutlets = $activeOutlet ? collect([$activeOutlet]) : $outlets;
+
         $needActionLocation = (string) $request->input('need_action_location', 'all');
 
         $needActionBalances = $stockBalances;
@@ -495,6 +501,8 @@ class StockBalanceViewController extends Controller
             'ingredients' => $ingredients,
             'warehouses' => $warehouses,
             'outlets' => $outlets,
+            'summaryLocationWarehouses' => $summaryLocationWarehouses,
+            'summaryLocationOutlets' => $summaryLocationOutlets,
             'stockBalances' => $stockBalances,
             'stocks' => $stockBalances,
             'summary' => $summary,

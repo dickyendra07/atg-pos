@@ -890,21 +890,21 @@
                         <select id="summary_location_combined">
                             <option value="">Semua lokasi</option>
 
-                            @foreach(($warehouses ?? []) as $warehouse)
+                            @foreach(($summaryLocationWarehouses ?? []) as $warehouse)
                                 <option
                                     value="warehouse:{{ $warehouse->id }}"
                                     {{ request('summary_location_type') === 'warehouse' && (string) request('summary_location_id') === (string) $warehouse->id ? 'selected' : '' }}
                                 >
-                                    Warehouse - {{ $warehouse->name }}
+                                    Gudang – {{ $warehouse->name }}
                                 </option>
                             @endforeach
 
-                            @foreach(($outlets ?? []) as $outlet)
+                            @foreach(($summaryLocationOutlets ?? []) as $outlet)
                                 <option
                                     value="outlet:{{ $outlet->id }}"
                                     {{ request('summary_location_type') === 'outlet' && (string) request('summary_location_id') === (string) $outlet->id ? 'selected' : '' }}
                                 >
-                                    Outlet - {{ $outlet->name }}
+                                    Outlet – {{ $outlet->name }}
                                 </option>
                             @endforeach
                         </select>
@@ -932,7 +932,7 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Category</th>
-                                <th>Outlet</th>
+                                <th>Lokasi</th>
                                 <th>Beginning</th>
                                 <th>Purchase</th>
                                 <th>Transfer</th>

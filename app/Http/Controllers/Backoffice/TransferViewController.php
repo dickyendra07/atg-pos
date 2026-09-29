@@ -82,7 +82,7 @@ class TransferViewController extends Controller
             ->map(function ($warehouse) {
                 return [
                     'value' => 'warehouse:' . $warehouse->id,
-                    'label' => 'Warehouse - ' . $warehouse->name,
+                    'label' => 'Gudang – ' . $warehouse->name,
                 ];
             });
 
@@ -91,11 +91,93 @@ class TransferViewController extends Controller
             ->map(function ($outlet) {
                 return [
                     'value' => 'outlet:' . $outlet->id,
-                    'label' => 'Outlet - ' . $outlet->name,
+                    'label' => 'Outlet – ' . $outlet->name,
                 ];
             });
 
         return $warehouses->concat($outlets)->values();
+    }
+
+    // Outlets that give a transfer its outlet scope: the outlet source/destination, plus outlet_id
+    // for legacy rows saved without from/to location columns. Warehouses are not scoped per user,
+    // so a warehouse endpoint alone never puts a transfer in a limited user's scope.
+    protected function scopeToInvolvedOutlets($query, array $outletIds): void
+    {
+        $query->where(function ($scope) use ($outletIds) {
+            $scope->where(fn ($q) => $q->where('from_location_type', 'outlet')->whereIn('from_location_id', $outletIds))
+                ->orWhere(fn ($q) => $q->where('to_location_type', 'outlet')->whereIn('to_location_id', $outletIds))
+                ->orWhereIn('outlet_id', $outletIds);
+        });
+    }
+
+    // Shared by index() and exportCsv() so the list and the CSV can never disagree. A specific
+    // Active Outlet (already limited to accessible outlets) narrows to that outlet; otherwise
+    // full-access roles see every transfer and other roles only their accessible outlets.
+    protected function filteredTransfersQuery(Request $request, $user)
+    {
+        $query = StockTransfer::query()->latest();
+
+        $context = app(BackofficeOutletContext::class);
+        $activeOutletId = $context->activeOutletId($user);
+
+        if ($activeOutletId) {
+            $this->scopeToInvolvedOutlets($query, [$activeOutletId]);
+        } elseif (! $user->isFullAccessUser()) {
+            $this->scopeToInvolvedOutlets($query, $context->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id)->all());
+        }
+
+        if ($request->filled('from_location')) {
+            $fromFilter = $this->parseLocation($request->from_location);
+            $query->where('from_location_type', $fromFilter['type'])
+                ->where('from_location_id', $fromFilter['id']);
+        } elseif ($request->filled('from_location_type')) {
+            $query->where('from_location_type', $request->from_location_type);
+        }
+
+        if ($request->filled('to_location')) {
+            $toFilter = $this->parseLocation($request->to_location);
+            $query->where('to_location_type', $toFilter['type'])
+                ->where('to_location_id', $toFilter['id']);
+        } elseif ($request->filled('to_location_type')) {
+            $query->where('to_location_type', $request->to_location_type);
+        }
+
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        return $query;
+    }
+
+    // Status actions use the same involved-outlet rule as the list: full-access roles keep acting
+    // on every transfer, other roles only on transfers that involve an outlet they can access.
+    protected function authorizeTransferAction($user, StockTransfer $transfer): void
+    {
+        if ($user->isFullAccessUser()) {
+            return;
+        }
+
+        $involvedOutletIds = collect([
+            $transfer->from_location_type === 'outlet' ? $transfer->from_location_id : null,
+            $transfer->to_location_type === 'outlet' ? $transfer->to_location_id : null,
+            $transfer->outlet_id,
+        ])->filter()->map(fn ($id) => (int) $id)->unique();
+
+        $context = app(BackofficeOutletContext::class);
+
+        if ($involvedOutletIds->contains(fn ($outletId) => $context->canAccess($user, $outletId))) {
+            return;
+        }
+
+        abort(403, 'Kamu tidak punya akses ke outlet yang terlibat dalam transfer ini.');
     }
 
     protected function rollbackTransferStock(StockTransfer $transfer): void
@@ -240,44 +322,8 @@ class TransferViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $query = StockTransfer::with(['ingredient.category', 'warehouse', 'outlet', 'transferredBy'])
-            ->latest();
-
-        $activeOutletId = app(BackofficeOutletContext::class)->activeOutletId($user);
-        if ($activeOutletId) {
-            $query->where(function ($scope) use ($activeOutletId) {
-                $scope->where(fn ($q) => $q->where('from_location_type', 'outlet')->where('from_location_id', $activeOutletId))
-                    ->orWhere(fn ($q) => $q->where('to_location_type', 'outlet')->where('to_location_id', $activeOutletId));
-            });
-        }
-
-        if ($request->filled('from_location')) {
-            $fromFilter = $this->parseLocation($request->from_location);
-            $query->where('from_location_type', $fromFilter['type'])
-                ->where('from_location_id', $fromFilter['id']);
-        } elseif ($request->filled('from_location_type')) {
-            $query->where('from_location_type', $request->from_location_type);
-        }
-
-        if ($request->filled('to_location')) {
-            $toFilter = $this->parseLocation($request->to_location);
-            $query->where('to_location_type', $toFilter['type'])
-                ->where('to_location_id', $toFilter['id']);
-        } elseif ($request->filled('to_location_type')) {
-            $query->where('to_location_type', $request->to_location_type);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
+        $query = $this->filteredTransfersQuery($request, $user)
+            ->with(['ingredient.category', 'warehouse', 'outlet', 'transferredBy']);
 
         $transfers = $query->get()->map(function ($transfer) {
             $transfer->from_location_name = $this->getLocationName(
@@ -349,44 +395,8 @@ class TransferViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $query = StockTransfer::with(['ingredient.category', 'transferredBy'])
-            ->latest();
-
-        $activeOutletId = app(BackofficeOutletContext::class)->activeOutletId($user);
-        if ($activeOutletId) {
-            $query->where(function ($scope) use ($activeOutletId) {
-                $scope->where(fn ($q) => $q->where('from_location_type', 'outlet')->where('from_location_id', $activeOutletId))
-                    ->orWhere(fn ($q) => $q->where('to_location_type', 'outlet')->where('to_location_id', $activeOutletId));
-            });
-        }
-
-        if ($request->filled('from_location')) {
-            $fromFilter = $this->parseLocation($request->from_location);
-            $query->where('from_location_type', $fromFilter['type'])
-                ->where('from_location_id', $fromFilter['id']);
-        } elseif ($request->filled('from_location_type')) {
-            $query->where('from_location_type', $request->from_location_type);
-        }
-
-        if ($request->filled('to_location')) {
-            $toFilter = $this->parseLocation($request->to_location);
-            $query->where('to_location_type', $toFilter['type'])
-                ->where('to_location_id', $toFilter['id']);
-        } elseif ($request->filled('to_location_type')) {
-            $query->where('to_location_type', $request->to_location_type);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
+        $query = $this->filteredTransfersQuery($request, $user)
+            ->with(['ingredient.category', 'transferredBy']);
 
         $transfers = $query->get()->map(function ($transfer) {
             $transfer->from_location_name = $this->getLocationName(
@@ -460,7 +470,7 @@ class TransferViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $locationOptions = $this->buildLocationOptions();
+        $locationOptions = $this->buildLocationOptions($user);
 
         $prefillFromLocation = null;
 
@@ -479,13 +489,23 @@ class TransferViewController extends Controller
 
     public function availableIngredients(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
         $request->validate([
             'location' => 'required|string',
         ]);
 
         $location = $this->parseLocation($request->location);
+
+        // Same scope as the Create form options: warehouses are global for every Transfer role,
+        // outlets only when accessible (full-access roles keep reading any outlet as before).
+        if (
+            $location['type'] === 'outlet'
+            && ! $user->isFullAccessUser()
+            && ! app(BackofficeOutletContext::class)->canAccess($user, $location['id'])
+        ) {
+            abort(403, 'Kamu tidak punya akses ke stok outlet ini.');
+        }
 
         $stockBalances = StockBalance::with(['ingredient.category'])
             ->where('location_type', $location['type'])
@@ -742,7 +762,8 @@ class TransferViewController extends Controller
 
     public function markReceived(StockTransfer $transfer)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeTransferAction($user, $transfer);
 
         if ($transfer->status === 'cancelled') {
             return redirect()
@@ -762,7 +783,8 @@ class TransferViewController extends Controller
 
     public function markCancelled(StockTransfer $transfer)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeTransferAction($user, $transfer);
 
         if ($transfer->status === 'received') {
             return redirect()
@@ -808,7 +830,8 @@ class TransferViewController extends Controller
 
     public function markInTransit(StockTransfer $transfer)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeTransferAction($user, $transfer);
 
         try {
             DB::transaction(function () use ($transfer) {

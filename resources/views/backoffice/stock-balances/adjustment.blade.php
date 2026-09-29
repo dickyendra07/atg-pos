@@ -506,10 +506,10 @@
                                         <option
                                             value="{{ $warehouse->id }}"
                                             data-type="warehouse"
-                                            data-label="Warehouse - {{ $warehouse->name }}"
+                                            data-label="Gudang – {{ $warehouse->name }}"
                                             {{ old('location_type') === 'warehouse' && (string) old('location_id') === (string) $warehouse->id ? 'selected' : '' }}
                                         >
-                                            Warehouse - {{ $warehouse->name }}
+                                            Gudang – {{ $warehouse->name }}
                                         </option>
                                     @endforeach
 
@@ -517,10 +517,10 @@
                                         <option
                                             value="{{ $outlet->id }}"
                                             data-type="outlet"
-                                            data-label="Outlet - {{ $outlet->name }}"
+                                            data-label="Outlet – {{ $outlet->name }}"
                                             {{ old('location_type') === 'outlet' && (string) old('location_id') === (string) $outlet->id ? 'selected' : '' }}
                                         >
-                                            Outlet - {{ $outlet->name }}
+                                            Outlet – {{ $outlet->name }}
                                         </option>
                                     @endforeach
                                 </select>
