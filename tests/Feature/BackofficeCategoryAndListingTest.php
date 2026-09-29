@@ -191,6 +191,17 @@ class BackofficeCategoryAndListingTest extends TestCase
         );
     }
 
+    public function test_ingredient_index_shows_name_column_before_category_column(): void
+    {
+        $cat = IngredientCategory::create(['name' => 'Dairy Column', 'code' => 'DAIRY_COL', 'is_active' => true]);
+        $this->ingredient('Fresh Milk Column', $cat);
+
+        $this->actingAs($this->owner)->get(route('backoffice.ingredients.index'))
+            ->assertOk()
+            ->assertSeeInOrder(['<th>Name</th>', '<th>Category</th>', '<th>Type</th>'], false)
+            ->assertSeeInOrder(['Fresh Milk Column', 'Dairy Column']);
+    }
+
     public function test_ingredient_index_search_and_active_outlet_still_work_with_new_ordering(): void
     {
         $cat = IngredientCategory::create(['name' => 'Cat', 'code' => 'CAT', 'is_active' => true]);

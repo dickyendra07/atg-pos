@@ -595,8 +595,8 @@
                         <table class="table-center">
                             <thead>
                                 <tr>
-                                    <th>Category</th>
                                     <th>Name</th>
+                                    <th>Category</th>
                                     <th>Type</th>
                                     <th>Unit</th>
                                     <th>Minimum Stock</th>
@@ -608,8 +608,8 @@
                             <tbody>
                                 @foreach($ingredients as $ingredient)
                                     <tr>
-                                        <td class="category-text">{{ $ingredient->category->name ?? '-' }}</td>
                                         <td class="ingredient-name">{{ $ingredient->name }}</td>
+                                        <td class="category-text">{{ $ingredient->category->name ?? '-' }}</td>
                                         <td>
                                             @if($ingredient->ingredient_type === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
                                                 <span class="type-badge type-semi">Setengah Jadi</span>
