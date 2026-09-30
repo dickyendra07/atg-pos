@@ -37,9 +37,7 @@ class RecipeAccessPolicy
 
     private ?Collection $activeOutlets = null;
 
-    public function __construct(private readonly BackofficeOutletContext $context)
-    {
-    }
+    public function __construct(private readonly BackofficeOutletContext $context) {}
 
     /** Outlet ids of the current view scope (null = unrestricted). */
     public function viewScope(User $user): ?array
