@@ -100,6 +100,16 @@
             font-weight: bold;
         }
 
+        .readonly-box {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            color: #92400e;
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            font-weight: 600;
+        }
+
         .success-box {
             margin-bottom: 18px;
             background: #e8fff1;
@@ -411,6 +421,12 @@
             </div>
         @endif
 
+        @unless($canMutate)
+            <div class="readonly-box" id="recipe-readonly-notice">
+                <strong>Read-only.</strong> {{ $mutationNotice }}
+            </div>
+        @endunless
+
         <div class="grid-2">
             <div class="card">
                 <div class="section-title">Header Recipe</div>
@@ -425,6 +441,7 @@
                     @csrf
                     @method('PUT')
 
+                    <fieldset @disabled(! $canMutate) style="border:0;padding:0;margin:0;min-width:0;">
                     <div class="field">
                         <label>Product Variant</label>
                         <select name="product_variant_id" required>
@@ -450,9 +467,12 @@
                         </select>
                     </div>
 
-                    <div class="actions">
-                        <button type="submit" class="btn btn-success">Update Header</button>
-                    </div>
+                    @if($canMutate)
+                        <div class="actions">
+                            <button type="submit" class="btn btn-success">Update Header</button>
+                        </div>
+                    @endif
+                    </fieldset>
                 </form>
             </div>
 
@@ -511,6 +531,7 @@
                                                         {{ number_format((float)$item->qty,2,',','.') }}
                                                     </span>
 
+                                                    @if($canMutate)
 
                                                     <form method="POST"
                                                           action="{{ route('backoffice.recipes.items.update', [$recipe->id,$item->id]) }}"
@@ -539,6 +560,7 @@
                                                         </button>
 
                                                     </form>
+                                                    @endif
 
                                                 </div>
 
@@ -548,6 +570,7 @@
                                             <td>
 
                                                 <div class="action-buttons">
+                                                    @if($canMutate)
 
                                                     <button type="button"
                                                             class="btn-edit"
@@ -568,6 +591,9 @@
                                                         </button>
 
                                                     </form>
+                                                    @else
+                                                        <span class="qty-text">Read-only</span>
+                                                    @endif
 
                                                 </div>
 
@@ -590,6 +616,9 @@
                 <div class="card">
                     <div class="section-title">Tambah Bahan Recipe</div>
 
+                    @unless($canMutate)
+                        <div class="info">Recipe read-only, bahan tidak bisa ditambah dari konteks ini.</div>
+                    @else
                     <form method="POST" action="{{ route('backoffice.recipes.items.store', $recipe->id) }}">
                         @csrf
 
@@ -624,6 +653,7 @@
                             <button type="submit" class="btn btn-success">Tambah Recipe Item</button>
                         </div>
                     </form>
+                    @endunless
                 </div>
             </div>
         </div>

@@ -25,6 +25,8 @@ class RecipeActiveOutletContextTest extends TestCase
 
     private Outlet $bazaar;
 
+    private Outlet $anggrek;
+
     private Brand $brand;
 
     private ProductCategory $menuCategory;
@@ -41,11 +43,31 @@ class RecipeActiveOutletContextTest extends TestCase
 
     private Recipe $bazaarRecipe;
 
+    /** Available at BXC + Bazaar + Taman Anggrek. */
+    private ProductVariant $tripleVariant;
+
+    private Recipe $tripleRecipe;
+
+    /** Available at BXC only. */
+    private ProductVariant $bxcVariant;
+
+    private Recipe $bxcRecipe;
+
+    /** No Recipe yet: single outlet (BXC) and multi outlet (BXC + Bazaar + Taman Anggrek). */
+    private ProductVariant $bxcSpareVariant;
+
+    private ProductVariant $tripleSpareVariant;
+
     private Ingredient $milk;
+
+    /** Available everywhere, not in any Recipe: safe to add to any Recipe. */
+    private Ingredient $spare;
 
     private User $adminPusat;
 
     private User $bxcAdmin;
+
+    private User $bxcBazaarAdmin;
 
     protected function setUp(): void
     {
@@ -53,6 +75,7 @@ class RecipeActiveOutletContextTest extends TestCase
 
         $this->bxc = Outlet::create(['name' => 'BXC', 'code' => 'BXC', 'is_active' => true]);
         $this->bazaar = Outlet::create(['name' => 'Bazaar TikTok', 'code' => 'BZR', 'is_active' => true]);
+        $this->anggrek = Outlet::create(['name' => 'Taman Anggrek', 'code' => 'TA', 'is_active' => true]);
         $this->brand = Brand::create(['name' => 'ATG', 'code' => 'ATG', 'is_active' => true]);
         $this->menuCategory = ProductCategory::create(['brand_id' => $this->brand->id, 'name' => 'Kafei', 'code' => 'KAFEI', 'is_active' => true]);
         $this->ingredientCategory = IngredientCategory::create(['name' => 'Powder', 'code' => 'POWDER', 'is_active' => true]);
@@ -60,14 +83,23 @@ class RecipeActiveOutletContextTest extends TestCase
         $this->sharedVariant = $this->makeVariant('Matcha', 'MATCHA', [$this->bxc, $this->bazaar]);
         $this->bazaarVariant = $this->makeVariant('Bazaar Only', 'BZR-ONLY', [$this->bazaar]);
 
-        $this->milk = $this->makeIngredient('Milk', [$this->bxc, $this->bazaar]);
+        $this->tripleVariant = $this->makeVariant('Triple', 'TRIPLE', [$this->bxc, $this->bazaar, $this->anggrek]);
+        $this->bxcVariant = $this->makeVariant('Bxc Only', 'BXC-ONLY', [$this->bxc]);
+        $this->bxcSpareVariant = $this->makeVariant('Bxc Spare', 'BXC-SPARE', [$this->bxc]);
+        $this->tripleSpareVariant = $this->makeVariant('Triple Spare', 'TRIPLE-SPARE', [$this->bxc, $this->bazaar, $this->anggrek]);
+
+        $this->milk = $this->makeIngredient('Milk', [$this->bxc, $this->bazaar, $this->anggrek]);
+        $this->spare = $this->makeIngredient('Spare Sugar', [$this->bxc, $this->bazaar, $this->anggrek]);
 
         $this->sharedRecipe = $this->makeRecipe($this->sharedVariant, $this->milk);
         $this->bazaarRecipe = $this->makeRecipe($this->bazaarVariant, $this->makeIngredient('Bazaar Syrup', [$this->bazaar]));
+        $this->tripleRecipe = $this->makeRecipe($this->tripleVariant, $this->milk);
+        $this->bxcRecipe = $this->makeRecipe($this->bxcVariant, $this->milk);
 
         // Admin pusat whose HOME outlet (users.outlet_id) is Bazaar TikTok but who can access every outlet.
         $this->adminPusat = $this->makeUser('admin-pusat', 'Admin Pusat', 'admin_pusat', $this->bazaar, [$this->bxc, $this->bazaar]);
         $this->bxcAdmin = $this->makeUser('admin-bxc', 'Admin Outlet', 'admin_outlet', $this->bxc, [$this->bxc]);
+        $this->bxcBazaarAdmin = $this->makeUser('admin-bxc-bzr', 'Admin Outlet', 'admin_outlet', $this->bxc, [$this->bxc, $this->bazaar]);
     }
 
     // ---- A / B: outlet label follows the Active Outlet, not users.outlet_id -----------------------
@@ -201,27 +233,30 @@ class RecipeActiveOutletContextTest extends TestCase
     {
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
 
-        // The current Variant is offered and pre-selected in the edit form.
-        $response = $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk();
-        $response->assertSee('value="'.$this->sharedVariant->id.'" selected', false);
-        $this->assertSame([$this->sharedVariant->id], $response->viewData('variants')->pluck('id')->all());
+        // Single-outlet Recipe in its own outlet: editable. The current Variant is pre-selected and the
+        // only alternatives offered are Variants this context may mutate (BXC only, no other outlets).
+        $response = $this->get(route('backoffice.recipes.edit', $this->bxcRecipe))->assertOk();
+        $response->assertSee('value="'.$this->bxcVariant->id.'" selected', false);
+        $offered = $response->viewData('variants')->pluck('id')->sort()->values()->all();
+        $this->assertSame(collect([$this->bxcVariant->id, $this->bxcSpareVariant->id])->sort()->values()->all(), $offered);
 
-        // Saving with the unchanged Variant works and keeps it.
-        $this->put(route('backoffice.recipes.update', $this->sharedRecipe), [
-            'product_variant_id' => $this->sharedVariant->id,
-            'name' => 'Matcha renamed',
+        // Saving with the unchanged Variant keeps it.
+        $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
+            'product_variant_id' => $this->bxcVariant->id,
+            'name' => 'Renamed',
             'is_active' => 1,
         ])->assertSessionHasNoErrors();
-        $this->assertSame($this->sharedVariant->id, $this->sharedRecipe->fresh()->product_variant_id);
-        $this->assertSame($this->sharedVariant->product_id, $this->sharedRecipe->fresh()->product_id);
+        $this->assertSame($this->bxcVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
 
-        // A forged Variant from outside the Active Outlet is rejected and nothing moves.
-        $this->put(route('backoffice.recipes.update', $this->sharedRecipe), [
-            'product_variant_id' => $this->bazaarVariant->id,
-            'name' => 'Matcha renamed',
-            'is_active' => 1,
-        ])->assertSessionHasErrors('product_variant_id');
-        $this->assertSame($this->sharedVariant->id, $this->sharedRecipe->fresh()->product_variant_id);
+        // A forged Variant outside the context is rejected and nothing moves.
+        foreach ([$this->bazaarVariant, $this->tripleSpareVariant] as $forged) {
+            $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
+                'product_variant_id' => $forged->id,
+                'name' => 'Renamed',
+                'is_active' => 1,
+            ])->assertSessionHasErrors('product_variant_id');
+            $this->assertSame($this->bxcVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
+        }
     }
 
     // ---- F: ingredient dropdown and validation use the same rule ---------------------------------
@@ -232,14 +267,15 @@ class RecipeActiveOutletContextTest extends TestCase
         $inactive = $this->makeIngredient('Retired Syrup', [$this->bxc, $this->bazaar], false);
         $both = $this->makeIngredient('Shared Cream', [$this->bxc, $this->bazaar]);
 
-        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+        // "Semua Outlet": the shared Recipe (BXC + Bazaar) is editable here.
+        $this->actingAs($this->adminPusat);
 
-        // Recipe Variant sells at BXC + Bazaar, so an ingredient that only exists at BXC is not offered
-        // even though the Active Outlet is BXC; neither is an inactive one or one already in the Recipe.
+        // Recipe Variant sells at BXC + Bazaar, so an ingredient that only exists at BXC is not offered;
+        // neither is an inactive one or one already in the Recipe.
         $response = $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk();
         $offered = $response->viewData('ingredients')->pluck('id')->all();
 
-        $this->assertSame([$both->id], $offered);
+        $this->assertEqualsCanonicalizing([$both->id, $this->spare->id], $offered);
         $response->assertSee('Shared Cream')->assertDontSee('BXC Only Powder')->assertDontSee('Retired Syrup');
         $response->assertSee('Variant ini tersedia di: BXC, Bazaar TikTok');
 
@@ -251,9 +287,11 @@ class RecipeActiveOutletContextTest extends TestCase
         $this->assertSame(1, $this->sharedRecipe->items()->count());
 
         // ... and everything offered is accepted, without touching ingredient outlet availability.
-        $this->post(route('backoffice.recipes.items.store', $this->sharedRecipe), ['ingredient_id' => $both->id, 'qty' => 2])
-            ->assertSessionHasNoErrors();
-        $this->assertSame(2, $this->sharedRecipe->items()->count());
+        foreach ([$both, $this->spare] as $offeredIngredient) {
+            $this->post(route('backoffice.recipes.items.store', $this->sharedRecipe), ['ingredient_id' => $offeredIngredient->id, 'qty' => 2])
+                ->assertSessionHasNoErrors();
+        }
+        $this->assertSame(3, $this->sharedRecipe->items()->count());
         $this->assertSame([$this->bxc->id], $bxcOnly->outlets()->pluck('outlets.id')->all());
     }
 
@@ -271,21 +309,255 @@ class RecipeActiveOutletContextTest extends TestCase
         $this->assertStringContainsString('BZR-ONLY', $all);
     }
 
-    public function test_import_skips_variants_outside_the_active_outlet_without_touching_their_recipes(): void
-    {
-        $csv = "variant_code,ingredient_name,qty,is_active\nBZR-ONLY,Milk,77,1\nMATCHA,Milk,9,1\n";
-        $bazaarItems = $this->bazaarRecipe->items()->count();
+    // ---- MUTATION POLICY (Recipe is global per Variant) -------------------------------------------
 
+    // A. Variant BXC+Bazaar+TA, limited user only has BXC, "Semua Outlet yang Diizinkan".
+    public function test_limited_user_can_view_but_not_mutate_recipe_used_by_outlets_outside_access(): void
+    {
+        $this->actingAs($this->bxcAdmin);
+
+        $this->get(route('backoffice.recipes.index'))->assertOk()
+            ->assertSee('Triple')->assertSee('Lihat (read-only)');
+
+        $edit = $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk();
+        $edit->assertSee('id="recipe-readonly-notice"', false)
+            ->assertSee('Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.')
+            ->assertDontSee('Update Header')->assertDontSee('Tambah Recipe Item')->assertDontSee('Yakin mau hapus recipe item');
+        $this->assertFalse($edit->viewData('canMutate'));
+
+        $this->assertMutationDenied($this->tripleRecipe, $this->bxcSpareVariant);
+    }
+
+    // B. Variant BXC+Bazaar, limited user has BXC+Bazaar, "Semua Outlet yang Diizinkan".
+    public function test_limited_user_owning_every_outlet_of_the_variant_can_mutate_in_all_context(): void
+    {
+        $this->actingAs($this->bxcBazaarAdmin);
+
+        $edit = $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk();
+        $this->assertTrue($edit->viewData('canMutate'));
+        $edit->assertDontSee('id="recipe-readonly-notice"', false)->assertSee('Update Header')->assertSee('Tambah Recipe Item');
+
+        $this->assertMutationAllowed($this->sharedRecipe);
+    }
+
+    // C. Variant BXC+Bazaar, user has both, but Active Outlet = BXC.
+    public function test_multi_outlet_recipe_is_read_only_from_a_single_active_outlet(): void
+    {
+        $this->actingAs($this->bxcBazaarAdmin)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+
+        $this->get(route('backoffice.recipes.index'))->assertOk()->assertSee('Matcha');
+        $edit = $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk();
+        $edit->assertSee('Recipe ini digunakan di beberapa outlet: BXC, Bazaar TikTok.')
+            ->assertSee('Perubahan Recipe berlaku ke seluruh outlet tersebut.')
+            ->assertSee("Pilih 'Semua Outlet yang Diizinkan' untuk melakukan perubahan.")
+            ->assertDontSee('Update Header');
+
+        $this->assertMutationDenied($this->sharedRecipe, $this->bxcSpareVariant);
+    }
+
+    // D. Variant only in BXC, Active Outlet = BXC.
+    public function test_single_outlet_recipe_is_editable_from_its_active_outlet(): void
+    {
+        foreach ([$this->bxcAdmin, $this->adminPusat] as $user) {
+            $this->actingAs($user)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+
+            $edit = $this->get(route('backoffice.recipes.edit', $this->bxcRecipe))->assertOk();
+            $this->assertTrue($edit->viewData('canMutate'));
+            $edit->assertDontSee('id="recipe-readonly-notice"', false);
+        }
+
+        $this->assertMutationAllowed($this->bxcRecipe);
+    }
+
+    // E. Owner/admin pusat, Variant BXC+Bazaar+TA, Active Outlet = BXC: full access does not bypass it.
+    public function test_admin_pusat_cannot_mutate_multi_outlet_recipe_from_a_single_active_outlet(): void
+    {
+        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+
+        $this->get(route('backoffice.recipes.index'))->assertOk()->assertSee('Triple');
+        $edit = $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk();
+        $edit->assertSee('Recipe ini digunakan di beberapa outlet: BXC, Bazaar TikTok, Taman Anggrek.')
+            ->assertSee("Pilih 'Semua Outlet' untuk melakukan perubahan.")
+            ->assertDontSee('Update Header')->assertDontSee('Tambah Recipe Item');
+
+        $this->assertMutationDenied($this->tripleRecipe, $this->bxcSpareVariant);
+    }
+
+    // F. Owner/admin pusat, Variant BXC+Bazaar+TA, "Semua Outlet".
+    public function test_admin_pusat_can_mutate_multi_outlet_recipe_in_all_context(): void
+    {
+        $this->actingAs($this->adminPusat);
+
+        $edit = $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk();
+        $this->assertTrue($edit->viewData('canMutate'));
+        $edit->assertSee('Update Header');
+
+        $this->assertMutationAllowed($this->tripleRecipe);
+    }
+
+    // G. Reassign X -> Y: source AND target Variant must both pass the mutation rule.
+    public function test_reassign_authorizes_source_and_target_variant(): void
+    {
+        // Limited to BXC, "Semua Outlet yang Diizinkan": source (BXC only) is fine, target with outlets
+        // outside access is not.
+        $this->actingAs($this->bxcAdmin);
+        $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
+            'product_variant_id' => $this->tripleSpareVariant->id, 'name' => 'x', 'is_active' => 1,
+        ])->assertSessionHasErrors(['product_variant_id' => 'Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.']);
+        $this->assertSame($this->bxcVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
+
+        // Admin pusat from Active Outlet BXC: a multi-outlet target is rejected too ...
+        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+        $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
+            'product_variant_id' => $this->tripleSpareVariant->id, 'name' => 'x', 'is_active' => 1,
+        ])->assertSessionHasErrors('product_variant_id');
+        $this->assertSame($this->bxcVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
+
+        // ... while a source that is multi-outlet cannot be moved at all, even to a BXC-only target.
+        $this->put(route('backoffice.recipes.update', $this->tripleRecipe), [
+            'product_variant_id' => $this->bxcSpareVariant->id, 'name' => 'x', 'is_active' => 1,
+        ])->assertForbidden();
+        $this->assertSame($this->tripleVariant->id, $this->tripleRecipe->fresh()->product_variant_id);
+
+        // Both ends inside the mutation scope: allowed, and the old Variant simply has no Recipe now.
+        $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
+            'product_variant_id' => $this->bxcSpareVariant->id, 'name' => 'moved', 'is_active' => 1,
+        ])->assertSessionHasNoErrors();
+        $this->assertSame($this->bxcSpareVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
+        $this->assertSame(1, Recipe::count() - Recipe::whereIn('id', [$this->sharedRecipe->id, $this->bazaarRecipe->id, $this->tripleRecipe->id])->count());
+    }
+
+    public function test_create_only_offers_and_accepts_variants_the_context_may_mutate(): void
+    {
+        $payload = ['name' => 'Fresh', 'is_active' => 1];
+
+        // Active BXC: only the single-outlet spare Variant is offered; the multi-outlet one is refused.
+        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+        $offered = $this->get(route('backoffice.recipes.create'))->assertOk()->viewData('variants')->pluck('id')->all();
+        $this->assertContains($this->bxcSpareVariant->id, $offered);
+        $this->assertNotContains($this->tripleSpareVariant->id, $offered);
+        $this->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->tripleSpareVariant->id])
+            ->assertSessionHasErrors('product_variant_id');
+        $this->assertDatabaseMissing('recipes', ['product_variant_id' => $this->tripleSpareVariant->id]);
+
+        // "Semua Outlet": full access may create for the multi-outlet Variant.
+        $this->withSession(['active_backoffice_outlet_id' => null]);
+        $this->assertContains($this->tripleSpareVariant->id, $this->get(route('backoffice.recipes.create'))->viewData('variants')->pluck('id')->all());
+        $this->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->tripleSpareVariant->id])->assertSessionHasNoErrors();
+        $this->assertDatabaseHas('recipes', ['product_variant_id' => $this->tripleSpareVariant->id]);
+
+        // Limited to BXC only: multi-outlet Variant refused even in "Semua Outlet yang Diizinkan".
+        $this->actingAs($this->bxcAdmin)->withSession(['active_backoffice_outlet_id' => null]);
+        $this->assertNotContains($this->tripleVariant->id, $this->get(route('backoffice.recipes.create'))->viewData('variants')->pluck('id')->all());
+        $this->tripleRecipe->delete();
+        $this->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->tripleVariant->id])
+            ->assertSessionHasErrors('product_variant_id');
+        $this->assertDatabaseMissing('recipes', ['product_variant_id' => $this->tripleVariant->id]);
+    }
+
+    // H. Import: every row goes through the mutation rule; rejected rows are skipped and reported.
+    public function test_import_skips_variants_the_context_may_not_mutate_and_still_processes_valid_rows(): void
+    {
+        $csv = "variant_code,ingredient_name,qty,is_active\n"
+            ."BXC-ONLY,Milk,7,1\n"      // BXC only            -> allowed from Active BXC
+            ."MATCHA,Milk,8,1\n"        // BXC + Bazaar        -> multi outlet, skipped from Active BXC
+            ."TRIPLE,Milk,9,1\n"        // BXC + Bazaar + TA   -> skipped
+            ."BZR-ONLY,Milk,10,1\n";    // Bazaar only         -> outside Active BXC
+        $before = [
+            'shared' => (float) $this->sharedRecipe->items()->value('qty'),
+            'triple' => (float) $this->tripleRecipe->items()->value('qty'),
+            'bazaar' => (float) $this->bazaarRecipe->items()->value('qty'),
+        ];
+
+        $errors = [];
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
             ->post(route('backoffice.recipes.import.store'), ['file' => UploadedFile::fake()->createWithContent('recipes.csv', $csv)])
             ->assertRedirect(route('backoffice.recipes.index'))
-            ->assertSessionHas('import_errors', fn ($errors) => count($errors) === 1 && str_contains($errors[0], 'BZR-ONLY'));
+            ->assertSessionHas('import_errors', function ($e) use (&$errors) {
+                $errors = $e;
 
-        $this->assertSame($bazaarItems, $this->bazaarRecipe->items()->count());
-        $this->assertSame(9.0, (float) $this->sharedRecipe->items()->where('ingredient_id', $this->milk->id)->value('qty'));
+                return true;
+            });
+
+        $this->assertCount(3, $errors);
+        $this->assertStringContainsString("'MATCHA' dilewati. Recipe ini digunakan di beberapa outlet: BXC, Bazaar TikTok", $errors[0]);
+        $this->assertStringContainsString("'TRIPLE' dilewati", $errors[1]);
+        $this->assertStringContainsString("'BZR-ONLY' dilewati. Variant tidak tersedia pada Active Outlet", $errors[2]);
+        $this->assertSame(7.0, (float) $this->bxcRecipe->items()->where('ingredient_id', $this->milk->id)->value('qty'));
+        $this->assertSame($before['shared'], (float) $this->sharedRecipe->items()->value('qty'));
+        $this->assertSame($before['triple'], (float) $this->tripleRecipe->items()->value('qty'));
+        $this->assertSame($before['bazaar'], (float) $this->bazaarRecipe->items()->value('qty'));
+    }
+
+    public function test_import_scope_follows_the_context_for_each_kind_of_user(): void
+    {
+        $csv = "variant_code,ingredient_name,qty,is_active\nBXC-ONLY,Milk,1,1\nMATCHA,Milk,2,1\nTRIPLE,Milk,3,1\nBZR-ONLY,Milk,4,1\n";
+        $touched = function (?User $user, ?int $activeOutletId) use ($csv): array {
+            RecipeItem::query()->update(['qty' => 50]);
+            $this->actingAs($user)->withSession(['active_backoffice_outlet_id' => $activeOutletId])
+                ->post(route('backoffice.recipes.import.store'), ['file' => UploadedFile::fake()->createWithContent('recipes.csv', $csv)]);
+
+            return RecipeItem::with('recipe.variant')->where('ingredient_id', $this->milk->id)->where('qty', '!=', 50)->get()
+                ->map(fn ($item) => $item->recipe->variant->code)->sort()->values()->all();
+        };
+
+        // Full access, "Semua Outlet": everything, including the Bazaar-only Variant.
+        $this->assertSame(['BXC-ONLY', 'BZR-ONLY', 'MATCHA', 'TRIPLE'], $touched($this->adminPusat, null));
+        // Full access, Active BXC: only the single-outlet Variant.
+        $this->assertSame(['BXC-ONLY'], $touched($this->adminPusat, $this->bxc->id));
+        // Limited to BXC, all allowed: only the Variant whose every outlet the user owns.
+        $this->assertSame(['BXC-ONLY'], $touched($this->bxcAdmin, null));
+        // Limited to BXC+Bazaar, all allowed: every Variant living inside those two outlets, never the
+        // one that also uses Taman Anggrek.
+        $this->assertSame(['BXC-ONLY', 'BZR-ONLY', 'MATCHA'], $touched($this->bxcBazaarAdmin, null));
     }
 
     // ---- helpers ---------------------------------------------------------------------------------
+
+    /** Every mutation of a Recipe is refused (403 or a rejected reassignment) and nothing changes. */
+    private function assertMutationDenied(Recipe $recipe, ProductVariant $reassignTarget): void
+    {
+        $item = $recipe->items()->first();
+        $variantId = $recipe->product_variant_id;
+        $name = $recipe->name;
+        $items = $recipe->items()->count();
+        $qty = (float) $item->qty;
+
+        $this->put(route('backoffice.recipes.update', $recipe), ['product_variant_id' => $variantId, 'name' => 'Hijacked', 'is_active' => 0])->assertForbidden();
+        $this->put(route('backoffice.recipes.update', $recipe), ['product_variant_id' => $reassignTarget->id, 'name' => $name, 'is_active' => 1])->assertForbidden();
+        $this->delete(route('backoffice.recipes.destroy', $recipe))->assertForbidden();
+        $this->post(route('backoffice.recipes.items.store', $recipe), ['ingredient_id' => $this->spare->id, 'qty' => 5])->assertForbidden();
+        $this->put(route('backoffice.recipes.items.update', [$recipe, $item]), ['qty' => 999])->assertForbidden();
+        $this->delete(route('backoffice.recipes.items.destroy', [$recipe, $item]))->assertForbidden();
+
+        $fresh = $recipe->fresh();
+        $this->assertTrue($fresh->is_active);
+        $this->assertSame($variantId, $fresh->product_variant_id);
+        $this->assertSame($name, $fresh->name);
+        $this->assertSame($items, $fresh->items()->count());
+        $this->assertSame($qty, (float) $item->fresh()->qty);
+    }
+
+    /** Every mutation of a Recipe goes through. */
+    private function assertMutationAllowed(Recipe $recipe): void
+    {
+        $item = $recipe->items()->first();
+
+        $this->put(route('backoffice.recipes.update', $recipe), ['product_variant_id' => $recipe->product_variant_id, 'name' => 'Edited', 'is_active' => 1])->assertSessionHasNoErrors();
+        $this->assertSame('Edited', $recipe->fresh()->name);
+
+        $this->post(route('backoffice.recipes.items.store', $recipe), ['ingredient_id' => $this->spare->id, 'qty' => 5])->assertSessionHasNoErrors();
+        $this->assertSame(2, $recipe->items()->count());
+
+        $this->put(route('backoffice.recipes.items.update', [$recipe, $item]), ['qty' => 42])->assertSessionHasNoErrors();
+        $this->assertSame(42.0, (float) $item->fresh()->qty);
+
+        $this->delete(route('backoffice.recipes.items.destroy', [$recipe, $recipe->items()->where('ingredient_id', $this->spare->id)->first()]))->assertSessionHasNoErrors();
+        $this->assertSame(1, $recipe->items()->count());
+
+        $this->delete(route('backoffice.recipes.destroy', $recipe))->assertSessionHasNoErrors();
+        $this->assertFalse($recipe->fresh()->is_active);
+    }
 
     private function assertRecipeUntouched(Recipe $recipe, ProductVariant $variant, RecipeItem $item): void
     {
