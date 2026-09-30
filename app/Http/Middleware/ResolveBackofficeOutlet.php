@@ -29,6 +29,7 @@ class ResolveBackofficeOutlet
 
             View::share('backofficeOutletOptions', $outlets);
             View::share('activeBackofficeOutlet', $activeOutlet);
+            View::share('activeOutletLabel', $this->context->labelFor($user, $activeOutlet));
         }
 
         return $next($request);

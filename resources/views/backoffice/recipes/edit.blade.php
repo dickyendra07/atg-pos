@@ -418,7 +418,7 @@
                 <div class="info">
                     <strong>User:</strong> {{ $user->name }}<br>
                     <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                    <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                    <strong>Active Outlet:</strong> {{ $activeOutletLabel ?? '-' }}
                 </div>
 
                 <form method="POST" action="{{ route('backoffice.recipes.update', $recipe->id) }}">
@@ -606,6 +606,13 @@
                                     </option>
                                 @endforeach
                             </select>
+                            <div class="info" style="margin-top:8px;">
+                                @if($variantOutlets->isNotEmpty())
+                                    Variant ini tersedia di: {{ $variantOutlets->implode(', ') }}. Hanya ingredient aktif yang tersedia di semua outlet tersebut yang ditampilkan.
+                                @else
+                                    Hanya ingredient aktif yang belum ada di recipe ini yang ditampilkan.
+                                @endif
+                            </div>
                         </div>
 
                         <div class="field">

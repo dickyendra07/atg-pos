@@ -220,7 +220,7 @@
             <div class="info">
                 <strong>User:</strong> {{ $user->name }}<br>
                 <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                <strong>Active Outlet:</strong> {{ $activeOutletLabel ?? '-' }}
             </div>
 
             <form method="GET" action="{{ route('backoffice.warehouse-transfers.index') }}" class="filter-box">

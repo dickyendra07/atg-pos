@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -32,5 +33,20 @@ class Recipe extends Model
     public function items(): HasMany
     {
         return $this->hasMany(RecipeItem::class);
+    }
+
+    /**
+     * Recipes whose Variant is available in the given outlets (a Recipe has no outlet of its own).
+     * null = unrestricted, [] = nothing.
+     *
+     * @param  int[]|null  $outletIds
+     */
+    public function scopeInOutletScope(Builder $query, ?array $outletIds): Builder
+    {
+        if ($outletIds === null) {
+            return $query;
+        }
+
+        return $query->whereHas('variant', fn (Builder $variantQuery) => $variantQuery->inOutletScope($outletIds));
     }
 }

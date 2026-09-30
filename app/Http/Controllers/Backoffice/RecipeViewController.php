@@ -4,12 +4,14 @@ namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
+use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Services\BackofficeOutletContext;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -40,17 +42,61 @@ class RecipeViewController extends Controller
         return $user;
     }
 
+    /**
+     * Outlet scope shared by every Recipe screen/action: the Active Outlet when one is picked,
+     * otherwise everything for full-access roles or the user's accessible outlets for limited roles.
+     *
+     * @return int[]|null null = unrestricted
+     */
+    protected function outletScope($user): ?array
+    {
+        return $this->outletContext()->scopeOutletIds($user);
+    }
+
+    /**
+     * A Recipe has no outlet of its own; it belongs to the outlets where its Product + Variant are
+     * available. Direct URLs must not bypass the Active Outlet (or a limited user's outlet access).
+     */
+    protected function authorizeRecipeScope(Recipe $recipe, $user): void
+    {
+        $scope = $this->outletScope($user);
+
+        if ($scope !== null && ! Recipe::whereKey($recipe->id)->inOutletScope($scope)->exists()) {
+            abort(403, 'Recipe ini tidak tersedia pada Active Outlet atau outlet yang dapat kamu akses.');
+        }
+    }
+
+    protected function variantInScope(ProductVariant $variant, ?array $scope): bool
+    {
+        return $scope === null || ProductVariant::whereKey($variant->id)->inOutletScope($scope)->exists();
+    }
+
+    /**
+     * Outlets a Recipe Ingredient must be available in: every outlet of the Recipe's Variant.
+     * storeItem() validates against this and the edit dropdown is built from it, so the two agree.
+     */
+    protected function requiredOutletIds(Recipe $recipe): Collection
+    {
+        return ($recipe->variant()->with('outlets')->first()?->outlets ?? collect())
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id);
+    }
+
+    protected function ingredientMissingOutletIds(Collection $requiredOutletIds, Ingredient $ingredient): Collection
+    {
+        return $requiredOutletIds->diff($ingredient->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id));
+    }
+
     public function index(Request $request)
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $recipes = Recipe::with([
             'variant.product',
             'items.ingredient.category',
         ])
-            ->when($activeOutletId, fn ($query) => $query->whereHas('variant', fn ($variantQuery) => $variantQuery->availableAtOutlet($activeOutletId)))
+            ->inOutletScope($this->outletScope($user))
             ->when($request->filled('status'), function ($query) use ($request) {
                 if ($request->status === 'active') {
                     $query->where('is_active', true);
@@ -97,10 +143,9 @@ class RecipeViewController extends Controller
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $variants = ProductVariant::with(['product'])
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
+            ->inOutletScope($this->outletScope($user))
             ->orderBy('name')
             ->get();
 
@@ -121,13 +166,13 @@ class RecipeViewController extends Controller
         ]);
 
         $variant = ProductVariant::findOrFail($validated['product_variant_id']);
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
-        if ($activeOutletId && ! ProductVariant::whereKey($variant->id)->availableAtOutlet($activeOutletId)->exists()) {
+        if (! $this->variantInScope($variant, $this->outletScope($user))) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'product_variant_id' => 'Variant tidak tersedia pada Active Outlet.',
+                'product_variant_id' => 'Variant tidak tersedia pada Active Outlet atau outlet yang dapat kamu akses.',
             ]);
         }
+
         Recipe::create([
             'product_id' => $variant->product_id,
             'product_variant_id' => $validated['product_variant_id'],
@@ -144,21 +189,36 @@ class RecipeViewController extends Controller
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
+        $scope = $this->outletScope($user);
+
+        $this->authorizeRecipeScope($recipe, $user);
 
         $recipe->load([
             'items.ingredient.category',
             'variant.product',
         ]);
 
+        // The Recipe's own Variant is always offered, so the Active Outlet filter can never make the
+        // select fall back to another Variant and silently re-point the Recipe on save.
         $variants = ProductVariant::with(['product'])
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
+            ->when($scope !== null, fn ($query) => $query->where(
+                fn ($inner) => $inner->inOutletScope($scope)->orWhere('product_variants.id', $recipe->product_variant_id)
+            ))
             ->orderBy('name')
             ->get();
 
+        // Same rule as storeItem(): active, not already in the Recipe, and available in every outlet
+        // of the Recipe's Variant.
+        $requiredOutletIds = $this->requiredOutletIds($recipe);
+
         $ingredients = Ingredient::with(['category'])
             ->where('is_active', true)
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
+            ->whereNotIn('id', $recipe->items->pluck('ingredient_id'))
+            ->where(function ($query) use ($requiredOutletIds) {
+                foreach ($requiredOutletIds as $outletId) {
+                    $query->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', $outletId));
+                }
+            })
             ->orderByRaw("
                 CASE
                     WHEN ingredient_type = 'semi_finished' THEN 0
@@ -173,12 +233,16 @@ class RecipeViewController extends Controller
             'recipe' => $recipe,
             'variants' => $variants,
             'ingredients' => $ingredients,
+            'variantOutlets' => $requiredOutletIds->isEmpty()
+                ? collect()
+                : Outlet::whereIn('id', $requiredOutletIds)->orderBy('name')->pluck('name'),
         ]);
     }
 
     public function update(Request $request, Recipe $recipe)
     {
         $user = $this->authorizeAccess();
+        $this->authorizeRecipeScope($recipe, $user);
 
         $validated = $request->validate([
             'product_variant_id' => 'required|exists:product_variants,id|unique:recipes,product_variant_id,'.$recipe->id,
@@ -187,11 +251,13 @@ class RecipeViewController extends Controller
         ]);
 
         $variant = ProductVariant::findOrFail($validated['product_variant_id']);
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
-        if ($activeOutletId && ! ProductVariant::whereKey($variant->id)->availableAtOutlet($activeOutletId)->exists()) {
+        // Only a real Variant change needs to be inside the outlet scope; keeping the current Variant
+        // must always work (the Recipe itself was already authorised above).
+        if ((int) $variant->id !== (int) $recipe->product_variant_id
+            && ! $this->variantInScope($variant, $this->outletScope($user))) {
             throw \Illuminate\Validation\ValidationException::withMessages([
-                'product_variant_id' => 'Variant tidak tersedia pada Active Outlet.',
+                'product_variant_id' => 'Variant tidak tersedia pada Active Outlet atau outlet yang dapat kamu akses.',
             ]);
         }
 
@@ -209,7 +275,8 @@ class RecipeViewController extends Controller
 
     public function destroy(Recipe $recipe)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeRecipeScope($recipe, $user);
 
         $recipe->update([
             'is_active' => false,
@@ -222,7 +289,8 @@ class RecipeViewController extends Controller
 
     public function storeItem(Request $request, Recipe $recipe)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeRecipeScope($recipe, $user);
 
         $validated = $request->validate([
             'ingredient_id' => 'required|exists:ingredients,id',
@@ -240,10 +308,15 @@ class RecipeViewController extends Controller
         }
 
         $ingredient = Ingredient::findOrFail($validated['ingredient_id']);
-        $variantOutletIds = $recipe->variant()->with('outlets')->firstOrFail()->outlets->pluck('id')->map(fn ($id) => (int) $id);
-        $ingredientOutletIds = $ingredient->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id);
+        $recipe->variant()->firstOrFail();
 
-        if ($variantOutletIds->diff($ingredientOutletIds)->isNotEmpty()) {
+        if (! $ingredient->is_active) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'ingredient_id' => 'Ingredient tidak aktif dan tidak bisa ditambahkan ke recipe.',
+            ]);
+        }
+
+        if ($this->ingredientMissingOutletIds($this->requiredOutletIds($recipe), $ingredient)->isNotEmpty()) {
             throw \Illuminate\Validation\ValidationException::withMessages([
                 'ingredient_id' => 'Ingredient harus tersedia di seluruh outlet Variant recipe ini.',
             ]);
@@ -262,7 +335,8 @@ class RecipeViewController extends Controller
 
     public function updateItem(Request $request, Recipe $recipe, RecipeItem $item)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeRecipeScope($recipe, $user);
 
         if ((int) $item->recipe_id !== (int) $recipe->id) {
             abort(404);
@@ -283,7 +357,8 @@ class RecipeViewController extends Controller
 
     public function destroyItem(Recipe $recipe, RecipeItem $item)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeRecipeScope($recipe, $user);
 
         if ((int) $item->recipe_id !== (int) $recipe->id) {
             abort(404);
@@ -333,7 +408,9 @@ class RecipeViewController extends Controller
 
     public function exportCsv(): StreamedResponse
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        // Same outlet scope as the Recipe Index, like the Variant export follows the Active Outlet.
+        $scope = $this->outletScope($user);
 
         $filename = 'pos_recipe_master_'.now()->format('Ymd_His').'.csv';
 
@@ -342,7 +419,7 @@ class RecipeViewController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        return response()->stream(function () {
+        return response()->stream(function () use ($scope) {
 
             $handle = fopen('php://output', 'w');
 
@@ -364,6 +441,7 @@ class RecipeViewController extends Controller
                 'variant.product',
                 'items.ingredient',
             ])
+                ->inOutletScope($scope)
                 ->orderBy('name')
                 ->chunk(200, function ($recipes) use ($handle, &$no) {
 
@@ -396,7 +474,8 @@ class RecipeViewController extends Controller
 
     public function importStore(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $scope = $this->outletScope($user);
 
         $request->validate([
             'file' => 'required|file|mimes:csv,txt,xls,xlsx',
@@ -417,13 +496,13 @@ class RecipeViewController extends Controller
         $extension = strtolower($uploadedFile->getClientOriginalExtension());
 
         if (in_array($extension, ['xls', 'xlsx'], true)) {
-            return $this->importClientRecipeSpreadsheet($realPath);
+            return $this->importClientRecipeSpreadsheet($realPath, $scope);
         }
 
-        return $this->importLegacyRecipeCsv($realPath);
+        return $this->importLegacyRecipeCsv($realPath, $scope);
     }
 
-    protected function importLegacyRecipeCsv(string $realPath)
+    protected function importLegacyRecipeCsv(string $realPath, ?array $scope = null)
     {
         $content = file_get_contents($realPath);
 
@@ -466,7 +545,7 @@ class RecipeViewController extends Controller
         $skipped = 0;
         $errors = [];
 
-        DB::transaction(function () use ($lines, $delimiter, &$imported, &$updated, &$skipped, &$errors) {
+        DB::transaction(function () use ($lines, $delimiter, $scope, &$imported, &$updated, &$skipped, &$errors) {
             foreach (array_slice($lines, 1) as $index => $line) {
                 $rowNumber = $index + 2;
 
@@ -519,6 +598,13 @@ class RecipeViewController extends Controller
                 if (! $variant) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: variant code '{$variantCode}' tidak ditemukan.";
+
+                    continue;
+                }
+
+                if (! $this->variantInScope($variant, $scope)) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: variant '{$variantCode}' tidak tersedia pada Active Outlet atau outlet yang dapat kamu akses, dilewati.";
 
                     continue;
                 }
@@ -580,7 +666,7 @@ class RecipeViewController extends Controller
             ->with('import_errors', $errors);
     }
 
-    protected function importClientRecipeSpreadsheet(string $realPath)
+    protected function importClientRecipeSpreadsheet(string $realPath, ?array $scope = null)
     {
         $spreadsheet = IOFactory::load($realPath);
         $sheet = $spreadsheet->getActiveSheet();
@@ -596,7 +682,9 @@ class RecipeViewController extends Controller
         $skipped = 0;
         $errors = [];
 
-        DB::transaction(function () use ($rows, &$currentProductName, &$currentProduct, &$currentVariantName, &$currentVariant, &$imported, &$updated, &$skipped, &$errors) {
+        $outOfScopeVariants = [];
+
+        DB::transaction(function () use ($rows, $scope, &$outOfScopeVariants, &$currentProductName, &$currentProduct, &$currentVariantName, &$currentVariant, &$imported, &$updated, &$skipped, &$errors) {
             foreach ($rows as $rowNumber => $row) {
                 $productCell = $this->cleanRecipeCell($row['A'] ?? '');
                 $variantCell = $this->cleanRecipeCell($row['B'] ?? '');
@@ -676,6 +764,17 @@ class RecipeViewController extends Controller
                 if ($qty > 5000) {
                     $skipped++;
                     $errors[] = "Baris {$rowNumber}: qty '{$qty}' untuk '{$ingredientName}' terlalu besar. Cek kemungkinan cell Excel salah format.";
+
+                    continue;
+                }
+
+                if (! $this->variantInScope($currentVariant, $scope)) {
+                    $skipped++;
+
+                    if (! isset($outOfScopeVariants[$currentVariant->id])) {
+                        $outOfScopeVariants[$currentVariant->id] = true;
+                        $errors[] = "Baris {$rowNumber}: variant '{$currentVariant->name}' untuk product '{$currentProductName}' tidak tersedia pada Active Outlet atau outlet yang dapat kamu akses. Semua baris variant ini dilewati.";
+                    }
 
                     continue;
                 }
