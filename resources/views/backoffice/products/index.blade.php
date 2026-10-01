@@ -324,6 +324,17 @@
             color: white;
         }
 
+        .btn-small-orange {
+            background: #ea580c;
+            color: white;
+        }
+
+        .btn-small-muted {
+            background: #f1f5f9;
+            color: #64748b;
+            border: 1px solid #e2e8f0;
+        }
+
         .inline-form {
             display: inline-block;
             margin: 0;
@@ -637,16 +648,41 @@
                                                 @endif
                                             </td>
                                             <td>
+                                                @php($deletion = $deletionStates[$product->id] ?? null)
                                                 <div class="action-stack">
                                                     <a href="{{ route('backoffice.products.edit', [$product->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small btn-small-blue">Edit</a>
 
                                                     @if($product->is_active)
-                                                        <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form" onsubmit="return confirm('Yakin ingin menonaktifkan product ini? Product tidak akan tampil di Cashier, tetapi variant, outlet, recipe, dan riwayat transaksi tetap disimpan.')">
+                                                        <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form"
+                                                              data-bo-confirm
+                                                              data-bo-confirm-title="Nonaktifkan Product?"
+                                                              data-bo-confirm-body="Product tidak akan tampil di Cashier, tetapi histori dan data terkait tetap disimpan."
+                                                              data-bo-confirm-label="Nonaktifkan"
+                                                              data-bo-confirm-tone="warning">
                                                             @csrf
                                                             @method('DELETE')
                                                             @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                                            <button type="submit" class="btn btn-small btn-small-red">Nonaktifkan</button>
+                                                            <button type="submit" class="btn btn-small btn-small-orange">Nonaktifkan</button>
                                                         </form>
+                                                    @endif
+
+                                                    @if($canHardDelete && $deletion)
+                                                        @if($deletion['can_hard_delete'])
+                                                            <form method="POST" action="{{ route('backoffice.products.destroy-permanent', $product->id) }}" class="inline-form"
+                                                                  data-bo-confirm
+                                                                  data-bo-confirm-title="Hapus Product Permanen?"
+                                                                  data-bo-confirm-body="Product “{{ $product->name }}” akan dihapus permanen. Tindakan ini tidak dapat dibatalkan."
+                                                                  data-bo-confirm-note="{{ $deletion['confirm_note'] }}"
+                                                                  data-bo-confirm-label="Hapus Permanen"
+                                                                  data-bo-confirm-tone="danger">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
+                                                                <button type="submit" class="btn btn-small btn-small-red">Hapus Permanen</button>
+                                                            </form>
+                                                        @else
+                                                            <button type="button" class="btn btn-small btn-small-muted" data-bo-blocked="{{ $deletion['blocked_message'] }}" title="Tidak dapat dihapus permanen">Hapus Permanen</button>
+                                                        @endif
                                                     @endif
                                                 </div>
                                             </td>
