@@ -154,7 +154,7 @@
                 <div class="title">Tambah Outlet</div>
 
             </div>
-            <a href="{{ route('backoffice.outlets.index') }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], null) }}" class="btn btn-dark">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -173,6 +173,7 @@
 
             <form method="POST" action="{{ route('backoffice.outlets.store') }}">
                 @csrf
+                @include('backoffice.partials.return-to-field')
 
                 <div class="field">
                     <label>Nama Outlet</label>
@@ -204,10 +205,11 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Simpan Outlet</button>
-                    <a href="{{ route('backoffice.outlets.index') }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], null) }}" class="btn btn-dark">Batal</a>
                 </div>
             </form>
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

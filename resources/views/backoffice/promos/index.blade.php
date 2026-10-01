@@ -193,12 +193,9 @@
 
             </div>
 
-            <a href="{{ route('backoffice.promos.create') }}" class="btn btn-brand">Create Promo</a>
+            <a href="{{ route('backoffice.promos.create', ['return_to' => $listReturnTo]) }}" class="btn btn-brand">Create Promo</a>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
 
         <div class="card">
             <form method="GET" action="{{ route('backoffice.promos.index') }}" class="filter-grid">
@@ -261,7 +258,7 @@
                                     ->map(fn ($day) => $dayOptions[$day] ?? $day)
                                     ->values();
                             @endphp
-                            <tr>
+                            <tr id="promo-{{ $promo->id }}">
                                 <td class="name">{{ $promo->name }}</td>
                                 <td>
                                     @if($promo->outlets->count())
@@ -328,10 +325,11 @@
                                 </td>
                                 <td>
                                     <div class="actions">
-                                        <a href="{{ route('backoffice.promos.edit', $promo) }}" class="btn btn-dark">Edit</a>
+                                        <a href="{{ route('backoffice.promos.edit', [$promo, 'return_to' => $listReturnTo]) }}" class="btn btn-dark">Edit</a>
                                         <form method="POST" action="{{ route('backoffice.promos.destroy', $promo) }}" onsubmit="return confirm('Hapus promo ini?')">
                                             @csrf
                                             @method('DELETE')
+                                            @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                             <button type="submit" class="btn btn-red">Delete</button>
                                         </form>
                                     </div>

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Outlet;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -176,9 +177,8 @@ class UserManagementController extends Controller
         $createdUser->roles()->sync($roleIds);
         $createdUser->outlets()->sync($outletIds);
 
-        return redirect()
-            ->route('backoffice.users.index')
-            ->with('success', 'User baru berhasil ditambahkan.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.users.index', [], 'user-'.$createdUser->id)
+            ->with('success', 'User berhasil ditambahkan.');
     }
 
     public function edit(User $managedUser)
@@ -219,12 +219,11 @@ class UserManagementController extends Controller
         $managedUser->roles()->sync($roleIds);
         $managedUser->outlets()->sync($outletIds);
 
-        return redirect()
-            ->route('backoffice.users.index')
-            ->with('success', 'User berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.users.index', [], 'user-'.$managedUser->id)
+            ->with('success', 'User berhasil diperbarui.');
     }
 
-    public function destroy(User $managedUser)
+    public function destroy(Request $request, User $managedUser)
     {
         $authUser = $this->authorizeAccess();
 
@@ -235,8 +234,7 @@ class UserManagementController extends Controller
         }
 
         if ((int) $managedUser->id === (int) $authUser->id) {
-            return redirect()
-                ->route('backoffice.users.index')
+            return BackofficeReturnUrl::redirect($request, 'backoffice.users.index', [], 'user-'.$managedUser->id)
                 ->with('error', 'User yang sedang login tidak bisa menghapus akun sendiri.');
         }
 
@@ -244,8 +242,7 @@ class UserManagementController extends Controller
         $managedUser->outlets()->detach();
         $managedUser->delete();
 
-        return redirect()
-            ->route('backoffice.users.index')
+        return BackofficeReturnUrl::redirect($request, 'backoffice.users.index')
             ->with('success', 'User berhasil dihapus.');
     }
 

@@ -113,6 +113,7 @@
         <div class="card">
             <form method="POST" action="{{ route('backoffice.warehouses.store') }}">
                 @csrf
+                @include('backoffice.partials.return-to-field')
 
                 <div class="field">
                     <label>Warehouse Name</label>
@@ -144,10 +145,11 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Simpan Warehouse</button>
-                    <a href="{{ route('backoffice.warehouses.index') }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], null) }}" class="btn btn-dark">Batal</a>
                 </div>
             </form>
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

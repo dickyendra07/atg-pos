@@ -196,7 +196,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.promos.index') }}" class="btn btn-soft">Back to Promos</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.promos.index', [], 'promo-'.$promo->id) }}" class="btn btn-soft">Back to Promos</a>
         </div>
 
         <div class="card">
@@ -208,6 +208,7 @@
             <form method="POST" action="{{ route('backoffice.promos.update', $promo) }}">
                 @csrf
                 @method('PUT')
+                @include('backoffice.partials.return-to-field')
 
                 <div class="section-card">
                     <h2 class="section-title">1. Promo Basic</h2>
@@ -353,7 +354,7 @@
                 </div>
 
                 <div class="actions">
-                    <a href="{{ route('backoffice.promos.index') }}" class="btn btn-soft">Cancel</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.promos.index', [], 'promo-'.$promo->id) }}" class="btn btn-soft">Cancel</a>
                     <button type="submit" class="btn btn-brand">Update Promo</button>
                 </div>
             </form>

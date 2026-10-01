@@ -416,18 +416,12 @@
             </div>
 
             <div class="users-actions">
-                <a href="{{ route('backoffice.users.create') }}" class="btn btn-green">Tambah User</a>
+                <a href="{{ route('backoffice.users.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah User</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
 
-        @if(session('error'))
-            <div class="alert alert-error">{{ session('error') }}</div>
-        @endif
 
         <div class="card">
 
@@ -481,7 +475,7 @@
                             </thead>
                             <tbody>
                                 @foreach($users as $managedUser)
-                                    <tr>
+                                    <tr id="user-{{ $managedUser->id }}">
                                         <td><span class="user-name">{{ $managedUser->name }}</span></td>
                                         <td>{{ $managedUser->email }}</td>
                                         <td>{{ $managedUser->phone ?? '-' }}</td>
@@ -511,12 +505,13 @@
                                         <td>{{ $managedUser->created_at?->format('Y-m-d H:i') ?? '-' }}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <a href="{{ route('backoffice.users.edit', $managedUser->id) }}" class="btn btn-blue">Edit</a>
+                                                <a href="{{ route('backoffice.users.edit', [$managedUser->id, 'return_to' => $listReturnTo]) }}" class="btn btn-blue">Edit</a>
 
                                                 @if((int) $managedUser->id !== (int) auth()->id())
                                                     <form method="POST" action="{{ route('backoffice.users.destroy', $managedUser->id) }}" class="delete-form" onsubmit="return confirm('Yakin hapus user ini?')">
                                                         @csrf
                                                         @method('DELETE')
+                                                        @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                                         <button type="submit" class="btn btn-red">Delete</button>
                                                     </form>
                                                 @endif

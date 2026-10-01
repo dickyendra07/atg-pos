@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\IngredientProductionRecipe;
 use App\Models\IngredientProductionRecipeItem;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -104,9 +105,8 @@ class IngredientProductionRecipeController extends Controller
             'is_active' => $validated['is_active'],
         ]);
 
-        return redirect()
-            ->route('backoffice.production-recipes.edit', $recipe->id)
-            ->with('success', 'Production recipe baru berhasil ditambahkan.');
+        return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.production-recipes.edit', [$recipe->id], null))
+            ->with('success', 'Production recipe berhasil ditambahkan.');
     }
 
     public function edit(IngredientProductionRecipe $productionRecipe)
@@ -159,9 +159,8 @@ class IngredientProductionRecipeController extends Controller
             'is_active' => $validated['is_active'],
         ]);
 
-        return redirect()
-            ->route('backoffice.production-recipes.edit', $productionRecipe->id)
-            ->with('success', 'Header production recipe berhasil diupdate.');
+        return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.production-recipes.edit', [$productionRecipe->id], null))
+            ->with('success', 'Production recipe berhasil diperbarui.');
     }
 
     public function storeItem(Request $request, IngredientProductionRecipe $productionRecipe)
@@ -176,14 +175,12 @@ class IngredientProductionRecipeController extends Controller
         $inputIngredient = Ingredient::findOrFail($validated['input_ingredient_id']);
 
         if (! $inputIngredient->isRaw()) {
-            return redirect()
-                ->route('backoffice.production-recipes.edit', $productionRecipe->id)
+            return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.production-recipes.edit', [$productionRecipe->id], 'production-recipe-add-item'))
                 ->with('error', 'Bahan input untuk Batch 2 hanya boleh ingredient tipe Mentah.');
         }
 
         if ((int) $productionRecipe->output_ingredient_id === (int) $inputIngredient->id) {
-            return redirect()
-                ->route('backoffice.production-recipes.edit', $productionRecipe->id)
+            return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.production-recipes.edit', [$productionRecipe->id], 'production-recipe-add-item'))
                 ->with('error', 'Output ingredient tidak boleh dipakai lagi sebagai bahan input.');
         }
 
@@ -192,23 +189,21 @@ class IngredientProductionRecipeController extends Controller
             ->exists();
 
         if ($alreadyExists) {
-            return redirect()
-                ->route('backoffice.production-recipes.edit', $productionRecipe->id)
+            return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.production-recipes.edit', [$productionRecipe->id], 'production-recipe-add-item'))
                 ->with('error', 'Ingredient itu sudah ada di production recipe ini.');
         }
 
-        $productionRecipe->items()->create([
+        $item = $productionRecipe->items()->create([
             'input_ingredient_id' => $inputIngredient->id,
             'qty' => $validated['qty'],
             'unit' => $inputIngredient->unit,
         ]);
 
-        return redirect()
-            ->route('backoffice.production-recipes.edit', $productionRecipe->id)
+        return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.production-recipes.edit', [$productionRecipe->id], 'production-recipe-item-'.$item->id))
             ->with('success', 'Bahan input berhasil ditambahkan.');
     }
 
-    public function destroyItem(IngredientProductionRecipe $productionRecipe, IngredientProductionRecipeItem $item)
+    public function destroyItem(Request $request, IngredientProductionRecipe $productionRecipe, IngredientProductionRecipeItem $item)
     {
         $this->authorizeAccess();
 
@@ -219,8 +214,7 @@ class IngredientProductionRecipeController extends Controller
         $ingredientName = $item->inputIngredient?->name ?? 'Item';
         $item->delete();
 
-        return redirect()
-            ->route('backoffice.production-recipes.edit', $productionRecipe->id)
+        return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.production-recipes.edit', [$productionRecipe->id], 'production-recipe-items'))
             ->with('success', 'Bahan input "' . $ingredientName . '" berhasil dihapus.');
     }
 }

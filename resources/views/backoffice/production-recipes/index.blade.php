@@ -432,18 +432,12 @@
             </div>
 
             <div class="production-recipes-actions">
-                <a href="{{ route('backoffice.production-recipes.create') }}" class="btn btn-green">Tambah Production Recipe</a>
+                <a href="{{ route('backoffice.production-recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Production Recipe</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
 
-        @if(session('error'))
-            <div class="alert alert-error">{{ session('error') }}</div>
-        @endif
 
         <div class="card">
 
@@ -525,7 +519,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <a href="{{ route('backoffice.production-recipes.edit', $recipe->id) }}" class="btn btn-small">Kelola Recipe</a>
+                                            <a href="{{ route('backoffice.production-recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small">Kelola Recipe</a>
                                         </td>
                                     </tr>
                                 @endforeach

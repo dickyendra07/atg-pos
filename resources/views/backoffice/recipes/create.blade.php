@@ -214,7 +214,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.recipes.index') }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], null) }}" class="btn">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -238,6 +238,7 @@
 
             <form method="POST" action="{{ route('backoffice.recipes.store') }}">
                 @csrf
+                @include('backoffice.partials.return-to-field')
 
                 <div class="field">
                     <label>Product Variant</label>
@@ -272,12 +273,13 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-success">Simpan Recipe</button>
-                    <a href="{{ route('backoffice.recipes.index') }}" class="btn">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], null) }}" class="btn">Batal</a>
                 </div>
             </form>
 
 
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

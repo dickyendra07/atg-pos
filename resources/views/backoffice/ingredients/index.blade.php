@@ -524,22 +524,12 @@
             <div class="ingredients-actions">
                                 <a href="{{ route('backoffice.ingredients.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
 <a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-green">Import Data</a>
-                <a href="{{ route('backoffice.ingredients.create') }}" class="btn btn-orange">Tambah Ingredient</a>
+                <a href="{{ route('backoffice.ingredients.create', ['return_to' => $listReturnTo]) }}" class="btn btn-orange">Tambah Ingredient</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        @if(session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
 
         @if(session('import_errors') && count(session('import_errors')))
             <div class="alert alert-error">
@@ -607,7 +597,7 @@
                             </thead>
                             <tbody>
                                 @foreach($ingredients as $ingredient)
-                                    <tr>
+                                    <tr id="ingredient-{{ $ingredient->id }}">
                                         <td class="ingredient-name">{{ $ingredient->name }}</td>
                                         <td class="category-text">{{ $ingredient->category->name ?? '-' }}</td>
                                         <td>
@@ -629,11 +619,12 @@
                                         </td>
                                         <td>
                                             <div class="action-row">
-                                                <a href="{{ route('backoffice.ingredients.edit', $ingredient) }}" class="btn-small btn-edit">Edit</a>
+                                                <a href="{{ route('backoffice.ingredients.edit', [$ingredient, 'return_to' => $listReturnTo]) }}" class="btn-small btn-edit">Edit</a>
 
                                                 <form method="POST" action="{{ route('backoffice.ingredients.destroy', $ingredient) }}" class="delete-form" onsubmit="return confirm('Yakin hapus ingredient ini?')">
                                                     @csrf
                                                     @method('DELETE')
+                                                    @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                                     <button type="submit" class="btn-small btn-delete">Hapus</button>
                                                 </form>
                                             </div>

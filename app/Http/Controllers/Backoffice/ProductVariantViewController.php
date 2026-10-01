@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductVariant;
 use App\Services\BackofficeOutletContext;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -283,9 +284,8 @@ class ProductVariantViewController extends Controller
             }
         });
 
-        return redirect()
-            ->route('backoffice.variants.index')
-            ->with('success', count($rows).' variant baru berhasil ditambahkan.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$validated['product_id'])
+            ->with('success', count($rows) === 1 ? 'Variant berhasil ditambahkan.' : count($rows).' variant berhasil ditambahkan.');
     }
 
     public function edit(ProductVariant $variant)
@@ -473,20 +473,19 @@ class ProductVariantViewController extends Controller
             }
         });
 
-        return redirect()
-            ->route('backoffice.variants.index')
-            ->with('success', 'Group variant berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$validated['product_id'])
+            ->with('success', 'Variant berhasil diperbarui.');
     }
 
-    public function destroy(ProductVariant $variant)
+    public function destroy(Request $request, ProductVariant $variant)
     {
         $this->authorizeAccess();
 
         $variantName = $variant->name;
         $variant->update(['is_active' => false]);
 
-        return redirect()
-            ->route('backoffice.variants.index')
+        // Inactivating keeps the variant listed under its product group, so the group stays the anchor.
+        return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$variant->product_id)
             ->with('success', 'Variant "'.$variantName.'" berhasil dinonaktifkan. Product, outlet, recipe, dan riwayat transaksi tetap tersimpan.');
     }
 

@@ -461,16 +461,10 @@
             </div>
         </div>
 
-        @if(session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
 
-        @if(session('success'))
+        {{-- The one-line import summary is shown by the global toast; only the row details stay inline. --}}
+        @if(session('success') && (session('import_success_rows') || session('import_errors')))
             <div class="alert alert-success">
-                <div>{{ session('success') }}</div>
-
                 @if(session('import_success_rows'))
                     <div class="success-list">
                         @foreach(session('import_success_rows') as $row)

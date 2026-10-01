@@ -395,7 +395,7 @@
     <div class="wrap">
         <div class="topbar">
             <div class="title">Edit Recipe</div>
-            <a href="{{ route('backoffice.recipes.index') }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], 'recipe-'.$recipe->id) }}" class="btn">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -409,17 +409,7 @@
             </div>
         @endif
 
-        @if(session('success'))
-            <div class="success-box">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        @if(session('error'))
-            <div class="error-box">
-                {{ session('error') }}
-            </div>
-        @endif
 
         @unless($canMutate)
             <div class="readonly-box" id="recipe-readonly-notice">
@@ -440,6 +430,7 @@
                 <form method="POST" action="{{ route('backoffice.recipes.update', $recipe->id) }}">
                     @csrf
                     @method('PUT')
+                    @include('backoffice.partials.return-to-field')
 
                     <fieldset @disabled(! $canMutate) style="border:0;padding:0;margin:0;min-width:0;">
                     <div class="field">
@@ -477,7 +468,7 @@
             </div>
 
             <div class="right-stack">
-                <div class="card">
+                <div class="card" id="recipe-items">
                     <div class="section-title">Daftar Recipe Items</div>
 
                     @if($recipe->items->count())
@@ -500,7 +491,7 @@
                                             $ingredientTypeLabel = $item->ingredient?->ingredientTypeLabel() ?? 'Mentah';
                                         @endphp
 
-                                        <tr>
+                                        <tr id="recipe-item-{{ $item->id }}">
 
                                             <td>{{ $item->ingredient->name ?? '-' }}</td>
 
@@ -539,6 +530,7 @@
 
                                                         @csrf
                                                         @method('PUT')
+                                                        @include('backoffice.partials.return-to-field')
 
                                                         <input
                                                             type="number"
@@ -585,6 +577,7 @@
 
                                                         @csrf
                                                         @method('DELETE')
+                                                        @include('backoffice.partials.return-to-field')
 
                                                         <button class="btn-danger">
                                                             🗑 Hapus
@@ -613,7 +606,7 @@
                     @endif
                 </div>
 
-                <div class="card">
+                <div class="card" id="recipe-add-item">
                     <div class="section-title">Tambah Bahan Recipe</div>
 
                     @unless($canMutate)
@@ -621,6 +614,7 @@
                     @else
                     <form method="POST" action="{{ route('backoffice.recipes.items.store', $recipe->id) }}">
                         @csrf
+                        @include('backoffice.partials.return-to-field')
 
                         <div class="field">
                             <label>Ingredient</label>
@@ -782,5 +776,6 @@ function closeQty(button){
 
 </script>
 
+    @include('backoffice.partials.feedback')
 </body>
 </html>

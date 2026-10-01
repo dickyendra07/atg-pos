@@ -326,7 +326,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.production-recipes.index') }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-dark">Kembali</a>
         </div>
 
         <div class="content">
@@ -340,13 +340,7 @@
                 </div>
             @endif
 
-            @if(session('success'))
-                <div class="alert alert-success">{{ session('success') }}</div>
-            @endif
 
-            @if(session('error'))
-                <div class="alert alert-error">{{ session('error') }}</div>
-            @endif
 
             <div class="grid-2">
                 <div class="card">
@@ -372,6 +366,7 @@
                         <form method="POST" action="{{ route('backoffice.production-recipes.update', $productionRecipe->id) }}">
                             @csrf
                             @method('PUT')
+                            @include('backoffice.partials.return-to-field')
 
                             <div class="field">
                                 <label>Output Ingredient (Setengah Jadi)</label>
@@ -410,7 +405,7 @@
                     </div>
                 </div>
 
-                <div class="card">
+                <div class="card" id="production-recipe-add-item">
                     <div class="card-head">
                         <h2 class="card-title">Tambah Bahan Input</h2>
 
@@ -419,6 +414,7 @@
                     <div class="card-body">
                         <form method="POST" action="{{ route('backoffice.production-recipes.items.store', $productionRecipe->id) }}">
                             @csrf
+                            @include('backoffice.partials.return-to-field')
 
                             <div class="field">
                                 <label>Input Ingredient (Mentah)</label>
@@ -450,7 +446,7 @@
                 </div>
             </div>
 
-            <div class="card">
+            <div class="card" id="production-recipe-items">
                 <div class="card-head">
                     <h2 class="card-title">Daftar Bahan Input</h2>
 
@@ -472,7 +468,7 @@
                                 </thead>
                                 <tbody>
                                 @foreach($productionRecipe->items as $item)
-                                    <tr>
+                                    <tr id="production-recipe-item-{{ $item->id }}">
                                         <td>{{ $item->inputIngredient->name ?? '-' }}</td>
                                         <td>{{ $item->inputIngredient->category->name ?? '-' }}</td>
                                         <td><span class="type-input">Mentah</span></td>
@@ -482,6 +478,7 @@
                                             <form method="POST" action="{{ route('backoffice.production-recipes.items.destroy', [$productionRecipe->id, $item->id]) }}" onsubmit="return confirm('Yakin hapus bahan input ini?')">
                                                 @csrf
                                                 @method('DELETE')
+                                                @include('backoffice.partials.return-to-field')
                                                 <button type="submit" class="btn-danger-small">Hapus</button>
                                             </form>
                                         </td>
@@ -500,5 +497,6 @@
         </div>
     </div>
 </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

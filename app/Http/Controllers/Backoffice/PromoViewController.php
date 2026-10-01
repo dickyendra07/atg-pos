@@ -7,6 +7,7 @@ use App\Models\Outlet;
 use App\Models\ProductVariant;
 use App\Models\Promo;
 use App\Services\BackofficeOutletContext;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -322,16 +323,17 @@ class PromoViewController extends Controller
 
         $validated = $this->validatePromo($request);
 
-        DB::transaction(function () use ($validated, $request) {
+        $promo = DB::transaction(function () use ($validated, $request) {
             $promo = Promo::create($this->normalizePromoData($validated, $request));
 
             $promo->outlets()->sync($this->normalizeOutletIds($validated));
             $this->syncPromoRules($promo, $validated);
+
+            return $promo;
         });
 
-        return redirect()
-            ->route('backoffice.promos.index')
-            ->with('success', 'Promo berhasil dibuat.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.promos.index', [], 'promo-'.$promo->id)
+            ->with('success', 'Promo berhasil ditambahkan.');
     }
 
     public function edit(Promo $promo)
@@ -377,12 +379,11 @@ class PromoViewController extends Controller
             $this->syncPromoRules($promo, $validated);
         });
 
-        return redirect()
-            ->route('backoffice.promos.index')
-            ->with('success', 'Promo berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.promos.index', [], 'promo-'.$promo->id)
+            ->with('success', 'Promo berhasil diperbarui.');
     }
 
-    public function destroy(Promo $promo)
+    public function destroy(Request $request, Promo $promo)
     {
         $user = $this->authorizeAccess();
 
@@ -392,8 +393,7 @@ class PromoViewController extends Controller
 
         $promo->delete();
 
-        return redirect()
-            ->route('backoffice.promos.index')
+        return BackofficeReturnUrl::redirect($request, 'backoffice.promos.index')
             ->with('success', 'Promo berhasil dihapus.');
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Backoffice;
 
 use App\Http\Controllers\Controller;
 use App\Models\Outlet;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
@@ -59,11 +60,10 @@ class OutletViewController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        Outlet::create($validated);
+        $outlet = Outlet::create($validated);
 
-        return redirect()
-            ->route('backoffice.outlets.index')
-            ->with('success', 'Outlet baru berhasil ditambahkan.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.outlets.index', [], 'outlet-'.$outlet->id)
+            ->with('success', 'Outlet berhasil ditambahkan.');
     }
 
     public function edit(Outlet $outlet)
@@ -95,25 +95,22 @@ class OutletViewController extends Controller
 
         $outlet->update($validated);
 
-        return redirect()
-            ->route('backoffice.outlets.index')
-            ->with('success', 'Outlet berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.outlets.index', [], 'outlet-'.$outlet->id)
+            ->with('success', 'Outlet berhasil diperbarui.');
     }
 
-    public function destroy(Outlet $outlet)
+    public function destroy(Request $request, Outlet $outlet)
     {
         $this->authorizeAccess();
 
         if ($outlet->users()->exists()) {
-            return redirect()
-                ->route('backoffice.outlets.index')
+            return BackofficeReturnUrl::redirect($request, 'backoffice.outlets.index', [], 'outlet-'.$outlet->id)
                 ->with('error', 'Outlet tidak bisa dihapus karena masih dipakai oleh user.');
         }
 
         $outlet->delete();
 
-        return redirect()
-            ->route('backoffice.outlets.index')
+        return BackofficeReturnUrl::redirect($request, 'backoffice.outlets.index')
             ->with('success', 'Outlet berhasil dihapus.');
     }
 }

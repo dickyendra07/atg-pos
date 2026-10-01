@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Database\Eloquent\Model;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -130,9 +131,10 @@ abstract class CategoryManagementController extends Controller
         $data = $this->validated($request);
         $data['code'] = $this->makeCode($data['name']);
         $model = $this->modelClass();
-        $model::create($data);
+        $category = $model::create($data);
 
-        return redirect()->route($this->config()['route'].'.index')->with('success', 'Category berhasil dibuat.');
+        return BackofficeReturnUrl::redirect($request, $this->config()['route'].'.index', [], 'category-'.$category->id)
+            ->with('success', 'Kategori berhasil ditambahkan.');
     }
 
     public function edit(Request $request, int $category)
@@ -153,7 +155,8 @@ abstract class CategoryManagementController extends Controller
         $category = $model::findOrFail($category);
         $category->update($this->validated($request, $category));
 
-        return redirect()->route($this->config()['route'].'.index')->with('success', 'Category berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, $this->config()['route'].'.index', [], 'category-'.$category->id)
+            ->with('success', 'Kategori berhasil diperbarui.');
     }
 
     public function destroy(Request $request, int $category)
@@ -170,13 +173,14 @@ abstract class CategoryManagementController extends Controller
         if ($category->{$countKey} > 0) {
             $noun = $this->config()['usage_noun'] ?? 'item';
 
-            return redirect()
-                ->route($this->config()['route'].'.index')
+            return BackofficeReturnUrl::redirect($request, $this->config()['route'].'.index', [], 'category-'.$category->id)
                 ->with('error', 'Kategori masih digunakan oleh '.$category->{$countKey}.' '.$noun.'. Pindahkan kategori '.$noun.' terlebih dahulu sebelum menghapus.');
         }
 
         $category->delete();
 
-        return redirect()->route($this->config()['route'].'.index')->with('success', 'Category berhasil dihapus.');
+        // The row is gone, so no anchor.
+        return BackofficeReturnUrl::redirect($request, $this->config()['route'].'.index')
+            ->with('success', 'Kategori berhasil dihapus.');
     }
 }

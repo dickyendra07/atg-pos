@@ -120,9 +120,6 @@
             <a href="{{ route('backoffice.products.index') }}" class="btn">Kembali</a>
         </div>
 
-        @if(session('error'))
-            <div class="error">{{ session('error') }}</div>
-        @endif
 
         @if($errors->any())
             <div class="error">
@@ -157,5 +154,6 @@
             </div>
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

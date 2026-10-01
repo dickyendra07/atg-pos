@@ -171,7 +171,7 @@
         </div>
 
 
-        <a href="{{ route('backoffice.products.index') }}"
+        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.products.index', [], 'product-'.$product->id) }}"
            class="btn btn-dark">
             Kembali
         </a>
@@ -209,6 +209,7 @@
 
             @csrf
             @method('PUT')
+            @include('backoffice.partials.return-to-field')
 
 
             <div class="grid">
@@ -412,7 +413,7 @@
                 </button>
 
 
-                <a href="{{ route('backoffice.products.index') }}"
+                <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.products.index', [], 'product-'.$product->id) }}"
                    class="btn btn-dark">
 
                     Batal

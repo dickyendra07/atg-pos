@@ -11,6 +11,7 @@ use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Services\BackofficeOutletContext;
 use App\Services\RecipeAccessPolicy;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
@@ -219,16 +220,15 @@ class RecipeViewController extends Controller
 
         $this->assertVariantMutable($variant, $user);
 
-        Recipe::create([
+        $recipe = Recipe::create([
             'product_id' => $variant->product_id,
             'product_variant_id' => $validated['product_variant_id'],
             'name' => $validated['name'],
             'is_active' => $validated['is_active'],
         ]);
 
-        return redirect()
-            ->route('backoffice.recipes.index')
-            ->with('success', 'Recipe baru berhasil ditambahkan.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)
+            ->with('success', 'Recipe berhasil ditambahkan.');
     }
 
     public function edit(Recipe $recipe)
@@ -327,12 +327,11 @@ class RecipeViewController extends Controller
             'is_active' => $validated['is_active'],
         ]);
 
-        return redirect()
-            ->route('backoffice.recipes.index')
-            ->with('success', 'Recipe berhasil diupdate dan status terbaru sudah diterapkan ke Cashier.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)
+            ->with('success', 'Recipe berhasil diperbarui. Status terbaru sudah diterapkan ke Cashier.');
     }
 
-    public function destroy(Recipe $recipe)
+    public function destroy(Request $request, Recipe $recipe)
     {
         $user = $this->authorizeAccess();
         $this->authorizeRecipeMutation($recipe, $user);
@@ -341,8 +340,11 @@ class RecipeViewController extends Controller
             'is_active' => false,
         ]);
 
-        return redirect()
-            ->route('backoffice.recipes.index')
+        // Inactivating keeps the recipe listed, so it can stay the anchor - unless the list is filtered
+        // to active recipes, where it just left: then no anchor (the saved scroll offset is used).
+        $anchor = BackofficeReturnUrl::returnQueryParam($request, 'status') === 'active' ? null : 'recipe-'.$recipe->id;
+
+        return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], $anchor)
             ->with('success', 'Recipe berhasil dinonaktifkan.');
     }
 
@@ -361,8 +363,7 @@ class RecipeViewController extends Controller
             ->first();
 
         if ($existingItem) {
-            return redirect()
-                ->route('backoffice.recipes.edit', $recipe->id)
+            return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-add-item'))
                 ->with('error', 'Ingredient itu sudah ada di recipe ini. Edit qty-nya dulu atau hapus lalu tambah ulang.');
         }
 
@@ -381,15 +382,15 @@ class RecipeViewController extends Controller
             ]);
         }
 
-        $recipe->items()->create([
+        $item = $recipe->items()->create([
             'ingredient_id' => $validated['ingredient_id'],
             'qty' => $validated['qty'],
             'unit' => $ingredient->unit,
         ]);
 
-        return redirect()
-            ->route('backoffice.recipes.edit', $recipe->id)
-            ->with('success', 'Recipe item berhasil ditambahkan.');
+        // Stay on this Recipe's edit page (and keep its way back to the list), at the new row.
+        return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-item-'.$item->id))
+            ->with('success', 'Bahan Recipe berhasil ditambahkan.');
     }
 
     public function updateItem(Request $request, Recipe $recipe, RecipeItem $item)
@@ -409,12 +410,11 @@ class RecipeViewController extends Controller
             'qty' => $validated['qty'],
         ]);
 
-        return redirect()
-            ->route('backoffice.recipes.edit', $recipe->id)
-            ->with('success', 'Qty recipe item berhasil diupdate.');
+        return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-item-'.$item->id))
+            ->with('success', 'Jumlah bahan berhasil diperbarui.');
     }
 
-    public function destroyItem(Recipe $recipe, RecipeItem $item)
+    public function destroyItem(Request $request, Recipe $recipe, RecipeItem $item)
     {
         $user = $this->authorizeAccess();
         $this->authorizeRecipeMutation($recipe, $user);
@@ -426,9 +426,9 @@ class RecipeViewController extends Controller
         $ingredientName = $item->ingredient?->name ?? 'Item';
         $item->delete();
 
-        return redirect()
-            ->route('backoffice.recipes.edit', $recipe->id)
-            ->with('success', 'Recipe item "'.$ingredientName.'" berhasil dihapus.');
+        // The row is gone; land on the items list instead.
+        return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-items'))
+            ->with('success', 'Bahan Recipe "'.$ingredientName.'" berhasil dihapus.');
     }
 
     public function importForm()

@@ -6,7 +6,7 @@
 
     <div style="padding:28px 30px 0;">
 
-        <a href="{{ route('backoffice.ingredients.index') }}"
+        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], null) }}"
            style="
                 display:inline-flex;
                 align-items:center;
@@ -86,6 +86,7 @@
                   action="{{ route('backoffice.ingredients.store') }}">
 
                 @csrf
+                @include('backoffice.partials.return-to-field')
 
 
                 <div style="
@@ -407,7 +408,7 @@
 
 
 
-                    <a href="{{ route('backoffice.ingredients.index') }}"
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], null) }}"
                        style="
                             display:inline-flex;
                             align-items:center;

@@ -229,12 +229,9 @@
 
             </div>
 
-            <a href="{{ route('backoffice.discounts.create') }}" class="btn btn-brand">Create Discount</a>
+            <a href="{{ route('backoffice.discounts.create', ['return_to' => $listReturnTo]) }}" class="btn btn-brand">Create Discount</a>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
 
         <div class="card">
             <form method="GET" action="{{ route('backoffice.discounts.index') }}" class="filter-grid">
@@ -296,7 +293,7 @@
                     </thead>
                     <tbody>
                         @forelse($discounts as $discount)
-                            <tr>
+                            <tr id="discount-{{ $discount->id }}">
                                 <td class="name">{{ $discount->name }}</td>
                                 <td>@if($discount->outlets->count())
                                             {{ $discount->outlets->pluck('name')->implode(', ') }}
@@ -321,10 +318,11 @@
                                 <td>{{ $discount->updated_at?->format('d M Y H:i') ?? '-' }}</td>
                                 <td>
                                     <div class="actions">
-                                        <a href="{{ route('backoffice.discounts.edit', $discount) }}" class="btn btn-dark">Edit</a>
+                                        <a href="{{ route('backoffice.discounts.edit', [$discount, 'return_to' => $listReturnTo]) }}" class="btn btn-dark">Edit</a>
                                         <form method="POST" action="{{ route('backoffice.discounts.destroy', $discount) }}" onsubmit="return confirm('Hapus discount ini?')">
                                             @csrf
                                             @method('DELETE')
+                                            @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                             <button type="submit" class="btn btn-red">Delete</button>
                                         </form>
                                     </div>
