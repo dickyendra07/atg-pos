@@ -477,5 +477,6 @@
         renderPreview();
     });
 </script>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

@@ -212,9 +212,6 @@
             <a href="{{ route('backoffice.index') }}" class="btn">Kembali</a>
         </div>
 
-        @if(session('success'))
-            <div class="success">{{ session('success') }}</div>
-        @endif
 
         <div class="card">
             <div class="info">
@@ -298,5 +295,6 @@
             @endif
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

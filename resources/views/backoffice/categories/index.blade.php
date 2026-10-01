@@ -18,11 +18,9 @@
 <div class="cat-page">
     <div class="cat-head">
         <div><h1>{{ $cfg['title'] }}</h1><div style="color:#64748b">{{ $cfg['kicker'] }} — master data dipakai bersama oleh semua outlet. Ketersediaan item tetap diatur per outlet.</div></div>
-        <a class="btn" href="{{ route($cfg['route'].'.create') }}">Tambah Category</a>
+        <a class="btn" href="{{ route($cfg['route'].'.create', ['return_to' => $listReturnTo]) }}">Tambah Category</a>
     </div>
 
-    @if(session('success'))<div class="cat-card" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;font-weight:700">{{ session('success') }}</div>@endif
-    @if(session('error'))<div class="cat-card" style="background:#ffe8e8;border-color:#fecaca;color:#9b1c1c;font-weight:700">{{ session('error') }}</div>@endif
 
     <div class="cat-card">
         <form method="GET" class="cat-search">
@@ -37,7 +35,7 @@
             <thead><tr><th>Nama</th><th>Kode</th>@if($cfg['needs_brand'])<th>Brand</th>@endif<th>{{ $cfg['usage_label'] }}</th><th>Status</th><th></th></tr></thead>
             <tbody>
             @forelse($categories as $category)
-                <tr>
+                <tr id="category-{{ $category->id }}">
                     <td><strong>{{ $category->name }}</strong></td>
                     <td>{{ $category->code }}</td>
                     @if($cfg['needs_brand'])<td>{{ $category->brand?->name ?? '-' }}</td>@endif
@@ -45,11 +43,12 @@
                     <td><span class="badge {{ $category->is_active ? 'badge-on' : 'badge-off' }}">{{ $category->is_active ? 'Active' : 'Inactive' }}</span></td>
                     <td>
                         <div class="action-row">
-                            <a class="link" href="{{ route($cfg['route'].'.edit', $category->id) }}">Edit</a>
+                            <a class="link" href="{{ route($cfg['route'].'.edit', [$category->id, 'return_to' => $listReturnTo]) }}">Edit</a>
                             @if($cfg['deletable'] ?? false)
                                 <form method="POST" action="{{ route($cfg['route'].'.destroy', $category->id) }}" class="delete-form" onsubmit="return confirm('Yakin hapus category ini? Tindakan ini tidak bisa dibatalkan.')">
                                     @csrf
                                     @method('DELETE')
+                                    @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                     <button type="submit" class="btn btn-danger btn-small">Hapus</button>
                                 </form>
                             @endif

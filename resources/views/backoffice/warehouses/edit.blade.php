@@ -154,7 +154,7 @@
                 <div class="title">Edit Warehouse</div>
 
             </div>
-            <a href="{{ route('backoffice.warehouses.index') }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id) }}" class="btn btn-dark">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -174,6 +174,7 @@
             <form method="POST" action="{{ route('backoffice.warehouses.update', $warehouse) }}">
                 @csrf
                 @method('PUT')
+                @include('backoffice.partials.return-to-field')
 
                 <div class="field">
                     <label>Nama Warehouse</label>
@@ -205,7 +206,7 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Update Warehouse</button>
-                    <a href="{{ route('backoffice.warehouses.index') }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id) }}" class="btn btn-dark">Batal</a>
                 </div>
             </form>
 
@@ -214,5 +215,6 @@
             </div>
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

@@ -8,6 +8,7 @@ use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\BackofficeOutletContext;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
@@ -125,7 +126,7 @@ class ProductViewController extends Controller
 
         $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
 
-        DB::transaction(function () use ($validated) {
+        $product = DB::transaction(function () use ($validated) {
             $product = Product::create(
                 collect($validated)
                     ->except('outlet_ids')
@@ -133,11 +134,12 @@ class ProductViewController extends Controller
             );
 
             $product->outlets()->sync($validated['outlet_ids'] ?? []);
+
+            return $product;
         });
 
-        return redirect()
-            ->route('backoffice.products.index')
-            ->with('success', 'Product baru berhasil ditambahkan.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
+            ->with('success', 'Product berhasil ditambahkan.');
     }
 
     public function edit(Product $product)
@@ -214,20 +216,19 @@ class ProductViewController extends Controller
             });
         });
 
-        return redirect()
-            ->route('backoffice.products.index')
-            ->with('success', 'Product berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
+            ->with('success', 'Product berhasil diperbarui.');
     }
 
-    public function destroy(Product $product)
+    public function destroy(Request $request, Product $product)
     {
         $this->authorizeAccess();
 
         $productName = $product->name;
         $product->update(['is_active' => false]);
 
-        return redirect()
-            ->route('backoffice.products.index')
+        // Inactivating keeps the row in the list, so it can stay the anchor.
+        return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
             ->with('success', 'Product "'.$productName.'" berhasil dinonaktifkan. Variant, outlet, recipe, dan riwayat transaksi tetap tersimpan.');
     }
 

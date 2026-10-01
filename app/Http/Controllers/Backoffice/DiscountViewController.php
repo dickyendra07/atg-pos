@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\Discount;
 use App\Models\Outlet;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -129,9 +130,8 @@ class DiscountViewController extends Controller
         $discount = Discount::create($validated);
         $discount->outlets()->sync($outletIds);
 
-        return redirect()
-            ->route('backoffice.discounts.index')
-            ->with('success', 'Discount berhasil dibuat.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.discounts.index', [], 'discount-'.$discount->id)
+            ->with('success', 'Discount berhasil ditambahkan.');
     }
 
     public function edit(Discount $discount)
@@ -168,12 +168,11 @@ class DiscountViewController extends Controller
         $discount->update($validated);
         $discount->outlets()->sync($outletIds);
 
-        return redirect()
-            ->route('backoffice.discounts.index')
-            ->with('success', 'Discount berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.discounts.index', [], 'discount-'.$discount->id)
+            ->with('success', 'Discount berhasil diperbarui.');
     }
 
-    public function destroy(Discount $discount)
+    public function destroy(Request $request, Discount $discount)
     {
         $user = $this->authorizeAccess();
 
@@ -183,8 +182,7 @@ class DiscountViewController extends Controller
 
         $discount->delete();
 
-        return redirect()
-            ->route('backoffice.discounts.index')
+        return BackofficeReturnUrl::redirect($request, 'backoffice.discounts.index')
             ->with('success', 'Discount berhasil dihapus.');
     }
 }

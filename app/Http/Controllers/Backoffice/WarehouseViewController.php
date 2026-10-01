@@ -7,6 +7,7 @@ use App\Models\Ingredient;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\Warehouse;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -63,11 +64,10 @@ class WarehouseViewController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
-        Warehouse::create($validated);
+        $warehouse = Warehouse::create($validated);
 
-        return redirect()
-            ->route('backoffice.warehouses.index')
-            ->with('success', 'Warehouse baru berhasil ditambahkan.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id)
+            ->with('success', 'Warehouse berhasil ditambahkan.');
     }
 
     public function edit(Warehouse $warehouse)
@@ -94,9 +94,8 @@ class WarehouseViewController extends Controller
 
         $warehouse->update($validated);
 
-        return redirect()
-            ->route('backoffice.warehouses.index')
-            ->with('success', 'Warehouse berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id)
+            ->with('success', 'Warehouse berhasil diperbarui.');
     }
 
     public function stockIndex(Warehouse $warehouse)

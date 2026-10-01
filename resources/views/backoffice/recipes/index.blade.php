@@ -816,22 +816,12 @@
             <div class="recipes-actions">
                 <a href="{{ route('backoffice.recipes.export.csv') }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.recipes.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.recipes.create') }}" class="btn btn-green">Tambah Recipe</a>
+                <a href="{{ route('backoffice.recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Recipe</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        @if(session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
 
         @if(session('import_errors') && count(session('import_errors')) > 0)
             <div class="alert alert-error">
@@ -925,7 +915,7 @@
                         </thead>
                         <tbody>
                             @foreach($recipes as $recipe)
-                                <tr>
+                                <tr id="recipe-{{ $recipe->id }}">
                                     <td>
                                         <div class="recipe-name">{{ preg_replace('/^Recipe\s*-\s*/i', '', $recipe->name) }}</div>
                                     </td>
@@ -978,15 +968,16 @@
                                     <td>
                                         <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
                                             @if(in_array($recipe->id, $mutableRecipeIds, true))
-                                                <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small">Edit</a>
+                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small">Edit</a>
                                             @else
-                                                <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small" title="Recipe dipakai di beberapa outlet atau di luar akses Anda. Hanya bisa dilihat.">Lihat (read-only)</a>
+                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small" title="Recipe dipakai di beberapa outlet atau di luar akses Anda. Hanya bisa dilihat.">Lihat (read-only)</a>
                                             @endif
 
                                             @if($recipe->is_active && in_array($recipe->id, $mutableRecipeIds, true))
                                                 <form method="POST" action="{{ route('backoffice.recipes.destroy', $recipe->id) }}" onsubmit="return confirm('Yakin ingin menonaktifkan recipe ini?');" style="margin: 0;">
                                                     @csrf
                                                     @method('DELETE')
+                                                    @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                                     <button type="submit" class="btn btn-small" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);">
                                                         Nonaktifkan
                                                     </button>

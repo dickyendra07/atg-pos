@@ -512,22 +512,12 @@
             <div class="products-actions">
                 <a href="{{ route('backoffice.products.export.csv') }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.products.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.products.create') }}" class="btn btn-green">Tambah Product</a>
+                <a href="{{ route('backoffice.products.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Product</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        @if(session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
 
         @if(session('import_errors') && count(session('import_errors')) > 0)
             <div class="alert alert-error">
@@ -624,7 +614,7 @@
                                 </thead>
                                 <tbody>
                                     @foreach($categoryProducts as $product)
-                                        <tr>
+                                        <tr id="product-{{ $product->id }}">
                                             <td>
                                                 <div class="product-name">{{ $product->name }}</div>
                                             </td>
@@ -648,12 +638,13 @@
                                             </td>
                                             <td>
                                                 <div class="action-stack">
-                                                    <a href="{{ route('backoffice.products.edit', $product->id) }}" class="btn btn-small btn-small-blue">Edit</a>
+                                                    <a href="{{ route('backoffice.products.edit', [$product->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small btn-small-blue">Edit</a>
 
                                                     @if($product->is_active)
                                                         <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form" onsubmit="return confirm('Yakin ingin menonaktifkan product ini? Product tidak akan tampil di Cashier, tetapi variant, outlet, recipe, dan riwayat transaksi tetap disimpan.')">
                                                             @csrf
                                                             @method('DELETE')
+                                                            @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                                             <button type="submit" class="btn btn-small btn-small-red">Nonaktifkan</button>
                                                         </form>
                                                     @endif
@@ -675,6 +666,15 @@
     </div>
 
     <script>
+        // A record brought back into view after save may sit in a collapsed category.
+        document.addEventListener('bo:reveal', function (event) {
+            const section = event.target.closest('[data-product-category-section]');
+
+            if (section) {
+                section.classList.remove('collapsed');
+            }
+        });
+
         document.querySelectorAll('[data-product-category-toggle]').forEach(function (header) {
             header.addEventListener('click', function () {
                 const section = header.closest('[data-product-category-section]');

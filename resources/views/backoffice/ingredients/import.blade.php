@@ -191,11 +191,6 @@
             </div>
         </div>
 
-        @if(session('error'))
-            <div class="import-alert error">
-                {{ session('error') }}
-            </div>
-        @endif
 
         @if($errors->any())
             <div class="import-alert error">

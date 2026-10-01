@@ -171,7 +171,7 @@
             </p>
         </div>
 
-        <a href="{{ route('backoffice.products.index') }}" class="btn btn-dark">
+        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.products.index', [], null) }}" class="btn btn-dark">
             Kembali
         </a>
     </div>
@@ -191,6 +191,7 @@
     <div class="card">
 
         <form method="POST" action="{{ route('backoffice.products.store') }}">
+            @include('backoffice.partials.return-to-field')
             @csrf
 
             <div class="grid">
@@ -300,7 +301,7 @@
                     Simpan Product
                 </button>
 
-                <a href="{{ route('backoffice.products.index') }}"
+                <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.products.index', [], null) }}"
                    class="btn btn-dark">
                     Batal
                 </a>

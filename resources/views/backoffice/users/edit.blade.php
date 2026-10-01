@@ -243,7 +243,7 @@
 <div class="users-form-shell">
         <div class="topbar">
             <div class="title">Edit User</div>
-            <a href="{{ route('backoffice.users.index') }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], 'user-'.$managedUser->id) }}" class="btn">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -265,6 +265,7 @@
             <form method="POST" action="{{ route('backoffice.users.update', $managedUser->id) }}">
                 @csrf
                 @method('PUT')
+                @include('backoffice.partials.return-to-field')
 
                 <div class="field">
                     <label>Nama</label>
@@ -373,7 +374,7 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-success">Update User</button>
-                    <a href="{{ route('backoffice.users.index') }}" class="btn">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], 'user-'.$managedUser->id) }}" class="btn">Batal</a>
                 </div>
             </form>
         </div>

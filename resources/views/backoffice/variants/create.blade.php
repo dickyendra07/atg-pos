@@ -383,7 +383,7 @@
             </div>
 
             <div class="variant-form-actions">
-                <a href="{{ route('backoffice.variants.index') }}" class="btn btn-dark">Kembali</a>
+                <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.variants.index', [], null) }}" class="btn btn-dark">Kembali</a>
             </div>
         </div>
 
@@ -404,6 +404,7 @@
 
                 <form method="POST" action="{{ route('backoffice.variants.store') }}" id="variant-form">
                     @csrf
+                    @include('backoffice.partials.return-to-field')
 
                     <div class="field" style="margin-bottom: 20px;">
                         <label for="product_id">Product</label>
@@ -491,7 +492,7 @@
                     <div class="bottom-actions" style="margin-top: 18px;">
                         <button type="button" class="btn btn-blue" id="add-row-button">Tambah Variant Row</button>
                         <button type="submit" class="btn btn-green">Simpan Semua Variant</button>
-                        <a href="{{ route('backoffice.variants.index') }}" class="btn btn-dark">Batal</a>
+                        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.variants.index', [], null) }}" class="btn btn-dark">Batal</a>
                     </div>
                 </form>
 

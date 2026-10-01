@@ -9,10 +9,11 @@
     .err{color:#b91c1c;font-size:13px;font-weight:700}.btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:11px 18px;background:#ea580c;color:#fff;font-weight:800;text-decoration:none;cursor:pointer}.btn-dark{background:#111827}
 </style>
 <div class="cat-form">
-    <div><a href="{{ route($cfg['route'].'.index') }}" style="color:#ea580c">← {{ $cfg['title'] }}</a><h1>{{ $category ? 'Edit' : 'Tambah' }} {{ $cfg['kicker'] }}</h1></div>
+    <div><a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), $cfg['route'].'.index', [], $category ? 'category-'.$category->id : null) }}" style="color:#ea580c">← {{ $cfg['title'] }}</a><h1>{{ $category ? 'Edit' : 'Tambah' }} {{ $cfg['kicker'] }}</h1></div>
     <form method="POST" action="{{ $category ? route($cfg['route'].'.update', $category->id) : route($cfg['route'].'.store') }}" class="cat-card">
         @csrf
         @if($category) @method('PUT') @endif
+        @include('backoffice.partials.return-to-field')
 
         <div class="field">
             <label for="name">Nama Category</label>
@@ -39,7 +40,7 @@
 
         <div style="display:flex;gap:10px">
             <button class="btn" type="submit">Simpan</button>
-            <a class="btn btn-dark" href="{{ route($cfg['route'].'.index') }}">Batal</a>
+            <a class="btn btn-dark" href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), $cfg['route'].'.index', [], $category ? 'category-'.$category->id : null) }}">Batal</a>
         </div>
     </form>
 </div>

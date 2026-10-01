@@ -631,9 +631,6 @@
                         </form>
                     @endisset
 
-                    @if(session('warning'))
-                        <div class="context-warning">{{ session('warning') }}</div>
-                    @endif
                     @yield('content')
                 </main>
             </div>
@@ -677,5 +674,6 @@
         })();
     </script>
 
+    @include('backoffice.partials.feedback')
 </body>
 </html>

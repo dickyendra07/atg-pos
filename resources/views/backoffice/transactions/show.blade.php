@@ -310,17 +310,7 @@
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="success-box">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        @if(session('error'))
-            <div class="error-box">
-                {{ session('error') }}
-            </div>
-        @endif
 
         @if($errors->any())
             <div class="error-box">
@@ -508,5 +498,6 @@
             </div>
         @endif
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

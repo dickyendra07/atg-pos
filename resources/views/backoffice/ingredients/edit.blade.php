@@ -6,7 +6,7 @@
 
     <div style="padding:28px 30px 0;">
 
-        <a href="{{ route('backoffice.ingredients.index') }}"
+        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id) }}"
            class="btn btn-dark"
            style="text-decoration:none;display:inline-flex;margin-bottom:18px;">
             ← Back
@@ -57,6 +57,7 @@
 
                 @csrf
                 @method('PUT')
+                @include('backoffice.partials.return-to-field')
 
 
                 <div style="
@@ -293,7 +294,7 @@
 
 
                     <a
-                        href="{{ route('backoffice.ingredients.index') }}"
+                        href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id) }}"
                         style="
                             display:inline-flex;
                             align-items:center;

@@ -266,12 +266,13 @@
 
             </div>
 
-            <a href="{{ route('backoffice.discounts.index') }}" class="btn btn-soft">Back to Discounts</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.discounts.index', [], null) }}" class="btn btn-soft">Back to Discounts</a>
         </div>
 
         <div class="card">
             <form method="POST" action="{{ route('backoffice.discounts.store') }}">
                 @csrf
+                @include('backoffice.partials.return-to-field')
 
                 <div class="form-grid">
                     <div class="field full">
@@ -346,7 +347,7 @@
                 </div>
 
                 <div class="actions">
-                    <a href="{{ route('backoffice.discounts.index') }}" class="btn btn-soft">Cancel</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.discounts.index', [], null) }}" class="btn btn-soft">Cancel</a>
                     <button type="submit" class="btn btn-brand">Save Discount</button>
                 </div>
             </form>

@@ -134,7 +134,7 @@
     <div class="wrap">
         <div class="topbar">
             <div class="title">Edit Outlet</div>
-            <a href="{{ route('backoffice.outlets.index') }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], 'outlet-'.$outlet->id) }}" class="btn btn-dark">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -158,6 +158,7 @@
             <form method="POST" action="{{ route('backoffice.outlets.update', $outlet) }}">
                 @csrf
                 @method('PUT')
+                @include('backoffice.partials.return-to-field')
 
                 <div class="field">
                     <label>Outlet Name</label>
@@ -189,7 +190,7 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Update Outlet</button>
-                    <a href="{{ route('backoffice.outlets.index') }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], 'outlet-'.$outlet->id) }}" class="btn btn-dark">Batal</a>
                 </div>
             </form>
 
@@ -198,5 +199,6 @@
             </div>
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

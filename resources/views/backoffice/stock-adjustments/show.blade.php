@@ -8,7 +8,6 @@
 <div class="detail">
     <div><a href="{{ route('backoffice.stock-adjustments.index') }}">← Adjustment History</a><h1>Detail Adjustment</h1></div>
 
-    @if(session('success'))<div class="card" style="background:#ecfdf5;border-color:#a7f3d0;color:#065f46;font-weight:700">{{ session('success') }}</div>@endif
 
     <div class="card meta">
         <div><span>Reference</span><strong>{{ $adjustment->reference }}</strong></div>

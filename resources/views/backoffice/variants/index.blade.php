@@ -508,22 +508,12 @@
             <div class="variants-actions">
                 <a href="{{ route('backoffice.variants.export.csv') }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.variants.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.variants.create') }}" class="btn btn-green">Tambah Multi Variant</a>
+                <a href="{{ route('backoffice.variants.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Multi Variant</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        @if(session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
 
         @if(session('import_errors') && count(session('import_errors')) > 0)
             <div class="alert alert-error">
@@ -597,7 +587,7 @@
                         $isOpen = $search !== '' || $groupIndex === 0;
                     @endphp
 
-                    <div class="group-card {{ $isOpen ? 'is-open' : '' }}" data-group-card>
+                    <div class="group-card {{ $isOpen ? 'is-open' : '' }}" id="variant-group-{{ $group['product']->id ?? $groupIndex }}" data-group-card>
                         <div class="group-head">
                             <div>
                                 <h2 class="group-title">{{ $group['product']->name ?? '-' }}</h2>
@@ -624,7 +614,7 @@
                                     {{ $isOpen ? 'Tutup' : 'Variant' }}
                                 </button>
 
-                                <a href="{{ route('backoffice.variants.edit', $group['first_variant_id']) }}" class="btn btn-small btn-blue">
+                                <a href="{{ route('backoffice.variants.edit', [$group['first_variant_id'], 'return_to' => $listReturnTo]) }}" class="btn btn-small btn-blue">
                                     Edit
                                 </a>
                             </div>
@@ -673,6 +663,7 @@
                                                     <form method="POST" action="{{ route('backoffice.variants.destroy', $variant->id) }}" class="inline-form" onsubmit="return confirm('Yakin ingin menonaktifkan variant ini? Variant tidak akan tampil di Cashier, tetapi outlet, recipe, dan riwayat transaksi tetap disimpan.');">
                                                         @csrf
                                                         @method('DELETE')
+                                                        @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                                         <button type="submit" class="btn btn-small btn-small-red">Nonaktifkan</button>
                                                     </form>
                                                 @endif
@@ -695,6 +686,21 @@
     <script>
         (function () {
             const toggleButtons = document.querySelectorAll('[data-toggle-group]');
+
+            // A group brought back into view after save may be collapsed.
+            document.addEventListener('bo:reveal', function (event) {
+                const card = event.target.closest('[data-group-card]');
+
+                if (card && !card.classList.contains('is-open')) {
+                    card.classList.add('is-open');
+
+                    const button = card.querySelector('[data-toggle-group]');
+
+                    if (button) {
+                        button.textContent = 'Tutup';
+                    }
+                }
+            });
 
             toggleButtons.forEach(function (button) {
                 button.addEventListener('click', function () {

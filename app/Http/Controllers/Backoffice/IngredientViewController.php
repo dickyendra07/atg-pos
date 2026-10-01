@@ -7,6 +7,7 @@ use App\Models\Ingredient;
 use App\Models\IngredientCategory;
 use App\Models\Outlet;
 use App\Services\BackofficeOutletContext;
+use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -172,7 +173,7 @@ class IngredientViewController extends Controller
 
         $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
 
-        DB::transaction(function () use ($validated) {
+        $ingredient = DB::transaction(function () use ($validated) {
 
             $ingredient = Ingredient::create([
                 'ingredient_category_id' => $validated['ingredient_category_id'],
@@ -187,11 +188,11 @@ class IngredientViewController extends Controller
 
             $ingredient->outlets()->sync($validated['outlet_ids'] ?? []);
 
+            return $ingredient;
         });
 
-        return redirect()
-            ->route('backoffice.ingredients.index')
-            ->with('success', 'Ingredient baru berhasil ditambahkan.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id)
+            ->with('success', 'Ingredient berhasil ditambahkan.');
     }
 
     public function edit(Ingredient $ingredient)
@@ -260,19 +261,18 @@ class IngredientViewController extends Controller
             $ingredient->outlets()->sync($finalOutletIds);
         });
 
-        return redirect()
-            ->route('backoffice.ingredients.index')
-            ->with('success', 'Ingredient berhasil diupdate.');
+        return BackofficeReturnUrl::redirect($request, 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id)
+            ->with('success', 'Ingredient berhasil diperbarui.');
     }
 
-    public function destroy(Ingredient $ingredient)
+    public function destroy(Request $request, Ingredient $ingredient)
     {
         $this->authorizeAccess();
 
         $ingredient->delete();
 
-        return redirect()
-            ->route('backoffice.ingredients.index')
+        // The row is gone, so no anchor: the list keeps its filters and the scroll offset is restored.
+        return BackofficeReturnUrl::redirect($request, 'backoffice.ingredients.index')
             ->with('success', 'Ingredient berhasil dihapus.');
     }
 

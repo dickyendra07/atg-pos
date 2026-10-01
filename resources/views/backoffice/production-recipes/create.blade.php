@@ -234,7 +234,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.production-recipes.index') }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-dark">Kembali</a>
         </div>
 
         <div class="content">
@@ -258,6 +258,7 @@
                 <div class="card-body">
                     <form method="POST" action="{{ route('backoffice.production-recipes.store') }}">
                         @csrf
+                        @include('backoffice.partials.return-to-field')
 
                         <div class="grid">
                             <div class="field full">
@@ -294,7 +295,7 @@
 
                         <div class="actions-row">
                             <button type="submit" class="btn btn-primary">Simpan Production Recipe</button>
-                            <a href="{{ route('backoffice.production-recipes.index') }}" class="btn btn-dark">Batal</a>
+                            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-dark">Batal</a>
                         </div>
                     </form>
 
@@ -306,5 +307,6 @@
         </div>
     </div>
 </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

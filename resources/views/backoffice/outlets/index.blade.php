@@ -399,22 +399,12 @@
             </div>
 
             <div class="outlets-actions">
-                <a href="{{ route('backoffice.outlets.create') }}" class="btn btn-primary">Tambah Outlet</a>
+                <a href="{{ route('backoffice.outlets.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah Outlet</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">
-                {{ session('success') }}
-            </div>
-        @endif
 
-        @if(session('error'))
-            <div class="alert alert-error">
-                {{ session('error') }}
-            </div>
-        @endif
 
         <div class="card">
 
@@ -466,7 +456,7 @@
                             </thead>
                             <tbody>
                                 @foreach($outlets as $outlet)
-                                    <tr>
+                                    <tr id="outlet-{{ $outlet->id }}">
                                         <td>{{ $outlet->name }}</td>
                                         <td><span class="code-text">{{ $outlet->code }}</span></td>
                                         <td>{{ $outlet->address ?? '-' }}</td>
@@ -480,11 +470,12 @@
                                         </td>
                                         <td>
                                             <div class="action-row">
-                                                <a href="{{ route('backoffice.outlets.edit', $outlet) }}" class="btn btn-info">Edit</a>
+                                                <a href="{{ route('backoffice.outlets.edit', [$outlet, 'return_to' => $listReturnTo]) }}" class="btn btn-info">Edit</a>
 
                                                 <form method="POST" action="{{ route('backoffice.outlets.destroy', $outlet) }}" class="delete-form" onsubmit="return confirm('Yakin hapus outlet ini?')">
                                                     @csrf
                                                     @method('DELETE')
+                                                    @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
                                                     <button type="submit" class="btn btn-danger">Hapus</button>
                                                 </form>
                                             </div>

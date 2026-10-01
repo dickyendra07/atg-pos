@@ -188,5 +188,6 @@
             </form>
         </div>
     </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>

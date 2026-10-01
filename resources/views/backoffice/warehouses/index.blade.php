@@ -402,14 +402,11 @@
 
             <div class="warehouses-actions">
                 <a href="{{ route('backoffice.transfers.index') }}" class="btn btn-green">Lihat Transfers</a>
-                <a href="{{ route('backoffice.warehouses.create') }}" class="btn btn-primary">Tambah Warehouse</a>
+                <a href="{{ route('backoffice.warehouses.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah Warehouse</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success">{{ session('success') }}</div>
-        @endif
 
         <div class="card">
 
@@ -462,7 +459,7 @@
                             </thead>
                             <tbody>
                                 @foreach($warehouses as $warehouse)
-                                    <tr>
+                                    <tr id="warehouse-{{ $warehouse->id }}">
                                         <td>{{ $warehouse->id }}</td>
                                         <td>{{ $warehouse->name }}</td>
                                         <td><span class="code-text">{{ $warehouse->code }}</span></td>
@@ -479,7 +476,7 @@
                                             <div class="action-group">
                                                 <a href="{{ route('backoffice.transfers.create', ['from_location_type' => 'warehouse', 'from_location_id' => $warehouse->id]) }}" class="btn btn-primary">Transfer</a>
                                                 <a href="{{ route('backoffice.warehouses.stock.index', $warehouse) }}" class="btn btn-green">Lihat Stock</a>
-                                                <a href="{{ route('backoffice.warehouses.edit', $warehouse) }}" class="btn btn-info">Edit</a>
+                                                <a href="{{ route('backoffice.warehouses.edit', [$warehouse, 'return_to' => $listReturnTo]) }}" class="btn btn-info">Edit</a>
                                             </div>
                                         </td>
                                     </tr>

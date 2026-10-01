@@ -234,7 +234,7 @@
 <div class="users-form-shell">
         <div class="topbar">
             <div class="title">Tambah User</div>
-            <a href="{{ route('backoffice.users.index') }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], null) }}" class="btn">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -251,6 +251,7 @@
         <div class="card">
             <form method="POST" action="{{ route('backoffice.users.store') }}">
                 @csrf
+                @include('backoffice.partials.return-to-field')
 
                 <div class="field">
                     <label>Nama</label>
@@ -359,7 +360,7 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-success">Simpan User</button>
-                    <a href="{{ route('backoffice.users.index') }}" class="btn">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], null) }}" class="btn">Batal</a>
                 </div>
             </form>
         </div>

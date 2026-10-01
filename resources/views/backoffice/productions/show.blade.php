@@ -205,9 +205,6 @@
         </div>
 
         <div class="content">
-            @if(session('success'))
-                <div class="alert">{{ session('success') }}</div>
-            @endif
 
             <div class="grid-2">
                 <div class="card">
@@ -288,5 +285,6 @@
         </div>
     </div>
 </div>
+    @include('backoffice.partials.feedback')
 </body>
 </html>
