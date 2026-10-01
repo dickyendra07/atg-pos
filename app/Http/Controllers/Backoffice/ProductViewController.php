@@ -257,7 +257,13 @@ class ProductViewController extends Controller
         try {
             $result = $policy->deletePermanently($productId);
         } catch (QueryException $e) {
-            // A dependency the policy does not know about. Never show SQL to the user, never pretend it worked.
+            // Only an integrity-constraint failure (SQLSTATE class 23) means "a dependency the policy does not
+            // know about". Anything else (syntax, connection, deadlock...) is a real fault: let it surface.
+            if (! str_starts_with((string) $e->getCode(), '23')) {
+                throw $e;
+            }
+
+            // Never show SQL to the user, never pretend it worked; the technical detail goes to the log.
             Log::error('Permanent Product delete hit a database constraint.', ['product_id' => $productId, 'exception' => $e]);
 
             return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$productId)

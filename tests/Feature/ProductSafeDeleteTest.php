@@ -18,6 +18,7 @@ use App\Models\Role;
 use App\Models\SalesTransaction;
 use App\Models\User;
 use App\Services\ProductDeletionPolicy;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -489,6 +490,298 @@ class ProductSafeDeleteTest extends TestCase
         }
 
         $this->assertSame($counts[1], $counts[40], json_encode($counts));
+    }
+
+    // ---- review: recipe mismatch shapes ----------------------------------------------------------------
+
+    public function test_every_shape_of_cross_product_recipe_blocks_the_delete(): void
+    {
+        $shapes = [
+            'active mismatch' => fn (Recipe $r, ProductVariant $v) => $r->update(['is_active' => true]),
+            'inactive mismatch' => fn (Recipe $r, ProductVariant $v) => $r->update(['is_active' => false]),
+            'mismatch without items' => fn (Recipe $r, ProductVariant $v) => $r->items()->delete(),
+        ];
+
+        foreach ($shapes as $name => $shape) {
+            [$product, $variants] = $this->makeProductWithRecipe('Victim '.$name, 3);
+            [$other, , $foreignRecipe] = $this->makeProductWithRecipe('Foreign '.$name, 1);
+
+            // one normal Variant keeps its own Recipe; a DIFFERENT Variant of the victim gets the foreign Recipe
+            $foreignRecipe->update(['product_variant_id' => $variants[2]->id]);
+            $shape($foreignRecipe, $variants[2]);
+
+            $this->assertBlocked($product, 'data Recipe yang tidak konsisten');
+
+            $this->actingAs($this->owner)->delete(route('backoffice.products.destroy-permanent', $product->id))->assertSessionHas('error');
+
+            $this->assertDatabaseHas('products', ['id' => $product->id]);
+            $this->assertDatabaseHas('product_variants', ['id' => $variants[2]->id]);
+            $this->assertSame($variants[2]->id, $foreignRecipe->fresh()->product_variant_id, $name.': the foreign Recipe was not detached');
+            $this->assertSame($other->id, $foreignRecipe->fresh()->product_id);
+        }
+    }
+
+    public function test_the_reverse_mismatch_also_blocks(): void
+    {
+        // Recipe belongs (product_id) to this Product but is attached to ANOTHER Product's Variant
+        [$product, , $recipe] = $this->makeProductWithRecipe('Owns the recipe', 1);
+        [, $otherVariants] = $this->makeProductWithRecipe('Owns the variant', 1);
+
+        $recipe->update(['product_variant_id' => $otherVariants[0]->id]);
+
+        $this->assertBlocked($product, 'data Recipe yang tidak konsisten');
+    }
+
+    // ---- review: sales references ----------------------------------------------------------------------
+
+    public function test_either_sales_reference_alone_is_enough_to_block(): void
+    {
+        [$a, $av] = $this->makeProductWithRecipe('Only product_id', 1);
+        [$b, $bv] = $this->makeProductWithRecipe('Only variant_id', 1);
+        [$c, $cv] = $this->makeProductWithRecipe('Both', 1);
+
+        $this->sale($a, null);        // product_id set, variant_id null
+        $this->sale(null, $bv[0]);    // product_id null, variant_id set
+        $this->sale($c, $cv[0]);
+
+        foreach ([$a, $b, $c] as $product) {
+            $this->assertBlocked($product, 'sudah memiliki riwayat transaksi');
+        }
+    }
+
+    public function test_a_sale_of_a_sibling_variant_blocks_the_whole_product(): void
+    {
+        [$product, $variants] = $this->makeProductWithRecipe('Three variants', 3);
+        $this->sale(null, $variants[2]);
+
+        $this->assertBlocked($product, 'sudah memiliki riwayat transaksi');
+    }
+
+    // ---- review: promo statuses ------------------------------------------------------------------------
+
+    public function test_expired_and_inactive_promos_still_block(): void
+    {
+        foreach ([
+            ['expired', ['status' => 'active', 'is_active' => true, 'end_date' => now()->subYear()->toDateString()]],
+            ['inactive', ['status' => 'inactive', 'is_active' => false]],
+            ['draft', ['status' => 'draft', 'is_active' => false]],
+        ] as [$label, $attributes]) {
+            [$product, $variants] = $this->makeProductWithRecipe('Promo '.$label, 1);
+            $promo = Promo::create(['name' => 'Promo '.$label] + $attributes);
+            PromoReward::create(['promo_id' => $promo->id, 'reward_type' => 'free_item', 'product_variant_id' => $variants[0]->id, 'qty' => 1]);
+
+            $this->assertBlocked($product, 'masih digunakan oleh Promo');
+        }
+    }
+
+    // ---- review: what a safe delete must NOT touch -------------------------------------------------------
+
+    public function test_a_safe_delete_leaves_shared_ingredients_and_other_products_recipes_alone(): void
+    {
+        [$a] = $this->makeProductWithRecipe('A', 2);
+        [$b, $bVariants, $bRecipe] = $this->makeProductWithRecipe('B', 1);
+        $ingredientOutlets = DB::table('ingredient_outlet')->where('ingredient_id', $this->milk->id)->count();
+        $recipeItems = RecipeItem::where('recipe_id', $bRecipe->id)->count();
+        $promo = Promo::create(['name' => 'Unrelated', 'status' => 'active', 'is_active' => true]);
+        $sale = $this->sale($b, $bVariants[0]);
+        $products = Product::count();
+
+        $this->actingAs($this->owner)->delete(route('backoffice.products.destroy-permanent', $a->id))->assertSessionHas('success');
+
+        $this->assertSame($products - 1, Product::count());
+        $this->assertDatabaseHas('ingredients', ['id' => $this->milk->id]);
+        $this->assertSame($ingredientOutlets, DB::table('ingredient_outlet')->where('ingredient_id', $this->milk->id)->count());
+        $this->assertDatabaseHas('recipes', ['id' => $bRecipe->id]);
+        $this->assertSame($recipeItems, RecipeItem::where('recipe_id', $bRecipe->id)->count());
+        $this->assertDatabaseHas('product_variants', ['id' => $bVariants[0]->id]);
+        $this->assertDatabaseHas('promos', ['id' => $promo->id]);
+        $this->assertSame(1, $sale->items()->count());
+        $this->assertSame($b->id, $sale->items()->first()->product_id);
+    }
+
+    public function test_the_numbers_in_the_dialog_are_exactly_what_the_delete_removes(): void
+    {
+        [$product, $variants, $recipe] = $this->makeProductWithRecipe('Counted', 3);
+        $variants[1]->update(['is_active' => false]);                                                            // inactive variants are deleted too
+        Recipe::create(['product_id' => $product->id, 'product_variant_id' => null, 'name' => 'No variant', 'is_active' => false]);   // recipe without a variant
+        $recipe2 = Recipe::create(['product_id' => $product->id, 'product_variant_id' => $variants[2]->id, 'name' => 'Second', 'is_active' => true]);
+
+        $verdict = app(ProductDeletionPolicy::class)->evaluate($product);
+
+        $this->assertSame(3, $verdict['impact']['variants']);
+        $this->assertSame(3, $verdict['impact']['recipes']);
+        $this->assertStringContainsString('3 Variant dan 3 Recipe yang belum pernah dipakai juga akan dihapus.', $verdict['confirm_note']);
+
+        $variantsBefore = ProductVariant::count();
+        $recipesBefore = Recipe::count();
+
+        $this->actingAs($this->owner)->delete(route('backoffice.products.destroy-permanent', $product->id))->assertSessionHas('success');
+
+        $this->assertSame($verdict['impact']['variants'], $variantsBefore - ProductVariant::count());
+        $this->assertSame($verdict['impact']['recipes'], $recipesBefore - Recipe::count());
+        $this->assertDatabaseMissing('recipes', ['id' => $recipe2->id]);
+    }
+
+    public function test_a_blocked_product_never_promises_that_recipes_will_be_deleted(): void
+    {
+        [$product, $variants] = $this->makeProductWithRecipe('Blocked with recipe', 1);
+        $this->sale($product, $variants[0]);
+
+        $html = $this->rowHtml($this->actingAs($this->owner)->get(route('backoffice.products.index'))->getContent(), $product);
+
+        $this->assertStringNotContainsString('juga akan dihapus', $html);
+        $this->assertStringNotContainsString('data-bo-confirm-title="Hapus Product Permanen?"', $html);
+    }
+
+    // ---- review: schema guard ---------------------------------------------------------------------------
+
+    public function test_every_foreign_key_into_products_variants_and_recipes_is_known_to_the_policy(): void
+    {
+        $found = [];
+
+        foreach (DB::select("select name from sqlite_master where type = 'table'") as $table) {
+            foreach (DB::select('pragma foreign_key_list('.$table->name.')') as $fk) {
+                if (in_array($fk->table, ['products', 'product_variants', 'recipes'], true)) {
+                    $found[] = $table->name.'.'.$fk->from.' -> '.$fk->table.' ('.$fk->on_delete.')';
+                }
+            }
+        }
+
+        sort($found);
+
+        // Handled by ProductDeletionPolicy: blocked (sales, promo, recipe mismatch) or deleted as disposable
+        // children (variants, recipes, recipe_items, pivots). A NEW reference must be added to the policy
+        // first - this failing is the reminder.
+        $this->assertSame([
+            'product_outlet.product_id -> products (CASCADE)',
+            'product_variant_outlet.product_variant_id -> product_variants (CASCADE)',
+            'product_variants.product_id -> products (CASCADE)',
+            'promo_requirements.product_variant_id -> product_variants (CASCADE)',
+            'promo_rewards.product_variant_id -> product_variants (SET NULL)',
+            'promos.requirement_product_variant_id -> product_variants (SET NULL)',
+            'promos.reward_product_variant_id -> product_variants (SET NULL)',
+            'recipe_items.recipe_id -> recipes (CASCADE)',
+            'recipes.product_id -> products (CASCADE)',
+            'recipes.product_variant_id -> product_variants (SET NULL)',
+            'sales_transaction_items.product_id -> products (SET NULL)',
+            'sales_transaction_items.product_variant_id -> product_variants (SET NULL)',
+        ], $found);
+    }
+
+    // ---- review: authorization and not-found --------------------------------------------------------------
+
+    public function test_forged_deletes_by_users_without_the_right_are_403_even_for_missing_products(): void
+    {
+        $product = $this->makeProduct('Guarded');
+        $noRole = User::create(['name' => 'norole', 'username' => 'norole', 'email' => 'norole@example.test', 'password' => 'password', 'role_id' => null, 'outlet_id' => $this->outletA->id, 'is_active' => true]);
+        $adminOutlet = $this->makeUser('admin-outlet', 'admin_outlet', [$this->outletA]);
+        $cashier = $this->makeUser('kasir', 'kasir', [$this->outletA]);
+
+        foreach ([$noRole, $adminOutlet, $cashier] as $user) {
+            $this->actingAs($user)->delete(route('backoffice.products.destroy-permanent', $product->id))->assertForbidden();
+            $this->actingAs($user)->delete(route('backoffice.products.destroy-permanent', 987654))->assertForbidden();   // not disguised as "already gone"
+        }
+
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
+
+        $this->actingAs($this->makeUser('pusat', 'admin_pusat', [$this->outletA]))
+            ->delete(route('backoffice.products.destroy-permanent', $product->id))
+            ->assertSessionHas('success');
+    }
+
+    public function test_second_request_after_a_successful_delete_is_a_friendly_notice_with_a_safe_return_to(): void
+    {
+        $product = $this->makeProduct('Twice');
+        $listUrl = '/backoffice/products?search=Twice&page=2';
+
+        $this->actingAs($this->owner)->delete(route('backoffice.products.destroy-permanent', $product->id), ['return_to' => $listUrl])->assertRedirect(url($listUrl));
+        $this->delete(route('backoffice.products.destroy-permanent', $product->id), ['return_to' => $listUrl])
+            ->assertRedirect(url($listUrl))
+            ->assertSessionHas('warning', 'Product sudah tidak ada.');
+        $this->delete(route('backoffice.products.destroy-permanent', $product->id), ['return_to' => '//evil.example'])
+            ->assertRedirect(route('backoffice.products.index'));
+    }
+
+    // ---- review: error handling ------------------------------------------------------------------------------
+
+    public function test_a_failure_that_is_not_a_constraint_violation_is_not_swallowed(): void
+    {
+        $product = $this->makeProduct('Real fault');
+        Schema::drop('product_variant_outlet');   // a genuine fault, not an integrity problem
+
+        $this->withoutExceptionHandling();
+        $this->expectException(QueryException::class);
+
+        $this->actingAs($this->owner)->delete(route('backoffice.products.destroy-permanent', $product->id));
+    }
+
+    // ---- review: routes / XSS ---------------------------------------------------------------------------------
+
+    public function test_routes_are_distinct_and_the_old_delete_still_only_inactivates(): void
+    {
+        $this->assertSame('/backoffice/products/5', route('backoffice.products.destroy', 5, false));
+        $this->assertSame('/backoffice/products/5/permanent', route('backoffice.products.destroy-permanent', 5, false));
+
+        $product = $this->makeProduct('Old route');
+        $this->actingAs($this->owner)->delete('/backoffice/products/'.$product->id)->assertSessionHas('success');
+
+        $this->assertDatabaseHas('products', ['id' => $product->id]);
+        $this->assertFalse((bool) $product->fresh()->is_active);
+
+        // a non-numeric id never reaches the permanent action
+        $this->delete('/backoffice/products/abc/permanent')->assertNotFound();
+    }
+
+    public function test_product_names_in_the_dialog_data_are_escaped(): void
+    {
+        $evil = '"><img src=x onerror=alert(1)>';
+        $product = $this->makeProduct($evil);
+
+        $html = $this->actingAs($this->owner)->get(route('backoffice.products.index'))->getContent();
+
+        $this->assertStringNotContainsString($evil, $html);
+        $this->assertStringContainsString('data-bo-confirm-body="Product “'.e($evil).'” akan dihapus permanen.', $this->rowHtml($html, $product));
+
+        // and the dialog script only ever writes the text with textContent
+        $script = file_get_contents(resource_path('views/backoffice/partials/confirm.blade.php'));
+        $this->assertStringContainsString('bodyEl.textContent', $script);
+        $this->assertStringNotContainsString('innerHTML', $script);
+        preg_match('/<script>(.*?)<\/script>/s', $script, $js);
+        $this->assertDoesNotMatchRegularExpression('/(?<![\w-])confirm\s*\(/', $js[1] ?? '', 'no browser confirm() in the dialog script');
+    }
+
+    // ---- review: query counts -----------------------------------------------------------------------------------
+
+    public function test_policy_and_index_query_counts_do_not_grow_with_the_number_of_products(): void
+    {
+        $policy = [];
+        $page = [];
+
+        $this->actingAs($this->owner)->get(route('backoffice.products.index'))->assertOk();   // warm-up: first request does one-off work
+
+        foreach ([1, 25, 100] as $target) {
+            while (Product::count() < $target) {
+                $this->makeProductWithRecipe('Bulk '.Product::count(), 2);
+            }
+
+            $products = Product::all();
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            app(ProductDeletionPolicy::class)->evaluateMany($products);
+            $policy[$target] = count(DB::getQueryLog());
+
+            DB::flushQueryLog();
+            $this->actingAs($this->owner)->get(route('backoffice.products.index'))->assertOk();
+            $page[$target] = count(DB::getQueryLog());
+            DB::disableQueryLog();
+        }
+
+        if (getenv('PARITY_TABLE')) {
+            fwrite(STDERR, "\ndelete-policy queries: ".json_encode($policy)."\nindex page queries: ".json_encode($page)."\n");
+        }
+
+        $this->assertSame(1, count(array_unique($policy)), 'policy: '.json_encode($policy));
+        $this->assertSame(1, count(array_unique($page)), 'index page: '.json_encode($page));
     }
 
     // ---- helpers ---------------------------------------------------------------------------------------

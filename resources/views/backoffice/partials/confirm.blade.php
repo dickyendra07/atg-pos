@@ -117,7 +117,7 @@
         // capture phase), so the list scroll offset has already been saved when a form is held here.
         document.addEventListener('submit', function (event) {
             var form = event.target;
-            if (!form || !form.hasAttribute || !form.hasAttribute('data-bo-confirm') || form.getAttribute('data-bo-confirmed') === '1') { return; }
+            if (!form || !form.hasAttribute || !form.hasAttribute('data-bo-confirm')) { return; }
             event.preventDefault();
             open(form);
         });
@@ -126,8 +126,20 @@
             if (!pendingForm) { return; }
             var form = pendingForm;
             okBtn.disabled = true;          // one click, one request
-            form.setAttribute('data-bo-confirmed', '1');
+            // HTMLFormElement.submit() does not fire a submit event, so this goes straight out without
+            // being intercepted again (and nothing is left marked "confirmed" on the form).
             form.submit();
+        });
+
+        // Coming back with the Back button can restore this page from the browser's cache with the dialog
+        // state as it was: reset it, so a destructive form is never one click away from re-sending.
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                overlay.classList.remove('is-open');
+                overlay.setAttribute('aria-hidden', 'true');
+                pendingForm = null;
+                okBtn.disabled = false;
+            }
         });
 
         cancelBtn.addEventListener('click', close);

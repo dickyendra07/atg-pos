@@ -228,11 +228,17 @@ class ProductDeletionPolicy
     public function deletePermanently(int $productId): array
     {
         return DB::transaction(function () use ($productId) {
+            // Order matters on MySQL/InnoDB: take the locks BEFORE any plain read, so the verdict below is
+            // computed after them. A concurrent sale/promo insert that references this Product or one of its
+            // Variants needs a shared lock on that parent row, so it waits for us and then fails its foreign
+            // key instead of slipping in between our check and our delete.
             $product = Product::query()->lockForUpdate()->find($productId);
 
             if (! $product) {
                 return ['deleted' => false, 'verdict' => ['can_hard_delete' => false, 'blockers' => [], 'missing' => true]];
             }
+
+            DB::table('product_variants')->where('product_id', $product->id)->lockForUpdate()->pluck('id');
 
             $verdict = $this->evaluate($product);
 
