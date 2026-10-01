@@ -8,11 +8,14 @@ use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\BackofficeOutletContext;
+use App\Services\ProductDeletionPolicy;
 use App\Support\BackofficeReturnUrl;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductViewController extends Controller
@@ -80,8 +83,14 @@ class ProductViewController extends Controller
             })
             ->sortKeys();
 
+        // Verdict per listed Product, computed GLOBALLY (the Active Outlet only filters the list above).
+        // Hint for the buttons only: the server decides again when a delete is requested.
+        $deletionStates = app(ProductDeletionPolicy::class)->evaluateMany($products);
+
         return view('backoffice.products.index', [
             'user' => $user,
+            'canHardDelete' => $user->isFullAccessUser(),
+            'deletionStates' => $deletionStates,
             'products' => $products,
             'productGroups' => $productGroups,
             'categories' => $categories,
@@ -224,12 +233,50 @@ class ProductViewController extends Controller
     {
         $this->authorizeAccess();
 
-        $productName = $product->name;
         $product->update(['is_active' => false]);
 
         // Inactivating keeps the row in the list, so it can stay the anchor.
         return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
-            ->with('success', 'Product "'.$productName.'" berhasil dinonaktifkan. Variant, outlet, recipe, dan riwayat transaksi tetap tersimpan.');
+            ->with('success', 'Product berhasil dinonaktifkan. Histori dan data terkait tetap disimpan.');
+    }
+
+    /**
+     * Permanent delete. DELETE /products/{product} keeps meaning "nonaktifkan" (existing behaviour and
+     * callers); this explicit route is the only one that can remove a Product, and only when
+     * ProductDeletionPolicy says it is disposable.
+     */
+    public function destroyPermanent(Request $request, int $productId)
+    {
+        $user = $this->authorizeAccess();
+
+        // Stricter than editing: removing a GLOBAL Product is for full-access users only.
+        abort_unless($user->isFullAccessUser(), 403, 'Hanya owner atau admin pusat yang dapat menghapus Product secara permanen.');
+
+        $policy = app(ProductDeletionPolicy::class);
+
+        try {
+            $result = $policy->deletePermanently($productId);
+        } catch (QueryException $e) {
+            // A dependency the policy does not know about. Never show SQL to the user, never pretend it worked.
+            Log::error('Permanent Product delete hit a database constraint.', ['product_id' => $productId, 'exception' => $e]);
+
+            return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$productId)
+                ->with('error', 'Product belum dapat dihapus permanen karena masih terhubung dengan data lain. Nonaktifkan Product ini saja.');
+        }
+
+        if (! empty($result['verdict']['missing'])) {
+            return BackofficeReturnUrl::redirect($request, 'backoffice.products.index')
+                ->with('warning', 'Product sudah tidak ada.');
+        }
+
+        if (! $result['deleted']) {
+            return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$productId)
+                ->with('error', $policy->blockedMessage($result['verdict']));
+        }
+
+        // The row is gone: no anchor, the list keeps its filters and scroll offset.
+        return BackofficeReturnUrl::redirect($request, 'backoffice.products.index')
+            ->with('success', 'Product berhasil dihapus permanen.');
     }
 
     public function importForm()

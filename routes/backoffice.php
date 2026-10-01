@@ -93,6 +93,7 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::get('/products/{product}/edit', [ProductViewController::class, 'edit'])->name('products.edit');
     Route::put('/products/{product}', [ProductViewController::class, 'update'])->name('products.update');
     Route::delete('/products/{product}', [ProductViewController::class, 'destroy'])->name('products.destroy');
+    Route::delete('/products/{productId}/permanent', [ProductViewController::class, 'destroyPermanent'])->whereNumber('productId')->name('products.destroy-permanent');
 
     Route::get('/variants/import', [ProductVariantViewController::class, 'importForm'])->name('variants.import');
     Route::get('/variants/import/template', [ProductVariantViewController::class, 'downloadTemplate'])->name('variants.import.template');

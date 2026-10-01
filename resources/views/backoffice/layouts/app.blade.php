@@ -675,5 +675,6 @@
     </script>
 
     @include('backoffice.partials.feedback')
+    @include('backoffice.partials.confirm')
 </body>
 </html>
