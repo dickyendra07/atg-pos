@@ -8,6 +8,7 @@ use App\Models\Discount;
 use App\Models\Product;
 use App\Models\Promo;
 use App\Models\SalesTransaction;
+use App\Services\SaleEligibilityService;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -287,7 +288,7 @@ class CashierController extends Controller
             ->values();
     }
 
-    public function __invoke(Request $request)
+    public function __invoke(Request $request, SaleEligibilityService $saleEligibilityService)
     {
         $user = $this->authorizeCashierAccess();
 
@@ -331,6 +332,13 @@ class CashierController extends Controller
             })
             ->sortKeys();
 
+        // Why a Variant can not be sold here, straight from SaleEligibilityService (the same rules
+        // add-to-cart and checkout enforce). A hint for the UI only: the server re-checks on add.
+        $variantStatuses = $saleEligibilityService->variantStatuses(
+            $products->flatMap(fn ($product) => $product->variants->pluck('id'))->all(),
+            (int) $user->outlet_id
+        );
+
         $cart = session('cashier_cart', []);
         $member = session('cashier_member');
         $orderType = session('cashier_order_type', 'dine_in');
@@ -349,6 +357,7 @@ class CashierController extends Controller
             'user' => $user,
             'products' => $products,
             'productGroups' => $productGroups,
+            'variantStatuses' => $variantStatuses,
             'cart' => $cart,
             'member' => $member,
             'subtotal' => $subtotal,
