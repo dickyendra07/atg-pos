@@ -1453,6 +1453,56 @@
             min-height: 220px;
         }
 
+        .product-card.is-unavailable { background: #f8fafc; border-color: #e2e8f0; }
+        .product-card.is-unavailable .product-image { opacity: 0.45; filter: grayscale(1); }
+        .product-card.is-unavailable .product-name { color: #64748b; }
+        .product-unavailable-note {
+            margin: 8px 0 4px;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            font-size: 13px;
+            line-height: 1.35;
+            display: grid;
+            gap: 2px;
+        }
+        .product-card.is-unavailable .product-pick-btn { background: #fff; color: #991b1b; border: 1px solid #fca5a5; }
+
+        .variant-option-card.is-unavailable { background: #f8fafc; border-color: #e2e8f0; min-height: unset; }
+        .variant-option-card.is-unavailable .variant-option-name { color: #64748b; }
+        .variant-unavailable-badge {
+            flex-shrink: 0;
+            padding: 5px 10px;
+            border-radius: 999px;
+            background: #fee2e2;
+            color: #991b1b;
+            font-size: 12px;
+            font-weight: 800;
+        }
+        .variant-unavailable-reason {
+            margin: 4px 0 12px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #991b1b;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+        .variant-unavailable-btn {
+            min-height: 44px;
+            padding: 0 16px;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #f1f5f9;
+            color: #94a3b8;
+            font-weight: 800;
+            cursor: not-allowed;
+        }
+
         .variant-option-top {
             display: flex;
             justify-content: space-between;
@@ -4300,10 +4350,15 @@
                                             @foreach($categoryProducts as $product)
                                                 @php
                                                     $activeVariants = $product->variants->where('is_active', true)->values();
+                                                    // Server verdict per Variant (SaleEligibilityService); a missing entry is treated as sellable
+                                                    // so a status hiccup never blocks a sale the server would still accept.
+                                                    $variantStatus = fn ($variant) => ($variantStatuses ?? [])[$variant->id] ?? ['eligible' => true, 'reason' => null, 'message' => null];
+                                                    $sellableCount = $activeVariants->filter(fn ($variant) => $variantStatus($variant)['eligible'])->count();
+                                                    $blockedMessages = $activeVariants->map(fn ($variant) => $variantStatus($variant)['message'])->filter()->unique()->values();
                                                 @endphp
 
                                                 <div
-                                                    class="product-card"
+                                                    class="product-card {{ $activeVariants->count() && $sellableCount === 0 ? 'is-unavailable' : '' }}"
                                                     data-product-card
                                                     data-search="{{ strtolower(trim(($product->name ?? '') . ' ' . ($product->category->name ?? '') . ' ' . ($product->brand->name ?? ''))) }}"
                                                 >
@@ -4320,8 +4375,13 @@
                                                     </div>
 
                                                     <div class="product-foot">
-                                                        <div class="product-variant-count">
-                                                            {{ $activeVariants->count() }} variant aktif
+                                                        <div class="product-variant-count" data-variant-count>
+                                                            {{ $activeVariants->count() }} variant aktif{{ ($sellableCount > 0 && $sellableCount < $activeVariants->count()) ? ' • '.($activeVariants->count() - $sellableCount).' tidak tersedia' : '' }}
+                                                        </div>
+
+                                                        <div class="product-unavailable-note {{ $activeVariants->count() && $sellableCount === 0 ? '' : 'hidden' }}" data-unavailable-note role="note">
+                                                            <strong>Tidak dapat dijual</strong>
+                                                            <span data-unavailable-reason>{{ $blockedMessages->count() === 1 ? $blockedMessages->first() : 'Lihat alasan di setiap variant.' }}</span>
                                                         </div>
 
                                                         <button
@@ -4331,7 +4391,7 @@
                                                             data-product-name="{{ $product->name }}"
                                                             data-product-meta="{{ trim(($product->category->name ?? 'Uncategorized') . ($product->brand ? ' • ' . $product->brand->name : '')) }}"
                                                         >
-                                                            Pilih Variant
+                                                            {{ ($activeVariants->count() && $sellableCount === 0) ? 'Lihat Alasan' : 'Pilih Variant' }}
                                                         </button>
 
                                                         <div class="hidden" data-variant-modal-source>
@@ -4339,6 +4399,7 @@
                                                                 @php
                                                                     $dineInPrice = (float) ($variant->price_dine_in ?? $variant->price);
                                                                     $deliveryPrice = (float) ($variant->price_delivery ?? $variant->price);
+                                                                    $status = $variantStatus($variant);
                                                                 @endphp
 
                                                                 <div
@@ -4348,6 +4409,8 @@
                                                                     data-dine-in="{{ $dineInPrice }}"
                                                                     data-delivery="{{ $deliveryPrice }}"
                                                                     data-url="{{ route('cashier.cart.add', $variant) }}"
+                                                                    data-eligible="{{ $status['eligible'] ? '1' : '0' }}"
+                                                                    data-reason-message="{{ $status['message'] }}"
                                                                 ></div>
                                                             @endforeach
                                                         </div>
@@ -5087,8 +5150,13 @@
         }
 
         if (type === 'error') {
-            errorAlert.textContent = message;
-            errorAlert.classList.remove('hidden');
+            // Not the inline box: that sits in the page flow, behind the Variant/payment modals.
+            if (window.CashierToast) {
+                window.CashierToast.show('error', message);
+            } else {
+                errorAlert.textContent = message;
+                errorAlert.classList.remove('hidden');
+            }
             return;
         }
 
@@ -5580,7 +5648,9 @@
         const data = await response.json().catch(() => ({}));
 
         if (!response.ok || data.success === false) {
-            throw new Error(data.message || 'Terjadi kendala saat memproses permintaan.');
+            const error = new Error(data.message || 'Terjadi kendala saat memproses permintaan.');
+            error.data = data;
+            throw error;
         }
 
         return data;
@@ -5671,11 +5741,53 @@
             showAlert('success', result.message || 'Item berhasil masuk ke keranjang.');
             closeVariantModal();
         } catch (error) {
-            showAlert('error', error.message);
+            // The server's answer wins over what the page knew at load time: show its reason (above the
+            // modal) and, when it refused this very Variant, mark it unavailable with that reason.
+            showAlert('error', (error.data && error.data.cashier_message) || error.message);
+            applyServerVariantStatus(url, error.data && error.data.variant_status);
         } finally {
             button.disabled = false;
             button.textContent = originalText;
         }
+    }
+
+    function applyServerVariantStatus(url, status) {
+        if (!status) return;
+
+        const item = Array.from(document.querySelectorAll('[data-variant-source-item]'))
+            .find((candidate) => candidate.dataset.url === url);
+        if (!item) return;
+
+        item.dataset.eligible = '0';
+        item.dataset.reasonMessage = status.message || 'Tidak tersedia.';
+
+        const card = item.closest('[data-product-card]');
+        if (card) refreshProductCardState(card);
+
+        rerenderOpenModalPrices();
+    }
+
+    // Product card state from its Variants' data attributes (the server's verdicts); no sale rules here.
+    function refreshProductCardState(card) {
+        const items = Array.from(card.querySelectorAll('[data-variant-source-item]'));
+        const sellable = items.filter((item) => item.dataset.eligible !== '0');
+        const blocked = items.filter((item) => item.dataset.eligible === '0');
+        const count = card.querySelector('[data-variant-count]');
+        const note = card.querySelector('[data-unavailable-note]');
+        const reason = card.querySelector('[data-unavailable-reason]');
+        const opener = card.querySelector('[data-open-variant-modal]');
+        const allBlocked = items.length > 0 && sellable.length === 0;
+
+        card.classList.toggle('is-unavailable', allBlocked);
+        if (count) {
+            count.textContent = items.length + ' variant aktif' + (sellable.length > 0 && blocked.length > 0 ? ' • ' + blocked.length + ' tidak tersedia' : '');
+        }
+        if (note) note.classList.toggle('hidden', !allBlocked);
+        if (reason && allBlocked) {
+            const messages = Array.from(new Set(blocked.map((item) => item.dataset.reasonMessage).filter(Boolean)));
+            reason.textContent = messages.length === 1 ? messages[0] : 'Lihat alasan di setiap variant.';
+        }
+        if (opener) opener.textContent = allBlocked ? 'Lihat Alasan' : 'Pilih Variant';
     }
 
     async function handleCartAction(button) {
@@ -5895,6 +6007,19 @@
     if (variantModalSubtitle) variantModalSubtitle.textContent = productMeta;
     if (variantModalOrderType) variantModalOrderType.textContent = formatOrderType(activeOrderType);
 
+    // One Product, one Variant, and the server says it can not be sold: say why right away
+    // instead of opening a modal whose only button does nothing.
+    if (sourceItems.length === 1 && sourceItems[0].dataset.eligible === '0') {
+        if (variantModalBackdrop.classList.contains('active')) {
+            // Re-render of an already open modal after a server refusal: the reason was just shown, so only close it.
+            closeVariantModal();
+            return;
+        }
+
+        showAlert('error', productName + ': ' + (sourceItems[0].dataset.reasonMessage || 'Tidak dapat dijual.'));
+        return;
+    }
+
     if (!sourceItems.length) {
         variantModalGrid.innerHTML = `
             <div class="variant-option-card" style="grid-column:1/-1; min-height:unset;">
@@ -5910,6 +6035,33 @@
             const delivery = Number(item.dataset.delivery || 0);
             const activePrice = activeOrderType === 'delivery' ? delivery : dineIn;
             const url = item.dataset.url || '#';
+
+            if (item.dataset.eligible === '0') {
+                return `
+                    <div class="variant-option-card is-unavailable">
+                        <div class="variant-option-top">
+                            <div>
+                                <div class="variant-option-name">${escapeHtml(name)}</div>
+                                <div class="variant-option-code">${escapeHtml(code)}</div>
+                            </div>
+                            <span class="variant-unavailable-badge">Tidak tersedia</span>
+                        </div>
+
+                        <div class="variant-unavailable-reason" role="note">${escapeHtml(item.dataset.reasonMessage || 'Tidak dapat dijual.')}</div>
+
+                        <div class="variant-active-price">
+                            <div class="variant-active-price-text">
+                                Harga:<br>
+                                <strong>${escapeHtml(formatCurrency(activePrice))}</strong>
+                            </div>
+
+                            <button type="button" class="variant-unavailable-btn" disabled aria-disabled="true">
+                                Tidak dapat dijual
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
 
             return `
                 <div class="variant-option-card">
@@ -6902,5 +7054,6 @@
 
     </script>
 
+@include('cashier.partials.toast')
 </body>
 </html>

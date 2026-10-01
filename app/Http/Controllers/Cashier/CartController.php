@@ -11,6 +11,7 @@ use App\Models\Member;
 use App\Models\ProductVariant;
 use App\Models\Promo;
 use App\Models\SalesTransaction;
+use App\Exceptions\SaleNotEligibleException;
 use App\Services\SaleEligibilityService;
 use App\Services\StockDeductionService;
 use Illuminate\Http\Exceptions\HttpResponseException;
@@ -178,6 +179,25 @@ class CartController extends Controller
 
         try {
             $saleEligibilityService->requirementsForCart($cart, (int) $user->outlet_id);
+        } catch (SaleNotEligibleException $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    // `message` keeps its long-standing full wording; the Cashier UI shows `cashier_message`.
+                    'message' => $e->getMessage(),
+                    'cashier_message' => trim(($e->displayName ? $e->displayName.': ' : '').$e->cashierMessage),
+                    'reason' => $e->reason,
+                    // Set only when the Variant that was just tapped is the one refused, so the open
+                    // modal can mark it unavailable with this fresh server reason.
+                    'variant_status' => $e->variantId === (int) $variant->id
+                        ? ['eligible' => false, 'reason' => $e->reason, 'message' => $e->cashierMessage]
+                        : null,
+                ], 422);
+            }
+
+            return redirect()
+                ->route('cashier.index')
+                ->with('error', $e->getMessage());
         } catch (RuntimeException $e) {
             if ($request->expectsJson()) {
                 return response()->json([
