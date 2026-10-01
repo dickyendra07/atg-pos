@@ -80,9 +80,21 @@
         .bo-toast.is-leaving { transition: none; }
     }
 
-    @media (max-width: 560px) {
-        .bo-toast-region { top: 10px; right: 10px; left: 10px; width: auto; }
+    /* Phones: the sticky top bar holds the menu button, so toasts sit at the bottom instead, clear of navigation. */
+    @media (max-width: 780px) {
+        .bo-toast-region {
+            top: auto;
+            bottom: max(12px, env(safe-area-inset-bottom));
+            left: 10px;
+            right: 10px;
+            width: auto;
+        }
+
+        .bo-toast { animation-name: bo-toast-in-mobile; }
+        .bo-toast.is-leaving { transform: translateY(6px); }
     }
+
+    @keyframes bo-toast-in-mobile { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
 <div class="bo-toast-region" id="bo-toast-region" aria-live="polite" aria-atomic="false">
