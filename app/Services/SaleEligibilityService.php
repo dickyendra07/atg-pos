@@ -61,7 +61,9 @@ class SaleEligibilityService
                 $soldQty
             );
 
-            foreach ($variantRequirements as $ingredientId => $qty) {
+            // Accumulated item by item, in recipe order - exactly as before the checkVariant() extraction -
+            // so the floating point sums handed to StockDeductionService are bit-for-bit the same.
+            foreach ($variantRequirements as [$ingredientId, $qty]) {
                 $requirements[$ingredientId] = ($requirements[$ingredientId] ?? 0) + $qty;
             }
         }
@@ -123,8 +125,8 @@ class SaleEligibilityService
     }
 
     /**
-     * The single place that decides whether one Variant can be sold at $outlet. Returns the ingredient
-     * quantities needed for $soldQty (keyed by ingredient ID) or throws SaleNotEligibleException.
+     * The single place that decides whether one Variant can be sold at $outlet. Returns the Recipe's
+     * [ingredientId, qty * $soldQty] pairs in Recipe order, or throws SaleNotEligibleException.
      *
      * Stock on hand is deliberately NOT a rule here: a zero/missing/negative balance never blocks a sale.
      */
@@ -202,8 +204,7 @@ class SaleEligibilityService
                 throw $fail('Qty ingredient “'.$ingredient->name.'” pada recipe “'.$recipe->name.'” harus lebih dari 0.', 'ingredient_qty_invalid', 'Qty ingredient '.$ingredient->name.' pada Recipe harus lebih dari 0.', $displayName);
             }
 
-            $ingredientId = (int) $ingredient->id;
-            $requirements[$ingredientId] = ($requirements[$ingredientId] ?? 0) + ($recipeQty * $soldQty);
+            $requirements[] = [(int) $ingredient->id, $recipeQty * $soldQty];
         }
 
         return $requirements;

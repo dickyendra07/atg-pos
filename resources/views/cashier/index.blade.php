@@ -6010,6 +6010,12 @@
     // One Product, one Variant, and the server says it can not be sold: say why right away
     // instead of opening a modal whose only button does nothing.
     if (sourceItems.length === 1 && sourceItems[0].dataset.eligible === '0') {
+        if (variantModalBackdrop.classList.contains('active')) {
+            // Re-render of an already open modal after a server refusal: the reason was just shown, so only close it.
+            closeVariantModal();
+            return;
+        }
+
         showAlert('error', productName + ': ' + (sourceItems[0].dataset.reasonMessage || 'Tidak dapat dijual.'));
         return;
     }

@@ -7,16 +7,19 @@
 <style>
     .cashier-toast-region {
         position: fixed;
-        top: max(12px, env(safe-area-inset-top));
+        top: 12px;
+        top: max(12px, env(safe-area-inset-top));   /* older WebViews ignore this line and keep 12px */
         left: 50%;
+        -webkit-transform: translateX(-50%);
         transform: translateX(-50%);
         z-index: 2147483647;
-        width: min(560px, calc(100vw - 24px));
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
+        width: calc(100vw - 24px);
+        max-width: 560px;
+        display: block;
         pointer-events: none;
     }
+
+    .cashier-toast + .cashier-toast { margin-top: 8px; }
 
     .cashier-toast {
         pointer-events: auto;
