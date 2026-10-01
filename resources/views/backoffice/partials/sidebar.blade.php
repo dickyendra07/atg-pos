@@ -257,5 +257,5 @@
 
 <div class="sidebar-footer">
     {{ $user->name ?? 'User' }} • {{ $user->role->name ?? '-' }}<br>
-    {{ $user->outlet->name ?? 'Back Office Access' }}
+    {{ $activeOutletLabel ?? 'Back Office Access' }}
 </div>

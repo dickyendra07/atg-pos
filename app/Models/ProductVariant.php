@@ -75,4 +75,27 @@ class ProductVariant extends Model
                 $outletQuery->where('outlets.id', $outletId);
             });
     }
+
+    /**
+     * Variants available (Product + Variant) in at least one of the given outlets.
+     * null = unrestricted, [] = nothing.
+     *
+     * @param  int[]|null  $outletIds
+     */
+    public function scopeInOutletScope(Builder $query, ?array $outletIds): Builder
+    {
+        if ($outletIds === null) {
+            return $query;
+        }
+
+        if ($outletIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $scope) use ($outletIds) {
+            foreach ($outletIds as $outletId) {
+                $scope->orWhere(fn (Builder $inner) => $inner->availableAtOutlet((int) $outletId));
+            }
+        });
+    }
 }

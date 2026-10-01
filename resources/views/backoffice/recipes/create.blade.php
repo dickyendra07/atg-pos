@@ -233,7 +233,7 @@
             <div class="info">
                 <strong>User:</strong> {{ $user->name }}<br>
                 <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                <strong>Active Outlet:</strong> {{ $activeOutletLabel ?? '-' }}
             </div>
 
             <form method="POST" action="{{ route('backoffice.recipes.store') }}">
@@ -249,6 +249,10 @@
                             </option>
                         @endforeach
                     </select>
+                    <div class="info" style="margin-top:8px;">
+                        Recipe berlaku ke semua outlet yang memakai Variant. Hanya Variant yang boleh kamu ubah pada konteks outlet di atas yang ditampilkan.
+                        Untuk Variant multi-outlet, pilih 'Semua Outlet' (atau 'Semua Outlet yang Diizinkan' jika kamu punya akses ke seluruh outletnya).
+                    </div>
 
                 </div>
 

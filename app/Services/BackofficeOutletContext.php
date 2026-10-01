@@ -61,4 +61,46 @@ class BackofficeOutletContext
         return $this->accessibleOutlets($user)
             ->contains(fn ($outlet) => (int) $outlet->id === $outletId);
     }
+
+    /**
+     * Single source of truth for the "Outlet" label shown on Backoffice screens.
+     *
+     * It reflects the Active Backoffice Outlet, never users.outlet_id (the home outlet), which for a
+     * global role such as admin pusat is just the first outlet picked when the account was created.
+     */
+    public function labelFor(User $user, ?Outlet $activeOutlet): string
+    {
+        if ($activeOutlet) {
+            return $activeOutlet->name;
+        }
+
+        return $user->isFullAccessUser() ? 'Semua Outlet' : 'Semua Outlet yang Diizinkan';
+    }
+
+    /**
+     * Outlet ids that bound what the user may see/modify right now.
+     *
+     * - specific Active Outlet            => [that outlet]
+     * - full-access role, "Semua Outlet"  => null (unrestricted)
+     * - limited role, "Semua Outlet"      => every outlet the user can access ([] = none)
+     *
+     * @return int[]|null
+     */
+    public function scopeOutletIds(User $user): ?array
+    {
+        $activeOutletId = $this->activeOutletId($user);
+
+        if ($activeOutletId) {
+            return [(int) $activeOutletId];
+        }
+
+        if ($user->isFullAccessUser()) {
+            return null;
+        }
+
+        return $this->accessibleOutlets($user)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
 }

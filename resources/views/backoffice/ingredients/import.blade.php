@@ -243,7 +243,7 @@
                     <div class="import-info" style="margin-bottom:14px;">
                         <strong>User:</strong> {{ $user->name }}<br>
                         <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                        <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                        <strong>Active Outlet:</strong> {{ $activeOutletLabel ?? '-' }}
                     </div>
 
                     <div class="template-box">

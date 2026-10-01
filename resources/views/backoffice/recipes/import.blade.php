@@ -265,7 +265,8 @@
                     <div class="import-info" style="margin-bottom:14px;">
                         <strong>User:</strong> {{ $user->name }}<br>
                         <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                        <strong>Outlet:</strong> {{ $user->outlet->name ?? '-' }}
+                        <strong>Active Outlet:</strong> {{ $activeOutletLabel ?? '-' }}<br>
+                        Baris untuk Variant di luar konteks outlet di atas akan dilewati.
                     </div>
 
                     <div class="template-box">

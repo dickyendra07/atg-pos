@@ -977,9 +977,13 @@
                                     </td>
                                     <td>
                                         <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
-                                            <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small">Edit</a>
+                                            @if(in_array($recipe->id, $mutableRecipeIds, true))
+                                                <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small">Edit</a>
+                                            @else
+                                                <a href="{{ route('backoffice.recipes.edit', $recipe->id) }}" class="btn btn-small" title="Recipe dipakai di beberapa outlet atau di luar akses Anda. Hanya bisa dilihat.">Lihat (read-only)</a>
+                                            @endif
 
-                                            @if($recipe->is_active)
+                                            @if($recipe->is_active && in_array($recipe->id, $mutableRecipeIds, true))
                                                 <form method="POST" action="{{ route('backoffice.recipes.destroy', $recipe->id) }}" onsubmit="return confirm('Yakin ingin menonaktifkan recipe ini?');" style="margin: 0;">
                                                     @csrf
                                                     @method('DELETE')
