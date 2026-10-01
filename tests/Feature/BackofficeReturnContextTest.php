@@ -105,6 +105,12 @@ class BackofficeReturnContextTest extends TestCase
         return [
             'external url' => ['https://evil.example'],
             'external url with backoffice path' => ['https://evil.example/backoffice/products'],
+            'plain http' => ['http://evil.example'],
+            'data scheme' => ['data:text/html,<script>alert(1)</script>'],
+            'encoded protocol-relative (as submitted)' => ['%2F%2Fevil.example'],
+            'double-encoded traversal' => ['/backoffice/%252e%252e/login'],
+            'encoded slash traversal' => ['/backoffice/..%2flogin'],
+            'encoded slash after prefix' => ['/backoffice%2f..%2flogin'],
             'protocol-relative' => ['//evil.example'],
             'protocol-relative with backoffice path' => ['//evil.example/backoffice/products'],
             'javascript scheme' => ['javascript:alert(1)'],
@@ -136,6 +142,10 @@ class BackofficeReturnContextTest extends TestCase
         $this->assertSame('/backoffice', BackofficeReturnUrl::sanitize('/backoffice'));
         $this->assertSame('/backoffice/products', BackofficeReturnUrl::sanitize('/backoffice/products#product-1'), 'fragment is dropped');
         $this->assertSame('/backoffice/products?search=a%20b', BackofficeReturnUrl::sanitize('/backoffice/products?search=a%20b'));
+        $this->assertSame('/backoffice/ingredients?search=Packaging', BackofficeReturnUrl::sanitize('/backoffice/ingredients?search=Packaging#ingredient-12'));
+        $this->assertSame('/backoffice/products?search=Kafei&page=3', BackofficeReturnUrl::sanitize('/backoffice/products?search=Kafei&page=3'));
+        // an external URL smuggled in the QUERY of a valid path is just data, not a redirect target
+        $this->assertSame('/backoffice/products?next=https://evil.example', BackofficeReturnUrl::sanitize('/backoffice/products?next=https://evil.example'));
     }
 
     public function test_anchor_is_only_appended_when_it_is_a_plain_dom_id(): void
@@ -453,6 +463,64 @@ class BackofficeReturnContextTest extends TestCase
         $this->assertStringContainsString(e(route('backoffice.recipes.edit', [$this->recipe->id, 'return_to' => $returnTo])), $html);
     }
 
+    // ---- anchor edge cases: records that may not be in the list any more -------------------------
+
+    public function test_create_that_does_not_match_the_current_filter_keeps_the_filter_and_the_list_still_renders(): void
+    {
+        $listUrl = '/backoffice/products?search=zzz-no-match&category_id='.$this->menuCategory->id.'&page=2';
+
+        $this->actingAs($this->owner)
+            ->post(route('backoffice.products.store'), $this->productPayload(['name' => 'Kafei Lain', 'code' => 'KAFEI-LAIN', 'return_to' => $listUrl]))
+            ->assertRedirect(url($listUrl.'#product-'.Product::where('code', 'KAFEI-LAIN')->value('id')))
+            ->assertSessionHas('success');
+
+        // The new row is not in that filtered list: the anchor simply has no target (the page script
+        // then falls back to the saved scroll offset). The page itself must render without error.
+        $html = $this->get($listUrl)->assertOk()->getContent();
+        $this->assertStringNotContainsString('id="product-'.Product::where('code', 'KAFEI-LAIN')->value('id').'"', $html);
+    }
+
+    public function test_ingredient_create_returns_to_the_packaging_list_anchored_at_the_new_ingredient(): void
+    {
+        $listUrl = '/backoffice/ingredients?search=Packaging';
+
+        $this->actingAs($this->owner)
+            ->post(route('backoffice.ingredients.store'), $this->ingredientPayload(['name' => 'Packaging Lid', 'return_to' => $listUrl]))
+            ->assertRedirect(url($listUrl.'#ingredient-'.Ingredient::where('name', 'Packaging Lid')->value('id')))
+            ->assertSessionHas('success', 'Ingredient berhasil ditambahkan.');
+    }
+
+    public function test_recipe_inactivate_only_anchors_when_the_row_is_still_in_the_filtered_list(): void
+    {
+        $anchor = '#recipe-'.$this->recipe->id;
+
+        // Filtered to active: the recipe leaves the list -> return to the same query, no dead anchor.
+        $this->actingAs($this->owner)
+            ->delete(route('backoffice.recipes.destroy', $this->recipe), ['return_to' => '/backoffice/recipes?search=Kafei&status=active&page=2'])
+            ->assertRedirect(url('/backoffice/recipes?search=Kafei&status=active&page=2'))
+            ->assertSessionHas('success', 'Recipe berhasil dinonaktifkan.');
+
+        // Unfiltered / inactive / all: still listed -> anchor.
+        foreach (['/backoffice/recipes?search=Kafei', '/backoffice/recipes?status=inactive'] as $listUrl) {
+            $this->recipe->update(['is_active' => true]);
+
+            $this->delete(route('backoffice.recipes.destroy', $this->recipe), ['return_to' => $listUrl])
+                ->assertRedirect(url($listUrl.$anchor));
+        }
+    }
+
+    public function test_product_inactivate_keeps_the_row_anchor_because_the_product_list_still_shows_inactive_rows(): void
+    {
+        $listUrl = '/backoffice/products?search=kafei';
+
+        $this->actingAs($this->owner)
+            ->delete(route('backoffice.products.destroy', $this->product), ['return_to' => $listUrl])
+            ->assertRedirect(url($listUrl.'#product-'.$this->product->id));
+
+        $html = $this->get($listUrl)->assertOk()->getContent();
+        $this->assertStringContainsString('id="product-'.$this->product->id.'"', $html);
+    }
+
     // ---- Open redirect through real endpoints -----------------------------------------------------
 
     #[DataProvider('hostileReturnToOnRequests')]
@@ -519,35 +587,72 @@ class BackofficeReturnContextTest extends TestCase
 
     // ---- validation failures ----------------------------------------------------------------------
 
-    public function test_failed_validation_stays_on_the_edit_form_with_errors_old_input_and_return_to(): void
+    /**
+     * Real request flow: GET edit (with return_to) -> invalid PUT -> redirect back -> GET the form again.
+     * No session assertion helpers between the requests: in the Laravel test client calling
+     * assertSessionHasErrors()/assertSessionHasInput() before the next request makes that next
+     * request lose the flashed errors, which would hide the very thing being checked here.
+     */
+    public function test_product_edit_real_flow_failed_validation_stays_on_form_with_errors_old_input_return_to_and_one_toast(): void
     {
-        $returnTo = '/backoffice/products?search=kafei&page=3';
+        $returnTo = '/backoffice/products?search=kafei&category_id=1&page=3';
         $editUrl = route('backoffice.products.edit', [$this->product, 'return_to' => $returnTo]);
+        $hidden = '<input type="hidden" name="return_to" value="'.e($returnTo).'">';
 
-        $this->actingAs($this->owner)
-            ->from($editUrl)
+        $this->actingAs($this->owner);
+
+        $this->assertStringContainsString($hidden, $this->get($editUrl)->assertOk()->getContent());
+
+        $this->from($editUrl)
             ->put(route('backoffice.products.update', $this->product), $this->productPayload(['name' => '', 'description' => 'keep me', 'return_to' => $returnTo]))
-            ->assertRedirect($editUrl)
-            ->assertSessionHasErrors('name')
-            ->assertSessionHasInput('return_to', $returnTo)
-            ->assertSessionHasInput('description', 'keep me');
+            ->assertRedirect($editUrl);
 
-        $this->assertSame('Kafei Susu', $this->product->fresh()->name);
+        $this->assertSame('Kafei Susu', $this->product->fresh()->name, 'nothing saved');
+
+        $html = $this->get($editUrl)->assertOk()->getContent();
+
+        $this->assertStringContainsString($hidden, $html, 'return_to still on the form');
+        $this->assertStringContainsString('keep me', $html, 'old input');
+        $this->assertStringContainsString('The name field is required.', $html, 'inline field error');
+        $this->assertSame(1, substr_count($html, 'Ada data yang perlu diperbaiki.'), 'one summary toast');
+        $this->assertSame(1, substr_count($html, 'data-bo-toast-type="error"'));
+
+        // And a corrected submit from that same form still goes back to the list context.
+        $this->put(route('backoffice.products.update', $this->product), $this->productPayload(['return_to' => $returnTo]))
+            ->assertRedirect(url($returnTo.'#product-'.$this->product->id));
     }
 
-    public function test_edit_form_redisplayed_after_failed_validation_keeps_return_to_and_old_input(): void
+    public function test_ingredient_edit_real_flow_failed_validation_keeps_return_to_and_old_input(): void
     {
-        $returnTo = '/backoffice/products?search=kafei&page=3';
+        $returnTo = '/backoffice/ingredients?search=Packaging';
+        $editUrl = route('backoffice.ingredients.edit', [$this->cup, 'return_to' => $returnTo]);
 
-        $html = $this->actingAs($this->owner)
-            ->withSession(['_old_input' => ['description' => 'keep me', 'return_to' => $returnTo]])
-            ->get(route('backoffice.products.edit', $this->product))
-            ->assertOk()
-            ->getContent();
+        $this->actingAs($this->owner)->from($editUrl)
+            ->put(route('backoffice.ingredients.update', $this->cup), $this->ingredientPayload(['name' => '', 'minimum_stock' => '17', 'return_to' => $returnTo]))
+            ->assertRedirect($editUrl);
 
-        // return_to survives even though the redisplayed URL lost its query string
+        $html = $this->get($editUrl)->assertOk()->getContent();
+
         $this->assertStringContainsString('<input type="hidden" name="return_to" value="'.e($returnTo).'">', $html);
-        $this->assertStringContainsString('keep me', $html);
+        $this->assertStringContainsString('value="17"', $html);
+        $this->assertSame(1, substr_count($html, 'Ada data yang perlu diperbaiki.'));
+        $this->assertSame('Cup 16oz', $this->cup->fresh()->name);
+    }
+
+    public function test_recipe_edit_real_flow_failed_header_validation_stays_on_the_standalone_edit_page(): void
+    {
+        $returnTo = '/backoffice/recipes?search=Kafei';
+        $editUrl = route('backoffice.recipes.edit', [$this->recipe, 'return_to' => $returnTo]);
+
+        $this->actingAs($this->owner)->from($editUrl)
+            ->put(route('backoffice.recipes.update', $this->recipe), $this->recipePayload(['name' => '', 'return_to' => $returnTo]))
+            ->assertRedirect($editUrl);
+
+        $html = $this->get($editUrl)->assertOk()->getContent();
+
+        $this->assertSame(4, substr_count($html, '<input type="hidden" name="return_to" value="'.e($returnTo).'">'));
+        $this->assertSame(1, substr_count($html, 'Ada data yang perlu diperbaiki.'));
+        $this->assertSame('Recipe Kafei Susu', $this->recipe->fresh()->name);
     }
 
     public function test_validation_failures_produce_a_single_summary_toast_not_one_per_error(): void
@@ -608,6 +713,21 @@ class BackofficeReturnContextTest extends TestCase
             ->get(route('backoffice.outlets.create'))
             ->assertOk()
             ->assertSee('data-bo-toast-type="error"', false);
+    }
+
+    public function test_error_and_warning_toasts_stay_until_closed_while_success_and_info_fade(): void
+    {
+        $html = $this->actingAs($this->owner)
+            ->withSession(['success' => 'Ok.', 'error' => 'Kategori masih digunakan oleh 3 produk.', 'warning' => 'Hati-hati.', 'info' => 'Info.'])
+            ->get(route('backoffice.products.index'))
+            ->getContent();
+
+        foreach (['error', 'warning'] as $type) {
+            $this->assertMatchesRegularExpression('/data-bo-toast-type="'.$type.'"\s+data-bo-toast-sticky/', $html, $type);
+        }
+        foreach (['success', 'info'] as $type) {
+            $this->assertDoesNotMatchRegularExpression('/data-bo-toast-type="'.$type.'"\s+data-bo-toast-sticky/', $html, $type);
+        }
     }
 
     public function test_toast_is_absent_when_there_is_nothing_to_report(): void

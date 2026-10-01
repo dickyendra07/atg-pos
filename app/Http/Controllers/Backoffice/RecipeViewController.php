@@ -340,8 +340,11 @@ class RecipeViewController extends Controller
             'is_active' => false,
         ]);
 
-        // Inactivating keeps the recipe listed, so it can stay the anchor.
-        return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)
+        // Inactivating keeps the recipe listed, so it can stay the anchor - unless the list is filtered
+        // to active recipes, where it just left: then no anchor (the saved scroll offset is used).
+        $anchor = BackofficeReturnUrl::returnQueryParam($request, 'status') === 'active' ? null : 'recipe-'.$recipe->id;
+
+        return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], $anchor)
             ->with('success', 'Recipe berhasil dinonaktifkan.');
     }
 

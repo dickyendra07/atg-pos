@@ -63,11 +63,12 @@ class BackofficeReturnUrl
             return null;
         }
 
-        // No traversal, in plain or percent-encoded form, and no encoded slash/backslash tricks.
-        $decodedPath = rawurldecode($path);
-
-        if (str_contains($decodedPath, '..') || str_contains($decodedPath, '\\') || str_contains($decodedPath, '//')) {
-            return null;
+        // No traversal, in plain or percent-encoded form (decoded twice to catch %252e), and no
+        // encoded slash/backslash tricks.
+        foreach ([rawurldecode($path), rawurldecode(rawurldecode($path))] as $decodedPath) {
+            if (str_contains($decodedPath, '..') || str_contains($decodedPath, '\\') || str_contains($decodedPath, '//')) {
+                return null;
+            }
         }
 
         $safe = $path;
@@ -132,6 +133,23 @@ class BackofficeReturnUrl
     public static function redirect(?Request $request, string $fallbackRoute, array $fallbackParams = [], ?string $anchor = null): RedirectResponse
     {
         return redirect(self::resolve($request, $fallbackRoute, $fallbackParams, $anchor));
+    }
+
+    /**
+     * One query parameter of the sanitized return_to (e.g. the list's own status filter), or null.
+     */
+    public static function returnQueryParam(?Request $request, string $key): ?string
+    {
+        $returnTo = self::fromRequest($request);
+        $query = $returnTo === null ? null : parse_url($returnTo, PHP_URL_QUERY);
+
+        if (! is_string($query)) {
+            return null;
+        }
+
+        parse_str($query, $params);
+
+        return isset($params[$key]) && is_string($params[$key]) ? $params[$key] : null;
     }
 
     /**

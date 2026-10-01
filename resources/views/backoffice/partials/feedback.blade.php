@@ -9,7 +9,7 @@
         $boToastMessage = session($boToastType);
 
         if (is_string($boToastMessage) && trim($boToastMessage) !== '') {
-            $boToasts[] = ['type' => $boToastType, 'message' => $boToastMessage];
+            $boToasts[] = ['type' => $boToastType, 'message' => $boToastMessage, 'sticky' => in_array($boToastType, ['error', 'warning'], true)];
         }
     }
 
@@ -90,6 +90,7 @@
         <div class="bo-toast bo-toast--{{ $boToast['type'] }}"
              data-bo-toast
              data-bo-toast-type="{{ $boToast['type'] }}"
+             @if(! empty($boToast['sticky'])) data-bo-toast-sticky @endif
              role="{{ in_array($boToast['type'], ['error', 'warning'], true) ? 'alert' : 'status' }}">
             <div class="bo-toast-message">{{ $boToast['message'] }}</div>
             <button type="button" class="bo-toast-close" data-bo-toast-close aria-label="Tutup notifikasi">&times;</button>
@@ -103,7 +104,14 @@
 
         // ---- Toast -------------------------------------------------------------------------------
         var region = document.getElementById('bo-toast-region');
-        var DISMISS_MS = { success: 4000, info: 4000, warning: 5000, error: 5000 };
+        var TYPES = { success: 1, info: 1, warning: 1, error: 1 };
+
+        // Success/info fade on their own (longer for longer text). Errors and warnings carry
+        // information the page no longer shows inline, so they stay until closed (data-bo-toast-sticky).
+        function lifetime(toast) {
+            var length = (toast.textContent || '').trim().length;
+            return Math.min(9000, Math.max(4000, 2500 + length * 50));
+        }
 
         function dismiss(toast) {
             if (!toast || toast.classList.contains('is-leaving')) { return; }
@@ -113,9 +121,10 @@
 
         function arm(toast) {
             var timer = null;
-            var ms = DISMISS_MS[toast.getAttribute('data-bo-toast-type')] || 4000;
+            var sticky = toast.hasAttribute('data-bo-toast-sticky');
+            var ms = lifetime(toast);
 
-            function start() { timer = setTimeout(function () { dismiss(toast); }, ms); }
+            function start() { if (!sticky) { timer = setTimeout(function () { dismiss(toast); }, ms); } }
             function stop() { clearTimeout(timer); }
 
             toast.querySelector('[data-bo-toast-close]').addEventListener('click', function () { stop(); dismiss(toast); });
@@ -138,10 +147,11 @@
                 var text = document.createElement('div');
                 var close = document.createElement('button');
 
-                type = DISMISS_MS[type] ? type : 'info';
+                type = TYPES[type] ? type : 'info';
                 toast.className = 'bo-toast bo-toast--' + type;
                 toast.setAttribute('data-bo-toast', '');
                 toast.setAttribute('data-bo-toast-type', type);
+                if (type === 'error' || type === 'warning') { toast.setAttribute('data-bo-toast-sticky', ''); }
                 toast.setAttribute('role', (type === 'error' || type === 'warning') ? 'alert' : 'status');
                 text.className = 'bo-toast-message';
                 text.textContent = message;
@@ -162,16 +172,17 @@
         // return_to, remember the scroll offset; when they come back to that same list URL (after a
         // save, or via Cancel) bring the touched record into view, otherwise restore the offset.
         var KEY = 'atg.backoffice.listPosition';
-        var TTL_MS = 30 * 60 * 1000;
+        var TTL_MS = 10 * 60 * 1000;   // safety net only: a saved position is consumed on first return
 
         function here() { return location.pathname + location.search; }
 
         function stripHash(url) { var i = url.indexOf('#'); return i === -1 ? url : url.slice(0, i); }
 
+        // The saved position for exactly this list URL (path + query), or null. Freshness is checked separately.
         function readState() {
             try {
                 var state = JSON.parse(sessionStorage.getItem(KEY) || 'null');
-                if (state && state.url === here() && Date.now() - state.ts < TTL_MS) { return state; }
+                if (state && state.url === here()) { return state; }
             } catch (e) { /* storage unavailable: anchors still work */ }
             return null;
         }
@@ -217,14 +228,20 @@
         }
 
         function restore() {
+            var saved = readState();
+            var state = saved && Date.now() - saved.ts < TTL_MS ? saved : null;
             var nav = window.performance && performance.getEntriesByType ? performance.getEntriesByType('navigation')[0] : null;
-            if (nav && nav.type === 'back_forward') { return; }   // the browser restores those itself
+
+            // The saved position belongs to ONE return to this list URL. Whatever happens on this
+            // visit it is used up, so opening the list normally later never jumps to an old offset.
+            if (saved && (!state || (nav && nav.type === 'back_forward'))) { clearState(); return; }
 
             var id = location.hash ? decodeURIComponent(location.hash.slice(1)) : '';
             var target = id ? document.getElementById(id) : null;
-            var state = readState();
+            var returned = target || document.querySelector('[data-bo-toast]');
 
-            if (!target && !document.querySelector('[data-bo-toast]')) { return; }
+            // Not a return from an action (no anchor, no toast): do not scroll, but consume it.
+            if (!returned) { if (saved) { clearState(); } return; }
 
             function place() {
                 if (target) { reveal(target); }
@@ -239,14 +256,13 @@
 
             if (target) { target.classList.add('bo-flash-target'); }
 
-            window.addEventListener('load', function () {
-                setTimeout(function () {
-                    place();
-                    if (state) { clearState(); }
-                }, 0);
-            });
+            function finish() { place(); clearState(); }
 
-            if (document.readyState === 'complete') { place(); if (state) { clearState(); } }
+            if (document.readyState === 'complete') {
+                finish();
+            } else {
+                window.addEventListener('load', function () { setTimeout(finish, 0); });
+            }
         }
 
         if (document.readyState === 'loading') {
