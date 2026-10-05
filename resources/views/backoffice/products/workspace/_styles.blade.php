@@ -159,6 +159,14 @@
     .pw-drawer .pw-check, .pw .pw-check { display: inline-flex; align-items: center; gap: 10px; font-weight: 700; margin: 0; }
     .pw-drawer-foot { position: sticky; bottom: 0; display: flex; justify-content: flex-end; gap: 10px; padding: 16px 22px; border-top: 1px solid #eef2f7; background: #fff; }
     body.pw-drawer-open { overflow: hidden; }
+    .pw-drawer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+    .pw-drawer .pw-outlet-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .pw-drawer-loading { padding: 40px 22px; color: #6b7280; font-weight: 700; }
+    .pw-mt-0 { margin-top: 0; }
+    .pw-row-buttons { display: flex; gap: 6px; justify-content: center; align-items: center; flex-wrap: wrap; }
+    .pw-row-buttons form { margin: 0; }
+    .pw-chip-link { text-decoration: none; cursor: pointer; }
+    .pw-chip-link:hover { border-color: #e86a3a; color: #c9552a; }
 
     /* Tablet / mobile: sidebar is off-canvas (layout); the section rail becomes horizontal tabs. */
     @media (max-width: 1180px) {
@@ -184,5 +192,6 @@
     /* Phones: the nested drawer becomes a full-screen sheet (tablet keeps the 90vw panel). */
     @media (max-width: 779px) {
         .pw-drawer { width: 100vw; border-radius: 0; border-left: 0; }
+        .pw-drawer-grid, .pw-drawer .pw-outlet-grid { grid-template-columns: minmax(0, 1fr); }
     }
 </style>

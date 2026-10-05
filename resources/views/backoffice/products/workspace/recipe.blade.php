@@ -37,6 +37,22 @@
                             <span>
                                 {{ $pwRecipe['name'] }}
                                 <span class="pw-muted">· {{ $pwRecipe['items_count'] }} bahan · {{ $pwRecipe['is_active'] ? 'Active' : 'Inactive' }}</span>
+                                @if(count($pwRecipe['ingredients']))
+                                    {{-- Read-only list of the Recipe's Ingredients; only the Ingredient itself can be opened. --}}
+                                    <span class="pw-chip-row pw-mt-sm">
+                                        @foreach($pwRecipe['ingredients'] as $pwItem)
+                                            @if($pwItem['links'])
+                                                <a href="{{ $pwItem['links']['legacy_edit_url'] }}"
+                                                   class="pw-chip pw-chip-link {{ $pwItem['is_active'] ? '' : 'pw-chip-warn' }}"
+                                                   data-pw-open-drawer="ingredient"
+                                                   data-pw-form-url="{{ $pwItem['links']['form_url'] }}"
+                                                   title="Kelola Ingredient">{{ $pwItem['name'] }}</a>
+                                            @else
+                                                <span class="pw-chip {{ $pwItem['is_active'] ? '' : 'pw-chip-warn' }}">{{ $pwItem['name'] }}</span>
+                                            @endif
+                                        @endforeach
+                                    </span>
+                                @endif
                             </span>
                             <a href="{{ $pwRecipe['edit_url'] }}" class="btn btn-blue btn-sm">{{ $pwRecipeRow['can_mutate'] ? 'Kelola Recipe' : 'Lihat Recipe' }}</a>
                         </li>

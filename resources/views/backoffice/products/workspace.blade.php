@@ -48,5 +48,22 @@
         @include('backoffice.products.workspace._category-drawer')
     @endif
 
+    {{-- Variant / Ingredient drawers: their form is fetched from the server when opened. --}}
+    <div class="pw-drawer-backdrop" data-pw-drawer-backdrop="variant" hidden></div>
+    <aside class="pw-drawer" data-pw-drawer="variant" role="dialog" aria-modal="true" aria-labelledby="pw-variant-drawer-title" hidden>
+        <div data-pw-drawer-content></div>
+    </aside>
+
+    @if($workspace['links']['can_manage_ingredients'])
+        <div class="pw-drawer-backdrop" data-pw-drawer-backdrop="ingredient" hidden></div>
+        <aside class="pw-drawer" data-pw-drawer="ingredient" role="dialog" aria-modal="true" aria-labelledby="pw-ingredient-drawer-title" hidden>
+            <div data-pw-drawer-content></div>
+        </aside>
+
+        @if($canCreateCategory)
+            @include('backoffice.products.workspace._ingredient-category-drawer')
+        @endif
+    @endif
+
     @include('backoffice.products.workspace._script')
 @endsection

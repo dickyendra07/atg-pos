@@ -1,6 +1,6 @@
 {{-- Create a Menu Category without leaving the workspace. Same rules as the Category page
      (CategoryWriter). On success the new Category is added to the General selector and selected. --}}
-<div class="pw-drawer-backdrop" data-pw-drawer-backdrop hidden></div>
+<div class="pw-drawer-backdrop" data-pw-drawer-backdrop="category" hidden></div>
 <aside class="pw-drawer"
        id="pw-category-drawer"
        role="dialog"
