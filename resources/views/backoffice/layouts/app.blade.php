@@ -5,6 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $pageTitle ?? 'Back Office - ATG POS' }}</title>
+    {{-- Lets CSS collapse closed sidebar groups only when JS can reopen them (no flash, no dead menu). --}}
+    <script>document.documentElement.classList.add('bo-js');</script>
     <style>
         :root {
             --bg: #f3f5fa;
@@ -53,6 +55,9 @@
             box-shadow: var(--shadow);
             backdrop-filter: blur(10px);
             overflow: hidden;
+            /* clip (where supported) keeps the rounded corners without making .shell a scroll
+               container, so the desktop sidebar can stay sticky against the viewport. */
+            overflow: clip;
         }
 
         .workspace {
@@ -146,6 +151,82 @@
 
         .sidebar-section {
             margin-top: 18px;
+        }
+
+        /* Desktop: the menu stays in view and scrolls on its own when taller than the screen. */
+        .sidebar-inner {
+            position: sticky;
+            top: 16px;
+            max-height: calc(100vh - 64px);
+            overflow-x: hidden;
+            overflow-y: auto;
+            overscroll-behavior: contain;
+            scrollbar-width: thin;
+            margin: 0 -4px;
+            padding: 0 4px 4px;
+        }
+
+        .sidebar-group {
+            margin-top: 10px;
+        }
+
+        .sidebar-group-toggle {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            min-height: 36px;
+            margin: 0 0 6px;
+            padding: 6px 10px;
+            border: 0;
+            border-radius: 12px;
+            background: transparent;
+            color: #9ca3af;
+            font: inherit;
+            text-align: left;
+            cursor: pointer;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .sidebar-group-toggle:hover {
+            background: rgba(255,255,255,0.90);
+            color: #6b7280;
+        }
+
+        .sidebar-group-toggle .sidebar-title {
+            margin: 0;
+            color: inherit;
+        }
+
+        .sidebar-group.has-active .sidebar-group-toggle {
+            color: #374151;
+        }
+
+        .sidebar-group-chevron {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            stroke: currentColor;
+            fill: none;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            transition: transform 0.18s ease;
+        }
+
+        .sidebar-group.is-open .sidebar-group-chevron {
+            transform: rotate(180deg);
+        }
+
+        .bo-js .sidebar-group:not(.is-open) .sidebar-group-menu {
+            display: none;
+        }
+
+        .sidebar-group-toggle:focus-visible,
+        .sidebar-link:focus-visible {
+            outline: 2px solid var(--brand);
+            outline-offset: 2px;
         }
 
         .sidebar-title {
@@ -280,6 +361,13 @@
             display: none;
         }
 
+        /* "Close Menu" only means something for the off-canvas drawer (1180px and below). */
+        @media (min-width: 1181px) {
+            .mobile-sidebar-close {
+                display: none;
+            }
+        }
+
         .mobile-topbar-title {
             display: grid;
             gap: 2px;
@@ -354,6 +442,15 @@
 
             body.backoffice-sidebar-open .sidebar {
                 transform: translateX(0);
+            }
+
+            /* The off-canvas drawer scrolls as a whole; the inner area is plain flow here. */
+            .sidebar-inner {
+                position: static;
+                max-height: none;
+                overflow: visible;
+                margin: 0;
+                padding: 0;
             }
 
             .sidebar-overlay {
@@ -558,6 +655,11 @@
                 margin-top: 20px;
             }
 
+            .sidebar-group-toggle {
+                min-height: 48px;
+                border-radius: 16px;
+            }
+
             .content {
                 padding: 18px;
             }
@@ -607,11 +709,13 @@
                 <div class="sidebar-overlay" id="backoffice-sidebar-overlay"></div>
 
                 <aside class="sidebar" id="backoffice-sidebar">
-                    <button type="button" class="mobile-sidebar-close" id="backoffice-sidebar-close">
-                        Close Menu
-                    </button>
+                    <div class="sidebar-inner">
+                        <button type="button" class="mobile-sidebar-close" id="backoffice-sidebar-close">
+                            Close Menu
+                        </button>
 
-                    @include('backoffice.partials.sidebar')
+                        @include('backoffice.partials.sidebar')
+                    </div>
                 </aside>
 
                 <main class="content">
@@ -670,6 +774,38 @@
 
             document.querySelectorAll('.sidebar a').forEach(function (link) {
                 link.addEventListener('click', closeSidebar);
+            });
+
+            // Sidebar groups: opening one closes any other manually opened group. The group holding
+            // the current page (opened server-side) is never closed by that; it only closes when the
+            // user collapses it directly.
+            function setGroupOpen(group, open) {
+                const toggle = group.querySelector('[data-sidebar-group-toggle]');
+                group.classList.toggle('is-open', open);
+                if (toggle) {
+                    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+                }
+            }
+
+            document.querySelectorAll('[data-sidebar-group-toggle]').forEach(function (toggle) {
+                toggle.addEventListener('click', function () {
+                    const group = toggle.closest('[data-sidebar-group]');
+                    if (!group) {
+                        return;
+                    }
+
+                    const willOpen = !group.classList.contains('is-open');
+
+                    if (willOpen) {
+                        document.querySelectorAll('[data-sidebar-group].is-open').forEach(function (other) {
+                            if (other !== group && !other.hasAttribute('data-sidebar-group-active')) {
+                                setGroupOpen(other, false);
+                            }
+                        });
+                    }
+
+                    setGroupOpen(group, willOpen);
+                });
             });
         })();
     </script>
