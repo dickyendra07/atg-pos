@@ -440,7 +440,7 @@
         if (oldRequirements.length) {
             oldRequirements.forEach((row) => addRequirement(row));
         } else {
-            addRequirement();
+            addRequirement(@json($prefillVariantId ? ['product_variant_id' => $prefillVariantId] : []));
         }
 
         if (oldRewards.length) {

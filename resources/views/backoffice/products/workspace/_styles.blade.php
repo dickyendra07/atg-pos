@@ -82,6 +82,7 @@
     .pw-facts .full { grid-column: 1 / -1; }
     .pw-facts dt { font-size: 12px; font-weight: 800; color: #6b7280; margin-bottom: 4px; }
     .pw-facts dd { margin: 0; font-weight: 700; color: #111827; overflow-wrap: anywhere; white-space: pre-line; }
+    .pw-facts dd.pw-dd-plain { white-space: normal; }
     .pw-facts-compact > div { padding: 10px 12px; }
 
     .pw-row-card { border: 1px solid #eef2f7; border-radius: 18px; padding: 14px 16px; background: #fbfcfe; }
@@ -105,6 +106,7 @@
     .pw-alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #dbe7ff; }
     .pw-alert-warn { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
     .pw-alert-danger { background: #fff1f1; color: #b42318; border: 1px solid #fecaca; }
+    .pw-alert a { color: inherit; font-weight: 800; text-decoration: underline; }
     .pw-alert ul { margin: 6px 0 0; padding-left: 18px; }
     .pw-empty { padding: 18px; border: 1px dashed #d1d5db; border-radius: 18px; color: #6b7280; font-weight: 700; text-align: center; }
     .pw-note { margin: 10px 0 0; font-size: 13px; color: #6b7280; line-height: 1.6; }
@@ -190,6 +192,31 @@
     .pw-recipe-row.is-removed .pw-recipe-qty input { opacity: .5; }
     .pw-recipe-row.is-removed .pw-recipe-removed-note { display: block; }
     .pw-sr-only { position: absolute !important; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+    /* Stock & Readiness / Promo (UX-G): per-Variant cards with progressive disclosure. */
+    .pw-chip-row + .pw-chip-row, .pw-chip-row + .pw-row-card, .pw-chip-row + .pw-note { margin-top: 12px; }
+    .pw-card > .pw-chip-row { margin-bottom: 14px; }
+    .pw-stock-variant .pw-stock-outlets { margin-top: 2px; }
+    .pw-details { margin-top: 12px; border: 1px solid #eef2f7; border-radius: 16px; background: #fff; min-width: 0; }
+    .pw-details > summary { cursor: pointer; padding: 11px 14px; font-size: 13px; font-weight: 800; color: #111827; border-radius: 16px; list-style-position: inside; }
+    .pw-details > summary:focus-visible { outline: 2px solid #e86a3a; outline-offset: 2px; }
+    .pw-details[open] > summary { border-bottom: 1px solid #eef2f7; border-radius: 16px 16px 0 0; }
+    .pw-details-outlet { margin: 10px; }
+    .pw-details > .pw-table-wrap { border: 0; border-radius: 0 0 16px 16px; }
+    .pw-row-buttons-left { justify-content: flex-start; }
+
+    @media (max-width: 780px) {
+        /* Dense stock rows become stacked cards instead of a wide table. */
+        .pw-stack-table { min-width: 0; }
+        .pw-stack-table thead { display: none; }
+        .pw-stack-table, .pw-stack-table tbody, .pw-stack-table tr, .pw-stack-table td { display: block; width: 100%; box-sizing: border-box; }
+        .pw-stack-table tr { padding: 10px 12px; border-top: 1px solid #eef2f7; }
+        .pw-stack-table td { border: 0; padding: 4px 0; text-align: left; display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+        .pw-stack-table td[data-label]::before { content: attr(data-label); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; flex: 0 0 auto; }
+        .pw-stack-table td.text-left { display: block; }
+        .pw-stack-table td.text-left::before { display: none; }
+        .pw-stack-table td > .pw-cell-note { min-width: 0; }
+    }
 
     /* Tablet / mobile: sidebar is off-canvas (layout); the section rail becomes horizontal tabs. */
     @media (max-width: 1180px) {

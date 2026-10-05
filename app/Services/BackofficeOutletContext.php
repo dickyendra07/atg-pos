@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Outlet;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class BackofficeOutletContext
@@ -102,5 +103,39 @@ class BackofficeOutletContext
             ->pluck('id')
             ->map(fn ($id) => (int) $id)
             ->all();
+    }
+
+    /**
+     * Restricts a stock_balances / stock_movements query (location_type + location_id) to what $user may read.
+     *
+     * Outlet rows only inside scopeOutletIds(): "Semua Outlet" means every outlet within the user's access,
+     * never every outlet in the system. Full-access roles are unrestricted. Warehouses are global for every
+     * role that reaches these pages (the same convention as the Transfer pages), so they are not narrowed.
+     * Read-only helper: it only adds conditions to the query.
+     */
+    public function restrictStockLocations(Builder $query, User $user): Builder
+    {
+        $scope = $this->scopeOutletIds($user);
+
+        if ($scope === null) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $location) use ($scope) {
+            $location->where('location_type', '!=', 'outlet')
+                ->orWhere(fn (Builder $outlet) => $outlet->where('location_type', 'outlet')->whereIn('location_id', $scope));
+        });
+    }
+
+    /** Whether a stock location (outlet or warehouse) named in a request is readable by $user. */
+    public function canReadStockLocation(User $user, ?string $type, mixed $id): bool
+    {
+        if ($type !== 'outlet') {
+            return true;
+        }
+
+        $scope = $this->scopeOutletIds($user);
+
+        return $scope === null || in_array((int) $id, $scope, true);
     }
 }

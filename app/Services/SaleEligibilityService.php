@@ -110,6 +110,48 @@ class SaleEligibilityService
         return $statuses;
     }
 
+    /**
+     * variantStatuses() for several outlets at once: the Variants and Recipes are loaded one time instead
+     * of once per outlet. Same checkVariant() rules, same result per outlet (read-only helper).
+     *
+     * @param  int[]  $variantIds
+     * @param  int[]  $outletIds
+     * @return array<int, array<int, array{eligible: bool, reason: ?string, message: ?string}>> [outletId][variantId]
+     */
+    public function variantStatusesAtOutlets(array $variantIds, array $outletIds): array
+    {
+        $variantIds = array_values(array_unique(array_map('intval', $variantIds)));
+        $outlets = Outlet::whereIn('id', array_values(array_unique(array_map('intval', $outletIds))))->get()->keyBy('id');
+
+        if ($variantIds === [] || $outlets->isEmpty()) {
+            return [];
+        }
+
+        [$variants, $recipesByVariant] = $this->loadVariantsAndRecipes($variantIds);
+
+        $statuses = [];
+
+        foreach ($outlets as $outletId => $outlet) {
+            foreach ($variantIds as $variantId) {
+                try {
+                    $this->checkVariant(
+                        $variantId,
+                        $variants->get($variantId),
+                        $recipesByVariant->get($variantId, collect()),
+                        $outlet,
+                        1.0
+                    );
+
+                    $statuses[$outletId][$variantId] = ['eligible' => true, 'reason' => null, 'message' => null];
+                } catch (SaleNotEligibleException $e) {
+                    $statuses[$outletId][$variantId] = ['eligible' => false, 'reason' => $e->reason, 'message' => $e->cashierMessage];
+                }
+            }
+        }
+
+        return $statuses;
+    }
+
     private function loadVariantsAndRecipes(array $variantIds): array
     {
         $variants = ProductVariant::with([

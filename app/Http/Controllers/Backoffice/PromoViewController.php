@@ -295,7 +295,7 @@ class PromoViewController extends Controller
         ]);
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $user = $this->authorizeAccess();
 
@@ -305,10 +305,20 @@ class PromoViewController extends Controller
                 ->with('error', 'Role kamu tidak punya akses create promo.');
         }
 
+        $variantOptions = $this->productVariantOptions();
+
+        // Opened from a Product Workspace: that Variant is only pre-selected as the first requirement.
+        // Nothing is saved or chosen beyond it (outlets, reward and status stay for the user to set).
+        $prefillVariantId = $request->query('variant_id');
+        $prefillVariantId = is_scalar($prefillVariantId) && $variantOptions->contains('id', (int) $prefillVariantId)
+            ? (int) $prefillVariantId
+            : null;
+
         return view('backoffice.promos.create', [
             'user' => $user,
             'outletOptions' => $this->outletContext()->accessibleOutlets($user),
-            'variantOptions' => $this->productVariantOptions(),
+            'variantOptions' => $variantOptions,
+            'prefillVariantId' => $prefillVariantId,
             'dayOptions' => $this->dayOptions,
         ]);
     }
