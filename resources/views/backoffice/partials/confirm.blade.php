@@ -6,7 +6,7 @@
               data-bo-confirm-body="Product “X” akan dihapus permanen."
               data-bo-confirm-note="2 Variant ... juga akan dihapus."   (optional)
               data-bo-confirm-label="Hapus Permanen"
-              data-bo-confirm-tone="danger|warning">
+              data-bo-confirm-tone="danger|warning|primary">
 
     and a button that only explains why something is not allowed:
 
@@ -57,6 +57,7 @@
 
     .bo-confirm-actions button.bo-confirm-ok { border-color: transparent; color: #fff; background: #dc2626; }
     .bo-confirm-overlay[data-tone="warning"] .bo-confirm-ok { background: #ea580c; }
+    .bo-confirm-overlay[data-tone="primary"] .bo-confirm-ok { background: #166534; }
     .bo-confirm-actions button:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.55); outline-offset: 2px; }
     .bo-confirm-actions button[disabled] { opacity: 0.6; cursor: wait; }
 

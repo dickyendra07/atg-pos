@@ -14,6 +14,7 @@ use App\Http\Controllers\Backoffice\ProductVariantViewController;
 use App\Http\Controllers\Backoffice\ProductViewController;
 use App\Http\Controllers\Backoffice\ProductWorkspaceController;
 use App\Http\Controllers\Backoffice\ProductWorkspaceIngredientController;
+use App\Http\Controllers\Backoffice\ProductWorkspaceRecipeController;
 use App\Http\Controllers\Backoffice\ProductWorkspaceVariantController;
 use App\Http\Controllers\Backoffice\PromoViewController;
 use App\Http\Controllers\Backoffice\RecipeViewController;
@@ -109,6 +110,13 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::post('/products/{product}/workspace/ingredients', [ProductWorkspaceIngredientController::class, 'store'])->name('products.workspace.ingredients.store');
     Route::put('/products/{product}/workspace/ingredients/{ingredient}', [ProductWorkspaceIngredientController::class, 'update'])->name('products.workspace.ingredients.update');
     Route::post('/products/{product}/workspace/ingredient-categories', [ProductWorkspaceIngredientController::class, 'storeCategory'])->name('products.workspace.ingredient-categories.store');
+    Route::get('/products/{product}/workspace/variants/{variant}/recipes/form', [ProductWorkspaceRecipeController::class, 'createForm'])->name('products.workspace.recipes.create-form');
+    Route::get('/products/{product}/workspace/variants/{variant}/recipes/ingredient-options', [ProductWorkspaceRecipeController::class, 'ingredientOptions'])->name('products.workspace.recipes.ingredient-options');
+    Route::post('/products/{product}/workspace/variants/{variant}/recipes', [ProductWorkspaceRecipeController::class, 'store'])->name('products.workspace.recipes.store');
+    Route::get('/products/{product}/workspace/variants/{variant}/recipes/{recipe}/form', [ProductWorkspaceRecipeController::class, 'editForm'])->name('products.workspace.recipes.edit-form');
+    Route::put('/products/{product}/workspace/variants/{variant}/recipes/{recipe}', [ProductWorkspaceRecipeController::class, 'update'])->name('products.workspace.recipes.update');
+    Route::patch('/products/{product}/workspace/variants/{variant}/recipes/{recipe}/activate', [ProductWorkspaceRecipeController::class, 'activate'])->name('products.workspace.recipes.activate');
+    Route::patch('/products/{product}/workspace/variants/{variant}/recipes/{recipe}/deactivate', [ProductWorkspaceRecipeController::class, 'deactivate'])->name('products.workspace.recipes.deactivate');
     Route::delete('/products/{product}', [ProductViewController::class, 'destroy'])->name('products.destroy');
     Route::delete('/products/{productId}/permanent', [ProductViewController::class, 'destroyPermanent'])->whereNumber('productId')->name('products.destroy-permanent');
 

@@ -151,6 +151,23 @@
         // ---- Validation errors ---------------------------------------------------------------------
         // Once the user edits a field, its error from the last save is stale: hide that field's message
         // only (other fields' errors stay until the next save, which renders the server's errors again).
+        // "new_items[2][qty]" -> "new_items.2.qty" (the key Laravel reports the error under).
+        function dotted(name) {
+            return String(name || '').replace(/\[\]$/, '').replace(/\]\[/g, '.').replace(/\[/g, '.').replace(/\]/g, '');
+        }
+
+        // Inputs of one error key: the exact row field ("items.12.qty"), else the whole field ("outlet_ids").
+        function fieldInputs(scope, field) {
+            var exact = Array.prototype.filter.call(scope.querySelectorAll('[name]'), function (input) { return dotted(input.name) === field; });
+            if (exact.length) { return exact; }
+            var key = field.split('.')[0];
+            return Array.prototype.slice.call(scope.querySelectorAll('[name="' + key + '"], [name="' + key + '[]"]'));
+        }
+
+        function errorBox(scope, attr, field) {
+            return scope.querySelector('[' + attr + '="' + field + '"]') || scope.querySelector('[' + attr + '="' + field.split('.')[0] + '"]');
+        }
+
         function clearFieldError(input) {
             if (!input || !input.name || !input.closest) { return; }
 
@@ -158,13 +175,11 @@
             if (!scope) { return; }
 
             var attr = scope.hasAttribute('data-pw-drawer-form') ? 'data-pw-drawer-error' : 'data-pw-error';
-            var key = input.name.replace(/\[\]$/, '').split('[')[0];
-            var box = scope.querySelector('[' + attr + '="' + key + '"]');
+            var field = dotted(input.name);
+            var box = errorBox(scope, attr, field);
 
             if (box) { box.textContent = ''; box.hidden = true; }
-            scope.querySelectorAll('[name="' + key + '"], [name="' + key + '[]"]').forEach(function (field) {
-                field.classList.remove('is-invalid');
-            });
+            fieldInputs(scope, field).forEach(function (other) { other.classList.remove('is-invalid'); });
         }
 
         ['input', 'change'].forEach(function (type) {
@@ -179,13 +194,12 @@
         function showErrors(scope, attr, errors) {
             var first = null;
             Object.keys(errors || {}).forEach(function (field) {
-                var key = field.split('.')[0];
-                var box = scope.querySelector('[' + attr + '="' + key + '"]');
+                var box = errorBox(scope, attr, field);
                 if (box && box.hidden) {
                     box.textContent = errors[field][0];
                     box.hidden = false;
                 }
-                scope.querySelectorAll('[name="' + key + '"], [name="' + key + '[]"]').forEach(function (input) {
+                fieldInputs(scope, field).forEach(function (input) {
                     if (input.type !== 'hidden') {
                         input.classList.add('is-invalid');
                         first = first || input;
@@ -209,8 +223,16 @@
             });
         }
 
-        function failureToast(result) {
-            if (result.status === 422) { toast('error', INVALID_MESSAGE); return; }
+        function firstError(result) {
+            var errors = result.data.errors || {};
+            var keys = Object.keys(errors);
+            return keys.length ? errors[keys[0]][0] : null;
+        }
+
+        // inPlace: a row action without fields (Aktifkan, Nonaktifkan): the server's own reason is the toast.
+        function failureToast(result, inPlace) {
+            if (result.status === 422) { toast('error', (inPlace && firstError(result)) || INVALID_MESSAGE); return; }
+            if (result.status === 409) { toast('error', result.data.message || 'Data sudah berubah. Muat ulang halaman.'); return; }
             if (result.status === 419) { toast('error', 'Sesi sudah berakhir. Perubahan belum tersimpan; muat ulang halaman lalu simpan lagi.'); return; }
             if (result.status === 403) { toast('error', result.data.message || 'Akses ditolak.'); return; }
             toast('error', 'Gagal menyimpan. Perubahan belum tersimpan, silakan coba lagi.');
@@ -302,6 +324,7 @@
             confirmAsk({
                 title: form.getAttribute('data-bo-confirm-title'),
                 body: form.getAttribute('data-bo-confirm-body'),
+                note: form.getAttribute('data-bo-confirm-note') || '',
                 label: form.getAttribute('data-bo-confirm-label'),
                 tone: form.getAttribute('data-bo-confirm-tone') || 'warning'
             }).then(function (ok) {
@@ -312,7 +335,7 @@
                         toast('success', result.data.message);
                         return;
                     }
-                    failureToast(result);
+                    failureToast(result, true);
                 }).catch(function () {
                     toast('error', 'Koneksi terputus. Perubahan belum tersimpan, silakan coba lagi.');
                 }).then(refreshState);
@@ -425,8 +448,8 @@
         // ---- Drawers (stacked) ---------------------------------------------------------------------
         // category / ingredient-category: static forms, reset on open. variant / ingredient: the form is
         // fetched when opened, so it always reflects the server (e.g. the Product's current outlets).
-        var DRAWER_LABELS = { category: 'Category baru', variant: 'Variants', ingredient: 'Ingredient', 'ingredient-category': 'Ingredient Category baru' };
-        var DISCARD_TITLES = { category: 'Buang Category ini?', variant: 'Buang perubahan Variant?', ingredient: 'Buang perubahan Ingredient?', 'ingredient-category': 'Buang Category ini?' };
+        var DRAWER_LABELS = { category: 'Category baru', variant: 'Variants', recipe: 'Recipe', ingredient: 'Ingredient', 'ingredient-category': 'Ingredient Category baru' };
+        var DISCARD_TITLES = { category: 'Buang Category ini?', variant: 'Buang perubahan Variant?', recipe: 'Buang perubahan Recipe?', ingredient: 'Buang perubahan Ingredient?', 'ingredient-category': 'Buang Category ini?' };
         var stack = [];          // open drawer keys, top last
         var drawerState = {};    // key -> { snapshot, opener, saving, section }
 
@@ -448,6 +471,7 @@
 
         function drawerSection(key) {
             if (key === 'variant') { return 'variants'; }
+            if (key === 'recipe') { return 'recipe'; }
             if (key === 'category') { return 'general'; }
             return (drawerState.ingredient && drawerState.ingredient.section) || 'stock';
         }
@@ -619,11 +643,142 @@
                 return;
             }
 
-            // Variant / Ingredient: refresh the workspace from the server and stay on the section.
+            // Variant / Recipe / Ingredient: refresh the workspace from the server and stay on the section.
             hideDrawer(key);
             applySaved(data, null);
             if (data.section) { showSection(data.section, true); }
             toast('success', data.message);
+
+            // An Ingredient created from an open Recipe drawer: offer it there, never pick it automatically.
+            if (key === 'ingredient' && stack.indexOf('recipe') !== -1) { refreshRecipeOptions(); }
+        }
+
+        // ---- Recipe drawer -------------------------------------------------------------------------
+        // Rows only: which Ingredients are allowed, qty rules, units and activation are decided by the
+        // server (RecipeWriter). Existing rows are never rewritten here; "Hapus" only marks a row.
+        function recipeForm() { return drawerFormOf('recipe'); }
+
+        function syncRecipeUnit(select) {
+            var row = select.closest('[data-pw-recipe-new-row]');
+            var unit = row ? row.querySelector('[data-pw-recipe-unit]') : null;
+            var option = select.options[select.selectedIndex];
+            if (unit) { unit.textContent = (option && option.getAttribute('data-unit')) || '-'; }
+        }
+
+        function addRecipeRow(form) {
+            var rows = form.querySelector('[data-pw-recipe-new-rows]');
+            var template = form.querySelector('[data-pw-recipe-row-template]');
+            if (!rows || !template) { return; }
+
+            var index = Number(rows.getAttribute('data-pw-next-index') || '0');
+            rows.setAttribute('data-pw-next-index', String(index + 1));
+
+            var holder = document.createElement('div');
+            holder.innerHTML = template.innerHTML.replace(/__INDEX__/g, String(index));
+            var row = holder.firstElementChild;
+            rows.appendChild(row);
+
+            var select = row.querySelector('select');
+            if (select) { select.focus(); }
+            refreshState();
+        }
+
+        function toggleRecipeRemoval(button) {
+            var row = button.closest('[data-pw-recipe-item]');
+            var flag = row ? row.querySelector('[data-pw-recipe-remove-flag]') : null;
+            if (!flag) { return; }
+
+            var removed = flag.value !== '1';
+            flag.value = removed ? '1' : '0';
+            row.classList.toggle('is-removed', removed);
+            button.textContent = removed ? 'Batalkan' : 'Hapus';
+            var qty = row.querySelector('input[name$="[qty]"]');
+            if (qty) { qty.readOnly = removed; clearFieldError(qty); }
+            refreshState();
+        }
+
+        // Rebuild the Ingredient choices (template + open rows) from the server, keeping every choice
+        // the user already made. A newly created Ingredient only becomes selectable.
+        function refreshRecipeOptions() {
+            var form = recipeForm();
+            var url = form ? form.getAttribute('data-pw-options-url') : null;
+            if (!url) { return; }
+
+            fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (response) { return response.ok ? response.json() : null; })
+                .then(function (data) {
+                    var current = recipeForm();
+                    if (!data || !data.ok || current !== form) { return; }
+
+                    function fill(select) {
+                        var chosen = select.value;
+                        var kept = chosen ? select.querySelector('option[value="' + chosen + '"]') : null;
+                        select.innerHTML = '';
+                        var placeholder = document.createElement('option');
+                        placeholder.value = '';
+                        placeholder.textContent = 'Pilih Ingredient';
+                        select.appendChild(placeholder);
+                        data.ingredients.forEach(function (item) {
+                            var option = document.createElement('option');
+                            option.value = String(item.id);
+                            option.textContent = item.label;
+                            option.setAttribute('data-unit', item.unit || '');
+                            select.appendChild(option);
+                        });
+                        if (chosen && !select.querySelector('option[value="' + chosen + '"]') && kept) { select.appendChild(kept); }
+                        select.value = chosen;
+                    }
+
+                    form.querySelectorAll('[data-pw-recipe-ingredient-select]').forEach(fill);
+
+                    var template = form.querySelector('[data-pw-recipe-row-template]');
+                    var templateSelect = template ? template.content.querySelector('select') : null;
+                    if (templateSelect) { fill(templateSelect); }
+
+                    var none = form.querySelector('[data-pw-recipe-no-options]');
+                    if (none) { none.hidden = data.ingredients.length > 0; }
+                    refreshState();
+                })
+                .catch(function () { /* the selects keep their current options */ });
+        }
+
+        document.addEventListener('click', function (event) {
+            if (!event.target.closest) { return; }
+            var form = event.target.closest('[data-pw-recipe-form]');
+            if (!form) { return; }
+
+            if (event.target.closest('[data-pw-recipe-add-row]')) { event.preventDefault(); addRecipeRow(form); return; }
+
+            var removeNew = event.target.closest('[data-pw-recipe-remove-new]');
+            if (removeNew) {
+                event.preventDefault();
+                removeNew.closest('[data-pw-recipe-new-row]').remove();
+                refreshState();
+                return;
+            }
+
+            var remove = event.target.closest('[data-pw-recipe-remove]');
+            if (remove) { event.preventDefault(); toggleRecipeRemoval(remove); }
+        });
+
+        document.addEventListener('change', function (event) {
+            if (event.target.matches && event.target.matches('[data-pw-recipe-ingredient-select]')) { syncRecipeUnit(event.target); }
+        });
+
+        // Saving an ACTIVE Recipe with every row removed leaves the Variant unsellable: ask first.
+        function confirmRecipeSave(form) {
+            if (form.getAttribute('data-pw-recipe-active') !== '1') { return Promise.resolve(true); }
+
+            var kept = form.querySelectorAll('[data-pw-recipe-remove-flag]').length - form.querySelectorAll('[data-pw-recipe-remove-flag][value="1"]').length;
+            var added = Array.prototype.filter.call(form.querySelectorAll('[data-pw-recipe-ingredient-select]'), function (select) { return select.value !== ''; }).length;
+            if (kept > 0 || added > 0) { return Promise.resolve(true); }
+
+            return confirmAsk({
+                title: 'Simpan Recipe tanpa bahan?',
+                body: 'Semua bahan Recipe aktif ini akan dihapus. Variant ini dapat menjadi tidak dapat dijual karena Recipe aktifnya tidak memiliki bahan.',
+                label: 'Simpan',
+                tone: 'warning'
+            });
         }
 
         document.addEventListener('submit', function (event) {
@@ -636,6 +791,13 @@
             var state = drawerState[key] || {};
             if (state.saving) { return; }
 
+            var ready = key === 'recipe' ? confirmRecipeSave(form) : Promise.resolve(true);
+            ready.then(function (ok) { if (ok) { submitDrawer(key, form, state); } });
+        });
+
+        function submitDrawer(key, form, state) {
+            if (state.saving) { return; }
+
             var button = form.querySelector('[data-pw-drawer-save]');
             state.saving = true;
             if (button) { button.disabled = true; }
@@ -644,6 +806,7 @@
             send(form.action, new FormData(form)).then(function (result) {
                 if (result.ok && result.data.ok) { onDrawerSaved(key, result.data); return; }
                 if (result.status === 422) { showErrors(form, 'data-pw-drawer-error', result.data.errors); }
+                if (result.status === 409) { showErrors(form, 'data-pw-drawer-error', { recipe: [result.data.message || ''] }); }
                 failureToast(result);
             }).catch(function () {
                 toast('error', 'Koneksi terputus. Data belum tersimpan, silakan coba lagi.');
@@ -652,7 +815,7 @@
                 if (button) { button.disabled = false; }
                 refreshState();
             });
-        });
+        }
 
         // ---- Init ----------------------------------------------------------------------------------
         // Drawer buttons that only make sense with JS (e.g. "+ Buat Category") start hidden.

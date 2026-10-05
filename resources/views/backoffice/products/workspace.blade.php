@@ -54,6 +54,12 @@
         <div data-pw-drawer-content></div>
     </aside>
 
+    {{-- Recipe drawer (per Variant). Ingredient drawers opened from it stack on top. --}}
+    <div class="pw-drawer-backdrop" data-pw-drawer-backdrop="recipe" hidden></div>
+    <aside class="pw-drawer pw-drawer-wide" data-pw-drawer="recipe" role="dialog" aria-modal="true" aria-labelledby="pw-recipe-drawer-title" hidden>
+        <div data-pw-drawer-content></div>
+    </aside>
+
     @if($workspace['links']['can_manage_ingredients'])
         <div class="pw-drawer-backdrop" data-pw-drawer-backdrop="ingredient" hidden></div>
         <aside class="pw-drawer" data-pw-drawer="ingredient" role="dialog" aria-modal="true" aria-labelledby="pw-ingredient-drawer-title" hidden>

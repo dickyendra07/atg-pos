@@ -11,9 +11,9 @@ use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Services\BackofficeOutletContext;
 use App\Services\RecipeAccessPolicy;
+use App\Services\RecipeWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -112,20 +112,10 @@ class RecipeViewController extends Controller
         }
     }
 
-    /**
-     * Outlets a Recipe Ingredient must be available in: every outlet of the Recipe's Variant.
-     * storeItem() validates against this and the edit dropdown is built from it, so the two agree.
-     */
-    protected function requiredOutletIds(Recipe $recipe): Collection
+    /** Recipe writes and their rules (shared with the Product Workspace). */
+    protected function writer(): RecipeWriter
     {
-        return ($recipe->variant()->with('outlets')->first()?->outlets ?? collect())
-            ->pluck('id')
-            ->map(fn ($id) => (int) $id);
-    }
-
-    protected function ingredientMissingOutletIds(Collection $requiredOutletIds, Ingredient $ingredient): Collection
-    {
-        return $requiredOutletIds->diff($ingredient->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id));
+        return app(RecipeWriter::class);
     }
 
     public function index(Request $request)
@@ -220,12 +210,7 @@ class RecipeViewController extends Controller
 
         $this->assertVariantMutable($variant, $user);
 
-        $recipe = Recipe::create([
-            'product_id' => $variant->product_id,
-            'product_variant_id' => $validated['product_variant_id'],
-            'name' => $validated['name'],
-            'is_active' => $validated['is_active'],
-        ]);
+        $recipe = $this->writer()->create($variant, $validated['name'], (bool) $validated['is_active']);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)
             ->with('success', 'Recipe berhasil ditambahkan.');
@@ -269,24 +254,8 @@ class RecipeViewController extends Controller
 
         // Same rule as storeItem(): active, not already in the Recipe, and available in every outlet
         // of the Recipe's Variant.
-        $requiredOutletIds = $this->requiredOutletIds($recipe);
-
-        $ingredients = Ingredient::with(['category'])
-            ->where('is_active', true)
-            ->whereNotIn('id', $recipe->items->pluck('ingredient_id'))
-            ->where(function ($query) use ($requiredOutletIds) {
-                foreach ($requiredOutletIds as $outletId) {
-                    $query->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', $outletId));
-                }
-            })
-            ->orderByRaw("
-                CASE
-                    WHEN ingredient_type = 'semi_finished' THEN 0
-                    ELSE 1
-                END
-            ")
-            ->orderBy('name')
-            ->get();
+        $requiredOutletIds = $this->writer()->requiredOutletIds($recipe->variant);
+        $ingredients = $this->writer()->selectableIngredients($recipe->variant, $recipe->items->pluck('ingredient_id'));
 
         return view('backoffice.recipes.edit', [
             'user' => $user,
@@ -320,12 +289,7 @@ class RecipeViewController extends Controller
             $this->assertVariantMutable($variant, $user);
         }
 
-        $recipe->update([
-            'product_id' => $variant->product_id,
-            'product_variant_id' => $validated['product_variant_id'],
-            'name' => $validated['name'],
-            'is_active' => $validated['is_active'],
-        ]);
+        $this->writer()->updateHeader($recipe, $variant, $validated['name'], (bool) $validated['is_active']);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)
             ->with('success', 'Recipe berhasil diperbarui. Status terbaru sudah diterapkan ke Cashier.');
@@ -336,9 +300,7 @@ class RecipeViewController extends Controller
         $user = $this->authorizeAccess();
         $this->authorizeRecipeMutation($recipe, $user);
 
-        $recipe->update([
-            'is_active' => false,
-        ]);
+        $this->writer()->deactivate($recipe);
 
         // Inactivating keeps the recipe listed, so it can stay the anchor - unless the list is filtered
         // to active recipes, where it just left: then no anchor (the saved scroll offset is used).
@@ -355,38 +317,15 @@ class RecipeViewController extends Controller
 
         $validated = $request->validate([
             'ingredient_id' => 'required|exists:ingredients,id',
-            'qty' => 'required|numeric|min:0.01',
+            'qty' => RecipeWriter::qtyRule(),
         ]);
 
-        $existingItem = $recipe->items()
-            ->where('ingredient_id', $validated['ingredient_id'])
-            ->first();
-
-        if ($existingItem) {
+        if ($this->writer()->containsIngredient($recipe, (int) $validated['ingredient_id'])) {
             return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-add-item'))
-                ->with('error', 'Ingredient itu sudah ada di recipe ini. Edit qty-nya dulu atau hapus lalu tambah ulang.');
+                ->with('error', RecipeWriter::DUPLICATE_ITEM_MESSAGE);
         }
 
-        $ingredient = Ingredient::findOrFail($validated['ingredient_id']);
-        $recipe->variant()->firstOrFail();
-
-        if (! $ingredient->is_active) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'ingredient_id' => 'Ingredient tidak aktif dan tidak bisa ditambahkan ke recipe.',
-            ]);
-        }
-
-        if ($this->ingredientMissingOutletIds($this->requiredOutletIds($recipe), $ingredient)->isNotEmpty()) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'ingredient_id' => 'Ingredient harus tersedia di seluruh outlet Variant recipe ini.',
-            ]);
-        }
-
-        $item = $recipe->items()->create([
-            'ingredient_id' => $validated['ingredient_id'],
-            'qty' => $validated['qty'],
-            'unit' => $ingredient->unit,
-        ]);
+        $item = $this->writer()->addItem($recipe, Ingredient::findOrFail($validated['ingredient_id']), $validated['qty']);
 
         // Stay on this Recipe's edit page (and keep its way back to the list), at the new row.
         return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-item-'.$item->id))
@@ -403,12 +342,10 @@ class RecipeViewController extends Controller
         }
 
         $validated = $request->validate([
-            'qty' => 'required|numeric|min:0.01',
+            'qty' => RecipeWriter::qtyRule(),
         ]);
 
-        $item->update([
-            'qty' => $validated['qty'],
-        ]);
+        $this->writer()->updateItemQty($item, $validated['qty']);
 
         return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-item-'.$item->id))
             ->with('success', 'Jumlah bahan berhasil diperbarui.');
@@ -424,7 +361,7 @@ class RecipeViewController extends Controller
         }
 
         $ingredientName = $item->ingredient?->name ?? 'Item';
-        $item->delete();
+        $this->writer()->removeItem($item);
 
         // The row is gone; land on the items list instead.
         return redirect(BackofficeReturnUrl::routeWithReturn($request, 'backoffice.recipes.edit', [$recipe->id], 'recipe-items'))
