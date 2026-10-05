@@ -506,7 +506,7 @@ class ProductWorkspaceVariantsIngredientsTest extends TestCase
         $this->assertFalse(Route::has('backoffice.products.workspace.ingredients.destroy'));
     }
 
-    public function test_ingredient_entry_points_in_stock_and_read_only_recipe(): void
+    public function test_ingredient_entry_points_in_stock_and_recipe(): void
     {
         $recipe = Recipe::create(['product_id' => $this->product->id, 'product_variant_id' => $this->regular->id, 'name' => 'R', 'is_active' => true]);
         RecipeItem::create(['recipe_id' => $recipe->id, 'ingredient_id' => $this->milk->id, 'qty' => 150, 'unit' => 'ml']);
@@ -518,10 +518,11 @@ class ProductWorkspaceVariantsIngredientsTest extends TestCase
         $this->assertStringContainsString(e(route('backoffice.products.workspace.ingredients.edit-form', [$this->product, $this->milk, 'return_section' => 'stock'], false)), $html);
         $this->assertStringContainsString(e(route('backoffice.products.workspace.ingredients.edit-form', [$this->product, $this->milk, 'return_section' => 'recipe'], false)), $html);
 
-        // Recipe stays read-only: no Recipe item forms or actions in the workspace.
+        // UX-F: Recipe changes go through the workspace Recipe drawer / explicit actions only - never the
+        // classic per-item routes, and never a Recipe delete.
         $recipePanel = $this->between($html, 'data-pw-panel="recipe"', 'data-pw-panel="stock"');
-        $this->assertStringNotContainsString('<form', $recipePanel);
         $this->assertStringNotContainsString('/items', $recipePanel);
+        $this->assertStringNotContainsString('value="DELETE"', $recipePanel);
         $this->assertStringContainsString('Fresh Milk', $recipePanel);
     }
 

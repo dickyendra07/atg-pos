@@ -122,7 +122,7 @@ class ProductWorkspace
             ],
             'outlets' => $this->outletsSection($product, $user),
             'variants' => $this->variantsSection($product, $variants, $readinessOutlets, $statuses, $returnUrl('variants')),
-            'recipes' => $this->recipeSection($variants, $recipes, $user, $returnUrl('recipe'), $ingredientLinks),
+            'recipes' => $this->recipeSection($product, $variants, $recipes, $user, $returnUrl('recipe'), $ingredientLinks),
             'stock' => $this->stockSection($variants, $recipes, $readinessOutlets, $statuses, $ingredientLinks),
             'promos' => $this->promoSection($variants, $user, $returnUrl('promo')),
             'links' => [
@@ -225,34 +225,70 @@ class ProductWorkspace
         };
     }
 
-    private function recipeSection(Collection $variants, Collection $recipes, User $user, string $returnTo, callable $ingredientLinks): array
+    private function recipeSection(Product $product, Collection $variants, Collection $recipes, User $user, string $returnTo, callable $ingredientLinks): array
     {
-        return $variants->map(function (ProductVariant $variant) use ($recipes, $user, $returnTo, $ingredientLinks) {
+        return $variants->map(function (ProductVariant $variant) use ($product, $recipes, $user, $returnTo, $ingredientLinks) {
             $variantRecipes = $recipes->get($variant->id, collect());
             $mutation = $this->recipePolicy->mutationStatus($user, $variant);
+            $status = self::recipeStatus($variantRecipes);
+            $activeIds = $variantRecipes->where('is_active', true)->pluck('id')->map(fn ($id) => (int) $id)->values();
+            // Inline changes need the Recipe policy AND a non-ambiguous Variant. Ambiguous stays read-only.
+            $editable = $mutation['allowed'] && $status !== 'ambiguous';
+            $variantOutlets = $variant->outlets;
+            $required = $variantOutlets->pluck('id')->map(fn ($id) => (int) $id);
 
             return [
                 'variant_id' => (int) $variant->id,
                 'variant_name' => $variant->name,
                 'variant_active' => (bool) $variant->is_active,
-                'status' => self::recipeStatus($variantRecipes),
+                'variant_outlets' => $variantOutlets->pluck('name')->all(),
+                'status' => $status,
                 'can_mutate' => $mutation['allowed'],
+                'editable' => $editable,
                 'mutation_message' => $mutation['message'],
-                'recipes' => $variantRecipes->map(fn (Recipe $recipe) => [
-                    'id' => (int) $recipe->id,
-                    'name' => $recipe->name,
-                    'is_active' => (bool) $recipe->is_active,
-                    'items_count' => (int) $recipe->items_count,
-                    // Read-only: names only, with a way to open the Ingredient itself.
-                    'ingredients' => $recipe->items->map(fn ($item) => [
-                        'name' => $item->ingredient?->name ?? 'Ingredient tidak valid',
-                        'is_active' => (bool) ($item->ingredient?->is_active),
-                        'links' => $ingredientLinks($item->ingredient, 'recipe'),
-                    ])->values()->all(),
-                    'edit_url' => route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $returnTo], false),
-                ])->values()->all(),
+                'active_recipe_ids' => $activeIds->all(),
+                'inactive_count' => $variantRecipes->where('is_active', false)->count(),
+                'recipes' => $variantRecipes->map(function (Recipe $recipe) use ($product, $variant, $editable, $activeIds, $required, $variantOutlets, $returnTo, $ingredientLinks) {
+                    $owned = (int) $recipe->product_id === (int) $product->id;
+                    $inline = $editable && $owned;
+                    $ingredientCounts = $recipe->items->countBy('ingredient_id');
+
+                    return [
+                        'id' => (int) $recipe->id,
+                        'name' => $recipe->name,
+                        'is_active' => (bool) $recipe->is_active,
+                        'items_count' => (int) $recipe->items_count,
+                        'product_mismatch' => ! $owned,
+                        // Read-only display of the stored rows: qty and unit exactly as stored, warnings only.
+                        'items' => $recipe->items->map(function (RecipeItem $item) use ($required, $variantOutlets, $ingredientCounts, $ingredientLinks) {
+                            $ingredient = $item->ingredient;
+                            $missing = $ingredient ? $required->diff($ingredient->outlets->pluck('id')->map(fn ($id) => (int) $id)) : collect();
+
+                            return [
+                                'name' => $ingredient?->name ?? 'Ingredient tidak valid',
+                                'qty' => (string) $item->getRawOriginal('qty'),
+                                'unit' => $item->unit,
+                                'is_active' => (bool) ($ingredient?->is_active),
+                                'missing_outlets' => $variantOutlets->whereIn('id', $missing->all())->pluck('name')->values()->all(),
+                                'duplicate' => ($ingredientCounts[$item->ingredient_id] ?? 0) > 1,
+                                'unit_differs' => $ingredient && $item->unit !== null && $ingredient->unit !== null && $item->unit !== $ingredient->unit,
+                                'ingredient_unit' => $ingredient?->unit,
+                                'links' => $ingredientLinks($ingredient, 'recipe'),
+                            ];
+                        })->values()->all(),
+                        'edit_url' => route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $returnTo], false),
+                        'form_url' => $inline ? route('backoffice.products.workspace.recipes.edit-form', [$product, $variant, $recipe], false) : null,
+                        'activate_url' => $inline && ! $recipe->is_active && $activeIds->isEmpty()
+                            ? route('backoffice.products.workspace.recipes.activate', [$product, $variant, $recipe], false) : null,
+                        'deactivate_url' => $inline && $recipe->is_active
+                            ? route('backoffice.products.workspace.recipes.deactivate', [$product, $variant, $recipe], false) : null,
+                    ];
+                })->values()->all(),
                 'create_url' => $variantRecipes->isEmpty() && $mutation['allowed']
                     ? route('backoffice.recipes.create', ['return_to' => $returnTo], false)
+                    : null,
+                'create_form_url' => $variantRecipes->isEmpty() && $editable
+                    ? route('backoffice.products.workspace.recipes.create-form', [$product, $variant], false)
                     : null,
             ];
         })->values()->all();
@@ -424,7 +460,7 @@ class ProductWorkspace
         }
 
         return Recipe::withCount('items')
-            ->with(['items.ingredient:id,name,is_active'])
+            ->with(['items' => fn ($query) => $query->orderBy('id'), 'items.ingredient:id,name,is_active,unit', 'items.ingredient.outlets:id'])
             ->whereIn('product_variant_id', $variantIds)
             ->orderBy('id')
             ->get()
