@@ -439,6 +439,7 @@
             </div>
 
             <div class="movement-actions">
+                @include('backoffice.partials.return-to-back', ['label' => 'Kembali ke Product Workspace'])
                 <a href="{{ route('backoffice.stock-movements.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
@@ -462,6 +463,7 @@
                 </div>
 
                 <form method="GET" action="{{ route('backoffice.stock-movements.index') }}" class="filter-form">
+                    @include('backoffice.partials.return-to-field')
                     <div class="field">
                         <label>Filter Ingredient</label>
                         <select name="ingredient_id">
@@ -510,7 +512,7 @@
                     </div>
 
                     <button type="submit" class="btn btn-green">Apply Filter</button>
-                    <a href="{{ route('backoffice.stock-movements.index') }}" class="btn btn-dark">Reset</a>
+                    <a href="{{ route('backoffice.stock-movements.index', array_filter(['return_to' => \App\Support\BackofficeReturnUrl::fromRequest()])) }}" class="btn btn-dark">Reset</a>
                 </form>
             </div>
 

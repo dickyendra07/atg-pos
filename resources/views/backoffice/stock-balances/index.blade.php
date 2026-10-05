@@ -779,6 +779,7 @@
             </div>
 
             <div class="inventory-actions">
+                @include('backoffice.partials.return-to-back', ['label' => 'Kembali ke Product Workspace'])
                 <a href="{{ route('backoffice.stock-balances.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
@@ -877,6 +878,7 @@
                 </div>
 
                                 <form method="GET" action="{{ route('backoffice.stock-balances.index') }}" class="summary-filter-form">
+                    @include('backoffice.partials.return-to-field')
                     <input type="hidden" name="ingredient_id" value="{{ request('ingredient_id') }}">
                     <input type="hidden" name="location_type" value="{{ request('location_type') }}">
                     <input type="hidden" name="status" value="{{ request('status') }}">
@@ -922,7 +924,7 @@
 
                     <div class="filter-actions">
                         <button type="submit" class="btn btn-brand">Apply</button>
-                        <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Reset</a>
+                        <a href="{{ route('backoffice.stock-balances.index', array_filter(['return_to' => \App\Support\BackofficeReturnUrl::fromRequest()])) }}" class="btn btn-dark">Reset</a>
                     </div>
                 </form>
 
@@ -992,6 +994,7 @@
                 </div>
 
                 <form method="GET" action="{{ route('backoffice.stock-balances.index') }}" class="filter-form">
+                    @include('backoffice.partials.return-to-field')
                     <div class="field">
                         <label for="ingredient_id">Ingredient</label>
                         <select name="ingredient_id" id="ingredient_id">
@@ -1030,7 +1033,7 @@
 
                     <div class="filter-actions">
                         <button type="submit" class="btn btn-brand">Apply</button>
-                        <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Reset</a>
+                        <a href="{{ route('backoffice.stock-balances.index', array_filter(['return_to' => \App\Support\BackofficeReturnUrl::fromRequest()])) }}" class="btn btn-dark">Reset</a>
                     </div>
                 </form>
 
@@ -1107,6 +1110,7 @@
             </div>
 
             <form method="GET" action="{{ route('backoffice.stock-balances.index') }}#need-action-list" class="need-action-filter-form">
+                    @include('backoffice.partials.return-to-field')
                 <input type="hidden" name="summary_location_type" value="{{ request('summary_location_type') }}">
                 <input type="hidden" name="summary_location_id" value="{{ request('summary_location_id') }}">
                 <input type="hidden" name="date_from" value="{{ request('date_from') }}">

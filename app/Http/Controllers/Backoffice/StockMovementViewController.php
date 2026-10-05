@@ -40,6 +40,9 @@ class StockMovementViewController extends Controller
             $query->where('location_type', 'outlet')->where('location_id', $activeOutletId);
         }
 
+        // "Semua Outlet" stays inside the user's own outlets; export and filters share this query.
+        app(BackofficeOutletContext::class)->restrictStockLocations($query, Auth::user());
+
         if ($request->filled('ingredient_id')) {
             $query->where('ingredient_id', $request->ingredient_id);
         }

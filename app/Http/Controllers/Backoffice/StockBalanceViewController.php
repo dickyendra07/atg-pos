@@ -53,6 +53,9 @@ class StockBalanceViewController extends Controller
             $baseQuery->where('location_type', 'outlet')->where('location_id', $activeOutletId);
         }
 
+        // "Semua Outlet" stays inside the user's own outlets; no filter below can widen it.
+        $this->outletContext()->restrictStockLocations($baseQuery, Auth::user());
+
         if ($request->filled('ingredient_id')) {
             $baseQuery->where('ingredient_id', $request->ingredient_id);
         }
@@ -184,6 +187,9 @@ class StockBalanceViewController extends Controller
             $query->where('location_id', $request->summary_location_id);
         }
 
+        // Whatever location was asked for, outlet rows outside the user's scope never come back.
+        $this->outletContext()->restrictStockLocations($query, Auth::user());
+
         return $query;
     }
 
@@ -194,6 +200,15 @@ class StockBalanceViewController extends Controller
 
     protected function buildStockSummaryRows(Request $request, Collection $ingredients): Collection
     {
+        // A specific outlet outside the user's scope is not a valid summary location: drop it (back to the
+        // user's own "Semua Outlet") so not even a zero opname row, or the outlet's name, can be produced for it.
+        if (
+            $request->filled('summary_location_type')
+            && ! $this->outletContext()->canReadStockLocation(Auth::user(), (string) $request->summary_location_type, $request->summary_location_id)
+        ) {
+            $request->merge(['summary_location_type' => null, 'summary_location_id' => null]);
+        }
+
         $dateFrom = $request->filled('summary_date_from')
             ? Carbon::parse($request->summary_date_from)->startOfDay()
             : null;
@@ -758,9 +773,12 @@ class StockBalanceViewController extends Controller
 
         $outlets = $this->outletContext()->accessibleOutlets($user);
 
-        $stockMap = StockBalance::query()
-            ->select('ingredient_id', 'location_type', 'location_id', 'qty_on_hand')
-            ->when($this->outletContext()->activeOutletId($user), fn ($query, $outletId) => $query->where('location_type', 'outlet')->where('location_id', $outletId))
+        $stockMap = $this->outletContext()->restrictStockLocations(
+            StockBalance::query()
+                ->select('ingredient_id', 'location_type', 'location_id', 'qty_on_hand')
+                ->when($this->outletContext()->activeOutletId($user), fn ($query, $outletId) => $query->where('location_type', 'outlet')->where('location_id', $outletId)),
+            $user
+        )
             ->get()
             ->groupBy(function ($row) {
                 return $row->location_type . ':' . $row->location_id;

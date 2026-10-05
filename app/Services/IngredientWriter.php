@@ -46,7 +46,16 @@ class IngredientWriter
 
         $accessible = $this->accessibleOutletIds($user)->all();
 
-        return $accessible !== [] && $ingredient->outlets()->whereIn('outlets.id', $accessible)->exists();
+        if ($accessible === []) {
+            return false;
+        }
+
+        // Same answer without a query when the outlets are already loaded (Product Workspace lists).
+        if ($ingredient->relationLoaded('outlets')) {
+            return $ingredient->outlets->pluck('id')->map(fn ($id) => (int) $id)->intersect($accessible)->isNotEmpty();
+        }
+
+        return $ingredient->outlets()->whereIn('outlets.id', $accessible)->exists();
     }
 
     public function rules(?Ingredient $ingredient = null): array
