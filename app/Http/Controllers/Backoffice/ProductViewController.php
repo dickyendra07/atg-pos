@@ -8,13 +8,14 @@ use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\BackofficeOutletContext;
+use App\Services\ProductAccessPolicy;
 use App\Services\ProductDeletionPolicy;
+use App\Services\ProductWorkspace;
+use App\Services\ProductWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -29,17 +30,16 @@ class ProductViewController extends Controller
     {
         $user = Auth::user()->load(['role']);
 
-        $allowedRoles = [
-            'owner',
-            'admin_pusat',
-            'admin_outlet',
-        ];
-
-        if (! in_array($user->role?->code, $allowedRoles)) {
-            abort(403, 'Role kamu tidak punya akses ke halaman Products.');
+        if (! ProductAccessPolicy::hasProductRole($user)) {
+            abort(403, ProductAccessPolicy::ROLE_DENIED_MESSAGE);
         }
 
         return $user;
+    }
+
+    protected function writer(): ProductWriter
+    {
+        return app(ProductWriter::class);
     }
 
     public function index(Request $request)
@@ -120,110 +120,40 @@ class ProductViewController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
-        $validated = $request->validate([
-            'brand_id' => 'required|exists:brands,id',
-            'product_category_id' => ['required', Rule::exists('product_categories', 'id')->where('is_active', true)],
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:products,code',
-            'description' => 'nullable|string',
-            'is_active' => 'required|boolean',
-            'outlet_ids' => 'required|array|min:1',
-            'outlet_ids.*' => 'exists:outlets,id',
-        ]);
+        $validated = $request->validate(array_merge($this->writer()->generalRules(), $this->writer()->outletRules()));
 
-        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
+        $product = $this->writer()->create($user, $validated);
 
-        $product = DB::transaction(function () use ($validated) {
-            $product = Product::create(
-                collect($validated)
-                    ->except('outlet_ids')
-                    ->toArray()
-            );
-
-            $product->outlets()->sync($validated['outlet_ids'] ?? []);
-
-            return $product;
-        });
-
-        return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
+        // Next step of setting up a Product: its Variants, in the Product Workspace (which keeps the
+        // list context, so closing the workspace still lands on the list the user came from).
+        return redirect(ProductWorkspace::url($product, 'variants', BackofficeReturnUrl::fromRequest($request)))
             ->with('success', 'Product berhasil ditambahkan.');
     }
 
-    public function edit(Product $product)
+    /**
+     * The Product Workspace: one page per Product with General, Outlets, Variants & Pricing, Recipe,
+     * Stock & Readiness and Promo sections (?section=...). Carries the list context (return_to).
+     */
+    public function edit(Request $request, Product $product)
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        $brands = Brand::orderBy('name')->get();
-        $categories = ProductCategory::where('is_active', true)->orWhere('id', $product->product_category_id)->orderBy('name')->get();
-        $outlets = $this->outletContext()->accessibleOutlets($user);
+        app(ProductAccessPolicy::class)->authorize($user, $product);
 
-        $product->load('outlets');
-
-        return view('backoffice.products.edit', [
-            'user' => $user,
-            'product' => $product,
-            'brands' => $brands,
-            'categories' => $categories,
-            'outlets' => $outlets,
-        ]);
+        return view('backoffice.products.workspace', app(ProductWorkspace::class)->viewData($request, $product, $user, $request->query('section')));
     }
 
     public function update(Request $request, Product $product)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        app(ProductAccessPolicy::class)->authorize($user, $product);
 
-        $validated = $request->validate([
-            'brand_id' => 'required|exists:brands,id',
-            'product_category_id' => ['required', Rule::exists('product_categories', 'id')->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $product->product_category_id))],
-            'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:products,code,'.$product->id,
-            'description' => 'nullable|string',
-            'is_active' => 'required|boolean',
-            'outlet_ids' => 'required|array|min:1',
-            'outlet_ids.*' => 'exists:outlets,id',
-        ]);
+        $validated = $request->validate(array_merge($this->writer()->generalRules($product), $this->writer()->outletRules()));
 
-        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
-
-        $editableOutletIds = $this->outletContext()->accessibleOutlets(Auth::user())->pluck('id')->map(fn ($id) => (int) $id);
-
-        DB::transaction(function () use ($product, $validated, $editableOutletIds) {
-            $product->update(
-                collect($validated)
-                    ->except('outlet_ids')
-                    ->toArray()
-            );
-
-            $productOutletIds = collect($validated['outlet_ids'] ?? [])
-                ->map(fn ($id) => (int) $id)
-                ->merge($product->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id)->diff($editableOutletIds))
-                ->unique()
-                ->values();
-
-            $product->outlets()->sync($productOutletIds->all());
-
-            $product->variants()->with('outlets')->get()->each(function ($variant) use ($productOutletIds) {
-                if ($variant->outlets->isEmpty()) {
-                    return;
-                }
-
-                $validVariantOutletIds = $variant->outlets
-                    ->pluck('id')
-                    ->map(fn ($id) => (int) $id)
-                    ->intersect($productOutletIds)
-                    ->values()
-                    ->all();
-
-                $variant->outlets()->sync($validVariantOutletIds);
-
-                if (empty($validVariantOutletIds)) {
-                    $variant->update(['is_active' => false]);
-                }
-            });
-        });
+        $this->writer()->update($user, $product, $validated);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
             ->with('success', 'Product berhasil diperbarui.');
@@ -504,15 +434,4 @@ class ProductViewController extends Controller
             ->with('import_errors', $errors);
     }
 
-    protected function validateAccessibleOutletIds($user, array $outletIds): void
-    {
-        $allowed = $this->outletContext()->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id);
-        $invalid = collect($outletIds)->map(fn ($id) => (int) $id)->diff($allowed);
-
-        if ($invalid->isNotEmpty()) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'outlet_ids' => 'Ada outlet tidak aktif atau tidak tersedia untuk akun ini.',
-            ]);
-        }
-    }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -67,6 +68,21 @@ class Promo extends Model
     public function rewards(): HasMany
     {
         return $this->hasMany(PromoReward::class);
+    }
+
+    /** Promos that use any of these Variants as a requirement or reward (rule rows or legacy columns). */
+    public function scopeReferencingVariants(Builder $query, array $variantIds): Builder
+    {
+        if ($variantIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $inner) use ($variantIds) {
+            $inner->whereHas('requirements', fn (Builder $q) => $q->whereIn('product_variant_id', $variantIds))
+                ->orWhereHas('rewards', fn (Builder $q) => $q->whereIn('product_variant_id', $variantIds))
+                ->orWhereIn('requirement_product_variant_id', $variantIds)
+                ->orWhereIn('reward_product_variant_id', $variantIds);
+        });
     }
 
     public function isActiveStatus(): bool
