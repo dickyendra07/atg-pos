@@ -8,11 +8,10 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Models\ProductVariant;
 use App\Services\BackofficeOutletContext;
+use App\Services\VariantWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductVariantViewController extends Controller
@@ -39,103 +38,31 @@ class ProductVariantViewController extends Controller
         return $user;
     }
 
-    protected function normalizeVariantRows(array $rows): array
+    protected function writer(): VariantWriter
     {
-        $normalized = [];
-
-        foreach ($rows as $row) {
-            $name = trim((string) ($row['name'] ?? ''));
-            $code = strtoupper(trim((string) ($row['code'] ?? '')));
-
-            $outletIds = collect($row['outlet_ids'] ?? [])
-                ->filter(fn ($id) => $id !== null && $id !== '')
-                ->map(fn ($id) => (int) $id)
-                ->filter(fn ($id) => $id > 0)
-                ->unique()
-                ->values()
-                ->all();
-
-            $isCompletelyEmpty =
-                $name === '' &&
-                $code === '' &&
-                trim((string) ($row['price_dine_in'] ?? '')) === '' &&
-                trim((string) ($row['price_delivery'] ?? '')) === '';
-
-            if ($isCompletelyEmpty) {
-                continue;
-            }
-
-            $normalized[] = [
-                'id' => ! empty($row['id']) ? (int) $row['id'] : null,
-                'outlet_id' => ! empty($row['outlet_id']) ? (int) $row['outlet_id'] : null,
-                'name' => $name,
-                'code' => $code,
-                'outlet_ids' => $outletIds,
-                'price_dine_in' => (float) ($row['price_dine_in'] ?? 0),
-                'price_delivery' => (float) ($row['price_delivery'] ?? 0),
-                'is_active' => isset($row['is_active']) ? (bool) $row['is_active'] : true,
-            ];
-        }
-
-        return $normalized;
+        return app(VariantWriter::class);
     }
 
-    protected function validateDuplicateCodesInPayload(array $rows): void
+    /** Group-editor rules: the shared row rules plus the legacy per-row outlet_id column. */
+    protected function groupRules(): array
     {
-        $codes = collect($rows)
-            ->pluck('code')
-            ->map(fn ($code) => strtoupper(trim((string) $code)))
-            ->filter()
-            ->values();
-
-        $duplicates = $codes
-            ->duplicates()
-            ->unique()
-            ->values();
-
-        if ($duplicates->isNotEmpty()) {
-            abort(422, 'Ada kode variant yang duplikat di form: '.$duplicates->implode(', '));
-        }
+        return [
+            'product_id' => 'required|exists:products,id',
+            'variants' => 'required|array|min:1',
+            'variants.*.id' => 'nullable|integer',
+            'variants.*.outlet_id' => 'nullable|exists:outlets,id',
+        ] + $this->writer()->rowRules('variants.*.');
     }
 
-    protected function validateVariantOutletScope(Product $product, array $rows): void
+    protected function groupMessages(): array
     {
-        $parentOutletIds = $product->outlets()
-            ->pluck('outlets.id')
-            ->map(fn ($id) => (int) $id);
-
-        foreach ($rows as $index => $row) {
-            $requestedOutletIds = collect($row['outlet_ids'] ?? [])
-                ->when(! empty($row['outlet_id']), fn ($ids) => $ids->push((int) $row['outlet_id']))
-                ->map(fn ($id) => (int) $id)
-                ->unique();
-
-            $invalidOutletIds = $requestedOutletIds->diff($parentOutletIds);
-
-            if ($requestedOutletIds->isEmpty()) {
-                throw ValidationException::withMessages([
-                    'variants.'.$index.'.outlet_ids' => 'Minimal pilih 1 outlet untuk setiap Variant.',
-                ]);
-            }
-
-            $accessibleIds = $this->outletContext()->accessibleOutlets(Auth::user())->pluck('id')->map(fn ($id) => (int) $id);
-            if ($requestedOutletIds->diff($accessibleIds)->isNotEmpty()) {
-                throw ValidationException::withMessages([
-                    'variants.'.$index.'.outlet_ids' => 'Ada outlet tidak aktif atau tidak tersedia untuk akun ini.',
-                ]);
-            }
-
-            if ($invalidOutletIds->isNotEmpty()) {
-                $invalidOutletNames = Outlet::whereIn('id', $invalidOutletIds->all())
-                    ->orderBy('name')
-                    ->pluck('name')
-                    ->implode(', ');
-
-                throw ValidationException::withMessages([
-                    'variants.'.$index.'.outlet_ids' => 'Outlet variant harus merupakan subset outlet Product. Outlet tidak valid: '.$invalidOutletNames,
-                ]);
-            }
-        }
+        return [
+            'variants.required' => 'Minimal harus ada 1 variant.',
+            'variants.*.name.required' => 'Nama variant wajib diisi di setiap baris.',
+            'variants.*.code.required' => 'Kode variant wajib diisi di setiap baris.',
+            'variants.*.price_dine_in.required' => 'Harga dine in wajib diisi di setiap baris.',
+            'variants.*.price_delivery.required' => 'Harga delivery wajib diisi di setiap baris.',
+        ];
     }
 
     public function index(Request $request)
@@ -196,96 +123,16 @@ class ProductVariantViewController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'variants' => 'required|array|min:1',
-            'variants.*.outlet_id' => 'nullable|exists:outlets,id',
-            'variants.*.name' => 'required|string|max:255',
-            'variants.*.code' => 'required|string|max:50',
-            'variants.*.outlet_ids' => 'required|array|min:1',
-            'variants.*.outlet_ids.*' => 'nullable|exists:outlets,id',
-            'variants.*.price_dine_in' => 'required|numeric|min:0',
-            'variants.*.price_delivery' => 'required|numeric|min:0',
-            'variants.*.is_active' => 'nullable|boolean',
-        ], [
-            'variants.required' => 'Minimal harus ada 1 variant.',
-            'variants.*.name.required' => 'Nama variant wajib diisi di setiap baris.',
-            'variants.*.code.required' => 'Kode variant wajib diisi di setiap baris.',
-            'variants.*.price_dine_in.required' => 'Harga dine in wajib diisi di setiap baris.',
-            'variants.*.price_delivery.required' => 'Harga delivery wajib diisi di setiap baris.',
-        ]);
+        $validated = $request->validate($this->groupRules(), $this->groupMessages());
 
-        $rows = $this->normalizeVariantRows($validated['variants'] ?? []);
+        $rows = $this->writer()->normalizeRows($validated['variants'] ?? []);
         $product = Product::findOrFail($validated['product_id']);
-        $this->validateVariantOutletScope($product, $rows);
-
-        if (count($rows) === 0) {
-            return back()
-                ->withErrors(['variants' => 'Minimal harus ada 1 variant yang valid.'])
-                ->withInput();
-        }
-
-        $duplicateKeys = collect($rows)
-            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL').'|'.strtoupper(trim((string) $row['code'])))
-            ->values();
-
-        $duplicateCodes = $duplicateKeys
-            ->duplicates()
-            ->unique()
-            ->map(fn ($key) => explode('|', $key)[1] ?? $key)
-            ->values();
-
-        $codes = collect($rows)->pluck('code')->all();
-
-        if ($duplicateCodes->isNotEmpty()) {
-            return back()
-                ->withErrors([
-                    'variants' => 'Ada kode variant yang duplikat di form: '.$duplicateCodes->implode(', '),
-                ])
-                ->withInput();
-        }
-
-        $existingCodes = collect($rows)
-            ->filter(function ($row) use ($validated) {
-                return ProductVariant::where('product_id', $validated['product_id'])
-                    ->where('outlet_id', $row['outlet_id'])
-                    ->whereRaw('UPPER(code) = ?', [strtoupper($row['code'])])
-                    ->exists();
-            })
-            ->pluck('code')
-            ->map(fn ($code) => strtoupper(trim((string) $code)))
-            ->unique()
-            ->values();
-
-        if ($existingCodes->isNotEmpty()) {
-            return back()
-                ->withErrors([
-                    'variants' => 'Kode variant sudah dipakai pada product ini: '.$existingCodes->implode(', '),
-                ])
-                ->withInput();
-        }
-
-        DB::transaction(function () use ($validated, $rows) {
-            foreach ($rows as $row) {
-                $variant = ProductVariant::create([
-                    'product_id' => $validated['product_id'],
-                    'outlet_id' => $row['outlet_id'],
-                    'name' => $row['name'],
-                    'code' => $row['code'],
-                    'price' => $row['price_dine_in'],
-                    'price_dine_in' => $row['price_dine_in'],
-                    'price_delivery' => $row['price_delivery'],
-                    'is_active' => $row['is_active'],
-                ]);
-
-                $variant->outlets()->sync($row['outlet_ids']);
-            }
-        });
+        $created = $this->writer()->createGroup($user, $product, $rows);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$validated['product_id'])
-            ->with('success', count($rows) === 1 ? 'Variant berhasil ditambahkan.' : count($rows).' variant berhasil ditambahkan.');
+            ->with('success', $created === 1 ? 'Variant berhasil ditambahkan.' : $created.' variant berhasil ditambahkan.');
     }
 
     public function edit(ProductVariant $variant)
@@ -319,159 +166,13 @@ class ProductVariantViewController extends Controller
 
     public function update(Request $request, ProductVariant $variant)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
-        $existingGroup = ProductVariant::where('product_id', $variant->product_id)
-            ->get()
-            ->keyBy('id');
+        $validated = $request->validate($this->groupRules(), $this->groupMessages());
 
-        $validated = $request->validate([
-            'product_id' => 'required|exists:products,id',
-            'variants' => 'required|array|min:1',
-            'variants.*.outlet_id' => 'nullable|exists:outlets,id',
-            'variants.*.id' => 'nullable|integer',
-            'variants.*.outlet_id' => 'nullable|exists:outlets,id',
-            'variants.*.name' => 'required|string|max:255',
-            'variants.*.code' => 'required|string|max:50',
-            'variants.*.outlet_ids' => 'required|array|min:1',
-            'variants.*.outlet_ids.*' => 'nullable|exists:outlets,id',
-            'variants.*.price_dine_in' => 'required|numeric|min:0',
-            'variants.*.price_delivery' => 'required|numeric|min:0',
-            'variants.*.is_active' => 'nullable|boolean',
-        ], [
-            'variants.required' => 'Minimal harus ada 1 variant.',
-            'variants.*.name.required' => 'Nama variant wajib diisi di setiap baris.',
-            'variants.*.code.required' => 'Kode variant wajib diisi di setiap baris.',
-            'variants.*.price_dine_in.required' => 'Harga dine in wajib diisi di setiap baris.',
-            'variants.*.price_delivery.required' => 'Harga delivery wajib diisi di setiap baris.',
-        ]);
-
-        $rows = $this->normalizeVariantRows($validated['variants'] ?? []);
+        $rows = $this->writer()->normalizeRows($validated['variants'] ?? []);
         $product = Product::findOrFail($validated['product_id']);
-        $this->validateVariantOutletScope($product, $rows);
-
-        if (count($rows) === 0) {
-            return back()
-                ->withErrors(['variants' => 'Minimal harus ada 1 variant yang valid.'])
-                ->withInput();
-        }
-
-        $submittedIds = collect($rows)
-            ->pluck('id')
-            ->filter()
-            ->values();
-
-        $duplicateKeys = collect($rows)
-            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL').'|'.strtoupper(trim((string) $row['code'])))
-            ->values();
-
-        $duplicateCodes = $duplicateKeys
-            ->duplicates()
-            ->unique()
-            ->map(fn ($key) => explode('|', $key)[1] ?? $key)
-            ->values();
-
-        $codes = collect($rows)
-            ->pluck('code')
-            ->map(fn ($code) => strtoupper(trim((string) $code)))
-            ->values();
-
-        if ($duplicateCodes->isNotEmpty()) {
-            return back()
-                ->withErrors([
-                    'variants' => 'Ada kode variant yang duplikat di form: '.$duplicateCodes->implode(', '),
-                ])
-                ->withInput();
-        }
-
-        $conflictingCodes = collect($rows)
-            ->filter(function ($row) use ($validated, $submittedIds) {
-                return ProductVariant::query()
-                    ->where('product_id', $validated['product_id'])
-                    ->where('outlet_id', $row['outlet_id'])
-                    ->whereRaw('UPPER(code) = ?', [strtoupper($row['code'])])
-                    ->when($submittedIds->isNotEmpty(), function ($query) use ($submittedIds) {
-                        $query->whereNotIn('id', $submittedIds->all());
-                    })
-                    ->exists();
-            })
-            ->pluck('code')
-            ->map(fn ($code) => strtoupper(trim((string) $code)))
-            ->unique()
-            ->values();
-
-        if ($conflictingCodes->isNotEmpty()) {
-            return back()
-                ->withErrors([
-                    'variants' => 'Kode variant sudah dipakai pada product tujuan: '.$conflictingCodes->implode(', '),
-                ])
-                ->withInput();
-        }
-
-        $removedIds = $existingGroup->keys()->diff($submittedIds);
-
-        foreach ($removedIds as $removedId) {
-            $removedVariant = $existingGroup->get($removedId);
-
-            if (! $removedVariant) {
-                continue;
-            }
-
-            $removedVariant->loadCount([
-                'recipe',
-                'salesTransactionItems',
-            ]);
-
-            if ($removedVariant->recipe_count > 0 || $removedVariant->sales_transaction_items_count > 0) {
-                return back()
-                    ->withErrors([
-                        'variants' => 'Variant "'.$removedVariant->name.'" tidak bisa dihapus karena masih dipakai di recipe / transaksi.',
-                    ])
-                    ->withInput();
-            }
-        }
-
-        DB::transaction(function () use ($validated, $rows, $existingGroup, $removedIds) {
-            foreach ($removedIds as $removedId) {
-                $removedVariant = $existingGroup->get($removedId);
-
-                if ($removedVariant) {
-                    $removedVariant->delete();
-                }
-            }
-
-            foreach ($rows as $row) {
-                if (! empty($row['id']) && $existingGroup->has($row['id'])) {
-                    $existingGroup[$row['id']]->update([
-                        'product_id' => $validated['product_id'],
-                        'outlet_id' => $row['outlet_id'],
-                        'name' => $row['name'],
-                        'code' => $row['code'],
-                        'price' => $row['price_dine_in'],
-                        'price_dine_in' => $row['price_dine_in'],
-                        'price_delivery' => $row['price_delivery'],
-                        'is_active' => $row['is_active'],
-                    ]);
-
-                    $existingGroup[$row['id']]
-                        ->outlets()
-                        ->sync($row['outlet_ids']);
-                } else {
-                    $newVariant = ProductVariant::create([
-                        'product_id' => $validated['product_id'],
-                        'outlet_id' => $row['outlet_id'],
-                        'name' => $row['name'],
-                        'code' => $row['code'],
-                        'price' => $row['price_dine_in'],
-                        'price_dine_in' => $row['price_dine_in'],
-                        'price_delivery' => $row['price_delivery'],
-                        'is_active' => $row['is_active'],
-                    ]);
-
-                    $newVariant->outlets()->sync($row['outlet_ids']);
-                }
-            }
-        });
+        $this->writer()->updateGroup($user, $variant, $product, $rows);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$validated['product_id'])
             ->with('success', 'Variant berhasil diperbarui.');
@@ -482,7 +183,7 @@ class ProductVariantViewController extends Controller
         $this->authorizeAccess();
 
         $variantName = $variant->name;
-        $variant->update(['is_active' => false]);
+        $this->writer()->deactivate($variant);
 
         // Inactivating keeps the variant listed under its product group, so the group stays the anchor.
         return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$variant->product_id)

@@ -1,3 +1,5 @@
+{{-- Variants & Pricing. Create/edit open a drawer (built from the Product's current outlets); the links
+     fall back to the classic Variant group editor without JS. Removing a Variant is "Nonaktifkan" only. --}}
 <div class="pw-card">
     <div class="pw-card-head">
         <div>
@@ -5,10 +7,10 @@
             <p class="pw-card-sub">Harga dijual per Variant (Dine In &amp; Delivery). Product tidak memiliki harga dasar.</p>
         </div>
         <div class="pw-card-actions">
-            @if($workspace['links']['variants_edit'])
-                <a href="{{ $workspace['links']['variants_edit'] }}" class="btn btn-blue" data-pw-manage="variants">Kelola Variant</a>
-            @endif
-            <a href="{{ $workspace['links']['variants_create'] }}" class="btn btn-green">Tambah Variant</a>
+            <a href="{{ $workspace['links']['variants_create'] }}"
+               class="btn btn-green"
+               data-pw-open-drawer="variant"
+               data-pw-form-url="{{ $workspace['links']['variant_create_form'] }}">+ Tambah Variant</a>
         </div>
     </div>
 
@@ -24,6 +26,7 @@
                         <th>Delivery</th>
                         <th class="text-left">Outlet</th>
                         <th>Siap Jual</th>
+                        <th>Aksi</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -34,7 +37,12 @@
                             <td>
                                 <span class="status-badge {{ $pwVariant['is_active'] ? 'status-active' : 'status-inactive' }}">{{ $pwVariant['is_active'] ? 'Active' : 'Inactive' }}</span>
                             </td>
-                            <td class="pw-num">Rp {{ number_format($pwVariant['price_dine_in'], 0, ',', '.') }}</td>
+                            <td class="pw-num">
+                                Rp {{ number_format($pwVariant['price_dine_in'], 0, ',', '.') }}
+                                @if($pwVariant['legacy_price'] !== null)
+                                    <div class="pw-cell-note">Harga lama: Rp {{ number_format($pwVariant['legacy_price'], 0, ',', '.') }}</div>
+                                @endif
+                            </td>
                             <td class="pw-num">Rp {{ number_format($pwVariant['price_delivery'], 0, ',', '.') }}</td>
                             <td class="text-left">{{ count($pwVariant['outlets']) ? implode(', ', $pwVariant['outlets']) : '-' }}</td>
                             <td>
@@ -42,12 +50,39 @@
                                     {{ $pwVariant['sellable_count'] }}/{{ $pwVariant['readiness_count'] }} outlet
                                 </span>
                             </td>
+                            <td>
+                                <div class="pw-row-buttons">
+                                    <a href="{{ $pwVariant['legacy_edit_url'] }}"
+                                       class="btn btn-blue btn-sm"
+                                       data-pw-open-drawer="variant"
+                                       data-pw-form-url="{{ $pwVariant['form_url'] }}">Edit</a>
+                                    @if($pwVariant['is_active'])
+                                        <form method="POST"
+                                              action="{{ $pwVariant['deactivate_url'] }}"
+                                              data-pw-row-action
+                                              data-bo-confirm-title="Nonaktifkan Variant?"
+                                              data-bo-confirm-body="Variant “{{ $pwVariant['name'] }}” tidak akan bisa dijual di Cashier. Outlet, Recipe, dan riwayat transaksi tetap tersimpan."
+                                              data-bo-confirm-label="Nonaktifkan"
+                                              data-bo-confirm-tone="warning">
+                                            @csrf
+                                            @method('PATCH')
+                                            @include('backoffice.partials.return-to-field', ['returnTo' => $workspaceReturnTo])
+                                            <button type="submit" class="btn btn-orange btn-sm">Nonaktifkan</button>
+                                        </form>
+                                    @endif
+                                </div>
+                            </td>
                         </tr>
                     @endforeach
                 </tbody>
             </table>
         </div>
-        <p class="pw-note">Detail alasan siap jual ada di bagian Stock &amp; Readiness.</p>
+        <p class="pw-note">
+            Variant nonaktif bisa diaktifkan kembali lewat Edit. Detail alasan siap jual ada di bagian Stock &amp; Readiness.
+            @if($workspace['links']['variants_edit'])
+                Editor grup lama: <a href="{{ $workspace['links']['variants_edit'] }}" class="pw-link" data-pw-manage="variants">Kelola semua Variant</a>.
+            @endif
+        </p>
     @else
         <div class="pw-empty">Belum ada Variant. Product baru bisa dijual di Cashier setelah memiliki Variant aktif dan Recipe yang valid.</div>
     @endif

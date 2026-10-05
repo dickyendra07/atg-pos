@@ -13,6 +13,8 @@ use App\Http\Controllers\Backoffice\OutletViewController;
 use App\Http\Controllers\Backoffice\ProductVariantViewController;
 use App\Http\Controllers\Backoffice\ProductViewController;
 use App\Http\Controllers\Backoffice\ProductWorkspaceController;
+use App\Http\Controllers\Backoffice\ProductWorkspaceIngredientController;
+use App\Http\Controllers\Backoffice\ProductWorkspaceVariantController;
 use App\Http\Controllers\Backoffice\PromoViewController;
 use App\Http\Controllers\Backoffice\RecipeViewController;
 use App\Http\Controllers\Backoffice\StockAdjustmentController;
@@ -97,6 +99,16 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::put('/products/{product}/workspace/outlets', [ProductWorkspaceController::class, 'updateOutlets'])->name('products.workspace.outlets');
     Route::post('/products/{product}/workspace/outlets/preview', [ProductWorkspaceController::class, 'previewOutlets'])->name('products.workspace.outlets.preview');
     Route::post('/products/{product}/workspace/menu-categories', [ProductWorkspaceController::class, 'storeMenuCategory'])->name('products.workspace.menu-categories.store');
+    Route::get('/products/{product}/workspace/variants/form', [ProductWorkspaceVariantController::class, 'createForm'])->name('products.workspace.variants.create-form');
+    Route::get('/products/{product}/workspace/variants/{variant}/form', [ProductWorkspaceVariantController::class, 'editForm'])->name('products.workspace.variants.edit-form');
+    Route::post('/products/{product}/workspace/variants', [ProductWorkspaceVariantController::class, 'store'])->name('products.workspace.variants.store');
+    Route::put('/products/{product}/workspace/variants/{variant}', [ProductWorkspaceVariantController::class, 'update'])->name('products.workspace.variants.update');
+    Route::patch('/products/{product}/workspace/variants/{variant}/deactivate', [ProductWorkspaceVariantController::class, 'deactivate'])->name('products.workspace.variants.deactivate');
+    Route::get('/products/{product}/workspace/ingredients/form', [ProductWorkspaceIngredientController::class, 'createForm'])->name('products.workspace.ingredients.create-form');
+    Route::get('/products/{product}/workspace/ingredients/{ingredient}/form', [ProductWorkspaceIngredientController::class, 'editForm'])->name('products.workspace.ingredients.edit-form');
+    Route::post('/products/{product}/workspace/ingredients', [ProductWorkspaceIngredientController::class, 'store'])->name('products.workspace.ingredients.store');
+    Route::put('/products/{product}/workspace/ingredients/{ingredient}', [ProductWorkspaceIngredientController::class, 'update'])->name('products.workspace.ingredients.update');
+    Route::post('/products/{product}/workspace/ingredient-categories', [ProductWorkspaceIngredientController::class, 'storeCategory'])->name('products.workspace.ingredient-categories.store');
     Route::delete('/products/{product}', [ProductViewController::class, 'destroy'])->name('products.destroy');
     Route::delete('/products/{productId}/permanent', [ProductViewController::class, 'destroyPermanent'])->whereNumber('productId')->name('products.destroy-permanent');
 

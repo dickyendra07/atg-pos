@@ -47,6 +47,7 @@ class ProductWorkspace
         private readonly BackofficeOutletContext $context,
         private readonly SaleEligibilityService $eligibility,
         private readonly RecipeAccessPolicy $recipePolicy,
+        private readonly IngredientWriter $ingredientWriter,
     ) {}
 
     public static function normalizeSection(mixed $section): string
@@ -110,6 +111,7 @@ class ProductWorkspace
         $statuses = $this->eligibilityByOutlet($variantIds, $readinessOutlets);
         $recipes = $this->recipesByVariant($variantIds);
         $returnUrl = fn (string $section) => self::url($product, $section, $listReturnTo);
+        $ingredientLinks = $this->ingredientLinker($product, $user, $returnUrl);
 
         return [
             'header' => [
@@ -119,16 +121,20 @@ class ProductWorkspace
                 'sellable' => $this->sellableSummary($variants, $readinessOutlets, $statuses),
             ],
             'outlets' => $this->outletsSection($product, $user),
-            'variants' => $this->variantsSection($variants, $readinessOutlets, $statuses),
-            'recipes' => $this->recipeSection($variants, $recipes, $user, $returnUrl('recipe')),
-            'stock' => $this->stockSection($variants, $recipes, $readinessOutlets, $statuses),
+            'variants' => $this->variantsSection($product, $variants, $readinessOutlets, $statuses, $returnUrl('variants')),
+            'recipes' => $this->recipeSection($variants, $recipes, $user, $returnUrl('recipe'), $ingredientLinks),
+            'stock' => $this->stockSection($variants, $recipes, $readinessOutlets, $statuses, $ingredientLinks),
             'promos' => $this->promoSection($variants, $user, $returnUrl('promo')),
             'links' => [
                 'variants_edit' => $variants->isNotEmpty()
                     ? route('backoffice.variants.edit', [$variants->first()->id, 'return_to' => $returnUrl('variants')], false)
                     : null,
                 'variants_create' => route('backoffice.variants.create', ['return_to' => $returnUrl('variants')], false),
+                'variant_create_form' => route('backoffice.products.workspace.variants.create-form', $product, false),
                 'stock_balances' => route('backoffice.stock-balances.index', [], false),
+                'can_manage_ingredients' => IngredientWriter::hasIngredientRole($user),
+                'ingredient_create' => route('backoffice.ingredients.create', ['return_to' => $returnUrl('stock')], false),
+                'ingredient_create_form' => route('backoffice.products.workspace.ingredients.create-form', $product, false),
             ],
         ];
     }
@@ -171,28 +177,57 @@ class ProductWorkspace
         ];
     }
 
-    private function variantsSection(Collection $variants, Collection $readinessOutlets, array $statuses): array
+    private function variantsSection(Product $product, Collection $variants, Collection $readinessOutlets, array $statuses, string $returnTo): array
     {
-        return $variants->map(function (ProductVariant $variant) use ($readinessOutlets, $statuses) {
+        return $variants->map(function (ProductVariant $variant) use ($product, $readinessOutlets, $statuses, $returnTo) {
             $eligibleAt = $readinessOutlets->filter(fn (Outlet $outlet) => $statuses[$outlet->id][$variant->id]['eligible'] ?? false);
+            $dineIn = (float) ($variant->price_dine_in ?? $variant->price ?? 0);
 
             return [
                 'id' => (int) $variant->id,
                 'name' => $variant->name,
                 'code' => $variant->code,
                 'is_active' => (bool) $variant->is_active,
-                'price_dine_in' => (float) ($variant->price_dine_in ?? $variant->price ?? 0),
+                'price_dine_in' => $dineIn,
                 'price_delivery' => (float) ($variant->price_delivery ?? $variant->price ?? 0),
+                // Legacy `price` normally mirrors dine-in; only worth showing when an old row differs.
+                'legacy_price' => $variant->price !== null && abs((float) $variant->price - $dineIn) > 0.004 ? (float) $variant->price : null,
                 'outlets' => $variant->outlets->pluck('name')->all(),
                 'sellable_count' => $eligibleAt->count(),
                 'readiness_count' => $readinessOutlets->count(),
+                'form_url' => route('backoffice.products.workspace.variants.edit-form', [$product, $variant], false),
+                'legacy_edit_url' => route('backoffice.variants.edit', [$variant->id, 'return_to' => $returnTo], false),
+                'deactivate_url' => route('backoffice.products.workspace.variants.deactivate', [$product, $variant], false),
             ];
         })->values()->all();
     }
 
-    private function recipeSection(Collection $variants, Collection $recipes, User $user, string $returnTo): array
+    /**
+     * Edit links for an Ingredient shown in this workspace (drawer + classic page), or null when the
+     * user may not edit it here. Ingredients are global; this only decides who may open them.
+     */
+    private function ingredientLinker(Product $product, User $user, callable $returnUrl): callable
     {
-        return $variants->map(function (ProductVariant $variant) use ($recipes, $user, $returnTo) {
+        $canManage = IngredientWriter::hasIngredientRole($user);
+        $memo = [];
+
+        return function ($ingredient, string $section) use ($product, $user, $returnUrl, $canManage, &$memo) {
+            if (! $canManage || ! $ingredient) {
+                return null;
+            }
+
+            $memo[$ingredient->id] ??= $this->ingredientWriter->canEdit($user, $ingredient);
+
+            return $memo[$ingredient->id] ? [
+                'form_url' => route('backoffice.products.workspace.ingredients.edit-form', [$product, $ingredient, 'return_section' => $section], false),
+                'legacy_edit_url' => route('backoffice.ingredients.edit', [$ingredient->id, 'return_to' => $returnUrl($section)], false),
+            ] : null;
+        };
+    }
+
+    private function recipeSection(Collection $variants, Collection $recipes, User $user, string $returnTo, callable $ingredientLinks): array
+    {
+        return $variants->map(function (ProductVariant $variant) use ($recipes, $user, $returnTo, $ingredientLinks) {
             $variantRecipes = $recipes->get($variant->id, collect());
             $mutation = $this->recipePolicy->mutationStatus($user, $variant);
 
@@ -208,6 +243,12 @@ class ProductWorkspace
                     'name' => $recipe->name,
                     'is_active' => (bool) $recipe->is_active,
                     'items_count' => (int) $recipe->items_count,
+                    // Read-only: names only, with a way to open the Ingredient itself.
+                    'ingredients' => $recipe->items->map(fn ($item) => [
+                        'name' => $item->ingredient?->name ?? 'Ingredient tidak valid',
+                        'is_active' => (bool) ($item->ingredient?->is_active),
+                        'links' => $ingredientLinks($item->ingredient, 'recipe'),
+                    ])->values()->all(),
                     'edit_url' => route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $returnTo], false),
                 ])->values()->all(),
                 'create_url' => $variantRecipes->isEmpty() && $mutation['allowed']
@@ -240,7 +281,7 @@ class ProductWorkspace
         return (int) $active->first()->items_count === 0 ? 'empty' : 'valid';
     }
 
-    private function stockSection(Collection $variants, Collection $recipes, Collection $readinessOutlets, array $statuses): array
+    private function stockSection(Collection $variants, Collection $recipes, Collection $readinessOutlets, array $statuses, callable $ingredientLinks): array
     {
         // Ingredients of every ACTIVE Recipe of this Product's Variants (an ambiguous Variant contributes
         // all of its active Recipes: this is context, not a deduction).
@@ -272,10 +313,12 @@ class ProductWorkspace
                 'variant_name' => $variant->name,
                 'cells' => $readinessOutlets->map(fn (Outlet $outlet) => $statuses[$outlet->id][$variant->id] ?? ['eligible' => false, 'reason' => null, 'message' => null])->values()->all(),
             ])->values()->all(),
-            'ingredients' => $ingredients->map(function ($ingredient) use ($readinessOutlets, $balances) {
+            'ingredients' => $ingredients->map(function ($ingredient) use ($readinessOutlets, $balances, $ingredientLinks) {
                 $minimum = (float) ($ingredient->minimum_stock ?? 0);
 
                 return [
+                    'id' => (int) $ingredient->id,
+                    'links' => $ingredientLinks($ingredient, 'stock'),
                     'name' => $ingredient->name,
                     'unit' => $ingredient->unit,
                     'minimum_stock' => $minimum,
@@ -381,6 +424,7 @@ class ProductWorkspace
         }
 
         return Recipe::withCount('items')
+            ->with(['items.ingredient:id,name,is_active'])
             ->whereIn('product_variant_id', $variantIds)
             ->orderBy('id')
             ->get()

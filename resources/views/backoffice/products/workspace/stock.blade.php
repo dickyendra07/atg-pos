@@ -9,6 +9,12 @@
             <p class="pw-card-sub">Status siap jual memakai aturan yang sama dengan Cashier, pada konteks outlet saat ini ({{ $activeOutletLabel ?? '-' }}).</p>
         </div>
         <div class="pw-card-actions">
+            @if($workspace['links']['can_manage_ingredients'])
+                <a href="{{ $workspace['links']['ingredient_create'] }}"
+                   class="btn btn-green"
+                   data-pw-open-drawer="ingredient"
+                   data-pw-form-url="{{ $workspace['links']['ingredient_create_form'] }}?return_section=stock">+ Buat Ingredient</a>
+            @endif
             <a href="{{ $workspace['links']['stock_balances'] }}" class="btn btn-dark">Inventory Control</a>
         </div>
     </div>
@@ -68,6 +74,15 @@
                                 <td class="text-left">
                                     <strong>{{ $pwIngredient['name'] }}</strong>
                                     @unless($pwIngredient['is_active'])<span class="status-badge status-inactive pw-badge-sm">Inactive</span>@endunless
+                                    @if($pwIngredient['links'])
+                                        <div class="pw-mt-sm">
+                                            <a href="{{ $pwIngredient['links']['legacy_edit_url'] }}"
+                                               class="btn btn-blue btn-sm"
+                                               data-pw-open-drawer="ingredient"
+                                               data-pw-form-url="{{ $pwIngredient['links']['form_url'] }}"
+                                               data-pw-ingredient="{{ $pwIngredient['id'] }}">Edit Ingredient</a>
+                                        </div>
+                                    @endif
                                 </td>
                                 <td class="pw-num">{{ \App\Support\QuantityFormatter::twoDecimals($pwIngredient['minimum_stock']) }} {{ $pwIngredient['unit'] }}</td>
                                 @foreach($pwIngredient['cells'] as $pwCell)

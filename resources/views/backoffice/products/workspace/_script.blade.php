@@ -97,34 +97,56 @@
 
         function dirtyKeys() { return EDITABLE.filter(isDirty); }
 
-        function anyDirty() { return dirtyKeys().length > 0 || drawerDirty(); }
+        function anyDirty() { return dirtyKeys().length > 0 || dirtyDrawers().length > 0; }
+
+        // Everything unsaved: editable sections plus open drawers that hold input.
+        function dirtyLabels() {
+            var labels = dirtyKeys().map(function (key) { return LABELS[key]; });
+            dirtyDrawers().forEach(function (key) {
+                if (labels.indexOf(DRAWER_LABELS[key]) === -1) { labels.push(DRAWER_LABELS[key]); }
+            });
+            return labels;
+        }
 
         function refreshState() {
-            var keys = dirtyKeys();
+            var labels = dirtyLabels();
+            var dots = dirtyKeys().concat(dirtyDrawers().map(drawerSection));
 
             root.querySelectorAll('[data-pw-dirty-dot]').forEach(function (dot) {
-                dot.hidden = keys.indexOf(dot.getAttribute('data-pw-dirty-dot')) === -1;
+                dot.hidden = dots.indexOf(dot.getAttribute('data-pw-dirty-dot')) === -1;
             });
 
             var state = root.querySelector('[data-pw-save-state]');
             if (!state) { return; }
 
             state.classList.toggle('is-saving', saving);
-            state.classList.toggle('is-dirty', !saving && keys.length > 0);
+            state.classList.toggle('is-dirty', !saving && labels.length > 0);
             state.textContent = saving ? 'Menyimpan…'
-                : keys.length === 0 ? 'Tersimpan'
-                : keys.length === 1 ? 'Belum disimpan: ' + LABELS[keys[0]]
-                : keys.length + ' bagian belum disimpan';
+                : labels.length === 0 ? 'Tersimpan'
+                : labels.length === 1 ? 'Belum disimpan: ' + labels[0]
+                : labels.length + ' bagian belum disimpan';
         }
 
-        root.addEventListener('input', function (event) {
-            if (event.target.closest && event.target.closest('[data-pw-form]')) { refreshState(); }
+        ['input', 'change'].forEach(function (type) {
+            document.addEventListener(type, function (event) {
+                var target = event.target;
+                if (!target.closest || !target.closest('[data-pw-form], [data-pw-drawer-form]')) { return; }
+                if (type === 'input' && target.classList.contains('pw-rupiah')) { formatRupiahInput(target); }
+                refreshState();
+                if (type === 'change' && target.hasAttribute('data-pw-outlet-checkbox')) { schedulePreview(); }
+            });
         });
-        root.addEventListener('change', function (event) {
-            if (!event.target.closest || !event.target.closest('[data-pw-form]')) { return; }
-            refreshState();
-            if (event.target.hasAttribute('data-pw-outlet-checkbox')) { schedulePreview(); }
-        });
+
+        // Same formatting as the Variant editor (cleanCurrencyNumber / formatRupiah); the server
+        // normalises the value again (VariantWriter::normalizeRupiah).
+        function cleanRupiah(value) {
+            return String(value || '').trim().replace(/[.,]00$/, '').replace(/[^\d]/g, '');
+        }
+
+        function formatRupiahInput(input) {
+            var numeric = cleanRupiah(input.value);
+            input.value = numeric ? 'Rp. ' + Number(numeric).toLocaleString('id-ID') : '';
+        }
 
         // ---- Validation errors ---------------------------------------------------------------------
         // Once the user edits a field, its error from the last save is stale: hide that field's message
@@ -242,6 +264,13 @@
         }
 
         root.addEventListener('submit', function (event) {
+            var rowAction = event.target.closest ? event.target.closest('[data-pw-row-action]') : null;
+            if (rowAction) {
+                event.preventDefault();
+                runRowAction(rowAction);
+                return;
+            }
+
             var form = event.target.closest ? event.target.closest('[data-pw-form]') : null;
             if (!form) { return; }
             event.preventDefault();
@@ -266,6 +295,29 @@
                 }).then(function (ok) { if (ok) { save(form, key); } });
             });
         });
+
+        // Row actions (e.g. "Nonaktifkan" a Variant): confirm, then save in place. Without JS the same form
+        // posts normally and the server redirects back to the section.
+        function runRowAction(form) {
+            confirmAsk({
+                title: form.getAttribute('data-bo-confirm-title'),
+                body: form.getAttribute('data-bo-confirm-body'),
+                label: form.getAttribute('data-bo-confirm-label'),
+                tone: form.getAttribute('data-bo-confirm-tone') || 'warning'
+            }).then(function (ok) {
+                if (!ok) { return; }
+                send(form.action, new FormData(form)).then(function (result) {
+                    if (result.ok && result.data.ok) {
+                        applySaved(result.data, null);
+                        toast('success', result.data.message);
+                        return;
+                    }
+                    failureToast(result);
+                }).catch(function () {
+                    toast('error', 'Koneksi terputus. Perubahan belum tersimpan, silakan coba lagi.');
+                }).then(refreshState);
+            });
+        }
 
         // ---- Outlet consequence preview (server-computed) ------------------------------------------
         var previewTimer = null;
@@ -315,9 +367,7 @@
 
         // ---- Leaving with unsaved changes ----------------------------------------------------------
         function leaveMessage() {
-            var keys = dirtyKeys().map(function (key) { return LABELS[key]; });
-            if (drawerDirty()) { keys.push('Category baru'); }
-            return 'Perubahan di ' + keys.join(' dan ') + ' belum disimpan dan akan hilang.';
+            return 'Perubahan di ' + dirtyLabels().join(' dan ') + ' belum disimpan dan akan hilang.';
         }
 
         function askLeave() {
@@ -336,6 +386,7 @@
         document.addEventListener('click', function (event) {
             var link = event.target.closest ? event.target.closest('a[href]') : null;
             if (!link || link.hasAttribute('data-pw-nav')) { return; }
+            if (link.hasAttribute('data-pw-open-drawer') && drawerEl(link.getAttribute('data-pw-open-drawer'))) { return; }   // opens a drawer, stays here
             if ((link.target && link.target !== '_self') || link.hasAttribute('download')) { return; }
             if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) { return; }
 
@@ -371,134 +422,244 @@
             });
         }, true);
 
-        // ---- Category drawer -----------------------------------------------------------------------
-        var drawer = document.querySelector('[data-pw-drawer="category"]');
-        var backdrop = document.querySelector('[data-pw-drawer-backdrop]');
-        var drawerForm = drawer ? drawer.querySelector('[data-pw-drawer-form]') : null;
-        var drawerSnapshot = null;
-        var drawerOpener = null;
-        var drawerSaving = false;
+        // ---- Drawers (stacked) ---------------------------------------------------------------------
+        // category / ingredient-category: static forms, reset on open. variant / ingredient: the form is
+        // fetched when opened, so it always reflects the server (e.g. the Product's current outlets).
+        var DRAWER_LABELS = { category: 'Category baru', variant: 'Variants', ingredient: 'Ingredient', 'ingredient-category': 'Ingredient Category baru' };
+        var DISCARD_TITLES = { category: 'Buang Category ini?', variant: 'Buang perubahan Variant?', ingredient: 'Buang perubahan Ingredient?', 'ingredient-category': 'Buang Category ini?' };
+        var stack = [];          // open drawer keys, top last
+        var drawerState = {};    // key -> { snapshot, opener, saving, section }
+
+        function drawerEl(key) { return document.querySelector('[data-pw-drawer="' + key + '"]'); }
+        function backdropEl(key) { return document.querySelector('[data-pw-drawer-backdrop="' + key + '"]'); }
+        function drawerFormOf(key) { var el = drawerEl(key); return el ? el.querySelector('[data-pw-drawer-form]') : null; }
 
         // .shell uses backdrop-filter, which makes it the containing block of position:fixed children.
-        // Like the shared confirm dialog and toasts, the drawer lives directly under <body> instead.
-        if (drawer) {
-            document.body.appendChild(backdrop);
-            document.body.appendChild(drawer);
+        // Like the shared confirm dialog and toasts, drawers live directly under <body> instead.
+        document.querySelectorAll('[data-pw-drawer-backdrop], [data-pw-drawer]').forEach(function (el) { document.body.appendChild(el); });
+
+        function isDrawerDirty(key) {
+            var state = drawerState[key];
+            var form = drawerFormOf(key);
+            return stack.indexOf(key) !== -1 && !!state && state.snapshot !== null && !!form && serialize(form) !== state.snapshot;
         }
 
-        function drawerOpen() { return !!drawer && !drawer.hidden; }
+        function dirtyDrawers() { return stack.filter(isDrawerDirty); }
 
-        function drawerDirty() { return drawerOpen() && drawerSnapshot !== null && serialize(drawerForm) !== drawerSnapshot; }
+        function drawerSection(key) {
+            if (key === 'variant') { return 'variants'; }
+            if (key === 'category') { return 'general'; }
+            return (drawerState.ingredient && drawerState.ingredient.section) || 'stock';
+        }
 
-        function openDrawer() {
-            if (!drawer) { return; }
-            drawerOpener = document.activeElement;
-            drawerForm.reset();
-            clearErrors(drawerForm, 'data-pw-drawer-error');
+        function showDrawer(key, opener) {
+            var el = drawerEl(key);
+            var backdrop = backdropEl(key);
+            var depth = stack.length;
 
-            var brand = root.querySelector('[data-pw-brand-select]');
-            var drawerBrand = drawerForm.querySelector('[name="brand_id"]');
-            if (brand && drawerBrand && drawerBrand.querySelector('option[value="' + brand.value + '"]')) { drawerBrand.value = brand.value; }
-
-            drawer.hidden = false;
+            backdrop.style.zIndex = String(1000 + depth * 2);
+            el.style.zIndex = String(1001 + depth * 2);
+            el.hidden = false;
             backdrop.hidden = false;
+            stack.push(key);
             document.body.classList.add('pw-drawer-open');
-            drawerSnapshot = serialize(drawerForm);
-            drawerForm.querySelector('[name="name"]').focus();
+
+            drawerState[key] = { snapshot: serialize(drawerFormOf(key)), opener: opener, saving: false, section: (drawerState[key] || {}).section };
+
+            var first = el.querySelector('input:not([type="hidden"]), select, textarea');
+            if (first) { first.focus(); }
+            refreshState();
         }
 
-        function hideDrawer() {
-            drawer.hidden = true;
-            backdrop.hidden = true;
-            document.body.classList.remove('pw-drawer-open');
-            drawerSnapshot = null;
-            if (drawerOpener && drawerOpener.focus) { try { drawerOpener.focus(); } catch (e) { /* ignore */ } }
+        function hideDrawer(key) {
+            var state = drawerState[key] || {};
+
+            drawerEl(key).hidden = true;
+            backdropEl(key).hidden = true;
+            stack = stack.filter(function (open) { return open !== key; });
+            drawerState[key] = { snapshot: null, section: state.section };
+
+            if (!stack.length) { document.body.classList.remove('pw-drawer-open'); }
+            if (state.opener && state.opener.focus && document.body.contains(state.opener)) {
+                try { state.opener.focus(); } catch (e) { /* ignore */ }
+            }
+            refreshState();
         }
 
-        function closeDrawer() {
-            if (!drawerDirty()) { hideDrawer(); return; }
-            confirmAsk({ title: 'Buang Category ini?', body: 'Data Category yang sudah diisi akan hilang. Form Product tidak berubah.', label: 'Buang', tone: 'warning' })
-                .then(function (ok) { if (ok) { hideDrawer(); } });
+        function closeDrawer(key) {
+            if (!isDrawerDirty(key)) { hideDrawer(key); return; }
+            confirmAsk({ title: DISCARD_TITLES[key], body: 'Data yang sudah diisi di panel ini akan hilang. Form lain tidak berubah.', label: 'Buang', tone: 'warning' })
+                .then(function (ok) { if (ok) { hideDrawer(key); } });
         }
 
-        function addCategoryOption(category) {
-            var select = root.querySelector('[data-pw-category-select]');
+        function openStaticDrawer(key, opener) {
+            var form = drawerFormOf(key);
+            if (!form) { return; }
+
+            form.reset();
+            clearErrors(form, 'data-pw-drawer-error');
+
+            if (key === 'category') {
+                var brand = root.querySelector('[data-pw-brand-select]');
+                var drawerBrand = form.querySelector('[name="brand_id"]');
+                if (brand && drawerBrand && drawerBrand.querySelector('option[value="' + brand.value + '"]')) { drawerBrand.value = brand.value; }
+            }
+
+            showDrawer(key, opener);
+        }
+
+        function openFetchedDrawer(key, url, opener) {
+            var el = drawerEl(key);
+            var content = el.querySelector('[data-pw-drawer-content]');
+
+            fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function (response) {
+                    return response.json().catch(function () { return null; }).then(function (data) {
+                        return { ok: response.ok, data: data || {} };
+                    });
+                })
+                .then(function (result) {
+                    if (!result.ok || !result.data.ok) {
+                        toast('error', result.data.message || 'Form tidak dapat dibuka.');
+                        return;
+                    }
+                    content.innerHTML = result.data.html;
+                    if (key === 'ingredient') {
+                        var section = content.querySelector('[name="return_section"]');
+                        drawerState.ingredient = { section: section ? section.value : 'stock' };
+                    }
+                    content.querySelectorAll('.pw-rupiah').forEach(formatRupiahInput);
+                    showDrawer(key, opener);
+                })
+                .catch(function () { toast('error', 'Koneksi terputus. Form tidak dapat dibuka.'); });
+        }
+
+        function addOption(select, item) {
             if (!select) { return; }
 
             var option = document.createElement('option');
-            option.value = String(category.id);
-            option.textContent = category.name;
+            option.value = String(item.id);
+            option.textContent = item.name;
 
             var before = Array.prototype.find.call(select.options, function (existing) {
-                return existing.textContent.localeCompare(category.name, 'id', { sensitivity: 'base' }) > 0;
+                return existing.value !== '' && existing.textContent.localeCompare(item.name, 'id', { sensitivity: 'base' }) > 0;
             });
             select.insertBefore(option, before || null);
-            select.value = String(category.id);
+            select.value = String(item.id);
             select.dispatchEvent(new Event('change', { bubbles: true }));
         }
 
         document.addEventListener('click', function (event) {
             if (!event.target.closest) { return; }
-            if (event.target.closest('[data-pw-open-drawer="category"]')) { event.preventDefault(); openDrawer(); return; }
-            if (event.target.closest('[data-pw-drawer-cancel]') || event.target === backdrop) { event.preventDefault(); closeDrawer(); }
+
+            var opener = event.target.closest('[data-pw-open-drawer]');
+            if (opener) {
+                if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) { return; }
+                var key = opener.getAttribute('data-pw-open-drawer');
+                if (!drawerEl(key)) { return; }   // no drawer for this user: the link works as a normal page
+                event.preventDefault();
+                if (stack.indexOf(key) !== -1) { return; }
+                if (opener.hasAttribute('data-pw-form-url')) {
+                    openFetchedDrawer(key, opener.getAttribute('data-pw-form-url'), opener);
+                } else {
+                    openStaticDrawer(key, opener);
+                }
+                return;
+            }
+
+            var cancel = event.target.closest('[data-pw-drawer-cancel]');
+            var cancelDrawer = cancel ? cancel.closest('[data-pw-drawer]') : null;
+            if (cancelDrawer) {
+                event.preventDefault();
+                closeDrawer(cancelDrawer.getAttribute('data-pw-drawer'));
+                return;
+            }
+
+            if (event.target.hasAttribute && event.target.hasAttribute('data-pw-drawer-backdrop')) {
+                closeDrawer(event.target.getAttribute('data-pw-drawer-backdrop'));
+            }
         });
 
+        // Esc / Tab act on the TOP drawer only, and never while the confirm dialog is on top of it.
         document.addEventListener('keydown', function (event) {
-            if (!drawerOpen()) { return; }
-            if (window.BackofficeConfirm && window.BackofficeConfirm.isOpen()) { return; }   // the dialog is on top
+            if (!stack.length) { return; }
+            if (window.BackofficeConfirm && window.BackofficeConfirm.isOpen()) { return; }
+
+            var top = stack[stack.length - 1];
 
             if (event.key === 'Escape') {
                 event.preventDefault();
                 event.stopPropagation();
-                closeDrawer();
+                closeDrawer(top);
                 return;
             }
 
             if (event.key === 'Tab') {
                 var focusable = Array.prototype.filter.call(
-                    drawer.querySelectorAll('button, input:not([type="hidden"]), select, textarea, a[href]'),
+                    drawerEl(top).querySelectorAll('button, input:not([type="hidden"]), select, textarea, a[href]'),
                     function (el) { return !el.disabled && el.offsetParent !== null; }
                 );
                 if (!focusable.length) { return; }
                 var first = focusable[0];
                 var last = focusable[focusable.length - 1];
+                if (!drawerEl(top).contains(document.activeElement)) { event.preventDefault(); first.focus(); return; }
                 if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
                 else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
             }
         }, true);
 
-        if (drawerForm) {
-            drawerForm.addEventListener('submit', function (event) {
-                event.preventDefault();
-                if (drawerSaving) { return; }
+        function onDrawerSaved(key, data) {
+            if (key === 'category' || key === 'ingredient-category') {
+                var select = key === 'category'
+                    ? root.querySelector('[data-pw-category-select]')
+                    : (drawerFormOf('ingredient') || document.createElement('form')).querySelector('[data-pw-ingredient-category-select]');
+                if (data.category.is_active) { addOption(select, data.category); }
+                hideDrawer(key);
+                toast(data.category.is_active ? 'success' : 'warning', data.message);
+                return;
+            }
 
-                var button = drawerForm.querySelector('[data-pw-drawer-save]');
-                drawerSaving = true;
-                button.disabled = true;
-                clearErrors(drawerForm, 'data-pw-drawer-error');
-
-                send(drawerForm.action, new FormData(drawerForm)).then(function (result) {
-                    if (result.ok && result.data.ok) {
-                        if (result.data.category.is_active) { addCategoryOption(result.data.category); }
-                        hideDrawer();
-                        toast(result.data.category.is_active ? 'success' : 'warning', result.data.message);
-                        refreshState();
-                        return;
-                    }
-                    if (result.status === 422) { showErrors(drawerForm, 'data-pw-drawer-error', result.data.errors); }
-                    failureToast(result);
-                }).catch(function () {
-                    toast('error', 'Koneksi terputus. Category belum tersimpan, silakan coba lagi.');
-                }).then(function () {
-                    drawerSaving = false;
-                    button.disabled = false;
-                });
-            });
+            // Variant / Ingredient: refresh the workspace from the server and stay on the section.
+            hideDrawer(key);
+            applySaved(data, null);
+            if (data.section) { showSection(data.section, true); }
+            toast('success', data.message);
         }
 
+        document.addEventListener('submit', function (event) {
+            var form = event.target.closest ? event.target.closest('[data-pw-drawer-form]') : null;
+            var el = form ? form.closest('[data-pw-drawer]') : null;
+            if (!el) { return; }
+            event.preventDefault();
+
+            var key = el.getAttribute('data-pw-drawer');
+            var state = drawerState[key] || {};
+            if (state.saving) { return; }
+
+            var button = form.querySelector('[data-pw-drawer-save]');
+            state.saving = true;
+            if (button) { button.disabled = true; }
+            clearErrors(form, 'data-pw-drawer-error');
+
+            send(form.action, new FormData(form)).then(function (result) {
+                if (result.ok && result.data.ok) { onDrawerSaved(key, result.data); return; }
+                if (result.status === 422) { showErrors(form, 'data-pw-drawer-error', result.data.errors); }
+                failureToast(result);
+            }).catch(function () {
+                toast('error', 'Koneksi terputus. Data belum tersimpan, silakan coba lagi.');
+            }).then(function () {
+                state.saving = false;
+                if (button) { button.disabled = false; }
+                refreshState();
+            });
+        });
+
         // ---- Init ----------------------------------------------------------------------------------
+        // Drawer buttons that only make sense with JS (e.g. "+ Buat Category") start hidden.
         function enhance() {
-            root.querySelectorAll('[data-pw-open-drawer]').forEach(function (button) { button.hidden = !drawer; });
+            root.querySelectorAll('[data-pw-open-drawer][hidden]').forEach(function (button) {
+                button.hidden = !drawerEl(button.getAttribute('data-pw-open-drawer'));
+            });
         }
 
         EDITABLE.forEach(initialSnapshot);

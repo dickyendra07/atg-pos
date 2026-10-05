@@ -2,12 +2,11 @@
 
 namespace App\Http\Controllers\Backoffice;
 
+use App\Http\Controllers\Backoffice\Concerns\RespondsAsProductWorkspace;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductCategory;
-use App\Models\User;
 use App\Services\CategoryWriter;
-use App\Services\ProductAccessPolicy;
 use App\Services\ProductWorkspace;
 use App\Services\ProductWriter;
 use App\Support\BackofficeReturnUrl;
@@ -23,6 +22,8 @@ use Illuminate\Http\Request;
  */
 class ProductWorkspaceController extends Controller
 {
+    use RespondsAsProductWorkspace;
+
     public function updateGeneral(Request $request, Product $product, ProductWriter $writer)
     {
         $user = $this->authorizeProduct($request, $product);
@@ -98,40 +99,6 @@ class ProductWorkspaceController extends Controller
                 'brand_id' => (int) $category->brand_id,
                 'is_active' => (bool) $category->is_active,
             ],
-        ]);
-    }
-
-    private function authorizeProduct(Request $request, Product $product): User
-    {
-        $user = $request->user()->load(['role']);
-
-        abort_unless(ProductAccessPolicy::hasProductRole($user), 403, ProductAccessPolicy::ROLE_DENIED_MESSAGE);
-        app(ProductAccessPolicy::class)->authorize($user, $product);
-
-        return $user;
-    }
-
-    private function saved(Request $request, Product $product, User $user, string $section, string $message)
-    {
-        if (! $request->expectsJson()) {
-            return redirect(ProductWorkspace::url($product, $section, BackofficeReturnUrl::fromRequest($request)))
-                ->with('success', $message);
-        }
-
-        $data = app(ProductWorkspace::class)->viewData($request, $product, $user, $section);
-
-        $sections = [];
-        foreach (array_keys(ProductWorkspace::SECTIONS) as $key) {
-            $sections[$key] = view('backoffice.products.workspace.'.$key, $data)->render();
-        }
-
-        return response()->json([
-            'ok' => true,
-            'message' => $message,
-            'section' => $section,
-            'title' => $product->name,
-            'header' => view('backoffice.products.workspace._header', $data)->render(),
-            'sections' => $sections,
         ]);
     }
 }

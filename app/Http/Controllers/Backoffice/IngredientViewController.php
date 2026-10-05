@@ -7,12 +7,12 @@ use App\Models\Ingredient;
 use App\Models\IngredientCategory;
 use App\Models\Outlet;
 use App\Services\BackofficeOutletContext;
+use App\Services\IngredientWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class IngredientViewController extends Controller
@@ -40,30 +40,14 @@ class IngredientViewController extends Controller
         return $user;
     }
 
+    protected function writer(): IngredientWriter
+    {
+        return app(IngredientWriter::class);
+    }
+
     protected function makeIngredientCode(string $name, ?int $ignoreId = null): string
     {
-        $base = Str::upper(Str::slug($name, '_'));
-
-        if ($base === '') {
-            $base = 'INGREDIENT';
-        }
-
-        $code = $base;
-        $counter = 1;
-
-        while (
-            Ingredient::query()
-                ->where('code', $code)
-                ->when($ignoreId, function ($query) use ($ignoreId) {
-                    $query->where('id', '!=', $ignoreId);
-                })
-                ->exists()
-        ) {
-            $code = $base.'_'.$counter;
-            $counter++;
-        }
-
-        return $code;
+        return $this->writer()->makeCode($name, $ignoreId);
     }
 
     protected function makeCategoryCode(string $name, ?int $ignoreId = null): string
@@ -157,39 +141,9 @@ class IngredientViewController extends Controller
 
     public function store(Request $request)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
-        $validated = $request->validate([
-            'ingredient_category_id' => ['required', Rule::exists('ingredient_categories', 'id')->where('is_active', true)],
-            'name' => 'required|string|max:255|unique:ingredients,name',
-            'unit' => ['required', 'string', Rule::in(Ingredient::UNITS)],
-            'ingredient_type' => 'required|in:'.implode(',', array_keys($this->ingredientTypeOptions())),
-            'minimum_stock' => 'required|numeric|min:0',
-            'cost_per_unit' => 'required|numeric|min:0',
-            'is_active' => 'required|boolean',
-            'outlet_ids' => 'required|array|min:1',
-            'outlet_ids.*' => 'exists:outlets,id',
-        ]);
-
-        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
-
-        $ingredient = DB::transaction(function () use ($validated) {
-
-            $ingredient = Ingredient::create([
-                'ingredient_category_id' => $validated['ingredient_category_id'],
-                'code' => $this->makeIngredientCode($validated['name']),
-                'name' => $validated['name'],
-                'unit' => $validated['unit'],
-                'ingredient_type' => $validated['ingredient_type'],
-                'minimum_stock' => $validated['minimum_stock'],
-                'cost_per_unit' => $validated['cost_per_unit'],
-                'is_active' => $validated['is_active'],
-            ]);
-
-            $ingredient->outlets()->sync($validated['outlet_ids'] ?? []);
-
-            return $ingredient;
-        });
+        $ingredient = $this->writer()->create($user, $request->validate($this->writer()->rules()));
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id)
             ->with('success', 'Ingredient berhasil ditambahkan.');
@@ -218,48 +172,9 @@ class IngredientViewController extends Controller
 
     public function update(Request $request, Ingredient $ingredient)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
 
-        $validated = $request->validate([
-            'ingredient_category_id' => ['required', Rule::exists('ingredient_categories', 'id')->where(fn ($q) => $q->where('is_active', true)->orWhere('id', $ingredient->ingredient_category_id))],
-            'name' => 'required|string|max:255|unique:ingredients,name,'.$ingredient->id,
-            'unit' => ['required', 'string', Rule::in(Ingredient::unitOptions($ingredient->unit))],
-            'ingredient_type' => 'required|in:'.implode(',', array_keys($this->ingredientTypeOptions())),
-            'minimum_stock' => 'required|numeric|min:0',
-            'cost_per_unit' => 'required|numeric|min:0',
-            'is_active' => 'required|boolean',
-            'outlet_ids' => 'required|array|min:1',
-            'outlet_ids.*' => 'exists:outlets,id',
-        ]);
-
-        $this->validateAccessibleOutletIds(Auth::user(), $validated['outlet_ids']);
-
-        $editableOutletIds = $this->outletContext()->accessibleOutlets(Auth::user())->pluck('id')->map(fn ($id) => (int) $id);
-
-        $newCode = $ingredient->code;
-
-        if ($ingredient->name !== $validated['name']) {
-            $newCode = $this->makeIngredientCode($validated['name'], $ingredient->id);
-        }
-
-        DB::transaction(function () use ($ingredient, $validated, $newCode, $editableOutletIds) {
-            $ingredient->update([
-                'ingredient_category_id' => $validated['ingredient_category_id'],
-                'code' => $newCode,
-                'name' => $validated['name'],
-                'unit' => $validated['unit'],
-                'ingredient_type' => $validated['ingredient_type'],
-                'minimum_stock' => $validated['minimum_stock'],
-                'cost_per_unit' => $validated['cost_per_unit'],
-                'is_active' => $validated['is_active'],
-            ]);
-
-            $finalOutletIds = collect($validated['outlet_ids'])
-                ->map(fn ($id) => (int) $id)
-                ->merge($ingredient->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id)->diff($editableOutletIds))
-                ->unique()->values()->all();
-            $ingredient->outlets()->sync($finalOutletIds);
-        });
+        $this->writer()->update($user, $ingredient, $request->validate($this->writer()->rules($ingredient)));
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id)
             ->with('success', 'Ingredient berhasil diperbarui.');
@@ -574,16 +489,5 @@ class IngredientViewController extends Controller
             ->route('backoffice.ingredients.index')
             ->with('success', "Import ingredients selesai. Baru: {$imported}. Update: {$updated}. Dilewati: {$skipped}.")
             ->with('import_errors', $errors);
-    }
-
-    protected function validateAccessibleOutletIds($user, array $outletIds): void
-    {
-        $allowed = $this->outletContext()->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id);
-
-        if (collect($outletIds)->map(fn ($id) => (int) $id)->diff($allowed)->isNotEmpty()) {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'outlet_ids' => 'Ada outlet tidak aktif atau tidak tersedia untuk akun ini.',
-            ]);
-        }
     }
 }
