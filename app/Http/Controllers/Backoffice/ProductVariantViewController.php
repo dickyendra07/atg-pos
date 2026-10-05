@@ -38,6 +38,15 @@ class ProductVariantViewController extends Controller
         return $user;
     }
 
+    /** A Variant is reachable by ID, so its Product's outlet scope is checked here (as the Product pages do). */
+    protected function authorizeVariantProduct($user, ProductVariant $variant): void
+    {
+        $product = $variant->product;
+
+        abort_unless($product !== null, 404);
+        app(\App\Services\ProductAccessPolicy::class)->authorize($user, $product);
+    }
+
     protected function writer(): VariantWriter
     {
         return app(VariantWriter::class);
@@ -139,6 +148,7 @@ class ProductVariantViewController extends Controller
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
+        $this->authorizeVariantProduct($user, $variant);
 
         $activeOutletId = $this->outletContext()->activeOutletId($user);
         $products = Product::with(['brand', 'category', 'outlets'])
@@ -167,6 +177,7 @@ class ProductVariantViewController extends Controller
     public function update(Request $request, ProductVariant $variant)
     {
         $user = $this->authorizeAccess();
+        $this->authorizeVariantProduct($user, $variant);
 
         $validated = $request->validate($this->groupRules(), $this->groupMessages());
 
@@ -180,7 +191,8 @@ class ProductVariantViewController extends Controller
 
     public function destroy(Request $request, ProductVariant $variant)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeVariantProduct($user, $variant);
 
         $variantName = $variant->name;
         $this->writer()->deactivate($variant);

@@ -62,6 +62,7 @@
     }
     .pw-nav-link:hover { background: #f8fafc; }
     .pw-nav-link.is-active { background: linear-gradient(135deg, #111827 0%, #1f2937 100%); color: #fff; box-shadow: 0 10px 20px rgba(15,23,42,0.14); }
+    .pw-card-title:focus { outline: none; }
     .pw-nav-link:focus-visible, .pw a:focus-visible, .pw button:focus-visible, .pw-drawer button:focus-visible { outline: 2px solid #e86a3a; outline-offset: 2px; }
     .pw-dirty-dot { width: 9px; height: 9px; border-radius: 999px; background: #f97316; flex-shrink: 0; }
     .pw-panels { min-width: 0; }
@@ -216,6 +217,11 @@
         .pw-stack-table td.text-left { display: block; }
         .pw-stack-table td.text-left::before { display: none; }
         .pw-stack-table td > .pw-cell-note { min-width: 0; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .pw .btn, .pw-nav-link, .pw-drawer, .pw-drawer-backdrop { transition: none !important; animation: none !important; }
+        .pw .btn:hover { transform: none; }
     }
 
     /* Tablet / mobile: sidebar is off-canvas (layout); the section rail becomes horizontal tabs. */

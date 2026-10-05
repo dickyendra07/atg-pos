@@ -340,6 +340,52 @@
             margin: 0;
         }
 
+        /* The Edit action is the way into the Product Workspace: the table fits its card (Variants wrap)
+           instead of a fixed 1180px that pushed Edit behind a horizontal scroll, and on phones each row
+           stacks as a card so every action stays reachable. */
+        .products-clean-table {
+            min-width: 0;
+        }
+
+        .products-clean-table .action-stack {
+            min-width: 0;
+        }
+
+        @media (max-width: 780px) {
+            .products-clean-table thead {
+                display: none;
+            }
+
+            .products-clean-table,
+            .products-clean-table tbody,
+            .products-clean-table tr,
+            .products-clean-table td {
+                display: block;
+                width: 100%;
+                box-sizing: border-box;
+            }
+
+            .products-clean-table tr {
+                padding: 12px 6px;
+                border-bottom: 1px solid #edf1f6;
+            }
+
+            .products-clean-table tbody tr:last-child {
+                border-bottom: 0;
+            }
+
+            .products-clean-table td {
+                border: 0;
+                padding: 6px 10px;
+                text-align: left;
+            }
+
+            .products-clean-table .variants-wrap,
+            .products-clean-table .action-stack {
+                justify-content: flex-start;
+            }
+        }
+
         .empty {
             margin: 24px;
             padding: 18px;

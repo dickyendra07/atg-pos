@@ -618,6 +618,9 @@
                                             @endif
                                         </td>
                                         <td>
+                                            @if(! in_array($ingredient->id, $editableIngredientIds, true))
+                                                <span class="category-text" title="Ingredient ini tidak tersedia di outlet yang dapat kamu akses.">Hanya lihat</span>
+                                            @else
                                             <div class="action-row">
                                                 <a href="{{ route('backoffice.ingredients.edit', [$ingredient, 'return_to' => $listReturnTo]) }}" class="btn-small btn-edit">Edit</a>
 
@@ -628,6 +631,7 @@
                                                     <button type="submit" class="btn-small btn-delete">Hapus</button>
                                                 </form>
                                             </div>
+                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
