@@ -42,6 +42,27 @@ class PromoViewController extends Controller
         return $user;
     }
 
+    /**
+     * Promos are reachable by ID. A limited role may only open/change/delete a Promo whose outlets are all
+     * inside its own access: the editor saves exactly the outlets it can list, so a Promo that also covers
+     * other outlets would lose them. Full-access roles are unrestricted; a Promo without outlets stays open.
+     */
+    protected function authorizePromoScope(Promo $promo, $user): void
+    {
+        if ($user->isFullAccessUser()) {
+            return;
+        }
+
+        $accessibleIds = $this->outletContext()->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id);
+        $promoOutletIds = $promo->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id);
+
+        abort_if(
+            $promoOutletIds->diff($accessibleIds)->isNotEmpty(),
+            403,
+            'Promo ini berlaku di outlet di luar akses akun ini.'
+        );
+    }
+
     protected function productVariantOptions()
     {
         return ProductVariant::with('product')
@@ -356,6 +377,8 @@ class PromoViewController extends Controller
                 ->with('error', 'Role kamu tidak punya akses edit promo.');
         }
 
+        $this->authorizePromoScope($promo, $user);
+
         return view('backoffice.promos.edit', [
             'user' => $user,
             'promo' => $promo->load([
@@ -380,6 +403,8 @@ class PromoViewController extends Controller
             abort(403, 'Role kamu tidak punya akses update promo.');
         }
 
+        $this->authorizePromoScope($promo, $user);
+
         $validated = $this->validatePromo($request);
 
         DB::transaction(function () use ($promo, $validated, $request) {
@@ -400,6 +425,8 @@ class PromoViewController extends Controller
         if (! $user) {
             abort(403, 'Role kamu tidak punya akses delete promo.');
         }
+
+        $this->authorizePromoScope($promo, $user);
 
         $promo->delete();
 

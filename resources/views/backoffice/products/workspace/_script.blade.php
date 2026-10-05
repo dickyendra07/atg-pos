@@ -510,6 +510,24 @@
             refreshState();
         }
 
+        // The saved sections are re-rendered, so the button that opened the drawer is a new element:
+        // find its replacement, otherwise land on the section heading (never on <body>).
+        function restoreFocusAfterSave(signature) {
+            if (stack.length) { return; }   // an outer drawer is still open and keeps its own focus
+
+            var target = null;
+            if (signature && signature.drawer) {
+                target = Array.prototype.find.call(root.querySelectorAll('[data-pw-open-drawer]'), function (el) {
+                    return el.getAttribute('data-pw-open-drawer') === signature.drawer && el.getAttribute('data-pw-form-url') === signature.url && el.offsetParent !== null;
+                }) || null;
+            }
+            if (!target) {
+                var active = root.querySelector('[data-pw-panel]:not([hidden]) .pw-card-title');
+                if (active) { active.setAttribute('tabindex', '-1'); target = active; }
+            }
+            if (target) { try { target.focus(); } catch (e) { /* ignore */ } }
+        }
+
         function closeDrawer(key) {
             if (!isDrawerDirty(key)) { hideDrawer(key); return; }
             confirmAsk({ title: DISCARD_TITLES[key], body: 'Data yang sudah diisi di panel ini akan hilang. Form lain tidak berubah.', label: 'Buang', tone: 'warning' })
@@ -644,10 +662,15 @@
             }
 
             // Variant / Recipe / Ingredient: refresh the workspace from the server and stay on the section.
+            var opener = (drawerState[key] || {}).opener;
+            var openerSignature = opener && opener.getAttribute
+                ? { drawer: opener.getAttribute('data-pw-open-drawer'), url: opener.getAttribute('data-pw-form-url') }
+                : null;
             hideDrawer(key);
             applySaved(data, null);
             if (data.section) { showSection(data.section, true); }
             toast('success', data.message);
+            restoreFocusAfterSave(openerSignature);
 
             // An Ingredient created from an open Recipe drawer: offer it there, never pick it automatically.
             if (key === 'ingredient' && stack.indexOf('recipe') !== -1) { refreshRecipeOptions(); }
@@ -692,6 +715,10 @@
             flag.value = removed ? '1' : '0';
             row.classList.toggle('is-removed', removed);
             button.textContent = removed ? 'Batalkan' : 'Hapus';
+            var ingredientName = row.querySelector('.pw-recipe-ingredient strong');
+            if (ingredientName) {
+                button.setAttribute('aria-label', (removed ? 'Batalkan penghapusan ' : 'Hapus ') + ingredientName.textContent.trim() + (removed ? '' : ' dari Recipe'));
+            }
             var qty = row.querySelector('input[name$="[qty]"]');
             if (qty) { qty.readOnly = removed; clearFieldError(qty); }
             refreshState();

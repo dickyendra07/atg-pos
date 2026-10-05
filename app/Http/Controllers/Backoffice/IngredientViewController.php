@@ -40,6 +40,12 @@ class IngredientViewController extends Controller
         return $user;
     }
 
+    /** Same rule as the Product Workspace: full-access roles always, limited roles only for Ingredients at their outlets. */
+    protected function authorizeIngredient($user, Ingredient $ingredient): void
+    {
+        abort_unless($this->writer()->canEdit($user, $ingredient), 403, 'Ingredient ini tidak tersedia di outlet yang dapat kamu akses.');
+    }
+
     protected function writer(): IngredientWriter
     {
         return app(IngredientWriter::class);
@@ -117,6 +123,8 @@ class IngredientViewController extends Controller
         return view('backoffice.ingredients.index', [
             'user' => $user,
             'ingredients' => $ingredients,
+            // Rows this user may change (their outlets' Ingredients; everything for full-access roles).
+            'editableIngredientIds' => $ingredients->filter(fn (Ingredient $ingredient) => $this->writer()->canEdit($user, $ingredient))->pluck('id')->all(),
             'ingredientTypeOptions' => $this->ingredientTypeOptions(),
             'selectedIngredientType' => $request->input('ingredient_type', ''),
             'search' => $request->input('search', ''),
@@ -152,6 +160,7 @@ class IngredientViewController extends Controller
     public function edit(Ingredient $ingredient)
     {
         $user = $this->authorizeAccess();
+        $this->authorizeIngredient($user, $ingredient);
 
         $categories = IngredientCategory::where('is_active', true)
             ->orWhere('id', $ingredient->ingredient_category_id)
@@ -173,6 +182,7 @@ class IngredientViewController extends Controller
     public function update(Request $request, Ingredient $ingredient)
     {
         $user = $this->authorizeAccess();
+        $this->authorizeIngredient($user, $ingredient);
 
         $this->writer()->update($user, $ingredient, $request->validate($this->writer()->rules($ingredient)));
 
@@ -182,7 +192,8 @@ class IngredientViewController extends Controller
 
     public function destroy(Request $request, Ingredient $ingredient)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        $this->authorizeIngredient($user, $ingredient);
 
         $ingredient->delete();
 

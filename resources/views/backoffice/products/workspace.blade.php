@@ -25,7 +25,7 @@
                        aria-controls="pw-section-{{ $sectionKey }}"
                        @if($section === $sectionKey) aria-current="page" @endif>
                         <span>{{ $sectionLabel }}</span>
-                        <span class="pw-dirty-dot" data-pw-dirty-dot="{{ $sectionKey }}" hidden title="Belum disimpan"></span>
+                        <span class="pw-dirty-dot" data-pw-dirty-dot="{{ $sectionKey }}" hidden title="Belum disimpan" role="img" aria-label="Belum disimpan"></span>
                     </a>
                 @endforeach
             </nav>

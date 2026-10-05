@@ -161,7 +161,8 @@ class ProductViewController extends Controller
 
     public function destroy(Request $request, Product $product)
     {
-        $this->authorizeAccess();
+        $user = $this->authorizeAccess();
+        app(ProductAccessPolicy::class)->authorize($user, $product);
 
         $product->update(['is_active' => false]);
 
