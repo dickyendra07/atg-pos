@@ -5,10 +5,9 @@ namespace App\Http\Controllers\Backoffice;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use Illuminate\Database\Eloquent\Model;
+use App\Services\CategoryWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Shared CRUD for the two separate category domains (ingredient categories and menu/product
@@ -28,65 +27,19 @@ abstract class CategoryManagementController extends Controller
     {
         $user = $request->user()->loadMissing(['role', 'roles']);
 
-        abort_unless($user->hasAnyRoleCode(['owner', 'admin_pusat', 'admin_outlet', 'staff_gudang']), 403, 'Role kamu tidak punya akses ke halaman Category.');
+        abort_unless(CategoryWriter::canManage($user), 403, CategoryWriter::DENIED_MESSAGE);
 
         return $user;
     }
 
-    protected function normalizeName(string $name): string
+    protected function writer(): CategoryWriter
     {
-        return trim(preg_replace('/\s+/u', ' ', $name));
-    }
-
-    protected function makeCode(string $name, ?int $ignoreId = null): string
-    {
-        $base = Str::upper(Str::slug($name, '_')) ?: 'CATEGORY';
-        $model = $this->modelClass();
-        $code = $base;
-        $counter = 1;
-
-        while ($model::query()->where('code', $code)->when($ignoreId, fn ($q) => $q->where('id', '!=', $ignoreId))->exists()) {
-            $code = $base.'_'.$counter++;
-        }
-
-        return $code;
+        return app(CategoryWriter::class);
     }
 
     protected function validated(Request $request, ?Model $category = null): array
     {
-        $rules = [
-            'name' => ['required', 'string', 'max:255'],
-            'is_active' => ['nullable', 'boolean'],
-        ];
-
-        if ($this->config()['needs_brand']) {
-            $rules['brand_id'] = ['required', 'exists:brands,id'];
-        }
-
-        $data = $request->validate($rules, [
-            'name.required' => 'Nama category wajib diisi.',
-            'brand_id.required' => 'Brand wajib dipilih.',
-        ]);
-
-        $data['name'] = $this->normalizeName($data['name']);
-
-        if ($data['name'] === '') {
-            throw ValidationException::withMessages(['name' => 'Nama category wajib diisi.']);
-        }
-
-        $model = $this->modelClass();
-        $duplicate = $model::query()
-            ->whereRaw('LOWER(TRIM(name)) = ?', [mb_strtolower($data['name'])])
-            ->when($category, fn ($q) => $q->where('id', '!=', $category->id))
-            ->exists();
-
-        if ($duplicate) {
-            throw ValidationException::withMessages(['name' => 'Category dengan nama tersebut sudah ada (huruf besar/kecil dan spasi dianggap sama).']);
-        }
-
-        $data['is_active'] = $request->boolean('is_active');
-
-        return $data;
+        return $this->writer()->validated($request, $this->modelClass(), (bool) $this->config()['needs_brand'], $category);
     }
 
     protected function viewData(array $extra = []): array
@@ -128,10 +81,7 @@ abstract class CategoryManagementController extends Controller
     public function store(Request $request)
     {
         $this->authorizeAccess($request);
-        $data = $this->validated($request);
-        $data['code'] = $this->makeCode($data['name']);
-        $model = $this->modelClass();
-        $category = $model::create($data);
+        $category = $this->writer()->create($this->modelClass(), $this->validated($request));
 
         return BackofficeReturnUrl::redirect($request, $this->config()['route'].'.index', [], 'category-'.$category->id)
             ->with('success', 'Kategori berhasil ditambahkan.');

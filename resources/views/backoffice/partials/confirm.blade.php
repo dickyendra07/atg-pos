@@ -90,20 +90,33 @@
         var okBtn = document.getElementById('bo-confirm-ok');
         var cancelBtn = document.getElementById('bo-confirm-cancel');
         var pendingForm = null;
+        var pendingResolve = null;   // BackofficeConfirm.ask(): resolves true (OK) or false (cancel)
         var opener = null;
 
-        function open(form) {
-            pendingForm = form;
+        function show(title, body, note, label, tone) {
             opener = document.activeElement;
-            titleEl.textContent = form.getAttribute('data-bo-confirm-title') || 'Yakin?';
-            bodyEl.textContent = form.getAttribute('data-bo-confirm-body') || '';
-            noteEl.textContent = form.getAttribute('data-bo-confirm-note') || '';
-            okBtn.textContent = form.getAttribute('data-bo-confirm-label') || 'Ya';
+            titleEl.textContent = title || 'Yakin?';
+            bodyEl.textContent = body || '';
+            noteEl.textContent = note || '';
+            okBtn.textContent = label || 'Ya';
             okBtn.disabled = false;
-            overlay.setAttribute('data-tone', form.getAttribute('data-bo-confirm-tone') || 'danger');
+            overlay.setAttribute('data-tone', tone || 'danger');
             overlay.classList.add('is-open');
             overlay.setAttribute('aria-hidden', 'false');
             cancelBtn.focus();   // the safe choice has focus
+        }
+
+        function open(form) {
+            pendingForm = form;
+            show(form.getAttribute('data-bo-confirm-title'), form.getAttribute('data-bo-confirm-body'),
+                form.getAttribute('data-bo-confirm-note'), form.getAttribute('data-bo-confirm-label'),
+                form.getAttribute('data-bo-confirm-tone'));
+        }
+
+        function settle(result) {
+            var resolve = pendingResolve;
+            pendingResolve = null;
+            if (resolve) { resolve(result); }
         }
 
         function close() {
@@ -111,7 +124,23 @@
             overlay.setAttribute('aria-hidden', 'true');
             pendingForm = null;
             if (opener && opener.focus) { try { opener.focus(); } catch (e) { /* ignore */ } }
+            settle(false);
         }
+
+        // Same dialog for client-side questions (e.g. leaving a page with unsaved changes):
+        // BackofficeConfirm.ask({ title, body, note, label, tone }).then(function (ok) { ... })
+        window.BackofficeConfirm = {
+            ask: function (options) {
+                options = options || {};
+                settle(false);
+                pendingForm = null;
+                return new Promise(function (resolve) {
+                    pendingResolve = resolve;
+                    show(options.title, options.body, options.note, options.label, options.tone);
+                });
+            },
+            isOpen: function () { return overlay.classList.contains('is-open'); }
+        };
 
         // Runs after the position-memory listener of the feedback partial (it is registered in the
         // capture phase), so the list scroll offset has already been saved when a form is held here.
@@ -123,6 +152,13 @@
         });
 
         okBtn.addEventListener('click', function () {
+            if (pendingResolve) {
+                var resolve = pendingResolve;
+                pendingResolve = null;
+                close();
+                resolve(true);
+                return;
+            }
             if (!pendingForm) { return; }
             var form = pendingForm;
             okBtn.disabled = true;          // one click, one request
@@ -139,10 +175,11 @@
                 overlay.setAttribute('aria-hidden', 'true');
                 pendingForm = null;
                 okBtn.disabled = false;
+                settle(false);
             }
         });
 
-        cancelBtn.addEventListener('click', close);
+        cancelBtn.addEventListener('click', function () { close(); });
         overlay.addEventListener('click', function (event) { if (event.target === overlay) { close(); } });
 
         document.addEventListener('keydown', function (event) {

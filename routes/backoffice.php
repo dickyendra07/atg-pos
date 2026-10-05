@@ -12,6 +12,7 @@ use App\Http\Controllers\Backoffice\IngredientViewController;
 use App\Http\Controllers\Backoffice\OutletViewController;
 use App\Http\Controllers\Backoffice\ProductVariantViewController;
 use App\Http\Controllers\Backoffice\ProductViewController;
+use App\Http\Controllers\Backoffice\ProductWorkspaceController;
 use App\Http\Controllers\Backoffice\PromoViewController;
 use App\Http\Controllers\Backoffice\RecipeViewController;
 use App\Http\Controllers\Backoffice\StockAdjustmentController;
@@ -92,6 +93,10 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::post('/products', [ProductViewController::class, 'store'])->name('products.store');
     Route::get('/products/{product}/edit', [ProductViewController::class, 'edit'])->name('products.edit');
     Route::put('/products/{product}', [ProductViewController::class, 'update'])->name('products.update');
+    Route::put('/products/{product}/workspace/general', [ProductWorkspaceController::class, 'updateGeneral'])->name('products.workspace.general');
+    Route::put('/products/{product}/workspace/outlets', [ProductWorkspaceController::class, 'updateOutlets'])->name('products.workspace.outlets');
+    Route::post('/products/{product}/workspace/outlets/preview', [ProductWorkspaceController::class, 'previewOutlets'])->name('products.workspace.outlets.preview');
+    Route::post('/products/{product}/workspace/menu-categories', [ProductWorkspaceController::class, 'storeMenuCategory'])->name('products.workspace.menu-categories.store');
     Route::delete('/products/{product}', [ProductViewController::class, 'destroy'])->name('products.destroy');
     Route::delete('/products/{productId}/permanent', [ProductViewController::class, 'destroyPermanent'])->whereNumber('productId')->name('products.destroy-permanent');
 

@@ -169,18 +169,27 @@ class BackofficeReturnContextTest extends TestCase
         $this->assertSame('Kafei Susu Baru', $this->product->fresh()->name);
     }
 
-    public function test_product_create_returns_to_list_context_anchored_at_the_new_record(): void
+    public function test_product_create_continues_in_the_workspace_variants_section_keeping_the_list_context(): void
     {
         $listUrl = '/backoffice/products?search=kafei&page=2';
 
-        $this->actingAs($this->owner)
+        $response = $this->actingAs($this->owner)
             ->post(route('backoffice.products.store'), $this->productPayload([
                 'name' => 'Kafei Baru',
                 'code' => 'KAFEI-BARU',
                 'return_to' => $listUrl,
-            ]))
-            ->assertRedirect(url($listUrl.'#product-'.Product::where('code', 'KAFEI-BARU')->value('id')))
+            ]));
+
+        $product = Product::where('code', 'KAFEI-BARU')->firstOrFail();
+
+        $response
+            ->assertRedirect(url(\App\Services\ProductWorkspace::url($product, 'variants', $listUrl)))
             ->assertSessionHas('success', 'Product berhasil ditambahkan.');
+
+        // Closing the workspace still lands on the list the user came from, at the new record.
+        $this->get(\App\Services\ProductWorkspace::url($product, 'variants', $listUrl))
+            ->assertOk()
+            ->assertSee('href="'.e($listUrl.'#product-'.$product->id).'" class="btn btn-dark" data-pw-close', false);
     }
 
     public function test_product_inactivate_returns_to_list_context_and_keeps_the_row_anchor(): void
@@ -471,7 +480,7 @@ class BackofficeReturnContextTest extends TestCase
 
         $this->actingAs($this->owner)
             ->post(route('backoffice.products.store'), $this->productPayload(['name' => 'Kafei Lain', 'code' => 'KAFEI-LAIN', 'return_to' => $listUrl]))
-            ->assertRedirect(url($listUrl.'#product-'.Product::where('code', 'KAFEI-LAIN')->value('id')))
+            ->assertRedirect(url(\App\Services\ProductWorkspace::url(Product::where('code', 'KAFEI-LAIN')->firstOrFail(), 'variants', $listUrl)))
             ->assertSessionHas('success');
 
         // The new row is not in that filtered list: the anchor simply has no target (the page script
