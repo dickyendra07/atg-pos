@@ -74,3 +74,18 @@
         </div>
     </div>
 </form>
+
+{{-- Danger zone: temporary cleanup delete (flag + owner/admin pusat). Renders nothing otherwise. --}}
+@if(\App\Services\CleanupDeletionService::available(auth()->user()))
+    <section class="pw-card pw-danger-zone" data-testid="cleanup-danger-zone" aria-labelledby="pw-danger-title">
+        <div class="pw-card-head">
+            <div>
+                <h2 class="pw-card-title" id="pw-danger-title">Zona Berbahaya</h2>
+                <p class="pw-card-sub">Hapus Product ini dari sistem (pembersihan data uji). Product dan semua Variant-nya hilang dari seluruh tampilan operasional dan Cashier; Recipe-nya dihapus permanen. Riwayat transaksi, pembayaran, dan stok tetap tersimpan. Dampak ditampilkan sebelum konfirmasi.</p>
+            </div>
+            <div class="pw-card-actions">
+                @include('backoffice.partials.cleanup-button', ['type' => 'product', 'id' => $product->id, 'name' => $product->name, 'return' => $workspaceReturnTo, 'class' => 'btn btn-red', 'testid' => 'cleanup-product-'.$product->id])
+            </div>
+        </div>
+    </section>
+@endif

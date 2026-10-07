@@ -780,5 +780,8 @@
 
     @include('backoffice.partials.feedback')
     @include('backoffice.partials.confirm')
+    @if (\App\Services\CleanupDeletionService::available(auth()->user()))
+        @include('backoffice.partials.cleanup-delete')
+    @endif
 </body>
 </html>

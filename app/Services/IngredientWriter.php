@@ -66,7 +66,8 @@ class IngredientWriter
 
         return [
             'ingredient_category_id' => ['required', $categoryRule],
-            'name' => 'required|string|max:255|unique:ingredients,name'.($ingredient ? ','.$ingredient->id : ''),
+            // Removed (tombstoned) Ingredients keep their name, so they must not block creating it again.
+            'name' => ['required', 'string', 'max:255', Rule::unique('ingredients', 'name')->whereNull('deleted_at')->ignore($ingredient?->id)],
             'unit' => ['required', 'string', Rule::in($ingredient ? Ingredient::unitOptions($ingredient->unit) : Ingredient::UNITS)],
             'ingredient_type' => 'required|in:'.implode(',', array_keys(Ingredient::ingredientTypeOptions())),
             'minimum_stock' => 'required|numeric|min:0',

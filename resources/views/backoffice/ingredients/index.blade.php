@@ -624,12 +624,8 @@
                                             <div class="action-row">
                                                 <a href="{{ route('backoffice.ingredients.edit', [$ingredient, 'return_to' => $listReturnTo]) }}" class="btn-small btn-edit">Edit</a>
 
-                                                <form method="POST" action="{{ route('backoffice.ingredients.destroy', $ingredient) }}" class="delete-form" onsubmit="return confirm('Yakin hapus ingredient ini?')">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                                    <button type="submit" class="btn-small btn-delete">Hapus</button>
-                                                </form>
+                                                {{-- Real delete is the temporary cleanup action (flag + owner/admin pusat); no flag, no button. --}}
+                                                @include('backoffice.partials.cleanup-button', ['type' => 'ingredient', 'id' => $ingredient->id, 'name' => $ingredient->name, 'return' => $listReturnTo, 'class' => 'btn-small btn-delete', 'testid' => 'cleanup-ingredient-'.$ingredient->id])
                                             </div>
                                             @endif
                                         </td>

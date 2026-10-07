@@ -694,7 +694,6 @@
                                                 @endif
                                             </td>
                                             <td>
-                                                @php($deletion = $deletionStates[$product->id] ?? null)
                                                 <div class="action-stack">
                                                     <a href="{{ route('backoffice.products.edit', [$product->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small btn-small-blue">Edit</a>
 
@@ -712,24 +711,8 @@
                                                         </form>
                                                     @endif
 
-                                                    @if($canHardDelete && $deletion)
-                                                        @if($deletion['can_hard_delete'])
-                                                            <form method="POST" action="{{ route('backoffice.products.destroy-permanent', $product->id) }}" class="inline-form"
-                                                                  data-bo-confirm
-                                                                  data-bo-confirm-title="Hapus Product Permanen?"
-                                                                  data-bo-confirm-body="Product “{{ $product->name }}” akan dihapus permanen. Tindakan ini tidak dapat dibatalkan."
-                                                                  data-bo-confirm-note="{{ $deletion['confirm_note'] }}"
-                                                                  data-bo-confirm-label="Hapus Permanen"
-                                                                  data-bo-confirm-tone="danger">
-                                                                @csrf
-                                                                @method('DELETE')
-                                                                @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                                                <button type="submit" class="btn btn-small btn-small-red">Hapus Permanen</button>
-                                                            </form>
-                                                        @else
-                                                            <button type="button" class="btn btn-small btn-small-muted" data-bo-blocked="{{ $deletion['blocked_message'] }}" title="Tidak dapat dihapus permanen">Hapus Permanen</button>
-                                                        @endif
-                                                    @endif
+                                                    {{-- The only delete: the temporary cleanup action (flag + owner/admin pusat, typed confirmation, tombstone). --}}
+                                                    @include('backoffice.partials.cleanup-button', ['type' => 'product', 'id' => $product->id, 'name' => $product->name, 'return' => $listReturnTo, 'testid' => 'cleanup-product-'.$product->id])
                                                 </div>
                                             </td>
                                         </tr>

@@ -265,10 +265,13 @@ class BackofficeReturnContextTest extends TestCase
     {
         $listUrl = '/backoffice/ingredients?search=Sugar';
 
+        // The legacy URL is now the flag-gated, typed-confirmation cleanup delete (see CleanupDeleteTest).
+        config(['backoffice.destructive_delete_enabled' => true]);
+
         $this->actingAs($this->owner)
-            ->delete(route('backoffice.ingredients.destroy', $this->sugar), ['return_to' => $listUrl])
+            ->delete(route('backoffice.ingredients.destroy', $this->sugar), ['return_to' => $listUrl, 'confirmation' => $this->sugar->name])
             ->assertRedirect(url($listUrl))
-            ->assertSessionHas('success', 'Ingredient berhasil dihapus.');
+            ->assertSessionHas('success');
     }
 
     public function test_ingredient_index_lists_rows_with_stable_ids_and_return_to_links(): void

@@ -203,7 +203,7 @@ class RecipeViewController extends Controller
         $user = $this->authorizeAccess();
 
         $validated = $request->validate([
-            'product_variant_id' => 'required|exists:product_variants,id|unique:recipes,product_variant_id',
+            'product_variant_id' => 'required|exists:product_variants,id,deleted_at,NULL|unique:recipes,product_variant_id',
             'name' => 'required|string|max:255',
             'is_active' => 'required|boolean',
         ]);
@@ -296,7 +296,7 @@ class RecipeViewController extends Controller
         $this->authorizeRecipeMutation($recipe, $user);
 
         $validated = $request->validate([
-            'product_variant_id' => 'required|exists:product_variants,id|unique:recipes,product_variant_id,'.$recipe->id,
+            'product_variant_id' => 'required|exists:product_variants,id,deleted_at,NULL|unique:recipes,product_variant_id,'.$recipe->id,
             'name' => 'required|string|max:255',
             'is_active' => 'required|boolean',
         ]);
@@ -336,7 +336,7 @@ class RecipeViewController extends Controller
         $this->authorizeRecipeMutation($recipe, $user);
 
         $validated = $request->validate([
-            'ingredient_id' => 'required|exists:ingredients,id',
+            'ingredient_id' => 'required|exists:ingredients,id,deleted_at,NULL',
             'qty' => RecipeWriter::qtyRule(),
         ]);
 

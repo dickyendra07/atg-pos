@@ -79,7 +79,7 @@ class IngredientProductionRecipeController extends Controller
         $validated = $request->validate([
             'output_ingredient_id' => [
                 'required',
-                'exists:ingredients,id',
+                'exists:ingredients,id,deleted_at,NULL',
                 'unique:ingredient_production_recipes,output_ingredient_id',
             ],
             'name' => ['required', 'string', 'max:255'],
@@ -133,7 +133,7 @@ class IngredientProductionRecipeController extends Controller
         $validated = $request->validate([
             'output_ingredient_id' => [
                 'required',
-                'exists:ingredients,id',
+                'exists:ingredients,id,deleted_at,NULL',
                 Rule::unique('ingredient_production_recipes', 'output_ingredient_id')->ignore($productionRecipe->id),
             ],
             'name' => ['required', 'string', 'max:255'],
@@ -168,7 +168,7 @@ class IngredientProductionRecipeController extends Controller
         $this->authorizeAccess();
 
         $validated = $request->validate([
-            'input_ingredient_id' => ['required', 'exists:ingredients,id'],
+            'input_ingredient_id' => ['required', 'exists:ingredients,id,deleted_at,NULL'],
             'qty' => ['required', 'numeric', 'min:0.01'],
         ]);
 

@@ -56,7 +56,7 @@ class ProductVariantViewController extends Controller
     protected function groupRules(): array
     {
         return [
-            'product_id' => 'required|exists:products,id',
+            'product_id' => 'required|exists:products,id,deleted_at,NULL',
             'variants' => 'required|array|min:1',
             'variants.*.id' => 'nullable|integer',
             'variants.*.outlet_id' => 'nullable|exists:outlets,id',

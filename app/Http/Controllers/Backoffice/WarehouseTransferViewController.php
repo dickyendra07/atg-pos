@@ -76,7 +76,7 @@ class WarehouseTransferViewController extends Controller
             ->orderBy('name')
             ->get();
 
-        $stockBalances = StockBalance::with(['ingredient.category'])
+        $stockBalances = StockBalance::withLiveIngredient()->with(['ingredient.category'])
             ->where('location_type', 'warehouse')
             ->where('location_id', $warehouse->id)
             ->where('qty_on_hand', '>', 0)
@@ -97,13 +97,13 @@ class WarehouseTransferViewController extends Controller
 
         $validated = $request->validate([
             'outlet_id' => 'required|exists:outlets,id',
-            'ingredient_id' => 'required|exists:ingredients,id',
+            'ingredient_id' => 'required|exists:ingredients,id,deleted_at,NULL',
             'qty' => 'required|numeric|min:0.01',
             'note' => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($validated, $warehouse, $user) {
-            $warehouseStock = StockBalance::with('ingredient')
+            $warehouseStock = StockBalance::withLiveIngredient()->with('ingredient')
                 ->where('location_type', 'warehouse')
                 ->where('location_id', $warehouse->id)
                 ->where('ingredient_id', $validated['ingredient_id'])

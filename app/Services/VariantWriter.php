@@ -26,11 +26,15 @@ use Illuminate\Validation\ValidationException;
  *    the outlets they can see; outlets outside their access stay assigned, as long as the Product is
  *    still available there). Previously the outlet list was replaced, silently dropping them.
  *
- * Removing a Variant is only "deactivate" here. The group editor's existing removal of unused rows
- * stays in updateGroup() unchanged and is not offered anywhere else.
+ * Removing a Variant is only "deactivate" here. The group editor does NOT delete anything: leaving an
+ * existing Variant out of the submitted rows is refused (REMOVAL_MESSAGE), because a form edit must never
+ * remove a Variant by accident. Removal is the explicit, flag-gated cleanup delete ("Hapus dari Sistem"),
+ * which always tombstones (CleanupDeletionService); this class never deletes a Variant.
  */
 class VariantWriter
 {
+    public const REMOVAL_MESSAGE = 'Variant yang sudah tersimpan tidak bisa dihapus lewat editor ini. Biarkan Variant tetap ada di daftar, atau gunakan aksi "Hapus dari Sistem" di Product Workspace (Variants & Pricing) untuk menghapusnya.';
+
     public function __construct(private readonly BackofficeOutletContext $context) {}
 
     /**
@@ -235,7 +239,8 @@ class VariantWriter
 
     /**
      * The group editor: every Variant of $anchor's Product submitted at once, possibly moved to
-     * $product. Rows left out are removed, but only when no Recipe or sale uses them (existing rule).
+     * $product. Rows may be edited, moved or added, but an existing Variant may never be left out: nothing is
+     * deleted here (see the class header).
      */
     public function updateGroup(User $user, ProductVariant $anchor, Product $product, array $rows): void
     {
@@ -254,22 +259,14 @@ class VariantWriter
         $this->assertNoDuplicateCodesInPayload($rows);
         $this->assertCodesFree($product, $rows, $submittedIds->all(), 'variants', 'Kode variant sudah dipakai pada product tujuan: ');
 
-        $removedIds = $existingGroup->keys()->diff($submittedIds);
+        $omitted = $existingGroup->keys()->diff($submittedIds);
 
-        foreach ($removedIds as $removedId) {
-            $removedVariant = $existingGroup->get($removedId);
+        if ($omitted->isNotEmpty()) {
+            $names = $omitted->map(fn ($id) => '"'.$existingGroup->get($id)?->name.'"')->implode(', ');
 
-            if (! $removedVariant) {
-                continue;
-            }
-
-            $removedVariant->loadCount(['recipe', 'salesTransactionItems']);
-
-            if ($removedVariant->recipe_count > 0 || $removedVariant->sales_transaction_items_count > 0) {
-                throw ValidationException::withMessages([
-                    'variants' => 'Variant "'.$removedVariant->name.'" tidak bisa dihapus karena masih dipakai di recipe / transaksi.',
-                ]);
-            }
+            throw ValidationException::withMessages([
+                'variants' => 'Variant '.$names.' tidak ada di form. '.self::REMOVAL_MESSAGE,
+            ]);
         }
 
         // Computed before writing: the outlets each kept Variant has outside the user's access.
@@ -277,11 +274,7 @@ class VariantWriter
             ->filter(fn ($row) => ! empty($row['id']) && $existingGroup->has($row['id']))
             ->mapWithKeys(fn ($row) => [$row['id'] => $this->preservedOutletIds($user, $product, $existingGroup[$row['id']])]);
 
-        DB::transaction(function () use ($product, $rows, $existingGroup, $removedIds, $preserved) {
-            foreach ($removedIds as $removedId) {
-                $existingGroup->get($removedId)?->delete();
-            }
-
+        DB::transaction(function () use ($product, $rows, $existingGroup, $preserved) {
             foreach ($rows as $row) {
                 if (! empty($row['id']) && $existingGroup->has($row['id'])) {
                     $existingGroup[$row['id']]->update($this->attributes($product, $row));

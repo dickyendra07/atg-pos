@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -21,6 +22,15 @@ class StockBalance extends Model
     public function ingredient(): BelongsTo
     {
         return $this->belongsTo(Ingredient::class);
+    }
+
+    /**
+     * Operational stock views: balances of an Ingredient removed from the system (tombstoned) are hidden.
+     * The rows themselves are kept (they are stock history); only lists, pickers and stock actions skip them.
+     */
+    public function scopeWithLiveIngredient(Builder $query): Builder
+    {
+        return $query->whereHas('ingredient');
     }
 
     public function warehouse(): BelongsTo

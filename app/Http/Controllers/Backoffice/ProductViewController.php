@@ -9,14 +9,12 @@ use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\BackofficeOutletContext;
 use App\Services\ProductAccessPolicy;
-use App\Services\ProductDeletionPolicy;
+use App\Services\CleanupDeletionService as Cleanup;
 use App\Services\ProductWorkspace;
 use App\Services\ProductWriter;
 use App\Support\BackofficeReturnUrl;
-use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductViewController extends Controller
@@ -81,14 +79,8 @@ class ProductViewController extends Controller
             })
             ->sortKeys();
 
-        // Verdict per listed Product, computed GLOBALLY (the Active Outlet only filters the list above).
-        // Hint for the buttons only: the server decides again when a delete is requested.
-        $deletionStates = app(ProductDeletionPolicy::class)->evaluateMany($products);
-
         return view('backoffice.products.index', [
             'user' => $user,
-            'canHardDelete' => $user->isFullAccessUser(),
-            'deletionStates' => $deletionStates,
             'products' => $products,
             'productGroups' => $productGroups,
             'categories' => $categories,
@@ -183,48 +175,14 @@ class ProductViewController extends Controller
     }
 
     /**
-     * Permanent delete. DELETE /products/{product} keeps meaning "nonaktifkan" (existing behaviour and
-     * callers); this explicit route is the only one that can remove a Product, and only when
-     * ProductDeletionPolicy says it is disposable.
+     * Legacy URL, kept so old links and forms resolve - but it is NOT a delete path of its own any more.
+     * It used to physically delete Products that looked unused. It now hands over to the one cleanup
+     * service: feature flag, owner/admin_pusat, impact check, typed confirmation, and the Product (with its
+     * Variants) is tombstoned, never physically deleted.
      */
     public function destroyPermanent(Request $request, int $productId)
     {
-        $user = $this->authorizeAccess();
-
-        // Stricter than editing: removing a GLOBAL Product is for full-access users only.
-        abort_unless($user->isFullAccessUser(), 403, 'Hanya owner atau admin pusat yang dapat menghapus Product secara permanen.');
-
-        $policy = app(ProductDeletionPolicy::class);
-
-        try {
-            $result = $policy->deletePermanently($productId);
-        } catch (QueryException $e) {
-            // Only an integrity-constraint failure (SQLSTATE class 23) means "a dependency the policy does not
-            // know about". Anything else (syntax, connection, deadlock...) is a real fault: let it surface.
-            if (! str_starts_with((string) $e->getCode(), '23')) {
-                throw $e;
-            }
-
-            // Never show SQL to the user, never pretend it worked; the technical detail goes to the log.
-            Log::error('Permanent Product delete hit a database constraint.', ['product_id' => $productId, 'exception' => $e]);
-
-            return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$productId)
-                ->with('error', 'Product belum dapat dihapus permanen karena masih terhubung dengan data lain. Nonaktifkan Product ini saja.');
-        }
-
-        if (! empty($result['verdict']['missing'])) {
-            return BackofficeReturnUrl::redirect($request, 'backoffice.products.index')
-                ->with('warning', 'Product sudah tidak ada.');
-        }
-
-        if (! $result['deleted']) {
-            return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$productId)
-                ->with('error', $policy->blockedMessage($result['verdict']));
-        }
-
-        // The row is gone: no anchor, the list keeps its filters and scroll offset.
-        return BackofficeReturnUrl::redirect($request, 'backoffice.products.index')
-            ->with('success', 'Product berhasil dihapus permanen.');
+        return app(CleanupDeleteController::class)->destroy($request, Cleanup::TYPE_PRODUCT, $productId, app(Cleanup::class));
     }
 
     public function importForm()

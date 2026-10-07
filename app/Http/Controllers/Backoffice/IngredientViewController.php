@@ -7,6 +7,7 @@ use App\Models\Ingredient;
 use App\Models\IngredientCategory;
 use App\Models\Outlet;
 use App\Services\BackofficeOutletContext;
+use App\Services\CleanupDeletionService as Cleanup;
 use App\Services\IngredientWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
@@ -190,16 +191,15 @@ class IngredientViewController extends Controller
             ->with('success', 'Ingredient berhasil diperbarui.');
     }
 
+    /**
+     * Legacy URL, kept so existing links and forms resolve - but it is NOT a separate delete path any more.
+     * A bare `$ingredient->delete()` used to run here, and with the database cascade rules it destroyed the
+     * Ingredient's stock movements, balances and adjustment items. It now hands over to the one safe cleanup
+     * service: feature flag, owner/admin_pusat, impact check, typed confirmation, tombstone.
+     */
     public function destroy(Request $request, Ingredient $ingredient)
     {
-        $user = $this->authorizeAccess();
-        $this->authorizeIngredient($user, $ingredient);
-
-        $ingredient->delete();
-
-        // The row is gone, so no anchor: the list keeps its filters and the scroll offset is restored.
-        return BackofficeReturnUrl::redirect($request, 'backoffice.ingredients.index')
-            ->with('success', 'Ingredient berhasil dihapus.');
+        return app(CleanupDeleteController::class)->destroy($request, Cleanup::TYPE_INGREDIENT, (int) $ingredient->id, app(Cleanup::class));
     }
 
     public function importForm()

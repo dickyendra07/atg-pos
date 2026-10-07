@@ -102,7 +102,7 @@ class WarehouseViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $stockBalances = StockBalance::with(['ingredient.category'])
+        $stockBalances = StockBalance::withLiveIngredient()->with(['ingredient.category'])
             ->where('location_type', 'warehouse')
             ->where('location_id', $warehouse->id)
             ->latest()
@@ -135,7 +135,7 @@ class WarehouseViewController extends Controller
         $user = $this->authorizeAccess();
 
         $validated = $request->validate([
-            'ingredient_id' => 'required|exists:ingredients,id',
+            'ingredient_id' => 'required|exists:ingredients,id,deleted_at,NULL',
             'qty_in' => 'required|numeric|min:0.01',
             'note' => 'nullable|string|max:255',
         ]);
