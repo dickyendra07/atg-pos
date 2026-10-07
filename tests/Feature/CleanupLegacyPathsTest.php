@@ -405,6 +405,110 @@ class CleanupLegacyPathsTest extends TestCase
         $this->assertEquals($snapshot, DB::table('recipes')->where('id', $otherRecipe->id)->first(), 'the foreign Recipe was neither deleted nor detached');
     }
 
+    public function test_a_recipe_recorded_under_another_product_blocks_variant_cleanup_and_is_never_deleted(): void
+    {
+        // Product A / Variant A (nothing of its own), Product B / Recipe X ... legacy anomaly: X is attached to Variant A
+        $productA = $this->product('Produk A');
+        $variantA = $this->variant($productA, 'Reg');
+        [$productB, $variantB, $recipeX] = $this->productWithRecipe('Produk B');
+        $recipeX->update(['product_variant_id' => $variantA->id]);   // product_id stays Product B
+
+        $this->sale($productB, $variantB);   // some history in the system: it must not be written either
+        $recipeBefore = DB::table('recipes')->where('id', $recipeX->id)->first();
+        $itemsBefore = DB::table('recipe_items')->where('recipe_id', $recipeX->id)->orderBy('id')->get();
+        $productsBefore = DB::table('products')->whereIn('id', [$productA->id, $productB->id])->orderBy('id')->get();
+        $variantsBefore = DB::table('product_variants')->orderBy('id')->get();
+        $counts = $this->counts();
+        $history = $this->historyFingerprint();
+
+        $impact = $this->actingAs($this->owner)->getJson(route('backoffice.cleanup.impact', ['variant', $variantA->id]))->assertOk()->json('impact');
+        $this->assertFalse($impact['can_delete']);
+        $this->assertSame('recipe_inconsistent', $impact['blockers'][0]['code']);
+        $this->assertStringContainsString('kepemilikan tidak konsisten', $impact['blockers'][0]['message']);
+        $this->assertStringContainsString('Tidak ada Recipe yang diubah atau dihapus', $impact['blockers'][0]['message']);
+        $this->assertStringContainsString($recipeX->name.' (#'.$recipeX->id, implode(' ', $impact['blockers'][0]['items']));
+
+        $this->actingAs($this->owner)
+            ->delete(route('backoffice.cleanup.destroy', ['variant', $variantA->id]), ['confirmation' => $variantA->name])
+            ->assertSessionHas('error');
+
+        $this->assertNull(ProductVariant::find($variantA->id)->deleted_at, 'Variant A stays live');
+        $this->assertEquals($recipeBefore, DB::table('recipes')->where('id', $recipeX->id)->first(), 'Recipe X unchanged byte for byte');
+        $this->assertEquals($itemsBefore, DB::table('recipe_items')->where('recipe_id', $recipeX->id)->orderBy('id')->get(), 'no RecipeItem deleted or changed');
+        $this->assertEquals($productsBefore, DB::table('products')->whereIn('id', [$productA->id, $productB->id])->orderBy('id')->get(), 'Product A and B unchanged');
+        $this->assertEquals($variantsBefore, DB::table('product_variants')->orderBy('id')->get(), 'no Variant changed');
+        $this->assertSame($counts, $this->counts());
+        $this->assertSame($history, $this->historyFingerprint(), 'zero historical writes');
+
+        // the legacy URL and the other direction are refused the same way
+        $this->actingAs($this->owner)->delete(route('backoffice.cleanup.destroy', ['variant', $variantA->id]), ['confirmation' => 'Reg'])->assertSessionHas('error');
+        $this->assertNotNull(Recipe::find($recipeX->id));
+    }
+
+    public function test_a_variant_that_owns_all_its_recipes_still_cleans_up_normally(): void
+    {
+        [$product, $variant, $recipe] = $this->productWithRecipe('Normal');
+        $other = $this->productWithRecipe('Tetangga');
+
+        $this->actingAs($this->owner)->delete(route('backoffice.cleanup.destroy', ['variant', $variant->id]), ['confirmation' => $variant->name])->assertSessionHas('success');
+
+        $this->assertNotNull(DB::table('product_variants')->where('id', $variant->id)->value('deleted_at'));
+        $this->assertNull(Recipe::find($recipe->id));
+        $this->assertNotNull(Recipe::find($other[2]->id));
+    }
+
+    public function test_a_stale_typed_confirmation_cannot_delete_an_entity_renamed_in_the_meantime(): void
+    {
+        [$product, $variant, $recipe, $susu] = $this->productWithRecipe('Kopi');
+        $free = $this->ingredient('Bebas');
+        $history = $this->historyFingerprint();
+
+        $cases = [
+            ['product', $product, 'products'],
+            ['variant', $variant, 'product_variants'],
+            ['ingredient', $free, 'ingredients'],
+            ['recipe', $recipe, 'recipes'],
+        ];
+
+        foreach ($cases as [$type, $model, $table]) {
+            $typed = $model->name;   // what the admin typed, correct at the time of the dialog
+            $state = new \stdClass;   // one per iteration: hooks stay registered on the connection
+            $state->armed = true;
+
+            // another admin renames the row after the fast pre-check but before the locked read: the hook runs
+            // exactly when the delete opens its transaction
+            DB::connection()->beforeStartingTransaction(function () use ($state, $table, $model) {
+                if ($state->armed) {
+                    $state->armed = false;
+                    DB::table($table)->where('id', $model->id)->update(['name' => 'Nama Baru '.$model->id]);
+                }
+            });
+
+            $counts = $this->counts();
+
+            $this->actingAs($this->owner)
+                ->delete(route('backoffice.cleanup.destroy', [$type, $model->id]), ['confirmation' => $typed])
+                ->assertSessionHas('error');
+
+            $this->assertFalse($state->armed, $type.': the rename really happened between check and lock');
+            $this->assertSame('Nama Baru '.$model->id, DB::table($table)->where('id', $model->id)->value('name'), $type);
+            $this->assertSame($counts, $this->counts(), $type.': zero writes');
+
+            if ($type !== 'recipe') {
+                $this->assertNull(DB::table($table)->where('id', $model->id)->value('deleted_at'), $type.' stays live');
+            } else {
+                $this->assertNotNull(Recipe::find($model->id));
+                $this->assertSame(1, RecipeItem::where('recipe_id', $model->id)->count());
+            }
+        }
+
+        $this->assertSame($history, $this->historyFingerprint());
+
+        // typing the CURRENT name works
+        $renamed = DB::table('ingredients')->where('id', $free->id)->value('name');
+        $this->actingAs($this->owner)->delete(route('backoffice.cleanup.destroy', ['ingredient', $free->id]), ['confirmation' => $renamed])->assertSessionHas('success');
+    }
+
     public function test_every_foreign_key_into_the_masters_is_known_to_the_cleanup_service(): void
     {
         $found = [];

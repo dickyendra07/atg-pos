@@ -171,8 +171,22 @@ class CleanupDeletionService
 
     private function variantImpact(ProductVariant $variant): array
     {
-        $recipes = Recipe::query()->where('product_variant_id', $variant->id)->get(['id', 'name']);
+        $recipes = Recipe::query()->where('product_variant_id', $variant->id)->get(['id', 'name', 'product_id', 'product_variant_id']);
         $promos = $this->promosFor([(int) $variant->id]);
+
+        $blockers = $this->promoBlockers($promos['blocking'], 'Variant');
+
+        // A Recipe attached to this Variant must also be recorded under this Variant's Product. One recorded under
+        // another Product (legacy data) is not ours to delete; nothing is changed, the data needs a human look.
+        $foreign = $this->foreignRecipesOfVariant($variant, $recipes);
+
+        if ($foreign->isNotEmpty()) {
+            $blockers[] = [
+                'code' => 'recipe_inconsistent',
+                'message' => 'Variant ini memiliki Recipe dengan kepemilikan tidak konsisten (tercatat pada Product lain). Tidak ada Recipe yang diubah atau dihapus. Data harus ditinjau Back Office terlebih dahulu.',
+                'items' => $this->limited($foreign->map(fn (Recipe $recipe) => $recipe->name.' (#'.$recipe->id.', tercatat pada Product #'.$recipe->product_id.')')),
+            ];
+        }
 
         return $this->shape(self::TYPE_VARIANT, $variant, 'tombstone', [
             ['label' => 'Recipe (ikut dihapus permanen)', 'value' => $recipes->count()],
@@ -181,7 +195,7 @@ class CleanupDeletionService
             ['label' => 'Promo aktif / terjadwal', 'value' => $promos['blocking']->count()],
             ['label' => 'Promo lama (selesai / dihentikan)', 'value' => $promos['historical']->count()],
             ['label' => 'Baris riwayat transaksi', 'value' => $this->salesRows(null, [(int) $variant->id])],
-        ], $this->promoBlockers($promos['blocking'], 'Variant'), [
+        ], $blockers, [
             'Variant hilang dari Product Workspace, daftar Variant, Cashier, dan pilihan Recipe/Promo. Variant lain tidak berubah.',
             'Recipe milik Variant ini dihapus permanen (hanya konfigurasi).',
             'Riwayat transaksi tetap tersimpan utuh.',
@@ -284,11 +298,11 @@ class CleanupDeletionService
             return ['status' => self::STATUS_MISSING];
         }
 
-        if (trim($confirmation) === '' || trim($confirmation) !== trim((string) $model->name)) {
+        if (! $this->confirms($confirmation, $model)) {
             return ['status' => self::STATUS_MISMATCH, 'name' => (string) $model->name];
         }
 
-        return DB::transaction(function () use ($type, $id) {
+        return DB::transaction(function () use ($type, $id, $confirmation) {
             // Lock first, read second (a concurrent insert that references the row then waits for us and fails its foreign key).
             $model = match ($type) {
                 self::TYPE_PRODUCT => Product::query()->lockForUpdate()->find($id),
@@ -299,6 +313,12 @@ class CleanupDeletionService
 
             if (! $model) {
                 return ['status' => self::STATUS_MISSING];
+            }
+
+            // The typed text must match the name as it is NOW, on the locked row: the check above is only fast
+            // feedback, and somebody may have renamed the entity since.
+            if (! $this->confirms($confirmation, $model)) {
+                return ['status' => self::STATUS_MISMATCH, 'name' => (string) $model->name];
             }
 
             if ($type === self::TYPE_PRODUCT) {
@@ -322,6 +342,11 @@ class CleanupDeletionService
         });
     }
 
+    private function confirms(string $typed, Model $model): bool
+    {
+        return trim($typed) !== '' && trim($typed) === trim((string) $model->name);
+    }
+
     private function deleteProduct(Product $product): void
     {
         $variants = ProductVariant::query()->where('product_id', $product->id)->get();
@@ -341,7 +366,12 @@ class CleanupDeletionService
 
     private function deleteVariant(ProductVariant $variant): void
     {
-        $this->deleteRecipes(Recipe::query()->where('product_variant_id', $variant->id)->pluck('id')->all());
+        // impact() already refused a Variant with a foreign Recipe; the product_id condition keeps that true even if
+        // one appeared in between: a Recipe recorded under another Product is never deleted here.
+        $this->deleteRecipes(Recipe::query()
+            ->where('product_variant_id', $variant->id)
+            ->where('product_id', $variant->product_id)
+            ->pluck('id')->all());
 
         DB::table('product_variant_outlet')->where('product_variant_id', $variant->id)->delete();
 
@@ -429,6 +459,19 @@ class CleanupDeletionService
 
             return $viaVariant && ! $viaProduct;
         });
+    }
+
+    /**
+     * Recipes attached to the Variant (product_variant_id) that its own Product does not own. Uses the same
+     * ownership rule as the Product Workspace (RecipeWriter::owns): Recipe.product_id must be the Variant's Product.
+     *
+     * @return Collection<int, Recipe>
+     */
+    private function foreignRecipesOfVariant(ProductVariant $variant, Collection $recipes): Collection
+    {
+        $product = Product::withTrashed()->find($variant->product_id);
+
+        return $recipes->reject(fn (Recipe $recipe) => $product && RecipeWriter::owns($product, $variant, $recipe))->values();
     }
 
     /**
