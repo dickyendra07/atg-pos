@@ -266,7 +266,24 @@
         $selectedOutletName = $selectedOutlet->name ?? 'Outlet';
     }
 
-    $topProducts = collect($charts['top_products'] ?? []);
+    // The dashboard controller passes $topProducts (name / qty / sales); $charts was never provided.
+    $topProducts = collect($topProducts ?? $charts['top_products'] ?? []);
+
+    // Display only: the row name is "Product - Variant". When the Variant name already starts with the Product
+    // name, print it once (same rule as receipts, App\Support\ReceiptItemName); otherwise keep it as it is.
+    $pwPrintName = function ($name) {
+        $name = (string) $name;
+
+        if (! str_contains($name, ' - ')) {
+            return $name;
+        }
+
+        [$productPart, $variantPart] = explode(' - ', $name, 2);
+        $normalized = \App\Support\ReceiptItemName::combine($productPart, $variantPart);
+
+        // Only a removed repetition (or an empty variant) changes the text; unrelated names stay "Product - Variant".
+        return $normalized === trim($productPart.' '.trim($variantPart)) ? $name : $normalized;
+    };
     $lowStockFocus = collect($charts['low_stock_focus'] ?? []);
 @endphp
 
@@ -329,11 +346,6 @@
                         <span>Void</span>
                         <strong>{{ number_format((int) ($stats['void_transaction_count'] ?? 0), 0, ',', '.') }}</strong>
                     </div>
-                </div>
-
-
-                    @endforeach
-                </div>
             </div>
         </div>
     </div>
@@ -360,7 +372,7 @@
                             @foreach($topProducts as $index => $product)
                                 <tr>
                                     <td class="strong">#{{ $index + 1 }}</td>
-                                    <td class="strong">{{ $product['name'] ?? '-' }}</td>
+                                    <td class="strong">{{ $pwPrintName($product['name'] ?? '-') }}</td>
                                     <td>{{ number_format((float) ($product['qty'] ?? 0), 0, ',', '.') }}</td>
                                     <td class="strong">Rp {{ number_format((float) ($product['sales'] ?? 0), 0, ',', '.') }}</td>
                                 </tr>
@@ -417,14 +429,6 @@
                         <span>Total Qty Out</span>
                         <strong>{{ number_format((float) ($stats['total_qty_out'] ?? 0), 0, ',', '.') }}</strong>
                     </div>
-                </div>
-
-
-                        @endforeach
-                    @else
-                        <div>Tidak ada low stock / out of stock.</div>
-                    @endif
-                </div>
             </div>
         </div>
     </div>

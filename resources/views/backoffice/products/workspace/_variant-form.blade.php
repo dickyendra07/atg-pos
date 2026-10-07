@@ -28,12 +28,6 @@
             </div>
 
             <div class="pw-field">
-                <label for="pw-variant-code">Kode Variant</label>
-                <input id="pw-variant-code" type="text" name="code" value="{{ $variant?->code }}" maxlength="50" placeholder="R / L / XL" required>
-                <div class="pw-field-error" data-pw-drawer-error="code" hidden></div>
-            </div>
-
-            <div class="pw-field">
                 <label for="pw-variant-dine-in">Harga Dine In</label>
                 <input id="pw-variant-dine-in" type="text" name="price_dine_in" class="pw-rupiah" inputmode="numeric" autocomplete="off"
                        value="{{ $pwPrice($variant ? ($variant->price_dine_in ?? $variant->price) : null) }}" placeholder="Rp. 0" required>

@@ -48,10 +48,8 @@ class ProductViewController extends Controller
         $user->load(['outlet']);
 
         $categories = ProductCategory::orderBy('name')->get();
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
         $products = Product::with(['brand', 'category', 'variants', 'outlets'])
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->when($request->filled('category_id'), function ($query) use ($request) {
                 $query->where('product_category_id', $request->category_id);
             })
@@ -143,7 +141,20 @@ class ProductViewController extends Controller
 
         app(ProductAccessPolicy::class)->authorize($user, $product);
 
-        return view('backoffice.products.workspace', app(ProductWorkspace::class)->viewData($request, $product, $user, $request->query('section')));
+        $workspace = app(ProductWorkspace::class);
+        $data = $workspace->viewData($request, $product, $user, $request->query('section'));
+
+        // Deep link from the classic Recipe pages: ?recipe=<id> lands on the Recipe section, brings that Recipe
+        // into view and, when the user may edit it, opens its drawer. Any other state is only shown.
+        $link = $workspace->recipeDeepLink($data['workspace'], $request->query('recipe'));
+        $data['openRecipeDrawer'] = $link && $link['form_url'] ? $link : null;
+        $data['focusRecipeId'] = $link['id'] ?? null;
+
+        if ($link !== null) {
+            $data['section'] = 'recipe';
+        }
+
+        return view('backoffice.products.workspace', $data);
     }
 
     public function update(Request $request, Product $product)
@@ -250,8 +261,7 @@ class ProductViewController extends Controller
 
     public function exportCsv(): StreamedResponse
     {
-        $user = $this->authorizeAccess();
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
+        $this->authorizeAccess();
 
         $filename = 'products_export_'.now()->format('Ymd_His').'.csv';
 
@@ -260,13 +270,12 @@ class ProductViewController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        return response()->stream(function () use ($activeOutletId) {
+        return response()->stream(function () {
             $handle = fopen('php://output', 'w');
 
             fputcsv($handle, ['brand_name', 'category_name', 'name', 'code', 'description', 'is_active']);
 
             Product::with(['brand', 'category'])
-                ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
                 ->orderBy('name')
                 ->chunk(200, function ($products) use ($handle) {
                     foreach ($products as $product) {
@@ -288,18 +297,23 @@ class ProductViewController extends Controller
     public function importStore(Request $request)
     {
         $user = $this->authorizeAccess();
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
-
-        if (! $activeOutletId) {
-            return back()->with('error', 'Pilih Active Outlet terlebih dahulu. Import Product tidak boleh membuat availability global.');
-        }
 
         $request->validate([
+            'outlet_id' => 'required|integer',
             'file' => 'required|file|mimes:csv,txt',
         ], [
+            'outlet_id.required' => 'Pilih outlet tujuan terlebih dahulu. Import Product tidak boleh membuat availability global.',
             'file.required' => 'File CSV wajib dipilih.',
             'file.mimes' => 'File harus berformat CSV.',
         ]);
+
+        // The Back Office has no Active Outlet any more: the import names its own target outlet, and it
+        // must be one this user can access (same rule the old Active Outlet selector enforced).
+        $targetOutletId = (int) $request->input('outlet_id');
+
+        if (! $this->outletContext()->canAccess($user, $targetOutletId)) {
+            return back()->withInput()->with('error', 'Outlet tujuan tidak aktif atau tidak tersedia untuk akun ini.');
+        }
 
         $realPath = $request->file('file')->getRealPath();
 
@@ -413,7 +427,7 @@ class ProductViewController extends Controller
                     'description' => $description !== '' ? $description : null,
                     'is_active' => $isActive,
                 ]);
-                $product->outlets()->syncWithoutDetaching([$activeOutletId]);
+                $product->outlets()->syncWithoutDetaching([$targetOutletId]);
                 $updated++;
             } else {
                 $product = Product::create([
@@ -424,7 +438,7 @@ class ProductViewController extends Controller
                     'description' => $description !== '' ? $description : null,
                     'is_active' => $isActive,
                 ]);
-                $product->outlets()->sync([$activeOutletId]);
+                $product->outlets()->sync([$targetOutletId]);
                 $imported++;
             }
         }

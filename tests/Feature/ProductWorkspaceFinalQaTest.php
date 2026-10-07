@@ -234,9 +234,6 @@ class ProductWorkspaceFinalQaTest extends TestCase
         $this->get(route('backoffice.promos.create', ['variant_id' => $f['variant']->id]))->assertOk();
         $this->get(route('backoffice.promos.edit', $f['promo']))->assertOk();
         $this->get(route('backoffice.products.index'))->assertOk();
-        // The Active Outlet selector is a session change only.
-        $this->post(route('backoffice.active-outlet.update'), ['outlet_id' => $this->a->id])->assertRedirect();
-        $this->post(route('backoffice.active-outlet.update'), ['outlet_id' => 0])->assertRedirect();
 
         $this->assertSame([], $writes);
         $this->assertSame($before, $this->fingerprint());

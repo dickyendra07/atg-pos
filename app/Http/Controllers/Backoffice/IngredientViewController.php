@@ -90,15 +90,15 @@ class IngredientViewController extends Controller
     public function index(Request $request)
     {
         $user = $this->authorizeAccess();
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
 
+        // Ingredients are global master data: everyone sees the whole list, and rows outside the user's
+        // outlets are view-only (editableIngredientIds below). No outlet narrowing here.
         // Join (not just eager-load) ingredient_categories so the category name is sortable in
         // the same query; select ingredients.* to avoid column clashes between the two tables.
         $ingredientsQuery = Ingredient::query()
             ->select('ingredients.*')
             ->with(['category', 'outlets'])
             ->join('ingredient_categories', 'ingredient_categories.id', '=', 'ingredients.ingredient_category_id')
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderByRaw('LOWER(ingredients.name) asc')
             ->orderByRaw('LOWER(ingredient_categories.name) asc');
 
@@ -213,11 +213,9 @@ class IngredientViewController extends Controller
 
     public function exportCsv(Request $request): StreamedResponse
     {
-        $user = $this->authorizeAccess();
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
+        $this->authorizeAccess();
 
         $ingredientsQuery = Ingredient::with('category')
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('name');
 
         if ($request->filled('ingredient_type')) {
@@ -303,18 +301,23 @@ class IngredientViewController extends Controller
     public function importStore(Request $request)
     {
         $user = $this->authorizeAccess();
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
-
-        if (! $activeOutletId) {
-            return back()->with('error', 'Pilih Active Outlet terlebih dahulu. Import Ingredient tidak boleh membuat availability global.');
-        }
 
         $request->validate([
+            'outlet_id' => 'required|integer',
             'file' => 'required|file|mimes:csv,txt',
         ], [
+            'outlet_id.required' => 'Pilih outlet tujuan terlebih dahulu. Import Ingredient tidak boleh membuat availability global.',
             'file.required' => 'File CSV wajib dipilih.',
             'file.mimes' => 'File harus berformat CSV.',
         ]);
+
+        // The Back Office has no Active Outlet any more: the import names its own target outlet, and it
+        // must be one this user can access (same rule the old Active Outlet selector enforced).
+        $targetOutletId = (int) $request->input('outlet_id');
+
+        if (! $this->outletContext()->canAccess($user, $targetOutletId)) {
+            return back()->withInput()->with('error', 'Outlet tujuan tidak aktif atau tidak tersedia untuk akun ini.');
+        }
 
         $realPath = $request->file('file')->getRealPath();
 
@@ -370,7 +373,7 @@ class IngredientViewController extends Controller
         $skipped = 0;
         $errors = [];
 
-        DB::transaction(function () use ($lines, $delimiter, $activeOutletId, &$imported, &$updated, &$skipped, &$errors) {
+        DB::transaction(function () use ($lines, $delimiter, $targetOutletId, &$imported, &$updated, &$skipped, &$errors) {
             foreach (array_slice($lines, 1) as $index => $line) {
                 $rowNumber = $index + 2;
 
@@ -475,7 +478,7 @@ class IngredientViewController extends Controller
                         'cost_per_unit' => $costPerUnit,
                         'is_active' => $isActive,
                     ]);
-                    $existingIngredient->outlets()->syncWithoutDetaching([$activeOutletId]);
+                    $existingIngredient->outlets()->syncWithoutDetaching([$targetOutletId]);
 
                     $updated++;
                 } else {
@@ -489,7 +492,7 @@ class IngredientViewController extends Controller
                         'cost_per_unit' => $costPerUnit,
                         'is_active' => $isActive,
                     ]);
-                    $ingredient->outlets()->sync([$activeOutletId]);
+                    $ingredient->outlets()->sync([$targetOutletId]);
 
                     $imported++;
                 }

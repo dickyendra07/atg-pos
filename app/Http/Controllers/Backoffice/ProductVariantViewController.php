@@ -68,7 +68,6 @@ class ProductVariantViewController extends Controller
         return [
             'variants.required' => 'Minimal harus ada 1 variant.',
             'variants.*.name.required' => 'Nama variant wajib diisi di setiap baris.',
-            'variants.*.code.required' => 'Kode variant wajib diisi di setiap baris.',
             'variants.*.price_dine_in.required' => 'Harga dine in wajib diisi di setiap baris.',
             'variants.*.price_delivery.required' => 'Harga delivery wajib diisi di setiap baris.',
         ];
@@ -79,9 +78,7 @@ class ProductVariantViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
         $variants = ProductVariant::with(['product.brand', 'product.category', 'outlet', 'outlets'])
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->when($request->filled('category_id'), fn ($query) => $query->whereHas('product', fn ($productQuery) => $productQuery->where('product_category_id', (int) $request->input('category_id'))))
             ->orderBy('product_id')
             ->orderBy('name')
@@ -115,9 +112,7 @@ class ProductVariantViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
         $products = Product::with(['brand', 'category', 'outlets'])
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('name')
             ->get();
 
@@ -150,9 +145,7 @@ class ProductVariantViewController extends Controller
         $user->load(['outlet']);
         $this->authorizeVariantProduct($user, $variant);
 
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
         $products = Product::with(['brand', 'category', 'outlets'])
-            ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
             ->orderBy('name')
             ->get();
 
@@ -236,8 +229,7 @@ class ProductVariantViewController extends Controller
 
     public function exportCsv(): StreamedResponse
     {
-        $user = $this->authorizeAccess();
-        $activeOutletId = $this->outletContext()->activeOutletId($user);
+        $this->authorizeAccess();
 
         $filename = 'pos_product_master_'.now()->format('Ymd_His').'.csv';
 
@@ -246,7 +238,7 @@ class ProductVariantViewController extends Controller
             'Content-Disposition' => 'attachment; filename="'.$filename.'"',
         ];
 
-        return response()->stream(function () use ($activeOutletId) {
+        return response()->stream(function () {
 
             $handle = fopen('php://output', 'w');
 
@@ -269,7 +261,6 @@ class ProductVariantViewController extends Controller
                 'product.brand',
                 'product.category',
             ])
-                ->when($activeOutletId, fn ($query) => $query->availableAtOutlet($activeOutletId))
                 ->orderBy('product_id')
                 ->orderBy('name')
                 ->chunk(200, function ($variants) use ($handle, &$no) {

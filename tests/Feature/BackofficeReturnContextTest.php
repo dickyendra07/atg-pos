@@ -48,6 +48,8 @@ class BackofficeReturnContextTest extends TestCase
 
     private User $owner;
 
+    private User $warehouse;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -90,6 +92,8 @@ class BackofficeReturnContextTest extends TestCase
         RecipeItem::create(['recipe_id' => $this->recipe->id, 'ingredient_id' => $this->cup->id, 'qty' => 1, 'unit' => 'pcs']);
 
         $this->owner = $this->makeUser('owner', 'owner', $this->bxc, [$this->bxc, $this->bazaar]);
+        // No Product pages: the only role the classic Recipe edit page still serves.
+        $this->warehouse = $this->makeUser('gudang', 'staff_gudang', $this->bxc, [$this->bxc, $this->bazaar]);
     }
 
     // ---- shared guard: BackofficeReturnUrl --------------------------------------------------------
@@ -347,15 +351,13 @@ class BackofficeReturnContextTest extends TestCase
 
     // ---- Recipe + Recipe items --------------------------------------------------------------------
 
-    public function test_recipe_update_respects_return_to_and_leaves_the_active_outlet_alone(): void
+    public function test_recipe_update_respects_return_to(): void
     {
         $listUrl = '/backoffice/recipes?search=Kafei&status=active';
 
-        // A Recipe used at BXC only is editable while BXC is the Active Outlet (Batch 1 rule).
         $bxcOnly = $this->makeBxcOnlyRecipe();
 
         $this->actingAs($this->owner)
-            ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
             ->put(route('backoffice.recipes.update', $bxcOnly), [
                 'product_variant_id' => $bxcOnly->product_variant_id,
                 'name' => 'Recipe BXC v2',
@@ -363,20 +365,21 @@ class BackofficeReturnContextTest extends TestCase
                 'return_to' => $listUrl,
             ])
             ->assertRedirect(url($listUrl.'#recipe-'.$bxcOnly->id))
-            ->assertSessionHas('success')
-            ->assertSessionHas('active_backoffice_outlet_id', $this->bxc->id);
+            ->assertSessionHas('success');
 
         $this->assertSame('Recipe BXC v2', $bxcOnly->fresh()->name);
     }
 
-    public function test_recipe_shared_across_outlets_still_needs_all_outlets_context_even_with_return_to(): void
+    public function test_owner_can_update_a_recipe_shared_across_outlets_and_return_to_still_applies(): void
     {
+        // The Back Office always works on every accessible outlet, so the owner (who can access all of
+        // them) may change a Recipe shared by several outlets. Limited users are covered below.
         $this->actingAs($this->owner)
-            ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
-            ->put(route('backoffice.recipes.update', $this->recipe), $this->recipePayload(['name' => 'Nope', 'return_to' => '/backoffice/recipes']))
-            ->assertForbidden();
+            ->put(route('backoffice.recipes.update', $this->recipe), $this->recipePayload(['name' => 'Shared v2', 'return_to' => '/backoffice/recipes']))
+            ->assertRedirect(url('/backoffice/recipes#recipe-'.$this->recipe->id))
+            ->assertSessionHas('success');
 
-        $this->assertSame('Recipe Kafei Susu', $this->recipe->fresh()->name);
+        $this->assertSame('Shared v2', $this->recipe->fresh()->name);
     }
 
     public function test_recipe_return_to_does_not_bypass_the_recipe_access_policy(): void
@@ -385,7 +388,6 @@ class BackofficeReturnContextTest extends TestCase
         $bxcAdmin = $this->makeUser('admin-bxc', 'admin_outlet', $this->bxc, [$this->bxc]);
 
         $this->actingAs($bxcAdmin)
-            ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
             ->put(route('backoffice.recipes.update', $this->recipe), $this->recipePayload(['name' => 'Hijack', 'return_to' => '/backoffice/recipes']))
             ->assertForbidden();
 
@@ -446,20 +448,36 @@ class BackofficeReturnContextTest extends TestCase
             ->assertSessionHas('success');
     }
 
-    public function test_recipe_edit_page_threads_return_to_through_every_form_and_back_link(): void
+    public function test_recipe_edit_url_hands_over_to_the_workspace_recipe_drawer_and_keeps_return_to(): void
     {
         $returnTo = '/backoffice/recipes?search=Kafei';
 
-        $html = $this->actingAs($this->owner)
+        $this->actingAs($this->owner)
             ->get(route('backoffice.recipes.edit', [$this->recipe, 'return_to' => $returnTo]))
+            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $this->recipe->id, 'return_to' => $returnTo], false)));
+
+        // The workspace's own close / back link returns to that list.
+        $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $this->recipe->id, 'return_to' => $returnTo]))
+            ->assertOk()
+            ->assertViewHas('closeUrl', $returnTo)
+            ->assertViewHas('closeLabel', 'Kembali ke Recipes');
+    }
+
+    public function test_classic_recipe_edit_page_for_warehouse_staff_threads_return_to_through_every_form_and_back_link(): void
+    {
+        $returnTo = '/backoffice/recipes?search=Kafei';
+        $recipe = $this->makeClassicOnlyRecipe();
+
+        $html = $this->actingAs($this->warehouse)
+            ->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => $returnTo]))
             ->assertOk()
             ->getContent();
 
         $hidden = '<input type="hidden" name="return_to" value="'.e($returnTo).'">';
         // header form + qty form + delete form + add-item form
         $this->assertSame(4, substr_count($html, $hidden));
-        $this->assertStringContainsString('id="recipe-item-'.$this->recipe->items()->value('id').'"', $html);
-        $this->assertStringContainsString('href="'.e($returnTo.'#recipe-'.$this->recipe->id).'"', $html);
+        $this->assertStringContainsString('id="recipe-item-'.$recipe->items()->value('id').'"', $html);
+        $this->assertStringContainsString('href="'.e($returnTo.'#recipe-'.$recipe->id).'"', $html);
     }
 
     public function test_recipe_index_hands_its_own_url_to_edit_links(): void
@@ -588,10 +606,17 @@ class BackofficeReturnContextTest extends TestCase
         foreach ([
             route('backoffice.products.edit', $this->product),
             route('backoffice.ingredients.edit', $this->cup),
-            route('backoffice.recipes.edit', $this->recipe),
         ] as $url) {
             $this->get($url)->assertOk();
         }
+
+        // warehouse staff have no Product pages: the classic Recipe page stays for them
+        $this->actingAs($this->warehouse)->get(route('backoffice.recipes.edit', $this->recipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
+        $this->actingAs($this->owner);
+
+        // an editable Recipe hands over to the Product Workspace, without inventing a return_to
+        $this->get(route('backoffice.recipes.edit', $this->recipe))
+            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $this->recipe->id], false)));
     }
 
     // ---- validation failures ----------------------------------------------------------------------
@@ -651,17 +676,18 @@ class BackofficeReturnContextTest extends TestCase
     public function test_recipe_edit_real_flow_failed_header_validation_stays_on_the_standalone_edit_page(): void
     {
         $returnTo = '/backoffice/recipes?search=Kafei';
-        $editUrl = route('backoffice.recipes.edit', [$this->recipe, 'return_to' => $returnTo]);
+        $recipe = $this->makeClassicOnlyRecipe();
+        $editUrl = route('backoffice.recipes.edit', [$recipe, 'return_to' => $returnTo]);
 
-        $this->actingAs($this->owner)->from($editUrl)
-            ->put(route('backoffice.recipes.update', $this->recipe), $this->recipePayload(['name' => '', 'return_to' => $returnTo]))
+        $this->actingAs($this->warehouse)->from($editUrl)
+            ->put(route('backoffice.recipes.update', $recipe), $this->recipePayload(['product_variant_id' => $recipe->product_variant_id, 'name' => '', 'return_to' => $returnTo]))
             ->assertRedirect($editUrl);
 
         $html = $this->get($editUrl)->assertOk()->getContent();
 
         $this->assertSame(4, substr_count($html, '<input type="hidden" name="return_to" value="'.e($returnTo).'">'));
         $this->assertSame(1, substr_count($html, 'Ada data yang perlu diperbaiki.'));
-        $this->assertSame('Recipe Kafei Susu', $this->recipe->fresh()->name);
+        $this->assertSame('Large A', $recipe->fresh()->name);
     }
 
     public function test_validation_failures_produce_a_single_summary_toast_not_one_per_error(): void
@@ -710,9 +736,9 @@ class BackofficeReturnContextTest extends TestCase
 
     public function test_global_toast_is_also_on_standalone_backoffice_pages(): void
     {
-        $this->actingAs($this->owner)
+        $this->actingAs($this->warehouse)
             ->withSession(['success' => 'Recipe berhasil diperbarui.'])
-            ->get(route('backoffice.recipes.edit', $this->recipe))
+            ->get(route('backoffice.recipes.edit', $this->makeClassicOnlyRecipe()))
             ->assertOk()
             ->assertSee('data-bo-toast-type="success"', false)
             ->assertSee('Recipe berhasil diperbarui.');
@@ -795,6 +821,34 @@ class BackofficeReturnContextTest extends TestCase
             'name' => 'Recipe Kafei Susu v2',
             'is_active' => 1,
         ], $overrides);
+    }
+
+    /**
+     * A Recipe the Product Workspace does not edit (its Variant has two active Recipes, read-only there),
+     * so the classic standalone page still serves it. Returns the first of the two, which has one item.
+     */
+    private function makeClassicOnlyRecipe(): Recipe
+    {
+        $variant = ProductVariant::create([
+            'product_id' => $this->product->id,
+            'name' => 'Large',
+            'code' => 'KAFEI-LRG',
+            'price' => 25000,
+            'price_dine_in' => 25000,
+            'price_delivery' => 27000,
+            'is_active' => true,
+        ]);
+        $variant->outlets()->sync([$this->bxc->id, $this->bazaar->id]);
+
+        $recipes = collect(['Large A', 'Large B'])->map(fn (string $name) => Recipe::create([
+            'product_id' => $this->product->id,
+            'product_variant_id' => $variant->id,
+            'name' => $name,
+            'is_active' => true,
+        ]));
+        RecipeItem::create(['recipe_id' => $recipes[0]->id, 'ingredient_id' => $this->cup->id, 'qty' => 1, 'unit' => 'pcs']);
+
+        return $recipes[0];
     }
 
     private function makeBxcOnlyRecipe(): Recipe

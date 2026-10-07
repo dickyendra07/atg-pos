@@ -425,10 +425,12 @@ class ProductWorkspaceRecipeTest extends TestCase
         $this->assertStringNotContainsString('data-pw-open-drawer="recipe"', $row);
         $this->assertStringNotContainsString('/workspace/variants/'.$this->regular->id.'/recipes', $row);
         $this->assertStringNotContainsString('<form', $row);
-        // The classic Recipe pages stay reachable.
+        // Every Recipe is listed, view-only, and nothing links to a second editor.
         foreach ([$one, $two, $third] as $recipe) {
-            $this->assertStringContainsString(e(route('backoffice.recipes.edit', $recipe->id, false)), $row);
+            $this->assertStringContainsString('data-pw-recipe="'.$recipe->id.'"', $row);
+            $this->assertStringNotContainsString(e(route('backoffice.recipes.edit', $recipe->id, false)), $row);
         }
+        $this->assertSame(3, substr_count($row, 'data-pw-recipe-readonly'));
     }
 
     public function test_every_workspace_recipe_endpoint_refuses_an_ambiguous_variant_and_nothing_changes(): void
@@ -554,10 +556,6 @@ class ProductWorkspaceRecipeTest extends TestCase
         $this->assertStringContainsString('Fresh Milk', $html, 'read-only Recipe context is still shown');
 
         $this->assertWritesForbidden($limited, $recipe);
-
-        // A specific Active Outlet narrows even the owner on a multi-outlet Variant.
-        $this->withSession(['active_backoffice_outlet_id' => $this->a->id]);
-        $this->assertWritesForbidden($this->owner, $recipe);
 
         $this->assertFalse($recipe->fresh()->is_active);
         $this->assertSame('150.00', $recipe->items()->value('qty'));
@@ -854,6 +852,200 @@ class ProductWorkspaceRecipeTest extends TestCase
     }
 
     // ---- helpers ------------------------------------------------------------------------------------
+
+    // ================================================================================================
+    // ONE RECIPE EDITOR: the classic Edit URL hands over to the workspace drawer
+    // ================================================================================================
+
+    public function test_classic_edit_url_redirects_to_the_right_product_variant_and_recipe_drawer(): void
+    {
+        $this->recipe($this->regular, true, [[$this->milk, 150]]);
+        $large = $this->recipe($this->large, true, [[$this->milk, 200], [$this->sugar, 30]]);
+        $this->recipe($this->otherVariant, true, [[$this->milk, 10]]);
+        $returnTo = '/backoffice/recipes?status=active&search=Ube';
+
+        $this->actingAs($this->owner)
+            ->get(route('backoffice.recipes.edit', [$large, 'return_to' => $returnTo]))
+            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $large->id, 'return_to' => $returnTo], false)));
+
+        $page = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $large->id, 'return_to' => $returnTo]))->assertOk();
+        $html = $page->getContent();
+
+        // the Large Recipe's own drawer is the one to open, not Regular's or another Product's
+        $this->assertStringContainsString('data-pw-open-recipe-url="'.e(route('backoffice.products.workspace.recipes.edit-form', [$this->product, $this->large, $large], false)).'"', $html);
+        $this->assertSame(1, substr_count($html, 'data-pw-open-recipe-url='));
+        $this->assertStringContainsString('data-pw-section="recipe"', $html);
+        $page->assertViewHas('closeUrl', $returnTo)->assertViewHas('closeLabel', 'Kembali ke Recipes');
+        $this->assertStringContainsString('Kembali ke Recipes</a>', $html);
+
+        // opened from the Products list, "back" still means the Products list
+        $fromProducts = $this->get(route('backoffice.products.edit', [$this->product, 'return_to' => '/backoffice/products?search=ube']));
+        $fromProducts->assertViewHas('closeUrl', '/backoffice/products?search=ube#product-'.$this->product->id)->assertViewHas('closeLabel', 'Kembali ke Products');
+
+        // and that URL really serves Large's items
+        $form = $this->getJson(route('backoffice.products.workspace.recipes.edit-form', [$this->product, $this->large, $large]))->assertOk()->json('html');
+        $this->assertStringContainsString('Liquid Sugar', $form);
+    }
+
+    public function test_the_recipe_deep_link_forces_the_recipe_section_but_only_for_a_drawer_the_user_may_open(): void
+    {
+        $recipe = $this->recipe($this->regular, false, [[$this->milk, 150]]);   // inactive Recipes open too
+        $other = $this->recipe($this->otherVariant, true, [[$this->milk, 10]]);
+        $this->actingAs($this->owner);
+
+        $html = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'general', 'recipe' => $recipe->id]))->assertOk()->getContent();
+        $this->assertStringContainsString('data-pw-section="recipe"', $html);
+        $this->assertStringContainsString('data-pw-open-recipe-url=', $html);
+
+        foreach ([$other->id, 999999, 'abc', '1 OR 1=1', '', '-1', ['x']] as $bad) {
+            $html = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'stock', 'recipe' => $bad]))->assertOk()->getContent();
+
+            $this->assertStringNotContainsString('data-pw-open-recipe-url=', $html, json_encode($bad));
+            $this->assertStringContainsString('data-pw-section="stock"', $html, 'the requested section is kept');
+        }
+    }
+
+    public function test_a_recipe_of_a_variant_with_several_active_recipes_opens_in_the_workspace_and_is_never_picked(): void
+    {
+        [$one, $two] = $this->ambiguous();
+        $before = $this->recipeFingerprint();
+        $this->actingAs($this->owner);
+
+        foreach ([$one, $two] as $recipe) {
+            // the classic URL no longer leads to the classic editor for owner / admin pusat
+            $this->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => '/backoffice/recipes']))
+                ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id, 'return_to' => '/backoffice/recipes'], false)));
+
+            $page = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'general', 'recipe' => $recipe->id]))->assertOk();
+            $html = $page->getContent();
+
+            // lands on the Recipe section and brings that Recipe into view, but opens nothing and offers no control
+            $this->assertStringContainsString('data-pw-section="recipe"', $html);
+            $this->assertStringContainsString('data-pw-focus-recipe="'.$recipe->id.'"', $html);
+            $this->assertStringNotContainsString('data-pw-open-recipe-url=', $html);
+            $this->assertStringContainsString('data-pw-recipe-ambiguous', $html);
+            $this->assertStringContainsString('Recipe aktif: #'.$one->id.', #'.$two->id.'.', $html);
+        }
+
+        $this->assertSame($before, $this->recipeFingerprint(), 'nothing activated, deactivated or edited');
+        $this->assertTrue($one->fresh()->is_active);
+        $this->assertTrue($two->fresh()->is_active);
+    }
+
+    public function test_opening_the_old_url_or_the_deep_link_writes_nothing(): void
+    {
+        $recipe = $this->recipe($this->regular, true, [[$this->milk, 46084.0], [$this->sugar, 0.6]]);
+        $before = $this->recipeFingerprint();
+        $this->actingAs($this->owner);
+
+        $this->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => '/backoffice/recipes']))->assertRedirect();
+        $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id]))->assertOk();
+        $this->getJson(route('backoffice.products.workspace.recipes.edit-form', [$this->product, $this->regular, $recipe]))->assertOk();
+
+        $this->assertSame($before, $this->recipeFingerprint());
+    }
+
+    public function test_the_old_url_keeps_its_authorization_and_view_only_recipes_open_read_only_in_the_workspace(): void
+    {
+        $recipe = $this->recipe($this->regular, true, [[$this->milk, 150]]);
+
+        // not signed in
+        $this->get(route('backoffice.recipes.edit', $recipe))->assertRedirect();
+
+        // a limited user may view a Recipe used at outlets beyond their access: it opens READ-ONLY in the workspace
+        $limited = $this->user('admin_outlet', [$this->a]);
+        $this->actingAs($limited)->get(route('backoffice.recipes.edit', $recipe))
+            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id], false)));
+        $html = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id]))->assertOk()->getContent();
+        $this->assertStringContainsString('data-pw-focus-recipe="'.$recipe->id.'"', $html);
+        $this->assertStringNotContainsString('data-pw-open-recipe-url=', $html);
+        $this->assertStringNotContainsString('data-pw-open-drawer="recipe"', $html);
+        $this->assertStringContainsString('data-pw-recipe-readonly', $html);
+        $this->assertStringContainsString('Recipe ini digunakan di outlet lain di luar akses Anda', $html);
+        $this->assertWritesForbidden($limited, $recipe);
+
+        // a Recipe used only at an outlet nobody here can access is not viewable at all
+        $foreign = $this->variant($this->other, 'Foreign', 'MAT-F', [$this->b]);
+        $foreignRecipe = $this->recipe($foreign, true, [[$this->milk, 5]]);
+        $this->actingAs($limited)->get(route('backoffice.recipes.edit', $foreignRecipe))->assertForbidden();
+
+        // COMPATIBILITY EXCEPTION: warehouse staff have no Product pages, so only they keep the classic page
+        $warehouse = $this->user('staff_gudang', [$this->a, $this->b]);
+        $this->actingAs($warehouse)->get(route('backoffice.recipes.edit', $recipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
+        $this->get(route('backoffice.products.edit', $this->product))->assertForbidden();
+
+        // roles without Recipe access stay out
+        $cashier = $this->user('kasir', [$this->a]);
+        $this->actingAs($cashier)->get(route('backoffice.recipes.edit', $recipe))->assertForbidden();
+    }
+
+    public function test_a_recipe_recorded_on_another_product_fails_safely_for_owner_and_never_opens_the_classic_editor(): void
+    {
+        $recipe = $this->recipe($this->regular, true, [[$this->milk, 150]]);
+        $recipe->update(['product_id' => $this->other->id]);   // legacy data: not repaired, not edited
+        $before = $this->recipeFingerprint();
+
+        foreach (['owner' => $this->owner, 'admin_pusat' => $this->user('admin_pusat', [$this->a, $this->b])] as $user) {
+            $this->actingAs($user)
+                ->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => '/backoffice/recipes?status=active']))
+                ->assertRedirect(url('/backoffice/recipes?status=active#recipe-'.$recipe->id))
+                ->assertSessionHas('error', fn ($message) => str_contains($message, 'Product yang berbeda') && str_contains($message, 'tidak ada data yang diubah'));
+        }
+
+        // without return_to: the Recipes list
+        $this->actingAs($this->owner)->get(route('backoffice.recipes.edit', $recipe))->assertRedirect(url('/backoffice/recipes'));
+
+        $this->assertSame($before, $this->recipeFingerprint(), 'zero writes');
+    }
+
+    public function test_a_recipe_with_many_ingredients_opens_complete(): void
+    {
+        $items = [];
+        foreach (range(1, 25) as $n) {
+            $items[] = [$this->ingredient('Bahan '.str_pad((string) $n, 2, '0', STR_PAD_LEFT), 'gram', [$this->a, $this->b]), $n + 0.25];
+        }
+        $recipe = $this->recipe($this->regular, true, $items);
+
+        $form = $this->actingAs($this->owner)
+            ->getJson(route('backoffice.products.workspace.recipes.edit-form', [$this->product, $this->regular, $recipe]))
+            ->assertOk()->json('html');
+
+        $this->assertSame(25, preg_match_all('/name="items\[\d+\]\[qty\]"/', $form));
+        $this->assertStringContainsString('Bahan 01', $form);
+        $this->assertStringContainsString('Bahan 25', $form);
+    }
+
+    public function test_the_recipe_drawer_no_longer_links_to_a_second_editor(): void
+    {
+        $recipe = $this->recipe($this->regular, true, [[$this->milk, 150]]);
+
+        $form = $this->actingAs($this->owner)
+            ->getJson(route('backoffice.products.workspace.recipes.edit-form', [$this->product, $this->regular, $recipe]))
+            ->json('html');
+
+        $this->assertStringNotContainsString('Halaman Recipe lama', $form);
+        $this->assertStringNotContainsString(route('backoffice.recipes.edit', $recipe->id, false), $form);
+    }
+
+    public function test_the_recipes_list_edit_link_leads_into_the_workspace(): void
+    {
+        $recipe = $this->recipe($this->regular, true, [[$this->milk, 150]]);
+        $listUrl = '/backoffice/recipes?status=active';
+
+        $html = $this->actingAs($this->owner)->get($listUrl)->assertOk()->getContent();
+        $editUrl = route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listUrl]);
+
+        $this->assertStringContainsString(e($editUrl), $html);
+        $this->get($editUrl)->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id, 'return_to' => $listUrl], false)));
+    }
+
+    private function recipeFingerprint(): array
+    {
+        return json_decode(json_encode([
+            DB::table('recipes')->orderBy('id')->get(),
+            DB::table('recipe_items')->orderBy('id')->get(),
+        ]), true);
+    }
 
     private function assertWritesForbidden(User $user, Recipe $recipe): void
     {

@@ -187,7 +187,6 @@ class ClientRevisionTest extends TestCase
         $this->seedStock($this->boba, $this->bxc, 200);
 
         $this->actingAs($this->owner)
-            ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
             ->post(route('backoffice.stock-balances.adjustment.store'), [
                 'location_type' => 'outlet',
                 'location_id' => $this->bxc->id,
@@ -279,30 +278,18 @@ class ClientRevisionTest extends TestCase
         ]);
         $bxc = StockAdjustment::where('location_id', $this->bxc->id)->firstOrFail();
 
-        // Adjustment History has no location dropdown of its own; the global Active Outlet
-        // selector in the top bar is the single source of outlet context for this page.
-        $this->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
-            ->get(route('backoffice.stock-adjustments.index'))
-            ->assertOk()->assertSee('Catatan BXC')->assertDontSee('Catatan Bazaar')
-            // The page's own second location dropdown is gone; only the global selector remains.
+        // Adjustment History has no outlet or location dropdown: it always covers every outlet the user
+        // can access (the Back Office has no Active Outlet any more).
+        $this->get(route('backoffice.stock-adjustments.index'))
+            ->assertOk()->assertSee('Catatan BXC')->assertSee('Catatan Bazaar')
             ->assertDontSee('Semua lokasi')->assertDontSee('Semua Warehouse');
 
-        $this->withSession(['active_backoffice_outlet_id' => $this->bazaar->id])
-            ->get(route('backoffice.stock-adjustments.index'))
-            ->assertOk()->assertSee('Catatan Bazaar')->assertDontSee('Catatan BXC');
-
-        // A forged outlet_id query string is ignored; Active Outlet (session) still governs.
-        $this->get(route('backoffice.stock-adjustments.index', ['outlet_id' => $this->bxc->id, 'search' => $bxc->reference]))
-            ->assertOk()->assertDontSee('Catatan BXC')->assertDontSee('Catatan Bazaar');
-
-        // No Active Outlet selected ("Semua Outlet yang Diizinkan") -> every permitted outlet shows.
-        $this->withSession(['active_backoffice_outlet_id' => null])
-            ->get(route('backoffice.stock-adjustments.index'))
+        // A forged outlet_id query string is ignored; only search / date / user narrow the list.
+        $this->get(route('backoffice.stock-adjustments.index', ['outlet_id' => $this->bxc->id]))
             ->assertOk()->assertSee('Catatan BXC')->assertSee('Catatan Bazaar');
 
-        $this->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
-            ->get(route('backoffice.stock-adjustments.index', ['search' => $bxc->reference]))
-            ->assertOk()->assertSee('Catatan BXC');
+        $this->get(route('backoffice.stock-adjustments.index', ['search' => $bxc->reference]))
+            ->assertOk()->assertSee('Catatan BXC')->assertDontSee('Catatan Bazaar');
 
         $this->get(route('backoffice.stock-adjustments.index', ['date_from' => now()->addDay()->toDateString()]))
             ->assertOk()->assertDontSee('Catatan BXC');
@@ -345,7 +332,6 @@ class ClientRevisionTest extends TestCase
         $this->air->update(['minimum_stock' => 100]); // makes this row need-action eligible
 
         $response = $this->actingAs($this->owner)
-            ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
             ->get(route('backoffice.stock-balances.index'));
 
         $response->assertOk()
@@ -367,7 +353,7 @@ class ClientRevisionTest extends TestCase
         $waffleVariant = ProductVariant::create(['product_id' => $waffle->id, 'name' => 'Std', 'code' => 'WS-1', 'price' => 1, 'price_dine_in' => 1, 'price_delivery' => 1, 'is_active' => true]);
         $waffleVariant->outlets()->sync([$this->bxc->id]);
 
-        $this->actingAs($this->owner)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+        $this->actingAs($this->owner);
 
         $this->get(route('backoffice.variants.index', ['category_id' => $this->menuCategory->id]))
             ->assertOk()->assertSee('Astral Latte')->assertDontSee('Waffle Salty');
@@ -375,10 +361,6 @@ class ClientRevisionTest extends TestCase
             ->assertOk()->assertSee('Waffle Salty')->assertDontSee('Astral Latte');
 
         // Outlet stays the availability authority: category does not expose Waffle at Bazaar.
-        $this->withSession(['active_backoffice_outlet_id' => $this->bazaar->id])
-            ->get(route('backoffice.variants.index', ['category_id' => $other->id]))
-            ->assertOk()->assertDontSee('Waffle Salty');
-
         $this->actingAs($this->bazaarCashier)
             ->withSession(['auth_portal' => 'cashier', 'cashier_outlet_id' => $this->bazaar->id])
             ->get(route('cashier.index'))
@@ -431,18 +413,20 @@ class ClientRevisionTest extends TestCase
             ->assertSee('"reward_type":"free_item"', false);
     }
 
-    public function test_promo_index_defaults_to_active_outlet(): void
+    public function test_promo_index_defaults_to_every_outlet_and_the_in_page_outlet_filter_narrows_it(): void
     {
         $this->makePromo('Promo A', [$this->bxc]);
         $this->makePromo('Promo B', [$this->bazaar]);
         $this->makePromo('Promo Legacy', []);
 
-        $this->actingAs($this->owner)->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
+        $this->actingAs($this->owner)
             ->get(route('backoffice.promos.index'))
+            ->assertOk()->assertSee('Promo A')->assertSee('Promo B')->assertSee('Promo Legacy');
+
+        $this->get(route('backoffice.promos.index', ['outlet_id' => $this->bxc->id]))
             ->assertOk()->assertSee('Promo A')->assertDontSee('Promo B')->assertDontSee('Promo Legacy');
 
-        $this->withSession(['active_backoffice_outlet_id' => $this->bazaar->id])
-            ->get(route('backoffice.promos.index'))
+        $this->get(route('backoffice.promos.index', ['outlet_id' => $this->bazaar->id]))
             ->assertOk()->assertSee('Promo B')->assertDontSee('Promo A');
 
         $this->get(route('backoffice.promos.index', ['outlet_id' => 'unassigned']))->assertOk()->assertSee('Promo Legacy');

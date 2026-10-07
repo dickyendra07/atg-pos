@@ -10,7 +10,9 @@
     <div class="pw"
          data-product-workspace
          data-pw-section="{{ $section }}"
-         data-pw-product-id="{{ $product->id }}">
+         data-pw-product-id="{{ $product->id }}"
+         @if(! empty($openRecipeDrawer)) data-pw-open-recipe-url="{{ $openRecipeDrawer['form_url'] }}" @endif
+         @if(! empty($focusRecipeId)) data-pw-focus-recipe="{{ $focusRecipeId }}" @endif>
 
         <header class="pw-header" data-pw-header>
             @include('backoffice.products.workspace._header')

@@ -23,5 +23,5 @@
 
 <div class="pw-header-actions">
     <span class="pw-save-state" data-pw-save-state aria-live="polite">Tersimpan</span>
-    <a href="{{ $closeUrl }}" class="btn btn-dark" data-pw-close>Kembali ke Products</a>
+    <a href="{{ $closeUrl }}" class="btn btn-dark" data-pw-close>{{ $closeLabel ?? 'Kembali ke Products' }}</a>
 </div>

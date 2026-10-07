@@ -94,6 +94,79 @@ class ProductWorkspace
     }
 
     /**
+     * Where the classic "Edit Recipe" URL sends $user: the Product Workspace Recipe section for this Recipe's
+     * Product, with ?recipe= naming the Recipe. The workspace decides what that means: the drawer opens for a
+     * Recipe the user may edit, and every other state is shown as it is (view-only, several active Recipes,
+     * inactive) without any control that would pick, activate or change a Recipe.
+     *
+     * Null only when the user has no access to the Product pages at all (staff_gudang): they keep the classic
+     * page as a compatibility exception. Check recipeOwnershipProblem() first.
+     */
+    public function recipeEditUrl(User $user, Recipe $recipe, ?string $listReturnTo): ?string
+    {
+        $product = $recipe->variant?->product;
+
+        if (! $product
+            || ! ProductAccessPolicy::hasProductRole($user)
+            || ! app(ProductAccessPolicy::class)->canAccess($user, $product)) {
+            return null;
+        }
+
+        $params = [$product->id, 'section' => 'recipe', 'recipe' => $recipe->id];
+
+        if ($listReturnTo !== null) {
+            $params[BackofficeReturnUrl::FIELD] = $listReturnTo;
+        }
+
+        return route('backoffice.products.edit', $params, false);
+    }
+
+    /**
+     * Why this Recipe cannot be opened in the workspace at all (legacy data: no Variant / Product, or the
+     * Recipe is recorded on a different Product than its Variant). Null when its ownership is consistent.
+     * Never repaired here.
+     */
+    public function recipeOwnershipProblem(Recipe $recipe): ?string
+    {
+        $variant = $recipe->variant;
+
+        if (! $variant?->product) {
+            return 'Recipe #'.$recipe->id.' tidak terhubung ke Variant atau Product yang valid (data lama). Recipe tidak dibuka dan tidak ada data yang diubah.';
+        }
+
+        if (! RecipeWriter::owns($variant->product, $variant, $recipe)) {
+            return 'Recipe #'.$recipe->id.' tercatat pada Product yang berbeda dari Variant-nya (data lama). Recipe tidak dibuka dan tidak ada data yang diubah; data ini perlu ditinjau terlebih dahulu.';
+        }
+
+        return null;
+    }
+
+    /**
+     * What a deep link (?recipe=) points at inside this workspace, or null when the Recipe is not one of
+     * this Product's Recipes. form_url is set only for a Recipe the Recipe section offers an Edit drawer
+     * for; for any other state (view-only, several active Recipes, recorded on another Product) it is null
+     * and the section just shows that Recipe as it is.
+     *
+     * @return array{id: int, form_url: string|null}|null
+     */
+    public function recipeDeepLink(array $workspace, mixed $recipeId): ?array
+    {
+        if (! is_scalar($recipeId) || ! ctype_digit((string) $recipeId)) {
+            return null;
+        }
+
+        foreach ($workspace['recipes'] as $row) {
+            foreach ($row['recipes'] as $recipe) {
+                if ((int) $recipe['id'] === (int) $recipeId) {
+                    return ['id' => (int) $recipe['id'], 'form_url' => $recipe['form_url']];
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Everything the workspace page (and each re-rendered section) needs. $request carries return_to,
      * from the query string on the page itself or from the hidden form field on a section save.
      */
@@ -102,13 +175,19 @@ class ProductWorkspace
         $listReturnTo = BackofficeReturnUrl::fromRequest($request);
         $product->refresh();
 
+        // Coming from the Recipes list (its Edit link lands here): "back" means that list, filters kept.
+        $fromRecipes = $listReturnTo !== null && parse_url($listReturnTo, PHP_URL_PATH) === '/backoffice/recipes';
+
         return [
             'user' => $user,
             'product' => $product,
             'section' => self::normalizeSection($section),
             'sections' => self::SECTIONS,
             'workspaceReturnTo' => $listReturnTo,
-            'closeUrl' => BackofficeReturnUrl::resolve($request, 'backoffice.products.index', [], 'product-'.$product->id),
+            'closeUrl' => $fromRecipes
+                ? $listReturnTo
+                : BackofficeReturnUrl::resolve($request, 'backoffice.products.index', [], 'product-'.$product->id),
+            'closeLabel' => $fromRecipes ? 'Kembali ke Recipes' : 'Kembali ke Products',
             'brands' => Brand::orderBy('name')->get(),
             'categories' => ProductCategory::where('is_active', true)->orWhere('id', $product->product_category_id)->orderBy('name')->get(),
             'categoryBrands' => Brand::where('is_active', true)->orderBy('name')->get(),

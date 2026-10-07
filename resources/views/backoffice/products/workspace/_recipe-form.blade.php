@@ -113,9 +113,6 @@
             </p>
         </div>
 
-        @if($classicUrl)
-            <p class="pw-note pw-mt-0">Halaman Recipe lama: <a href="{{ $classicUrl }}" class="pw-link">buka Recipe #{{ $recipe->id }}</a>.</p>
-        @endif
     </div>
 
     <div class="pw-drawer-foot">

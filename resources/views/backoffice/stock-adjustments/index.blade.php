@@ -13,13 +13,12 @@
 </style>
 <div class="adj-page">
     <div class="adj-head">
-        <div><h1>Adjustment History</h1><div style="color:#64748b">Riwayat koreksi stok untuk Active Outlet Backoffice yang sedang dipilih di kanan atas.</div></div>
+        <div><h1>Adjustment History</h1><div style="color:#64748b">Riwayat koreksi stok untuk semua outlet dan gudang yang dapat diakses akun ini.</div></div>
         <a class="btn" href="{{ route('backoffice.stock-balances.adjustment.create') }}">Buat Adjustment</a>
     </div>
 
     <div class="adj-card">
-        {{-- Location/outlet is driven only by the global Active Outlet selector in the top bar;
-             no separate location dropdown here, so there is a single source of outlet context. --}}
+        {{-- The list always covers every outlet (and warehouse) the user can access; there is no outlet filter. --}}
         <form class="filters" method="GET">
             <div class="field"><label>Date From</label><input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></div>
             <div class="field"><label>Date To</label><input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></div>

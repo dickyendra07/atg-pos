@@ -241,11 +241,29 @@
         <div class="section-box">
             <div class="section-title">Top Selling Products</div>
 
+            @php
+                // Display only: the row name is "Product - Variant". When the Variant name already starts with the
+                // Product name, print it once (same rule as receipts, App\Support\ReceiptItemName); otherwise keep it as it is.
+                $pwPrintName = function ($name) {
+                    $name = (string) $name;
+
+                    if (! str_contains($name, ' - ')) {
+                        return $name;
+                    }
+
+                    [$productPart, $variantPart] = explode(' - ', $name, 2);
+                    $normalized = \App\Support\ReceiptItemName::combine($productPart, $variantPart);
+
+                    // Only a removed repetition (or an empty variant) changes the text; unrelated names stay "Product - Variant".
+                    return $normalized === trim($productPart.' '.trim($variantPart)) ? $name : $normalized;
+                };
+            @endphp
+
             @if($topProducts->count())
                 @foreach($topProducts as $product)
                     <div class="list-row">
                         <div>
-                            <div class="list-name">{{ $product['name'] }}</div>
+                            <div class="list-name">{{ $pwPrintName($product['name']) }}</div>
                             <div class="list-meta">Qty terjual: {{ number_format($product['qty'], 0, ',', '.') }}</div>
                         </div>
                         <div class="list-value">Rp{{ number_format($product['sales'], 0, ',', '.') }}</div>

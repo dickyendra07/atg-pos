@@ -233,25 +233,21 @@ class ProductSafeDeleteTest extends TestCase
 
     // ---- G: global, not outlet-scoped -------------------------------------------------------------
 
-    public function test_the_check_is_global_even_when_the_active_outlet_cannot_see_the_dependency(): void
+    public function test_the_check_is_global_and_not_limited_to_one_outlet(): void
     {
         // Product at both outlets; its sale happened at Outlet B only.
         [$product, $variants] = $this->makeProductWithRecipe('Shared', 1);
         $this->sale($product, $variants[0], $this->outletB);
 
-        // Backoffice is looking at Outlet A.
-        $session = ['active_backoffice_outlet_id' => $this->outletA->id];
-
-        $html = $this->actingAs($this->owner)->withSession($session)->get(route('backoffice.products.index'))->assertOk()->getContent();
-        $this->assertStringContainsString('id="product-'.$product->id.'"', $html, 'visible from Outlet A');
+        $html = $this->actingAs($this->owner)->get(route('backoffice.products.index'))->assertOk()->getContent();
+        $this->assertStringContainsString('id="product-'.$product->id.'"', $html);
         $this->assertStringContainsString('data-bo-blocked="Product tidak dapat dihapus permanen karena sudah memiliki riwayat transaksi."', $html);
 
-        $this->actingAs($this->owner)->withSession($session)
+        $this->actingAs($this->owner)
             ->delete(route('backoffice.products.destroy-permanent', $product->id))
             ->assertSessionHas('error');
 
         $this->assertDatabaseHas('products', ['id' => $product->id]);
-        $this->assertSame($this->outletA->id, session('active_backoffice_outlet_id'), 'Active Outlet untouched');
     }
 
     // ---- H / race: server decides again ------------------------------------------------------------

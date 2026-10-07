@@ -1,5 +1,6 @@
 {{-- Recipe per Variant (global: one Recipe serves every outlet of the Variant). Edit / Buat Recipe open
-     the Recipe drawer; without JS the same links open the classic Recipe pages. Aktifkan / Nonaktifkan
+     the Recipe drawer (the classic Edit Recipe URL redirects here with ?recipe=, which opens it or, for a
+     view-only / ambiguous Recipe, just brings it into view). No link to a second editor. Aktifkan / Nonaktifkan
      are explicit actions with a confirmation. Ambiguous Variants (several active Recipes) are read-only
      here, and nothing is ever repaired, merged or picked automatically. No Recipe delete here. --}}
 @php
@@ -34,7 +35,7 @@
                 <div class="pw-alert pw-alert-danger" data-pw-recipe-ambiguous>
                     <strong>Lebih dari satu Recipe aktif. Perlu review data terlebih dahulu.</strong>
                     <div>Recipe aktif: {{ collect($pwRecipeRow['active_recipe_ids'])->map(fn ($id) => '#'.$id)->implode(', ') }}.</div>
-                    <div>Cashier menolak penjualan Variant ini. Sistem tidak memilih salah satu secara otomatis dan tidak menonaktifkan Recipe apa pun; Recipe Variant ini hanya dapat dilihat di Product Workspace. Tinjau datanya di halaman Recipe.</div>
+                    <div>Cashier menolak penjualan Variant ini. Sistem tidak memilih salah satu secara otomatis dan tidak mengaktifkan atau menonaktifkan Recipe apa pun; Recipe Variant ini hanya dapat dilihat di sini sampai datanya ditinjau.</div>
                 </div>
             @elseif($pwRecipeRow['status'] === 'inactive' && $pwRecipeRow['inactive_count'] > 1)
                 <div class="pw-alert pw-alert-warn">Ada {{ $pwRecipeRow['inactive_count'] }} Recipe nonaktif untuk Variant ini. Pilih sendiri Recipe yang ingin diperiksa atau diaktifkan; sistem tidak memilih salah satu secara otomatis.</div>
@@ -58,7 +59,8 @@
                                    data-pw-open-drawer="recipe"
                                    data-pw-form-url="{{ $pwRecipe['form_url'] }}">Edit Recipe</a>
                             @else
-                                <a href="{{ $pwRecipe['edit_url'] }}" class="btn btn-light btn-sm">{{ $pwRecipeRow['can_mutate'] ? 'Kelola di halaman Recipe' : 'Lihat Recipe' }}</a>
+                                {{-- View-only here (no mutation controls); there is no second editor to send the user to. --}}
+                                <span class="pw-muted" data-pw-recipe-readonly>Hanya lihat</span>
                             @endif
                             @if($pwRecipe['activate_url'])
                                 <form method="POST"

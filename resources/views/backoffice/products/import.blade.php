@@ -86,7 +86,8 @@
             margin-bottom: 6px;
         }
 
-        .field input {
+        .field input,
+        .field select {
             width: 100%;
             box-sizing: border-box;
             border: 1px solid #d1d5db;
@@ -132,10 +133,21 @@
         <div class="card">
             <div class="info">
                 Upload file CSV sesuai template. Brand dan Category harus sudah ada dulu di sistem.
+                Product hasil import hanya tersedia di outlet tujuan yang dipilih, bukan di semua outlet.
             </div>
 
             <form method="POST" action="{{ route('backoffice.products.import.store') }}" enctype="multipart/form-data">
                 @csrf
+
+                <div class="field">
+                    <label for="import-outlet">Outlet tujuan</label>
+                    <select id="import-outlet" name="outlet_id" required>
+                        <option value="">Pilih outlet</option>
+                        @foreach($backofficeOutletOptions ?? [] as $importOutlet)
+                            <option value="{{ $importOutlet->id }}" @selected((string) old('outlet_id') === (string) $importOutlet->id)>{{ $importOutlet->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
                 <div class="field">
                     <label>File CSV</label>
