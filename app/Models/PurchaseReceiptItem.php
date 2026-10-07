@@ -24,6 +24,6 @@ class PurchaseReceiptItem extends Model
 
     public function ingredient(): BelongsTo
     {
-        return $this->belongsTo(Ingredient::class);
+        return $this->belongsTo(Ingredient::class)->withTrashed();
     }
 }

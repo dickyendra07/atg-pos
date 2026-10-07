@@ -983,6 +983,8 @@
                                                     </button>
                                                 </form>
                                             @endif
+
+                                            @include('backoffice.partials.cleanup-button', ['type' => 'recipe', 'id' => $recipe->id, 'name' => $recipe->name, 'return' => $listReturnTo, 'label' => 'Hapus Permanen', 'class' => 'btn btn-small', 'testid' => 'cleanup-recipe-'.$recipe->id])
                                         </div>
                                     </td>
                                 </tr>

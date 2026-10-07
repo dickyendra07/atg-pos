@@ -517,7 +517,7 @@ class RecipeWriter
                 continue;
             }
 
-            $rules['new_items.'.$index.'.ingredient_id'] = 'required|integer|exists:ingredients,id';
+            $rules['new_items.'.$index.'.ingredient_id'] = 'required|integer|exists:ingredients,id,deleted_at,NULL';
             $rules['new_items.'.$index.'.qty'] = self::qtyRule();
             $newItems[$index] = ['ingredient_id' => $ingredientId, 'qty' => $qty];
         }

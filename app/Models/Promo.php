@@ -52,12 +52,12 @@ class Promo extends Model
 
     public function requirementVariant(): BelongsTo
     {
-        return $this->belongsTo(ProductVariant::class, 'requirement_product_variant_id');
+        return $this->belongsTo(ProductVariant::class, 'requirement_product_variant_id')->withTrashed();
     }
 
     public function rewardVariant(): BelongsTo
     {
-        return $this->belongsTo(ProductVariant::class, 'reward_product_variant_id');
+        return $this->belongsTo(ProductVariant::class, 'reward_product_variant_id')->withTrashed();
     }
 
     public function requirements(): HasMany

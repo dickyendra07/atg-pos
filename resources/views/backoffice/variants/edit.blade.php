@@ -657,6 +657,14 @@
                 const removeButton = event.target.closest('.btn-remove-row');
                 if (!removeButton) return;
 
+                // A saved Variant is never removed from this form (the server refuses it too): it has its own
+                // explicit delete action with an impact summary.
+                const savedId = removeButton.closest('[data-variant-row]').querySelector('input[type="hidden"][name$="[id]"]');
+                if (savedId && savedId.value) {
+                    alert('Variant yang sudah tersimpan tidak bisa dihapus lewat editor ini. Gunakan aksi "Hapus dari Sistem" di Product Workspace (Variants & Pricing).');
+                    return;
+                }
+
                 const rows = rowsContainer.querySelectorAll('[data-variant-row]');
                 if (rows.length <= 1) {
                     alert('Minimal harus ada 1 row variant.');

@@ -101,7 +101,7 @@ class BackofficeController extends Controller
         $transactionQuery = SalesTransaction::with(['items', 'outlet']);
         $shiftQuery = CashierShift::query();
         $movementQuery = StockMovement::with(['ingredient']);
-        $stockBalanceQuery = StockBalance::with(['ingredient', 'outlet', 'warehouse']);
+        $stockBalanceQuery = StockBalance::withLiveIngredient()->with(['ingredient', 'outlet', 'warehouse']);
 
         if ($selectedOutletId) {
             $transactionQuery->where('outlet_id', $selectedOutletId);

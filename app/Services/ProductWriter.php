@@ -39,7 +39,7 @@ class ProductWriter
             'brand_id' => 'required|exists:brands,id',
             'product_category_id' => ['required', $categoryRule],
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:255|unique:products,code'.($product ? ','.$product->id : ''),
+            'code' => ['required', 'string', 'max:255', Rule::unique('products', 'code')->whereNull('deleted_at')->ignore($product?->id)],
             'description' => 'nullable|string',
             'is_active' => 'required|boolean',
         ];

@@ -127,6 +127,17 @@ abstract class CategoryManagementController extends Controller
                 ->with('error', 'Kategori masih digunakan oleh '.$category->{$countKey}.' '.$noun.'. Pindahkan kategori '.$noun.' terlebih dahulu sebelum menghapus.');
         }
 
+        // Product / Ingredient rows removed by the cleanup delete are only tombstoned: they still point at this
+        // category and the same cascade would physically delete them (and their history links) with it.
+        $removed = $category->{$this->usageRelation()}()->withTrashed()->count();
+
+        if ($removed > 0) {
+            $noun = $this->config()['usage_noun'] ?? 'item';
+
+            return BackofficeReturnUrl::redirect($request, $this->config()['route'].'.index', [], 'category-'.$category->id)
+                ->with('error', 'Kategori tidak bisa dihapus karena masih terhubung dengan '.$removed.' '.$noun.' yang sudah dihapus dari sistem (riwayatnya tetap tersimpan).');
+        }
+
         $category->delete();
 
         // The row is gone, so no anchor.

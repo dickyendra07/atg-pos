@@ -45,7 +45,7 @@ class StockBalanceViewController extends Controller
 
     protected function applyStockFilters(Request $request)
     {
-        $baseQuery = StockBalance::with(['ingredient.category', 'warehouse', 'outlet'])
+        $baseQuery = StockBalance::withLiveIngredient()->with(['ingredient.category', 'warehouse', 'outlet'])
             ->orderByDesc('id');
 
         $activeOutletId = $this->outletContext()->activeOutletId(Auth::user());
@@ -231,7 +231,7 @@ class StockBalanceViewController extends Controller
 
         $allRelevantMovements = $movementBaseQuery->get();
 
-        $balanceBaseQuery = StockBalance::with(['ingredient.category', 'warehouse', 'outlet']);
+        $balanceBaseQuery = StockBalance::withLiveIngredient()->with(['ingredient.category', 'warehouse', 'outlet']);
 
         if ($request->filled('ingredient_id')) {
             $balanceBaseQuery->where('ingredient_id', $request->ingredient_id);
@@ -623,7 +623,7 @@ class StockBalanceViewController extends Controller
             'received_date' => 'required|date',
             'notes' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
-            'items.*.ingredient_id' => 'required|exists:ingredients,id',
+            'items.*.ingredient_id' => 'required|exists:ingredients,id,deleted_at,NULL',
             'items.*.qty_in' => 'required|numeric|min:0.01',
             'items.*.unit_price' => 'required|numeric|min:0',
             'items.*.note' => 'nullable|string|max:255',
@@ -810,7 +810,7 @@ class StockBalanceViewController extends Controller
             'location_id' => 'required|integer|min:1',
             'note' => 'nullable|string|max:500',
             'items' => 'required|array|min:1',
-            'items.*.ingredient_id' => 'required|exists:ingredients,id',
+            'items.*.ingredient_id' => 'required|exists:ingredients,id,deleted_at,NULL',
             'items.*.actual_qty' => 'required|numeric|min:0',
         ], [
             'items.required' => 'Minimal harus ada 1 item adjustment.',
@@ -969,7 +969,7 @@ class StockBalanceViewController extends Controller
 
         $selectedWarehouseId = $request->get('warehouse_id');
 
-        $stockBalancesQuery = StockBalance::with(['ingredient.category'])
+        $stockBalancesQuery = StockBalance::withLiveIngredient()->with(['ingredient.category'])
             ->where('location_type', 'warehouse')
             ->orderByDesc('id');
 
@@ -999,7 +999,7 @@ class StockBalanceViewController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            $stockBalance = StockBalance::with('ingredient')->findOrFail($validated['stock_balance_id']);
+            $stockBalance = StockBalance::withLiveIngredient()->with('ingredient')->findOrFail($validated['stock_balance_id']);
 
             if (
                 $stockBalance->location_type !== 'warehouse' ||

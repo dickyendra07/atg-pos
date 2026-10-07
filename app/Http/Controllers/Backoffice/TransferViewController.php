@@ -507,7 +507,7 @@ class TransferViewController extends Controller
             abort(403, 'Kamu tidak punya akses ke stok outlet ini.');
         }
 
-        $stockBalances = StockBalance::with(['ingredient.category'])
+        $stockBalances = StockBalance::withLiveIngredient()->with(['ingredient.category'])
             ->where('location_type', $location['type'])
             ->where('location_id', $location['id'])
             ->where('qty_on_hand', '>', 0)
@@ -551,7 +551,7 @@ class TransferViewController extends Controller
             'receiver_name' => 'nullable|string|max:100',
             'note' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
-            'items.*.ingredient_id' => 'required|exists:ingredients,id',
+            'items.*.ingredient_id' => 'required|exists:ingredients,id,deleted_at,NULL',
             'items.*.qty' => 'required|numeric|min:0.01',
         ], [
             'items.required' => 'Minimal harus ada 1 item transfer.',

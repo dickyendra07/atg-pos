@@ -94,13 +94,13 @@ class PromoViewController extends Controller
             'requirement_logic' => 'required|in:and,or',
 
             'requirements' => 'nullable|array',
-            'requirements.*.product_variant_id' => 'nullable|exists:product_variants,id',
+            'requirements.*.product_variant_id' => 'nullable|exists:product_variants,id,deleted_at,NULL',
             'requirements.*.qty' => 'nullable|numeric|min:1',
 
             'rewards' => 'nullable|array',
             'rewards.*.reward_type' => 'nullable|in:discount_amount,discount_percent,free_item',
             'rewards.*.reward_value' => 'nullable|numeric|min:0',
-            'rewards.*.product_variant_id' => 'nullable|exists:product_variants,id',
+            'rewards.*.product_variant_id' => 'nullable|exists:product_variants,id,deleted_at,NULL',
             'rewards.*.qty' => 'nullable|numeric|min:1',
 
             'start_date' => 'nullable|date',

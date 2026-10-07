@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Backoffice\BackofficeController;
 use App\Http\Controllers\Backoffice\CashierShiftViewController;
+use App\Http\Controllers\Backoffice\CleanupDeleteController;
 use App\Http\Controllers\Backoffice\DiscountViewController;
 use App\Http\Controllers\Backoffice\IngredientCategoryController;
 use App\Http\Controllers\Backoffice\IngredientProductionController;
@@ -33,6 +34,12 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
     Route::get('/', BackofficeController::class)->name('index');
     Route::post('/approval-pins/generate', [BackofficeController::class, 'generateApprovalPin'])->name('approval-pins.generate');
     Route::get('/print-summary', [BackofficeController::class, 'printSummary'])->name('print-summary');
+
+    // Temporary cleanup delete (Product / Variant / Ingredient / Recipe): flag + owner/admin_pusat enforced in the controller.
+    Route::get('/cleanup/{type}/{id}/impact', [CleanupDeleteController::class, 'impact'])
+        ->whereIn('type', ['product', 'variant', 'ingredient', 'recipe'])->whereNumber('id')->name('cleanup.impact');
+    Route::delete('/cleanup/{type}/{id}', [CleanupDeleteController::class, 'destroy'])
+        ->whereIn('type', ['product', 'variant', 'ingredient', 'recipe'])->whereNumber('id')->name('cleanup.destroy');
 
     Route::get('/users', [UserManagementController::class, 'index'])->name('users.index');
     Route::get('/users/create', [UserManagementController::class, 'create'])->name('users.create');

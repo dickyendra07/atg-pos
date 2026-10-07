@@ -667,6 +667,7 @@
                                                         <button type="submit" class="btn btn-small btn-small-red">Nonaktifkan</button>
                                                     </form>
                                                 @endif
+                                                @include('backoffice.partials.cleanup-button', ['type' => 'variant', 'id' => $variant->id, 'name' => $variant->name, 'return' => $listReturnTo, 'testid' => 'cleanup-variant-'.$variant->id])
                                             </td>
                                         </tr>
                                     @endforeach

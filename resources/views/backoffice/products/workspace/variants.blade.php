@@ -70,6 +70,8 @@
                                             <button type="submit" class="btn btn-orange btn-sm">Nonaktifkan</button>
                                         </form>
                                     @endif
+                                    {{-- Temporary cleanup delete (flag + owner/admin pusat): tombstone, history stays. --}}
+                                    @include('backoffice.partials.cleanup-button', ['type' => 'variant', 'id' => $pwVariant['id'], 'name' => $pwVariant['name'], 'return' => \App\Services\ProductWorkspace::url($product, 'variants', $workspaceReturnTo), 'class' => 'btn btn-red btn-sm', 'testid' => 'cleanup-variant-'.$pwVariant['id']])
                                 </div>
                             </td>
                         </tr>

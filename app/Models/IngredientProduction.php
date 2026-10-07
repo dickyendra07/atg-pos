@@ -35,7 +35,7 @@ class IngredientProduction extends Model
 
     public function outputIngredient(): BelongsTo
     {
-        return $this->belongsTo(Ingredient::class, 'output_ingredient_id');
+        return $this->belongsTo(Ingredient::class, 'output_ingredient_id')->withTrashed();
     }
 
     public function producedBy(): BelongsTo

@@ -113,6 +113,10 @@
     </div>
 
     <div class="pw-drawer-foot">
+        @if($ingredient)
+            {{-- Temporary cleanup delete (flag + owner/admin pusat): tombstone, blocked while a Recipe still uses it. --}}
+            @include('backoffice.partials.cleanup-button', ['type' => 'ingredient', 'id' => $ingredient->id, 'name' => $ingredient->name, 'return' => \App\Services\ProductWorkspace::url($product, 'recipe', $workspaceReturnTo), 'class' => 'btn btn-red', 'testid' => 'cleanup-ingredient-'.$ingredient->id])
+        @endif
         <button type="button" class="btn btn-light" data-pw-drawer-cancel>Batal</button>
         <button type="submit" class="btn btn-green" data-pw-drawer-save>{{ $ingredient ? 'Simpan Ingredient' : 'Buat Ingredient' }}</button>
     </div>

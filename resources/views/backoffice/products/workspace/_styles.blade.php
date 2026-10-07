@@ -16,6 +16,8 @@
     .btn-green { background: linear-gradient(135deg, #166534 0%, #1f7a44 100%); }
     .btn-blue { background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%); }
     .btn-orange { background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%); }
+    .btn-red { background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%); }
+    .pw-danger-zone { border-color: #fecaca; background: #fffafa; }
     .btn-light { background: #f3f4f6; color: #111827; border: 1px solid #e5e7eb; box-shadow: none; }
 
     .status-badge { display: inline-flex; align-items: center; justify-content: center; padding: 6px 11px; border-radius: 999px; font-size: 12px; font-weight: 800; white-space: nowrap; }

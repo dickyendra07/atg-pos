@@ -92,6 +92,8 @@
                                     <button type="submit" class="btn btn-orange btn-sm">Nonaktifkan</button>
                                 </form>
                             @endif
+                            {{-- Temporary cleanup delete (flag + owner/admin pusat): a real delete of this Recipe and its items only. --}}
+                            @include('backoffice.partials.cleanup-button', ['type' => 'recipe', 'id' => $pwRecipe['id'], 'name' => $pwRecipe['name'], 'return' => \App\Services\ProductWorkspace::url($product, 'recipe', $workspaceReturnTo), 'label' => 'Hapus Permanen', 'class' => 'btn btn-red btn-sm', 'testid' => 'cleanup-recipe-'.$pwRecipe['id']])
                         </div>
                     </div>
 
