@@ -10,6 +10,8 @@ use App\Models\ProductVariant;
 use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Services\BackofficeOutletContext;
+use App\Services\ProductAccessPolicy;
+use App\Services\ProductWorkspace;
 use App\Services\RecipeAccessPolicy;
 use App\Services\RecipeWriter;
 use App\Support\BackofficeReturnUrl;
@@ -60,8 +62,8 @@ class RecipeViewController extends Controller
     }
 
     /**
-     * VIEW scope shared by Index, Create dropdown, Edit and export: the Active Outlet when one is
-     * picked, otherwise everything for full-access roles or the user's accessible outlets.
+     * VIEW scope shared by Index, Create dropdown, Edit and export: everything for full-access roles,
+     * otherwise the user's accessible outlets (the Back Office has no selectable Active Outlet).
      *
      * @return int[]|null null = unrestricted
      */
@@ -72,12 +74,12 @@ class RecipeViewController extends Controller
 
     /**
      * A Recipe has no outlet of its own; it belongs to the outlets where its Product + Variant are
-     * available. Direct URLs must not bypass the Active Outlet (or a limited user's outlet access).
+     * available. Direct URLs must not bypass a limited user's outlet access.
      */
     protected function authorizeRecipeView(Recipe $recipe, $user): void
     {
         if (! $this->recipePolicy()->canViewRecipe($user, $recipe)) {
-            abort(403, 'Recipe ini tidak tersedia pada Active Outlet atau outlet yang dapat kamu akses.');
+            abort(403, 'Recipe ini tidak tersedia pada outlet yang dapat kamu akses.');
         }
     }
 
@@ -216,13 +218,31 @@ class RecipeViewController extends Controller
             ->with('success', 'Recipe berhasil ditambahkan.');
     }
 
-    public function edit(Recipe $recipe)
+    public function edit(Request $request, Recipe $recipe)
     {
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
         $scope = $this->outletScope($user);
 
         $this->authorizeRecipeView($recipe, $user);
+
+        // One Recipe editor: the Product Workspace. Everyone with access to the Product pages (owner, admin
+        // pusat, admin outlet) is sent there for every Recipe state, without picking, activating or changing
+        // anything; the workspace shows view-only and ambiguous Recipes as they are. A Recipe whose ownership
+        // is inconsistent is never opened: safe message, nothing written, and no classic page as a way around.
+        // Compatibility exception: roles without Product access (staff_gudang) keep this classic page.
+        $recipe->load(['variant.product']);
+        $workspaceService = app(ProductWorkspace::class);
+
+        if (ProductAccessPolicy::hasProductRole($user)) {
+            if ($problem = $workspaceService->recipeOwnershipProblem($recipe)) {
+                return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)->with('error', $problem);
+            }
+
+            if ($workspaceUrl = $workspaceService->recipeEditUrl($user, $recipe, BackofficeReturnUrl::fromRequest($request))) {
+                return redirect($workspaceUrl);
+            }
+        }
 
         $recipe->load([
             'items.ingredient.category',
@@ -233,7 +253,7 @@ class RecipeViewController extends Controller
         $mutation = $this->recipePolicy()->mutationStatus($user, $recipe->variant);
         $canMutate = $mutation['allowed'];
 
-        // The Recipe's own Variant is always offered, so the Active Outlet filter can never make the
+        // The Recipe's own Variant is always offered, so the outlet scope can never make the
         // select fall back to another Variant and silently re-point the Recipe on save. Other Variants
         // are only offered when moving the Recipe to them would be allowed (read-only: none).
         $variants = ProductVariant::with(['product.outlets', 'outlets'])
@@ -405,7 +425,7 @@ class RecipeViewController extends Controller
     public function exportCsv(): StreamedResponse
     {
         $user = $this->authorizeAccess();
-        // Same outlet scope as the Recipe Index, like the Variant export follows the Active Outlet.
+        // Same outlet scope as the Recipe Index.
         $scope = $this->outletScope($user);
 
         $filename = 'pos_recipe_master_'.now()->format('Ymd_His').'.csv';

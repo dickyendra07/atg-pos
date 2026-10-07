@@ -272,9 +272,7 @@ $completedTransactions = $transactions
                         $productName = $cleanShiftText($item->product_name ?? '-');
                         $variantName = $cleanShiftText($item->variant_name ?? '');
 
-                        return $variantName !== ''
-                            ? $productName . ' ' . $variantName
-                            : $productName;
+                        return \App\Support\ReceiptItemName::combine($productName, $variantName);
                     })
                     ->map(function ($groupedItems, $name) {
                         return [

@@ -227,9 +227,14 @@
             $modifiers[] = 'Less Ice';
         }
 
+        $productName = $item->product_name ?? '-';
+        $variantName = trim(preg_replace('/\s*\[(DINE IN|DELIVERY|PROMO FREE ITEM)\]\s*/i', ' ', (string) ($item->variant_name ?? '')));
+
         return [
-            'product_name' => $item->product_name ?? '-',
-            'variant_name' => trim(preg_replace('/\s*\[(DINE IN|DELIVERY|PROMO FREE ITEM)\]\s*/i', ' ', (string) ($item->variant_name ?? ''))),
+            'product_name' => $productName,
+            'variant_name' => $variantName,
+            // The one printed label (Product + Variant without repeating the Product name). Presentation only.
+            'display_name' => \App\Support\ReceiptItemName::combine($productName, $variantName),
             'modifiers' => $modifiers,
             'qty' => (float) ($item->qty ?? 0),
             'price' => (float) ($item->price ?? 0),
@@ -543,7 +548,7 @@
 
                     const productName = item.product_name || '-';
                     const variantName = item.variant_name ? String(item.variant_name).trim() : '';
-                    const productNameWithVariant = variantName ? `${productName} ${variantName}` : productName;
+                    const productNameWithVariant = item.display_name || (variantName ? `${productName} ${variantName}` : productName);
 
                     row(
                         `${money(item.qty)} x ${productNameWithVariant}`,
@@ -919,7 +924,7 @@
 
                     const productName = item.product_name || '-';
                     const variantName = item.variant_name ? String(item.variant_name).trim() : '';
-                    const productNameWithVariant = variantName ? productName + ' ' + variantName : productName;
+                    const productNameWithVariant = item.display_name || (variantName ? productName + ' ' + variantName : productName);
 
                     wrapBluetoothText(String(bluetoothMoney(item.qty)) + ' x ' + productNameWithVariant, widthChars - 10)
                         .forEach((value, index) => {

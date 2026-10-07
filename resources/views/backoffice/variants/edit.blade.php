@@ -369,7 +369,6 @@
                     'id' => $item->id,
                     'outlet_id' => $item->outlet_id,
                     'name' => $item->name,
-                    'code' => $item->code,
                     'outlet_ids' => $item->outlets->pluck('id')->map(fn ($id) => (int) $id)->all(),
                     'price_dine_in' => $item->price_dine_in ?? $item->price,
                     'price_delivery' => $item->price_delivery ?? $item->price,
@@ -470,11 +469,6 @@
                                     </div>
 
                                     <div class="field">
-                                        <label>Kode Variant</label>
-                                        <input type="text" name="variants[{{ $index }}][code]" value="{{ $row['code'] ?? '' }}" placeholder="R / L / XL" required>
-                                    </div>
-
-                                    <div class="field">
                                         <label>Harga Dine In</label>
                                         <input class="rupiah-input" type="text" name="variants[{{ $index }}][price_dine_in]" value="{{ $row['price_dine_in'] ?? 0 }}" required>
                                     </div>
@@ -546,11 +540,6 @@
                 <div class="field">
                     <label>Nama Variant</label>
                     <input type="text" data-name="name" placeholder="Regular / Large" required>
-                </div>
-
-                <div class="field">
-                    <label>Kode Variant</label>
-                    <input type="text" data-name="code" placeholder="R / L / XL" required>
                 </div>
 
                 <div class="field">

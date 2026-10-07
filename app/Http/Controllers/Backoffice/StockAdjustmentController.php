@@ -27,8 +27,8 @@ class StockAdjustmentController extends Controller
 
         $query = StockAdjustment::with(['items', 'user', 'outlet', 'warehouse'])->latest()->latest('id');
 
-        // Single source of truth: the global Active Outlet Backoffice selector (no separate
-        // location dropdown on this page). A query string outlet_id is intentionally ignored.
+        // Always every outlet the user can access plus warehouses. A query string outlet_id is
+        // intentionally ignored.
         if ($activeOutletId) {
             $query->where('location_type', 'outlet')->where('location_id', $activeOutletId);
         } else {

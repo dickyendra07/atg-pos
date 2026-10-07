@@ -13,20 +13,17 @@ use Illuminate\Support\Collection;
  *
  * A Recipe is GLOBAL per ProductVariant (no outlet of its own), so two questions are kept apart:
  *
- * VIEW     - the Recipe's Variant is available in at least one outlet of the current view scope
+ * VIEW     - the Recipe's Variant is available in at least one outlet of the user's view scope
  *            (BackofficeOutletContext::scopeOutletIds()).
  * MUTATION - a change reaches every active outlet that uses the Variant (Product + Variant both
- *            available there), so it is only allowed when ALL of those outlets are inside the
- *            mutation ceiling:
- *              - specific Active Outlet  => just that outlet, for every role including owner
- *              - "Semua Outlet(...)"     => every outlet the user can access
+ *            available there), so it is only allowed when ALL of those outlets are outlets the user
+ *            can access. There is no narrower "Active Outlet" ceiling any more: a user who can access
+ *            every outlet of the Variant may change its Recipe, a limited user may not.
  *
  * Bind per request (not a singleton): it memoises the user's context.
  */
 class RecipeAccessPolicy
 {
-    public const DENIED_CONTEXT = 'context';
-
     public const DENIED_ACCESS = 'access';
 
     public const DENIED_SCOPE = 'scope';
@@ -89,31 +86,22 @@ class RecipeAccessPolicy
             return [
                 'allowed' => false,
                 'reason' => self::DENIED_SCOPE,
-                'message' => 'Variant tidak tersedia pada Active Outlet atau outlet yang dapat kamu akses.',
+                'message' => 'Variant tidak tersedia pada outlet yang dapat kamu akses.',
                 'outlets' => [],
             ];
         }
 
-        if ($usage->diff($ctx['ceiling'])->isEmpty()) {
+        if ($usage->diff($ctx['accessible'])->isEmpty()) {
             return ['allowed' => true, 'reason' => null, 'message' => null, 'outlets' => []];
         }
 
         // Names come from the already loaded active outlets (no query per Recipe on the Index).
         $names = $this->activeOutlets()->whereIn('id', $usage->all())->pluck('name')->sort()->values()->all();
 
-        if ($usage->diff($ctx['accessible'])->isNotEmpty()) {
-            return [
-                'allowed' => false,
-                'reason' => self::DENIED_ACCESS,
-                'message' => 'Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.',
-                'outlets' => $names,
-            ];
-        }
-
         return [
             'allowed' => false,
-            'reason' => self::DENIED_CONTEXT,
-            'message' => 'Recipe ini digunakan di beberapa outlet: '.implode(', ', $names).'. Perubahan Recipe berlaku ke seluruh outlet tersebut. Pilih \''.$ctx['allLabel'].'\' untuk melakukan perubahan.',
+            'reason' => self::DENIED_ACCESS,
+            'message' => 'Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.',
             'outlets' => $names,
         ];
     }
@@ -150,14 +138,9 @@ class RecipeAccessPolicy
     private function userContext(User $user): array
     {
         return $this->memo[$user->id] ??= (function () use ($user) {
-            $accessible = $this->context->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id);
-            $activeOutletId = $this->context->activeOutletId($user);
-
             return [
                 'viewScope' => $this->context->scopeOutletIds($user),
-                'accessible' => $accessible,
-                'ceiling' => $activeOutletId ? collect([(int) $activeOutletId]) : $accessible,
-                'allLabel' => $this->context->labelFor($user, null),
+                'accessible' => $this->context->accessibleOutlets($user)->pluck('id')->map(fn ($id) => (int) $id),
             ];
         })();
     }

@@ -304,9 +304,10 @@ class ProductWorkspaceTest extends TestCase
         $this->assertStringContainsString('data-pw-recipe-variant="'.$ambiguous->id.'" data-pw-recipe-status="ambiguous"', $html);
         $this->assertStringContainsString('data-pw-recipe-variant="'.$inactive->id.'" data-pw-recipe-status="inactive"', $html);
 
-        // Ambiguous: both Recipes are listed and none is picked.
+        // Ambiguous: both Recipes are listed (view-only, no link to another editor) and none is picked.
         foreach (Recipe::where('product_variant_id', $ambiguous->id)->get() as $recipe) {
-            $this->assertStringContainsString(e(route('backoffice.recipes.edit', $recipe->id, false)), $html);
+            $this->assertStringContainsString('data-pw-recipe="'.$recipe->id.'"', $html);
+            $this->assertStringNotContainsString(e(route('backoffice.recipes.edit', $recipe->id, false)), $html);
         }
         $this->assertStringContainsString('Sistem tidak memilih salah satu secara otomatis', $html);
     }
@@ -340,15 +341,18 @@ class ProductWorkspaceTest extends TestCase
         $this->assertStringContainsString('Jumlah stok saat ini tidak memblokir penjualan.', $html);
     }
 
-    public function test_readiness_follows_the_active_outlet_context(): void
+    public function test_readiness_covers_every_accessible_outlet_of_the_product_and_ignores_a_leftover_selection(): void
     {
+        $expected = $this->product->variants()->count() * $this->product->outlets()->count();
+        $this->assertGreaterThan(2, $expected, 'fixture: more than one outlet');
+
         $html = $this->actingAs($this->owner)
             ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
             ->get(route('backoffice.products.edit', [$this->product, 'section' => 'stock']))
             ->getContent();
 
         preg_match_all('/data-pw-eligibility="/', $html, $matches);
-        $this->assertCount(2, $matches[0], 'two variants x one outlet');
+        $this->assertCount($expected, $matches[0], 'every variant x every outlet; a leftover selection does not narrow it');
     }
 
     public function test_ingredient_stock_context_shows_qty_minimum_and_low_stock(): void

@@ -90,6 +90,18 @@
             letter-spacing: 0.06em;
         }
 
+        .import-field select {
+            width: 100%;
+            min-height: 54px;
+            border: 1px solid #d9e1ec;
+            border-radius: 16px;
+            padding: 14px 16px;
+            background: #ffffff;
+            color: #111827;
+            font-size: 14px;
+            font-weight: 800;
+        }
+
         .import-field input[type="file"] {
             width: 100%;
             min-height: 54px;
@@ -214,6 +226,16 @@
                         @csrf
 
                         <div class="import-field">
+                            <label for="import-outlet">Outlet tujuan</label>
+                            <select id="import-outlet" name="outlet_id" required>
+                                <option value="">Pilih outlet</option>
+                                @foreach($backofficeOutletOptions ?? [] as $importOutlet)
+                                    <option value="{{ $importOutlet->id }}" @selected((string) old('outlet_id') === (string) $importOutlet->id)>{{ $importOutlet->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="import-field">
                             <label>Upload File CSV</label>
                             <input type="file" name="file" accept=".csv,text/csv" required>
                         </div>
@@ -238,7 +260,7 @@
                     <div class="import-info" style="margin-bottom:14px;">
                         <strong>User:</strong> {{ $user->name }}<br>
                         <strong>Role:</strong> {{ $user->role->name ?? '-' }}<br>
-                        <strong>Active Outlet:</strong> {{ $activeOutletLabel ?? '-' }}
+                        <strong>Outlet:</strong> {{ $activeOutletLabel ?? '-' }}
                     </div>
 
                     <div class="template-box">

@@ -425,26 +425,6 @@
             });
         }, true);
 
-        // The Active Outlet selector submits on change and would reload this page.
-        var outletSelect = document.getElementById('active-backoffice-outlet');
-        var outletValue = outletSelect ? outletSelect.value : null;
-
-        document.addEventListener('change', function (event) {
-            if (!outletSelect || event.target !== outletSelect) { return; }
-            if (!anyDirty()) { outletValue = outletSelect.value; return; }
-
-            event.stopPropagation();   // capture phase: keeps the inline onchange (submit) from running
-            var chosen = outletSelect.value;
-            outletSelect.value = outletValue;
-
-            askLeave().then(function (ok) {
-                if (!ok) { return; }
-                leaving = true;
-                outletSelect.value = chosen;
-                outletSelect.form.submit();
-            });
-        }, true);
-
         // ---- Drawers (stacked) ---------------------------------------------------------------------
         // category / ingredient-category: static forms, reset on open. variant / ingredient: the form is
         // fetched when opened, so it always reflects the server (e.g. the Product's current outlets).
@@ -856,6 +836,25 @@
         enhance();
         syncHeaderHeight();
         refreshState();
+
+        // Deep link from the classic Recipe pages (?recipe=<id>): the server only sets the URL for a Recipe
+        // whose drawer this user may open. The parameter is dropped afterwards so reload / Back do not reopen it.
+        var openRecipeUrl = root.getAttribute('data-pw-open-recipe-url');
+        var focusRecipeId = root.getAttribute('data-pw-focus-recipe');
+        if (focusRecipeId) {
+            try {
+                var current = new URL(window.location.href);
+                current.searchParams.delete('recipe');
+                history.replaceState(history.state, '', current.pathname + current.search);
+            } catch (e) { /* keep working without URL cleanup */ }
+
+            // A Recipe that is only shown (view-only, several active Recipes) is brought into view, nothing more.
+            var focused = root.querySelector('[data-pw-recipe="' + focusRecipeId + '"]');
+            if (focused && focused.scrollIntoView) { focused.scrollIntoView({ block: 'center' }); }
+        }
+        if (openRecipeUrl && drawerEl('recipe')) {
+            openFetchedDrawer('recipe', openRecipeUrl, null);
+        }
 
         window.ProductWorkspace = { root: root, showSection: showSection, isDirty: isDirty, dirtyKeys: dirtyKeys };
     })();

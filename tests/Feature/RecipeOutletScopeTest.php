@@ -17,7 +17,13 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
-class RecipeActiveOutletContextTest extends TestCase
+/**
+ * Recipe outlet scope. The Back Office has no selectable Active Outlet any more: every page works on
+ * "all outlets the user may access", and a Recipe (global per Variant) may only be changed by a user who
+ * can access EVERY outlet its Variant is used at. Editable Recipes are edited in the Product Workspace;
+ * the classic page only serves what the workspace does not edit (view-only Recipes, ambiguous Variants).
+ */
+class RecipeOutletScopeTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -69,6 +75,11 @@ class RecipeActiveOutletContextTest extends TestCase
 
     private User $bxcBazaarAdmin;
 
+    /** No Product pages: the only role the classic Recipe page still serves. */
+    private User $warehouse;
+
+    private User $bxcWarehouse;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -100,55 +111,51 @@ class RecipeActiveOutletContextTest extends TestCase
         $this->adminPusat = $this->makeUser('admin-pusat', 'Admin Pusat', 'admin_pusat', $this->bazaar, [$this->bxc, $this->bazaar]);
         $this->bxcAdmin = $this->makeUser('admin-bxc', 'Admin Outlet', 'admin_outlet', $this->bxc, [$this->bxc]);
         $this->bxcBazaarAdmin = $this->makeUser('admin-bxc-bzr', 'Admin Outlet', 'admin_outlet', $this->bxc, [$this->bxc, $this->bazaar]);
+        $this->warehouse = $this->makeUser('gudang', 'Staff Gudang', 'staff_gudang', $this->bxc, [$this->bxc, $this->bazaar, $this->anggrek]);
+        $this->bxcWarehouse = $this->makeUser('gudang-bxc', 'Staff Gudang', 'staff_gudang', $this->bxc, [$this->bxc]);
     }
 
-    // ---- A / B: outlet label follows the Active Outlet, not users.outlet_id -----------------------
+    // ---- A / B: the outlet label is the Back Office scope, never users.outlet_id --------------------
 
-    public function test_admin_pusat_with_bazaar_home_outlet_sees_active_outlet_on_recipe_pages(): void
+    public function test_admin_pusat_with_bazaar_home_outlet_sees_semua_outlet_not_home_outlet_even_with_a_leftover_selection(): void
     {
+        // The leftover selection is what the removed selector used to store; it must not matter any more.
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
 
         foreach ([
             route('backoffice.recipes.create'),
-            route('backoffice.recipes.edit', $this->sharedRecipe),
             route('backoffice.recipes.import'),
             route('backoffice.ingredients.import'),
         ] as $url) {
-            $response = $this->get($url)->assertOk();
-
-            $response->assertSee('<strong>Active Outlet:</strong> BXC', false)
-                ->assertDontSee('<strong>Active Outlet:</strong> Bazaar TikTok', false);
-        }
-
-        // Sidebar footer (shared layout) uses the same source.
-        $this->assertSame('BXC', $this->sidebarFooterOutlet($this->get(route('backoffice.menu-categories.index'))->getContent()));
-    }
-
-    public function test_admin_pusat_with_all_outlets_context_sees_semua_outlet_not_home_outlet(): void
-    {
-        $this->actingAs($this->adminPusat);
-
-        foreach ([
-            route('backoffice.recipes.create'),
-            route('backoffice.recipes.edit', $this->sharedRecipe),
-            route('backoffice.recipes.import'),
-            route('backoffice.ingredients.import'),
-        ] as $url) {
-            $response = $this->get($url)->assertOk();
-
-            $response->assertSee('<strong>Active Outlet:</strong> Semua Outlet', false)
-                ->assertDontSee('<strong>Active Outlet:</strong> Bazaar TikTok', false);
+            $this->get($url)->assertOk()
+                ->assertSee('<strong>Outlet:</strong> Semua Outlet', false)
+                ->assertDontSee('<strong>Outlet:</strong> Bazaar TikTok', false)
+                ->assertDontSee('<strong>Outlet:</strong> BXC', false);
         }
 
         $this->assertSame('Semua Outlet', $this->sidebarFooterOutlet($this->get(route('backoffice.menu-categories.index'))->getContent()));
     }
 
-    public function test_limited_user_with_all_context_sees_allowed_outlets_label(): void
+    public function test_limited_user_sees_the_allowed_outlets_label(): void
     {
         $this->actingAs($this->bxcAdmin)->get(route('backoffice.recipes.create'))->assertOk()
-            ->assertSee('<strong>Active Outlet:</strong> Semua Outlet yang Diizinkan', false);
+            ->assertSee('<strong>Outlet:</strong> Semua Outlet yang Diizinkan', false);
 
-        $this->assertSame('Semua Outlet yang Diizinkan', $this->sidebarFooterOutlet($this->get(route('backoffice.menu-categories.index'))->getContent()));
+        // The classic page (warehouse staff only) shows the same label.
+        $this->actingAs($this->bxcWarehouse)->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk()
+            ->assertSee('<strong>Outlet:</strong> Semua Outlet yang Diizinkan', false);
+
+        $this->assertSame('Semua Outlet yang Diizinkan', $this->sidebarFooterOutlet($this->actingAs($this->bxcAdmin)->get(route('backoffice.menu-categories.index'))->getContent()));
+    }
+
+    public function test_the_backoffice_header_has_no_outlet_selector(): void
+    {
+        foreach ([$this->adminPusat, $this->bxcAdmin] as $user) {
+            $this->actingAs($user)->get(route('backoffice.recipes.index'))->assertOk()
+                ->assertDontSee('id="active-backoffice-outlet"', false)
+                ->assertDontSee('backoffice-context-bar', false)
+                ->assertDontSee('Semua Outlet yang Diizinkan</option>', false);
+        }
     }
 
     // ---- C / D: no way around the Active Outlet / outlet access, by URL or otherwise -------------
@@ -185,30 +192,14 @@ class RecipeActiveOutletContextTest extends TestCase
         $this->assertStringNotContainsString('BZR-ONLY', $csv);
     }
 
-    public function test_active_outlet_blocks_manual_url_to_recipe_of_another_outlet_even_for_admin_pusat(): void
+    public function test_admin_pusat_reaches_the_recipe_of_any_outlet_and_a_leftover_selection_does_not_narrow_it(): void
     {
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
-        $recipe = $this->bazaarRecipe;
-        $item = $recipe->items()->first();
 
-        $this->get(route('backoffice.recipes.edit', $recipe))->assertForbidden();
-        $this->put(route('backoffice.recipes.update', $recipe), [
-            'product_variant_id' => $this->sharedVariant->id,
-            'name' => 'Hijacked',
-            'is_active' => 0,
-        ])->assertForbidden();
-        $this->delete(route('backoffice.recipes.destroy', $recipe))->assertForbidden();
-        $this->post(route('backoffice.recipes.items.store', $recipe), ['ingredient_id' => $this->milk->id, 'qty' => 5])->assertForbidden();
-        $this->put(route('backoffice.recipes.items.update', [$recipe, $item]), ['qty' => 999])->assertForbidden();
-        $this->delete(route('backoffice.recipes.items.destroy', [$recipe, $item]))->assertForbidden();
-
-        $this->assertRecipeUntouched($recipe->fresh(), $this->bazaarVariant, $item);
-
-        // The same recipe is reachable once the Active Outlet includes it, and in "Semua Outlet".
-        $this->withSession(['active_backoffice_outlet_id' => $this->bazaar->id])
-            ->get(route('backoffice.recipes.edit', $recipe))->assertOk();
-        $this->withSession(['active_backoffice_outlet_id' => null])
-            ->get(route('backoffice.recipes.edit', $recipe))->assertOk();
+        // An editable Recipe of any outlet hands over to the workspace; nothing is hidden by the old selection.
+        $this->get(route('backoffice.recipes.edit', $this->bazaarRecipe))
+            ->assertRedirect(url(route('backoffice.products.edit', [$this->bazaarVariant->product_id, 'section' => 'recipe', 'recipe' => $this->bazaarRecipe->id], false)));
+        $this->get(route('backoffice.recipes.index'))->assertOk()->assertSee('Matcha')->assertSee('Bazaar Only');
     }
 
     public function test_recipe_can_only_be_created_for_a_variant_inside_the_outlet_scope(): void
@@ -216,29 +207,18 @@ class RecipeActiveOutletContextTest extends TestCase
         $payload = ['name' => 'Foreign', 'is_active' => 1];
         $this->bazaarRecipe->delete();
 
-        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
-            ->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->bazaarVariant->id])
-            ->assertSessionHasErrors('product_variant_id');
-
-        $this->actingAs($this->bxcAdmin)->withSession(['active_backoffice_outlet_id' => null])
+        $this->actingAs($this->bxcAdmin)
             ->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->bazaarVariant->id])
             ->assertSessionHasErrors('product_variant_id');
 
         $this->assertDatabaseMissing('recipes', ['product_variant_id' => $this->bazaarVariant->id]);
     }
 
-    // ---- E: the Active Outlet must never re-point a Recipe to another Variant --------------------
+    // ---- E: saving must never silently re-point a Recipe to another Variant -----------------------
 
-    public function test_active_outlet_cannot_silently_repoint_recipe_variant(): void
+    public function test_a_recipe_cannot_be_silently_repointed_to_a_variant_outside_the_users_scope(): void
     {
-        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
-
-        // Single-outlet Recipe in its own outlet: editable. The current Variant is pre-selected and the
-        // only alternatives offered are Variants this context may mutate (BXC only, no other outlets).
-        $response = $this->get(route('backoffice.recipes.edit', $this->bxcRecipe))->assertOk();
-        $response->assertSee('value="'.$this->bxcVariant->id.'" selected', false);
-        $offered = $response->viewData('variants')->pluck('id')->sort()->values()->all();
-        $this->assertSame(collect([$this->bxcVariant->id, $this->bxcSpareVariant->id])->sort()->values()->all(), $offered);
+        $this->actingAs($this->bxcAdmin);
 
         // Saving with the unchanged Variant keeps it.
         $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
@@ -248,7 +228,7 @@ class RecipeActiveOutletContextTest extends TestCase
         ])->assertSessionHasNoErrors();
         $this->assertSame($this->bxcVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
 
-        // A forged Variant outside the context is rejected and nothing moves.
+        // A forged Variant outside this user's outlets is rejected and nothing moves.
         foreach ([$this->bazaarVariant, $this->tripleSpareVariant] as $forged) {
             $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
                 'product_variant_id' => $forged->id,
@@ -267,8 +247,8 @@ class RecipeActiveOutletContextTest extends TestCase
         $inactive = $this->makeIngredient('Retired Syrup', [$this->bxc, $this->bazaar], false);
         $both = $this->makeIngredient('Shared Cream', [$this->bxc, $this->bazaar]);
 
-        // "Semua Outlet": the shared Recipe (BXC + Bazaar) is editable here.
-        $this->actingAs($this->adminPusat);
+        // The classic page is only served to warehouse staff; its dropdown and the server rule are unchanged.
+        $this->actingAs($this->warehouse);
 
         // Recipe Variant sells at BXC + Bazaar, so an ingredient that only exists at BXC is not offered;
         // neither is an inactive one or one already in the Recipe.
@@ -297,16 +277,16 @@ class RecipeActiveOutletContextTest extends TestCase
 
     // ---- Export / import follow the same scope ----------------------------------------------------
 
-    public function test_export_follows_active_outlet_and_stays_global_for_all_outlets(): void
+    public function test_export_covers_every_accessible_outlet_and_ignores_a_leftover_selection(): void
     {
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
-        $scoped = $this->get(route('backoffice.recipes.export.csv'))->streamedContent();
-        $this->assertStringContainsString('MATCHA', $scoped);
-        $this->assertStringNotContainsString('BZR-ONLY', $scoped);
-
-        $all = $this->withSession(['active_backoffice_outlet_id' => null])->get(route('backoffice.recipes.export.csv'))->streamedContent();
+        $all = $this->get(route('backoffice.recipes.export.csv'))->streamedContent();
         $this->assertStringContainsString('MATCHA', $all);
         $this->assertStringContainsString('BZR-ONLY', $all);
+
+        $limited = $this->actingAs($this->bxcAdmin)->get(route('backoffice.recipes.export.csv'))->streamedContent();
+        $this->assertStringContainsString('MATCHA', $limited);
+        $this->assertStringNotContainsString('BZR-ONLY', $limited);
     }
 
     // ---- MUTATION POLICY (Recipe is global per Variant) -------------------------------------------
@@ -319,78 +299,66 @@ class RecipeActiveOutletContextTest extends TestCase
         $this->get(route('backoffice.recipes.index'))->assertOk()
             ->assertSee('Triple')->assertSee('Lihat (read-only)');
 
-        $edit = $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk();
+        // Product Workspace, read-only: shown with the reason, no drawer and no mutation control
+        $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))
+            ->assertRedirect(url(route('backoffice.products.edit', [$this->tripleVariant->product_id, 'section' => 'recipe', 'recipe' => $this->tripleRecipe->id], false)));
+        $workspace = $this->get(route('backoffice.products.edit', [$this->tripleVariant->product_id, 'section' => 'recipe', 'recipe' => $this->tripleRecipe->id]))->assertOk();
+        $workspace->assertSee('Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.')
+            ->assertSee('data-pw-recipe-readonly', false)
+            ->assertDontSee('data-pw-open-recipe-url=', false)
+            ->assertDontSee('data-pw-open-drawer="recipe"', false);
+
+        // Warehouse staff (no Product pages) keep the classic page, also read-only for this Recipe
+        $edit = $this->actingAs($this->bxcWarehouse)->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk();
         $edit->assertSee('id="recipe-readonly-notice"', false)
             ->assertSee('Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.')
             ->assertDontSee('Update Header')->assertDontSee('Tambah Recipe Item')->assertDontSee('Yakin mau hapus recipe item');
         $this->assertFalse($edit->viewData('canMutate'));
 
+        $this->actingAs($this->bxcAdmin);
+
         $this->assertMutationDenied($this->tripleRecipe, $this->bxcSpareVariant);
     }
 
-    // B. Variant BXC+Bazaar, limited user has BXC+Bazaar, "Semua Outlet yang Diizinkan".
-    public function test_limited_user_owning_every_outlet_of_the_variant_can_mutate_in_all_context(): void
+    // B. Variant BXC+Bazaar, limited user has BXC+Bazaar: every outlet of the Variant is theirs.
+    public function test_limited_user_owning_every_outlet_of_the_variant_can_mutate_it(): void
     {
         $this->actingAs($this->bxcBazaarAdmin);
 
-        $edit = $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk();
-        $this->assertTrue($edit->viewData('canMutate'));
-        $edit->assertDontSee('id="recipe-readonly-notice"', false)->assertSee('Update Header')->assertSee('Tambah Recipe Item');
+        $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))
+            ->assertRedirect(url(route('backoffice.products.edit', [$this->sharedVariant->product_id, 'section' => 'recipe', 'recipe' => $this->sharedRecipe->id], false)));
 
         $this->assertMutationAllowed($this->sharedRecipe);
     }
 
-    // C. Variant BXC+Bazaar, user has both, but Active Outlet = BXC.
-    public function test_multi_outlet_recipe_is_read_only_from_a_single_active_outlet(): void
+    // C. The same user with a selection left over from the removed selector: nothing narrows.
+    public function test_a_leftover_single_outlet_selection_does_not_make_a_shared_recipe_read_only(): void
     {
         $this->actingAs($this->bxcBazaarAdmin)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
 
         $this->get(route('backoffice.recipes.index'))->assertOk()->assertSee('Matcha');
-        $edit = $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk();
-        $edit->assertSee('Recipe ini digunakan di beberapa outlet: BXC, Bazaar TikTok.')
-            ->assertSee('Perubahan Recipe berlaku ke seluruh outlet tersebut.')
-            ->assertSee("Pilih 'Semua Outlet yang Diizinkan' untuk melakukan perubahan.")
-            ->assertDontSee('Update Header');
+        $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertRedirect();
 
-        $this->assertMutationDenied($this->sharedRecipe, $this->bxcSpareVariant);
+        $this->assertMutationAllowed($this->sharedRecipe);
     }
 
-    // D. Variant only in BXC, Active Outlet = BXC.
-    public function test_single_outlet_recipe_is_editable_from_its_active_outlet(): void
+    // D. Variant only in BXC: editable by anyone who can access BXC.
+    public function test_single_outlet_recipe_is_editable_by_whoever_can_access_that_outlet(): void
     {
         foreach ([$this->bxcAdmin, $this->adminPusat] as $user) {
-            $this->actingAs($user)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
-
-            $edit = $this->get(route('backoffice.recipes.edit', $this->bxcRecipe))->assertOk();
-            $this->assertTrue($edit->viewData('canMutate'));
-            $edit->assertDontSee('id="recipe-readonly-notice"', false);
+            $this->actingAs($user)->get(route('backoffice.recipes.edit', $this->bxcRecipe))
+                ->assertRedirect(url(route('backoffice.products.edit', [$this->bxcVariant->product_id, 'section' => 'recipe', 'recipe' => $this->bxcRecipe->id], false)));
         }
 
         $this->assertMutationAllowed($this->bxcRecipe);
     }
 
-    // E. Owner/admin pusat, Variant BXC+Bazaar+TA, Active Outlet = BXC: full access does not bypass it.
-    public function test_admin_pusat_cannot_mutate_multi_outlet_recipe_from_a_single_active_outlet(): void
+    // F. Owner/admin pusat, Variant BXC+Bazaar+TA: they can access all three.
+    public function test_admin_pusat_can_mutate_a_multi_outlet_recipe(): void
     {
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
 
-        $this->get(route('backoffice.recipes.index'))->assertOk()->assertSee('Triple');
-        $edit = $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk();
-        $edit->assertSee('Recipe ini digunakan di beberapa outlet: BXC, Bazaar TikTok, Taman Anggrek.')
-            ->assertSee("Pilih 'Semua Outlet' untuk melakukan perubahan.")
-            ->assertDontSee('Update Header')->assertDontSee('Tambah Recipe Item');
-
-        $this->assertMutationDenied($this->tripleRecipe, $this->bxcSpareVariant);
-    }
-
-    // F. Owner/admin pusat, Variant BXC+Bazaar+TA, "Semua Outlet".
-    public function test_admin_pusat_can_mutate_multi_outlet_recipe_in_all_context(): void
-    {
-        $this->actingAs($this->adminPusat);
-
-        $edit = $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk();
-        $this->assertTrue($edit->viewData('canMutate'));
-        $edit->assertSee('Update Header');
+        $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertRedirect();
 
         $this->assertMutationAllowed($this->tripleRecipe);
     }
@@ -398,28 +366,20 @@ class RecipeActiveOutletContextTest extends TestCase
     // G. Reassign X -> Y: source AND target Variant must both pass the mutation rule.
     public function test_reassign_authorizes_source_and_target_variant(): void
     {
-        // Limited to BXC, "Semua Outlet yang Diizinkan": source (BXC only) is fine, target with outlets
-        // outside access is not.
+        // Limited to BXC: source (BXC only) is fine, a target with outlets outside access is not.
         $this->actingAs($this->bxcAdmin);
         $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
             'product_variant_id' => $this->tripleSpareVariant->id, 'name' => 'x', 'is_active' => 1,
         ])->assertSessionHasErrors(['product_variant_id' => 'Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.']);
         $this->assertSame($this->bxcVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
 
-        // Admin pusat from Active Outlet BXC: a multi-outlet target is rejected too ...
-        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
-        $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
-            'product_variant_id' => $this->tripleSpareVariant->id, 'name' => 'x', 'is_active' => 1,
-        ])->assertSessionHasErrors('product_variant_id');
-        $this->assertSame($this->bxcVariant->id, $this->bxcRecipe->fresh()->product_variant_id);
-
-        // ... while a source that is multi-outlet cannot be moved at all, even to a BXC-only target.
+        // ... while a source that is multi-outlet beyond their access cannot be moved at all.
         $this->put(route('backoffice.recipes.update', $this->tripleRecipe), [
             'product_variant_id' => $this->bxcSpareVariant->id, 'name' => 'x', 'is_active' => 1,
         ])->assertForbidden();
         $this->assertSame($this->tripleVariant->id, $this->tripleRecipe->fresh()->product_variant_id);
 
-        // Both ends inside the mutation scope: allowed, and the old Variant simply has no Recipe now.
+        // Both ends inside the user's outlets: allowed, and the old Variant simply has no Recipe now.
         $this->put(route('backoffice.recipes.update', $this->bxcRecipe), [
             'product_variant_id' => $this->bxcSpareVariant->id, 'name' => 'moved', 'is_active' => 1,
         ])->assertSessionHasNoErrors();
@@ -427,28 +387,23 @@ class RecipeActiveOutletContextTest extends TestCase
         $this->assertSame(1, Recipe::count() - Recipe::whereIn('id', [$this->sharedRecipe->id, $this->bazaarRecipe->id, $this->tripleRecipe->id])->count());
     }
 
-    public function test_create_only_offers_and_accepts_variants_the_context_may_mutate(): void
+    public function test_create_only_offers_and_accepts_variants_the_user_may_mutate(): void
     {
         $payload = ['name' => 'Fresh', 'is_active' => 1];
 
-        // Active BXC: only the single-outlet spare Variant is offered; the multi-outlet one is refused.
-        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
+        // Full access: the multi-outlet Variant is offered and accepted.
+        $this->actingAs($this->adminPusat);
         $offered = $this->get(route('backoffice.recipes.create'))->assertOk()->viewData('variants')->pluck('id')->all();
         $this->assertContains($this->bxcSpareVariant->id, $offered);
-        $this->assertNotContains($this->tripleSpareVariant->id, $offered);
-        $this->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->tripleSpareVariant->id])
-            ->assertSessionHasErrors('product_variant_id');
-        $this->assertDatabaseMissing('recipes', ['product_variant_id' => $this->tripleSpareVariant->id]);
-
-        // "Semua Outlet": full access may create for the multi-outlet Variant.
-        $this->withSession(['active_backoffice_outlet_id' => null]);
-        $this->assertContains($this->tripleSpareVariant->id, $this->get(route('backoffice.recipes.create'))->viewData('variants')->pluck('id')->all());
+        $this->assertContains($this->tripleSpareVariant->id, $offered);
         $this->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->tripleSpareVariant->id])->assertSessionHasNoErrors();
         $this->assertDatabaseHas('recipes', ['product_variant_id' => $this->tripleSpareVariant->id]);
 
-        // Limited to BXC only: multi-outlet Variant refused even in "Semua Outlet yang Diizinkan".
-        $this->actingAs($this->bxcAdmin)->withSession(['active_backoffice_outlet_id' => null]);
-        $this->assertNotContains($this->tripleVariant->id, $this->get(route('backoffice.recipes.create'))->viewData('variants')->pluck('id')->all());
+        // Limited to BXC only: a Variant that also lives outside BXC is neither offered nor accepted.
+        $this->actingAs($this->bxcAdmin);
+        $offered = $this->get(route('backoffice.recipes.create'))->viewData('variants')->pluck('id')->all();
+        $this->assertContains($this->bxcSpareVariant->id, $offered);
+        $this->assertNotContains($this->tripleVariant->id, $offered);
         $this->tripleRecipe->delete();
         $this->post(route('backoffice.recipes.store'), $payload + ['product_variant_id' => $this->tripleVariant->id])
             ->assertSessionHasErrors('product_variant_id');
@@ -456,13 +411,13 @@ class RecipeActiveOutletContextTest extends TestCase
     }
 
     // H. Import: every row goes through the mutation rule; rejected rows are skipped and reported.
-    public function test_import_skips_variants_the_context_may_not_mutate_and_still_processes_valid_rows(): void
+    public function test_import_skips_variants_the_user_may_not_mutate_and_still_processes_valid_rows(): void
     {
         $csv = "variant_code,ingredient_name,qty,is_active\n"
-            ."BXC-ONLY,Milk,7,1\n"      // BXC only            -> allowed from Active BXC
-            ."MATCHA,Milk,8,1\n"        // BXC + Bazaar        -> multi outlet, skipped from Active BXC
+            ."BXC-ONLY,Milk,7,1\n"      // BXC only            -> allowed for a BXC-only user
+            ."MATCHA,Milk,8,1\n"        // BXC + Bazaar        -> Bazaar is outside access, skipped
             ."TRIPLE,Milk,9,1\n"        // BXC + Bazaar + TA   -> skipped
-            ."BZR-ONLY,Milk,10,1\n";    // Bazaar only         -> outside Active BXC
+            ."BZR-ONLY,Milk,10,1\n";    // Bazaar only         -> outside access
         $before = [
             'shared' => (float) $this->sharedRecipe->items()->value('qty'),
             'triple' => (float) $this->tripleRecipe->items()->value('qty'),
@@ -470,7 +425,7 @@ class RecipeActiveOutletContextTest extends TestCase
         ];
 
         $errors = [];
-        $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
+        $this->actingAs($this->bxcAdmin)
             ->post(route('backoffice.recipes.import.store'), ['file' => UploadedFile::fake()->createWithContent('recipes.csv', $csv)])
             ->assertRedirect(route('backoffice.recipes.index'))
             ->assertSessionHas('import_errors', function ($e) use (&$errors) {
@@ -480,36 +435,35 @@ class RecipeActiveOutletContextTest extends TestCase
             });
 
         $this->assertCount(3, $errors);
-        $this->assertStringContainsString("'MATCHA' dilewati. Recipe ini digunakan di beberapa outlet: BXC, Bazaar TikTok", $errors[0]);
+        $this->assertStringContainsString("'MATCHA' dilewati. Recipe ini digunakan di outlet lain di luar akses Anda", $errors[0]);
         $this->assertStringContainsString("'TRIPLE' dilewati", $errors[1]);
-        $this->assertStringContainsString("'BZR-ONLY' dilewati. Variant tidak tersedia pada Active Outlet", $errors[2]);
+        $this->assertStringContainsString("'BZR-ONLY' dilewati. Variant tidak tersedia pada outlet yang dapat kamu akses", $errors[2]);
         $this->assertSame(7.0, (float) $this->bxcRecipe->items()->where('ingredient_id', $this->milk->id)->value('qty'));
         $this->assertSame($before['shared'], (float) $this->sharedRecipe->items()->value('qty'));
         $this->assertSame($before['triple'], (float) $this->tripleRecipe->items()->value('qty'));
         $this->assertSame($before['bazaar'], (float) $this->bazaarRecipe->items()->value('qty'));
     }
 
-    public function test_import_scope_follows_the_context_for_each_kind_of_user(): void
+    public function test_import_scope_follows_the_outlet_access_of_each_kind_of_user(): void
     {
         $csv = "variant_code,ingredient_name,qty,is_active\nBXC-ONLY,Milk,1,1\nMATCHA,Milk,2,1\nTRIPLE,Milk,3,1\nBZR-ONLY,Milk,4,1\n";
-        $touched = function (?User $user, ?int $activeOutletId) use ($csv): array {
+        $touched = function (?User $user, array $session = []) use ($csv): array {
             RecipeItem::query()->update(['qty' => 50]);
-            $this->actingAs($user)->withSession(['active_backoffice_outlet_id' => $activeOutletId])
+            $this->actingAs($user)->withSession($session)
                 ->post(route('backoffice.recipes.import.store'), ['file' => UploadedFile::fake()->createWithContent('recipes.csv', $csv)]);
 
             return RecipeItem::with('recipe.variant')->where('ingredient_id', $this->milk->id)->where('qty', '!=', 50)->get()
                 ->map(fn ($item) => $item->recipe->variant->code)->sort()->values()->all();
         };
 
-        // Full access, "Semua Outlet": everything, including the Bazaar-only Variant.
-        $this->assertSame(['BXC-ONLY', 'BZR-ONLY', 'MATCHA', 'TRIPLE'], $touched($this->adminPusat, null));
-        // Full access, Active BXC: only the single-outlet Variant.
-        $this->assertSame(['BXC-ONLY'], $touched($this->adminPusat, $this->bxc->id));
-        // Limited to BXC, all allowed: only the Variant whose every outlet the user owns.
-        $this->assertSame(['BXC-ONLY'], $touched($this->bxcAdmin, null));
-        // Limited to BXC+Bazaar, all allowed: every Variant living inside those two outlets, never the
+        // Full access: everything, including the Bazaar-only Variant; a leftover selection changes nothing.
+        $this->assertSame(['BXC-ONLY', 'BZR-ONLY', 'MATCHA', 'TRIPLE'], $touched($this->adminPusat));
+        $this->assertSame(['BXC-ONLY', 'BZR-ONLY', 'MATCHA', 'TRIPLE'], $touched($this->adminPusat, ['active_backoffice_outlet_id' => $this->bxc->id]));
+        // Limited to BXC: only the Variant whose every outlet the user owns.
+        $this->assertSame(['BXC-ONLY'], $touched($this->bxcAdmin));
+        // Limited to BXC+Bazaar: every Variant living inside those two outlets, never the
         // one that also uses Taman Anggrek.
-        $this->assertSame(['BXC-ONLY', 'BZR-ONLY', 'MATCHA'], $touched($this->bxcBazaarAdmin, null));
+        $this->assertSame(['BXC-ONLY', 'BZR-ONLY', 'MATCHA'], $touched($this->bxcBazaarAdmin));
     }
 
     // ---- helpers ---------------------------------------------------------------------------------

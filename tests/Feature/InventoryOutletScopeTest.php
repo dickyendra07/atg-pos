@@ -230,24 +230,28 @@ class InventoryOutletScopeTest extends TestCase
     }
 
     // ================================================================================================
-    // Active Outlet
+    // No Active Outlet selector: the scope is always "all outlets the user may access"
     // ================================================================================================
 
-    public function test_active_outlet_still_narrows_to_that_outlet_and_an_unallowed_one_is_not_honoured(): void
+    public function test_a_leftover_or_forged_outlet_selection_never_changes_what_a_limited_user_sees(): void
     {
-        $own = $this->actingAs($this->bxcOnly)
-            ->withSession(['active_backoffice_outlet_id' => $this->bxc->id])
-            ->get(route('backoffice.stock-balances.index'))->assertOk();
-        $this->assertSame([$this->bxc->id], $own->viewData('stockBalances')->pluck('location_id')->map(fn ($id) => (int) $id)->all(), 'active outlet: that outlet only, no warehouse');
+        // The old selector is gone. A session value left over from before (or forged) is ignored, whether
+        // it names the user's own outlet or one outside their access.
+        foreach ([$this->bxc->id, $this->ta->id] as $selected) {
+            $rows = $this->actingAs($this->bxcOnly)
+                ->withSession(['active_backoffice_outlet_id' => $selected])
+                ->get(route('backoffice.stock-balances.index'))->assertOk();
 
-        // An outlet outside the user's access cannot become the Active Outlet, by session or by request.
-        $this->post(route('backoffice.active-outlet.update'), ['outlet_id' => $this->ta->id])->assertSessionHasErrors('outlet_id');
-        $forged = $this->withSession(['active_backoffice_outlet_id' => $this->ta->id])->get(route('backoffice.stock-balances.index'))->assertOk();
+            $this->assertNoOtherOutlet($rows->getContent(), ['222,00', '333,00']);
+            $this->assertSame(2, $rows->viewData('stockBalances')->count(), 'own outlet + global warehouse, whatever the session says');
+        }
+
+        // The endpoint that used to set it no longer exists.
+        $this->post('/backoffice/active-outlet', ['outlet_id' => $this->ta->id])->assertNotFound();
+
+        // Query parameters cannot widen the scope either.
+        $forged = $this->get(route('backoffice.stock-balances.index', ['summary_location_type' => 'outlet', 'summary_location_id' => $this->ta->id, 'outlet_id' => $this->ta->id]))->assertOk();
         $this->assertNoOtherOutlet($forged->getContent(), ['222,00', '333,00']);
-        $this->assertSame(2, $forged->viewData('stockBalances')->count(), 'falls back to the user\'s own Semua Outlet');
-
-        $this->post(route('backoffice.active-outlet.update'), ['outlet_id' => 0]);
-        $this->assertSame(2, $this->get(route('backoffice.stock-balances.index'))->viewData('stockBalances')->count());
     }
 
     public function test_semua_outlet_for_a_two_outlet_user_covers_exactly_those_two(): void

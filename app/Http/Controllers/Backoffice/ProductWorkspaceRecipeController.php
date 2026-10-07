@@ -23,8 +23,8 @@ use Illuminate\Support\Collection;
  *
  * Every endpoint: the Product page role + Product outlet scope (RespondsAsProductWorkspace), then
  * {variant} must belong to {product} and {recipe} to {variant} (ids are taken from the route only),
- * then RecipeAccessPolicy must allow changing that Variant's Recipe in the current Active Outlet
- * context. A Variant with more than one active Recipe is read-only here (checked again under lock).
+ * then RecipeAccessPolicy must allow changing that Variant's Recipe for the user's outlets.
+ * A Variant with more than one active Recipe is read-only here (checked again under lock).
  */
 class ProductWorkspaceRecipeController extends Controller
 {
@@ -147,7 +147,6 @@ class ProductWorkspaceRecipeController extends Controller
                 'ingredientCreateUrl' => IngredientWriter::hasIngredientRole($user)
                     ? route('backoffice.products.workspace.ingredients.create-form', [$product, 'return_section' => 'recipe'], false)
                     : null,
-                'classicUrl' => $recipe ? route('backoffice.recipes.edit', [$recipe->id], false) : null,
             ])->render(),
         ]);
     }

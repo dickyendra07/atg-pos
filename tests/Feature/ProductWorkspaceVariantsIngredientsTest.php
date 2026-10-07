@@ -17,6 +17,7 @@ use App\Services\ProductWorkspace;
 use App\Services\VariantWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -130,6 +131,162 @@ class ProductWorkspaceVariantsIngredientsTest extends TestCase
         $this->assertSame([$this->b->id], $variant->outlets()->pluck('outlets.id')->all());
     }
 
+    // ---- Variant Code is internal: not in the forms, generated for new Variants, kept for existing ones --------
+
+    public function test_variant_code_is_not_part_of_the_workspace_drawer_or_the_classic_forms(): void
+    {
+        $this->actingAs($this->owner);
+
+        foreach ([
+            route('backoffice.products.workspace.variants.create-form', $this->product),
+            route('backoffice.products.workspace.variants.edit-form', [$this->product, $this->regular]),
+        ] as $url) {
+            $html = $this->getJson($url)->assertOk()->json('html');
+
+            $this->assertStringContainsString('name="name"', $html);
+            $this->assertStringNotContainsString('name="code"', $html);
+            $this->assertStringNotContainsString('Kode Variant', $html);
+        }
+
+        foreach ([route('backoffice.variants.create'), route('backoffice.variants.edit', $this->regular)] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+
+            $this->assertStringNotContainsString('Kode Variant', $html);
+            $this->assertStringNotContainsString('][code]', $html);
+            $this->assertStringNotContainsString('data-name="code"', $html);
+        }
+    }
+
+    public function test_a_new_variant_without_a_code_gets_a_generated_unique_internal_code(): void
+    {
+        $this->actingAs($this->owner);
+        $payload = $this->variantPayload(['name' => 'Large Ice']);
+        unset($payload['code']);
+
+        $this->postJson(route('backoffice.products.workspace.variants.store', $this->product), $payload)->assertOk();
+        $this->postJson(route('backoffice.products.workspace.variants.store', $this->product), $payload)->assertOk();
+        $this->postJson(route('backoffice.products.workspace.variants.store', $this->product), $payload + [])->assertOk();
+
+        $codes = ProductVariant::where('product_id', $this->product->id)->where('name', 'Large Ice')->orderBy('id')->pluck('code')->all();
+        $this->assertSame(['UBE-LARGE-ICE', 'UBE-LARGE-ICE-2', 'UBE-LARGE-ICE-3'], $codes);
+    }
+
+    public function test_generated_codes_are_clean_bounded_and_never_collide(): void
+    {
+        $product = $this->product;
+
+        $this->assertSame('UBE-V', VariantWriter::generateCode($product, ''));
+        $this->assertSame('UBE-V', VariantWriter::generateCode($product, '***'));
+        $this->assertSame('UBE-ES-KOPI-SUSU-GULA-AREN', VariantWriter::generateCode($product, '*Es Kopi (Susu) Gula   Aren!'));
+        $this->assertSame('UBE-CAFE-LATTE', VariantWriter::generateCode($product, 'Café Latté'));
+        // an existing code (any case) is reserved
+        $this->assertSame('UBE-R-2', VariantWriter::generateCode($product, 'R', ['UBE-R' => true]));
+
+        $long = VariantWriter::generateCode($product, str_repeat('Waspffle Salty Cheesy ', 6));
+        $this->assertLessThanOrEqual(50, strlen($long));
+        $this->assertDoesNotMatchRegularExpression('/-$|--/', $long);
+        $taken = VariantWriter::generateCode($product, str_repeat('Waspffle Salty Cheesy ', 6), [$long => true]);
+        $this->assertLessThanOrEqual(50, strlen($taken));
+        $this->assertNotSame($long, $taken);
+        $this->assertStringEndsWith('-2', $taken);
+    }
+
+    public function test_editing_a_variant_never_changes_its_code(): void
+    {
+        $this->regular->update(['code' => 'legacy-Code_1']);   // a historical, odd-looking code stays exactly as stored
+
+        $payload = $this->variantPayload(['name' => 'Completely Renamed', 'price_dine_in' => '30000', 'outlet_ids' => [$this->b->id]]);
+        unset($payload['code']);
+
+        $this->actingAs($this->owner)
+            ->putJson(route('backoffice.products.workspace.variants.update', [$this->product, $this->regular]), $payload)
+            ->assertOk();
+
+        $variant = $this->regular->fresh();
+        $this->assertSame('Completely Renamed', $variant->name);
+        $this->assertSame('30000.00', $variant->price_dine_in);
+        $this->assertSame('legacy-Code_1', $variant->code);
+    }
+
+    public function test_the_classic_group_editor_keeps_existing_codes_and_generates_one_for_a_new_row(): void
+    {
+        $large = $this->variant($this->product, 'Large', 'ube-large-old', 1, 1, [$this->a]);
+        $row = fn (ProductVariant $variant, array $extra = []) => array_merge([
+            'id' => $variant->id, 'name' => $variant->name, 'outlet_ids' => [$this->a->id],
+            'price_dine_in' => '20000', 'price_delivery' => '22000', 'is_active' => 1,
+        ], $extra);
+
+        $this->actingAs($this->owner)
+            ->put(route('backoffice.variants.update', $this->regular), [
+                'product_id' => $this->product->id,
+                'variants' => [
+                    $row($this->regular, ['name' => 'Regular Renamed']),
+                    $row($large),
+                    ['name' => 'Jumbo', 'outlet_ids' => [$this->a->id], 'price_dine_in' => '30000', 'price_delivery' => '32000', 'is_active' => 1],
+                ],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame('UBE-R', $this->regular->fresh()->code);
+        $this->assertSame('Regular Renamed', $this->regular->fresh()->name);
+        $this->assertSame('ube-large-old', $large->fresh()->code, 'existing code untouched, not even upper-cased');
+        $this->assertSame('UBE-JUMBO', ProductVariant::where('product_id', $this->product->id)->where('name', 'Jumbo')->value('code'));
+    }
+
+    public function test_the_classic_create_form_generates_codes_for_every_new_row(): void
+    {
+        $this->actingAs($this->owner)
+            ->post(route('backoffice.variants.store'), [
+                'product_id' => $this->product->id,
+                'variants' => [
+                    ['name' => 'Tall', 'outlet_ids' => [$this->a->id], 'price_dine_in' => '1000', 'price_delivery' => '1000', 'is_active' => 1],
+                    ['name' => 'Tall', 'outlet_ids' => [$this->a->id], 'price_dine_in' => '1000', 'price_delivery' => '1000', 'is_active' => 1],
+                ],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(['UBE-TALL', 'UBE-TALL-2'], ProductVariant::where('product_id', $this->product->id)->where('name', 'Tall')->orderBy('id')->pluck('code')->all());
+    }
+
+    public function test_the_code_constraint_is_unique_per_product_and_the_generator_follows_exactly_that(): void
+    {
+        // the database's final authority: one unique index on (product_id, code), no global uniqueness
+        $unique = collect(Schema::getIndexes('product_variants'))->where('unique', true)->where('primary', false)->pluck('columns')->all();
+        $this->assertSame([['product_id', 'code']], $unique);
+
+        // the same code under two different Products is therefore legal ...
+        $other = Product::create(['brand_id' => $this->brand->id, 'product_category_id' => $this->product->product_category_id, 'name' => 'Other', 'code' => 'OTH', 'is_active' => true]);
+        $other->outlets()->sync([$this->a->id]);
+        $this->variant($other, 'Regular', 'UBE-R', 1, 1, [$this->a]);   // UBE-R already exists under Ube Latte
+        $this->assertSame(2, ProductVariant::where('code', 'UBE-R')->count());
+
+        // ... so the generator only avoids collisions inside the Product it is generating for
+        $this->assertSame('UBE-R-2', VariantWriter::generateCode($this->product, 'R', ['UBE-R' => true]));
+        $this->assertSame('OTH-R', VariantWriter::generateCode($other, 'R'));
+
+        // through the writer: a code taken (any case) by a sibling gets the deterministic suffix, never a DB error
+        $this->regular->update(['code' => 'ube-sibling']);
+        $payload = $this->variantPayload(['name' => 'Sibling']);
+        unset($payload['code']);
+        $this->actingAs($this->owner)->postJson(route('backoffice.products.workspace.variants.store', $this->product), $payload)->assertOk();
+        $this->assertSame('UBE-SIBLING-2', ProductVariant::where('product_id', $this->product->id)->where('name', 'Sibling')->value('code'));
+        $this->actingAs($this->owner)->postJson(route('backoffice.products.workspace.variants.store', $this->product), $payload)->assertOk();
+        $this->assertSame(['UBE-SIBLING-2', 'UBE-SIBLING-3'], ProductVariant::where('product_id', $this->product->id)->where('name', 'Sibling')->orderBy('id')->pluck('code')->all());
+        $this->assertSame('ube-sibling', $this->regular->fresh()->code, 'the existing code is untouched');
+    }
+
+    public function test_an_explicitly_submitted_code_is_still_honoured_and_still_unique_per_product(): void
+    {
+        $this->actingAs($this->owner);
+
+        $this->postJson(route('backoffice.products.workspace.variants.store', $this->product), $this->variantPayload(['name' => 'Medium', 'code' => 'imp-m']))->assertOk();
+        $this->assertSame('IMP-M', ProductVariant::where('name', 'Medium')->value('code'));
+
+        $this->postJson(route('backoffice.products.workspace.variants.store', $this->product), $this->variantPayload(['name' => 'Medium 2', 'code' => 'IMP-M']))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['code' => 'Kode variant sudah dipakai pada product ini: IMP-M']);
+    }
+
     public function test_variant_validation_errors(): void
     {
         $this->variant($this->product, 'Large', 'UBE-L', 1, 1, [$this->a]);
@@ -137,7 +294,7 @@ class ProductWorkspaceVariantsIngredientsTest extends TestCase
         $this->actingAs($this->owner)
             ->postJson(route('backoffice.products.workspace.variants.store', $this->product), ['outlet_ids' => [$this->a->id]])
             ->assertStatus(422)
-            ->assertJsonValidationErrors(['name', 'code', 'price_dine_in', 'price_delivery']);
+            ->assertJsonValidationErrors(['name', 'price_dine_in', 'price_delivery']);
 
         $this->postJson(route('backoffice.products.workspace.variants.store', $this->product), $this->variantPayload(['code' => 'ube-l']))
             ->assertStatus(422)

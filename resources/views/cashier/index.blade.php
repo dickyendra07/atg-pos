@@ -6773,7 +6773,7 @@
 
                 const productName = item.product_name || '-';
                 const variantName = item.variant_name ? String(item.variant_name).trim() : '';
-                const productNameWithVariant = variantName ? productName + ' ' + variantName : productName;
+                const productNameWithVariant = item.display_name || (variantName ? productName + ' ' + variantName : productName);
 
                 cashierWrapText(String(cashierMoney(item.qty)) + ' x ' + productNameWithVariant, widthChars - 10)
                     .forEach((value, index) => {

@@ -8,6 +8,7 @@ use App\Models\ProductVariant;
 use App\Models\User;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -17,7 +18,9 @@ use Illuminate\Validation\ValidationException;
  *
  *  - every Variant needs at least one outlet; outlets must be accessible to the user and a subset of
  *    the Product's outlets;
- *  - codes are upper-cased and unique per Product;
+ *  - codes are upper-cased and unique per Product. The Variant Code is internal: the Back Office forms no
+ *    longer show it. A new Variant gets one generated from its Product code + name, an existing Variant
+ *    keeps the code it has, and an explicitly submitted code (CSV import, API, tests) is still honoured;
  *  - the legacy `price` column follows the dine-in price;
  *  - FIX: saving a Variant KEEPS its outlets that the user cannot access (a limited user only changes
  *    the outlets they can see; outlets outside their access stay assigned, as long as the Product is
@@ -47,7 +50,8 @@ class VariantWriter
     {
         return [
             $prefix.'name' => 'required|string|max:255',
-            $prefix.'code' => 'required|string|max:50',
+            // Optional: the forms do not send it (see resolveCodes()); a submitted one is still validated.
+            $prefix.'code' => 'nullable|string|max:50',
             $prefix.'outlet_ids' => 'required|array|min:1',
             $prefix.'outlet_ids.*' => 'nullable|exists:outlets,id',
             $prefix.'price_dine_in' => 'required|numeric|min:0',
@@ -168,6 +172,7 @@ class VariantWriter
     public function create(User $user, Product $product, array $input): ProductVariant
     {
         $row = $this->singleRow($input);
+        [$row] = $this->resolveCodes($product, [$row]);
 
         $this->assertOutletScope($user, $product, [$row], fn () => 'outlet_ids');
         $this->assertCodesFree($product, [$row], [], 'code', 'Kode variant sudah dipakai pada product ini: ');
@@ -183,6 +188,7 @@ class VariantWriter
     public function update(User $user, Product $product, ProductVariant $variant, array $input): void
     {
         $row = $this->singleRow($input);
+        [$row] = $this->resolveCodes($product, [['id' => $variant->id] + $row], collect([$variant->id => $variant]));
 
         $this->assertOutletScope($user, $product, [$row], fn () => 'outlet_ids');
         $this->assertCodesFree($product, [$row], [$variant->id], 'code', 'Kode variant sudah dipakai pada product ini: ');
@@ -212,6 +218,8 @@ class VariantWriter
             throw ValidationException::withMessages(['variants' => 'Minimal harus ada 1 variant yang valid.']);
         }
 
+        $rows = $this->resolveCodes($product, $rows);
+
         $this->assertNoDuplicateCodesInPayload($rows);
         $this->assertCodesFree($product, $rows, [], 'variants', 'Kode variant sudah dipakai pada product ini: ');
 
@@ -240,6 +248,8 @@ class VariantWriter
         }
 
         $submittedIds = collect($rows)->pluck('id')->filter()->values();
+
+        $rows = $this->resolveCodes($product, $rows, $existingGroup);
 
         $this->assertNoDuplicateCodesInPayload($rows);
         $this->assertCodesFree($product, $rows, $submittedIds->all(), 'variants', 'Kode variant sudah dipakai pada product tujuan: ');
@@ -285,6 +295,75 @@ class VariantWriter
     }
 
     // ---- internals ------------------------------------------------------------------------------------
+
+    /**
+     * Fills in the Variant Code of every row that did not submit one:
+     *
+     *  - an existing Variant (row id found in $existing) keeps the code it already has, untouched;
+     *  - a new Variant gets a generated code: "<PRODUCT CODE>-<VARIANT NAME>" upper-cased, A-Z / 0-9 / "-"
+     *    only, at most 50 characters, with "-2", "-3" ... appended when the Product already uses it.
+     *
+     * Codes already stored for the Product and codes in the same payload are reserved first, so generating
+     * never collides with them. A code a caller submitted explicitly is left exactly as given.
+     *
+     * @param  Collection<int, ProductVariant>|null  $existing  Variants a row id may refer to, keyed by id
+     */
+    private function resolveCodes(Product $product, array $rows, ?Collection $existing = null): array
+    {
+        $existing ??= collect();
+
+        $reserved = ProductVariant::query()
+            ->where('product_id', $product->id)
+            ->pluck('code')
+            ->merge(collect($rows)->pluck('code'))
+            ->merge($existing->pluck('code'))
+            ->map(fn ($code) => strtoupper(trim((string) $code)))
+            ->filter()
+            ->flip()
+            ->all();
+
+        foreach ($rows as $index => $row) {
+            if (($row['code'] ?? '') !== '') {
+                continue;
+            }
+
+            $current = ! empty($row['id']) ? $existing->get($row['id']) : null;
+
+            // Exactly as stored (no trimming, no case change): an existing code is never rewritten.
+            if ($current && (string) $current->code !== '') {
+                $rows[$index]['code'] = (string) $current->code;
+
+                continue;
+            }
+
+            $code = self::generateCode($product, (string) ($row['name'] ?? ''), $reserved);
+            $reserved[$code] = true;
+            $rows[$index]['code'] = $code;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param  array<string, mixed>  $reserved  upper-cased codes that may not be used (keys)
+     */
+    public static function generateCode(Product $product, string $name, array $reserved = []): string
+    {
+        $slug = fn (string $text): string => trim((string) preg_replace('/[^A-Z0-9]+/', '-', strtoupper(Str::ascii($text))), '-');
+
+        $prefix = $slug((string) ($product->code ?: $product->name));
+        $base = trim($prefix.'-'.($slug($name) ?: 'V'), '-');
+        $base = rtrim(substr($base, 0, 50), '-') ?: 'V';
+
+        $code = $base;
+
+        for ($suffix = 2; isset($reserved[$code]); $suffix++) {
+            $tail = '-'.$suffix;
+            $code = rtrim(substr($base, 0, 50 - strlen($tail)), '-').$tail;
+        }
+
+        return $code;
+    }
 
     private function singleRow(array $input): array
     {

@@ -202,7 +202,7 @@ class BackofficeCategoryAndListingTest extends TestCase
             ->assertSeeInOrder(['Fresh Milk Column', 'Dairy Column']);
     }
 
-    public function test_ingredient_index_search_and_active_outlet_still_work_with_new_ordering(): void
+    public function test_ingredient_index_search_still_works_and_covers_every_accessible_outlet(): void
     {
         $cat = IngredientCategory::create(['name' => 'Cat', 'code' => 'CAT', 'is_active' => true]);
         $other = Outlet::create(['name' => 'Other', 'code' => 'OTHER', 'is_active' => true]);
@@ -213,15 +213,16 @@ class BackofficeCategoryAndListingTest extends TestCase
         $elsewhere = $this->ingredient('Only Elsewhere', $cat);
         $elsewhere->outlets()->sync([$other->id]);
 
-        $this->actingAs($this->owner)->withSession(['active_backoffice_outlet_id' => $this->outlet->id])
+        // No outlet selector any more: the owner's view is every outlet, narrowed only by the search.
+        $this->actingAs($this->owner)
             ->get(route('backoffice.ingredients.index'))
-            ->assertOk()->assertSee('Only Here')->assertDontSee('Only Elsewhere');
+            ->assertOk()->assertSee('Only Here')->assertSee('Only Elsewhere');
 
         $this->get(route('backoffice.ingredients.index', ['search' => 'Elsewhere']))
-            ->assertOk()->assertDontSee('Only Elsewhere');
+            ->assertOk()->assertSee('Only Elsewhere')->assertDontSee('Only Here');
 
-        $this->get(route('backoffice.ingredients.index', ['search' => 'Here']))
-            ->assertOk()->assertSee('Only Here');
+        $this->get(route('backoffice.ingredients.index', ['search' => 'Only Here']))
+            ->assertOk()->assertSee('Only Here')->assertDontSee('Only Elsewhere');
     }
 
     private function ingredient(string $name, IngredientCategory $category): Ingredient

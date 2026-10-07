@@ -7,10 +7,16 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
+/**
+ * Which outlets the Back Office may read and change for a user.
+ *
+ * The Back Office no longer has a user-selectable "Active Outlet": every page works on "all outlets the
+ * user is allowed to access" (see scopeOutletIds()). That is only a view default, never a permission: the
+ * accessible outlets still come from the user's role and outlet assignments, so a limited user is never
+ * widened. The Cashier does not use this class; it keeps its own outlet-specific context.
+ */
 class BackofficeOutletContext
 {
-    public const SESSION_KEY = 'active_backoffice_outlet_id';
-
     public function accessibleOutlets(User $user): Collection
     {
         $user->loadMissing(['role', 'roles', 'outlet', 'outlets']);
@@ -32,29 +38,19 @@ class BackofficeOutletContext
         return $outlets->unique('id')->sortBy('name')->values();
     }
 
+    /**
+     * Always null: there is no single "Active Outlet" in the Back Office. Kept (instead of removing every
+     * caller) so each page keeps its existing, already tested "all accessible outlets" branch, and so a
+     * leftover selection in an old session can never narrow or widen anything.
+     */
     public function activeOutlet(User $user): ?Outlet
     {
-        $outletId = (int) session(self::SESSION_KEY);
-
-        if ($outletId <= 0) {
-            return null;
-        }
-
-        $outlet = $this->accessibleOutlets($user)
-            ->first(fn ($candidate) => (int) $candidate->id === $outletId);
-
-        if (! $outlet) {
-            session()->forget(self::SESSION_KEY);
-
-            return null;
-        }
-
-        return $outlet;
+        return null;
     }
 
     public function activeOutletId(User $user): ?int
     {
-        return $this->activeOutlet($user)?->id;
+        return null;
     }
 
     public function canAccess(User $user, int $outletId): bool
@@ -66,7 +62,7 @@ class BackofficeOutletContext
     /**
      * Single source of truth for the "Outlet" label shown on Backoffice screens.
      *
-     * It reflects the Active Backoffice Outlet, never users.outlet_id (the home outlet), which for a
+     * It reflects the outlet scope of the Back Office, never users.outlet_id (the home outlet), which for a
      * global role such as admin pusat is just the first outlet picked when the account was created.
      */
     public function labelFor(User $user, ?Outlet $activeOutlet): string
@@ -81,20 +77,13 @@ class BackofficeOutletContext
     /**
      * Outlet ids that bound what the user may see/modify right now.
      *
-     * - specific Active Outlet            => [that outlet]
-     * - full-access role, "Semua Outlet"  => null (unrestricted)
-     * - limited role, "Semua Outlet"      => every outlet the user can access ([] = none)
+     * - full-access role                  => null (unrestricted)
+     * - limited role                      => every outlet the user can access ([] = none)
      *
      * @return int[]|null
      */
     public function scopeOutletIds(User $user): ?array
     {
-        $activeOutletId = $this->activeOutletId($user);
-
-        if ($activeOutletId) {
-            return [(int) $activeOutletId];
-        }
-
         if ($user->isFullAccessUser()) {
             return null;
         }
@@ -108,7 +97,7 @@ class BackofficeOutletContext
     /**
      * Restricts a stock_balances / stock_movements query (location_type + location_id) to what $user may read.
      *
-     * Outlet rows only inside scopeOutletIds(): "Semua Outlet" means every outlet within the user's access,
+     * Outlet rows only inside scopeOutletIds(): the scope is every outlet within the user's access,
      * never every outlet in the system. Full-access roles are unrestricted. Warehouses are global for every
      * role that reaches these pages (the same convention as the Transfer pages), so they are not narrowed.
      * Read-only helper: it only adds conditions to the query.

@@ -929,7 +929,7 @@ class PosBusinessRulesTest extends TestCase
         ], str_getcsv(strtok($recipeExport->streamedContent(), "\n")));
     }
 
-    public function test_master_creation_requires_explicit_outlet_and_active_context_filters_indexes(): void
+    public function test_master_creation_requires_explicit_outlet_and_the_index_lists_every_accessible_outlet(): void
     {
         $this->actingAs($this->user);
 
@@ -943,14 +943,11 @@ class PosBusinessRulesTest extends TestCase
         $created = Product::where('code', 'BAZAAR-ONLY')->firstOrFail();
         $this->assertSame([$this->outletB->id], $created->outlets()->pluck('outlets.id')->all());
 
-        $atA = $this->withSession(['active_backoffice_outlet_id' => $this->outletA->id])->get(route('backoffice.products.index'));
-        $this->assertFalse($atA->viewData('products')->contains('id', $created->id));
-
-        $atB = $this->withSession(['active_backoffice_outlet_id' => $this->outletB->id])->get(route('backoffice.products.index'));
-        $this->assertTrue($atB->viewData('products')->contains('id', $created->id));
+        // No outlet selector: a Product of any accessible outlet is listed.
+        $this->assertTrue($this->get(route('backoffice.products.index'))->viewData('products')->contains('id', $created->id));
     }
 
-    public function test_ingredient_creation_is_explicit_and_filtered_by_active_outlet(): void
+    public function test_ingredient_creation_is_explicit_and_the_index_lists_every_accessible_outlet(): void
     {
         $this->actingAs($this->user);
         $payload = $this->ingredientPayload([$this->outletB->id]);
@@ -960,25 +957,19 @@ class PosBusinessRulesTest extends TestCase
         $ingredient = Ingredient::where('name', 'Bazaar Water')->firstOrFail();
         $this->assertSame([$this->outletB->id], $ingredient->outlets()->pluck('outlets.id')->all());
 
-        $atA = $this->withSession(['active_backoffice_outlet_id' => $this->outletA->id])->get(route('backoffice.ingredients.index'));
-        $this->assertFalse($atA->viewData('ingredients')->contains('id', $ingredient->id));
-        $atB = $this->withSession(['active_backoffice_outlet_id' => $this->outletB->id])->get(route('backoffice.ingredients.index'));
-        $this->assertTrue($atB->viewData('ingredients')->contains('id', $ingredient->id));
+        $this->assertTrue($this->get(route('backoffice.ingredients.index'))->viewData('ingredients')->contains('id', $ingredient->id));
     }
 
-    public function test_backoffice_outlet_switch_uses_separate_session_and_clears_inactive_selection(): void
+    public function test_backoffice_ignores_and_clears_a_leftover_outlet_selection_without_touching_the_cashier_outlet(): void
     {
+        // Sessions that were open when the selector was removed may still carry its key.
         $this->actingAs($this->user)
-            ->post(route('backoffice.active-outlet.update'), ['outlet_id' => $this->outletB->id])
-            ->assertSessionHas('active_backoffice_outlet_id', $this->outletB->id);
-
-        $this->assertNull(session('cashier_outlet_id'));
-        $this->outletB->update(['is_active' => false]);
-
-        $this->get(route('backoffice.products.index'))
+            ->withSession(['active_backoffice_outlet_id' => $this->outletB->id, 'cashier_outlet_id' => $this->outletA->id])
+            ->get(route('backoffice.products.index'))
             ->assertOk()
             ->assertSessionMissing('active_backoffice_outlet_id')
-            ->assertSessionHas('warning');
+            ->assertSessionMissing('warning')
+            ->assertSessionHas('cashier_outlet_id', $this->outletA->id);
     }
 
     public function test_transaction_report_lists_zero_transaction_outlet_and_returns_zero_summary(): void
@@ -995,7 +986,7 @@ class PosBusinessRulesTest extends TestCase
     public function test_purchase_receipt_preserves_decimal_prices_totals_and_history(): void
     {
         $this->ingredient->outlets()->sync([$this->outletA->id, $this->outletB->id]);
-        $this->actingAs($this->user)->withSession(['active_backoffice_outlet_id' => $this->outletB->id]);
+        $this->actingAs($this->user);
 
         $this->post(route('backoffice.stock-balances.store'), [
             'location_type' => 'outlet',
@@ -1038,7 +1029,6 @@ class PosBusinessRulesTest extends TestCase
         StockBalance::create(['ingredient_id' => $this->ingredient->id, 'location_type' => 'outlet', 'location_id' => $this->outletA->id, 'qty_on_hand' => 0.2]);
 
         $response = $this->actingAs($this->user)
-            ->withSession(['active_backoffice_outlet_id' => $this->outletA->id])
             ->get(route('backoffice.stock-balances.index'));
 
         $response->assertOk()->assertSee('0,20')->assertDontSee('-0,00');

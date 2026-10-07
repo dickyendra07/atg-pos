@@ -1,7 +1,6 @@
 <?php
 
 use App\Http\Controllers\Backoffice\BackofficeController;
-use App\Http\Controllers\Backoffice\ActiveOutletController;
 use App\Http\Controllers\Backoffice\CashierShiftViewController;
 use App\Http\Controllers\Backoffice\DiscountViewController;
 use App\Http\Controllers\Backoffice\IngredientCategoryController;
@@ -31,7 +30,6 @@ use App\Http\Middleware\ResolveBackofficeOutlet;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOutlet::class)->group(function () {
-    Route::post('/active-outlet', ActiveOutletController::class)->name('active-outlet.update');
     Route::get('/', BackofficeController::class)->name('index');
     Route::post('/approval-pins/generate', [BackofficeController::class, 'generateApprovalPin'])->name('approval-pins.generate');
     Route::get('/print-summary', [BackofficeController::class, 'printSummary'])->name('print-summary');

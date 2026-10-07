@@ -378,13 +378,14 @@ class ProductWorkspaceStockPromoTest extends TestCase
         $this->assertCount(2, $cells[0], 'two variants x the one accessible outlet');
     }
 
-    public function test_active_outlet_focuses_the_outlet_and_changing_it_mutates_nothing(): void
+    public function test_stock_section_shows_every_outlet_and_a_leftover_selection_changes_nothing(): void
     {
         $this->recipe($this->regular, true, [[$this->milk, 150]]);
         $this->balance($this->milk, $this->a, 111);
         $this->balance($this->milk, $this->b, 777);
         $before = $this->dataSnapshot();
 
+        // A selection left in a session from before the selector was removed is ignored.
         $html = $this->actingAs($this->owner)
             ->withSession(['active_backoffice_outlet_id' => $this->b->id])
             ->get(route('backoffice.products.edit', [$this->product, 'section' => 'stock']))
@@ -392,30 +393,11 @@ class ProductWorkspaceStockPromoTest extends TestCase
         $panel = $this->panel($html, 'stock');
 
         $this->assertStringContainsString('777,00 ml', $panel);
-        $this->assertStringNotContainsString('111,00 ml', $panel);
-        $this->assertStringContainsString('data-pw-stock-scope', $panel);
-        $this->assertStringContainsString('Fokus pada outlet <strong>Bravo</strong>', $panel);
-        $this->assertStringContainsString('juga tersedia di 1 outlet lain', $panel);
-
-        // Switching the Active Outlet is a session change only.
-        $this->actingAs($this->owner)->post(route('backoffice.active-outlet.update'), ['outlet_id' => $this->a->id])->assertRedirect();
-        $this->post(route('backoffice.active-outlet.update'), ['outlet_id' => 0])->assertRedirect();
+        $this->assertStringContainsString('111,00 ml', $panel);
+        $this->assertStringNotContainsString('data-pw-stock-scope', $panel);
+        $this->assertStringNotContainsString('data-pw-stock-foreign-outlet', $panel);
 
         $this->assertSame($before, $this->dataSnapshot());
-    }
-
-    public function test_an_active_outlet_the_product_is_not_assigned_to_is_explained_not_hidden(): void
-    {
-        $this->recipe($this->regular, true, [[$this->milk, 150]]);
-
-        $html = $this->actingAs($this->owner)
-            ->withSession(['active_backoffice_outlet_id' => $this->c->id])
-            ->get(route('backoffice.products.edit', [$this->product, 'section' => 'stock']))
-            ->getContent();
-
-        $this->assertStringContainsString('data-pw-stock-foreign-outlet', $html);
-        $this->assertStringContainsString('belum ditugaskan ke outlet <strong>Charlie</strong>', $html);
-        $this->assertStringContainsString('Product tidak tersedia di Charlie.', $html);
     }
 
     public function test_contextual_stock_links_return_to_the_workspace_stock_section(): void
@@ -661,7 +643,7 @@ class ProductWorkspaceStockPromoTest extends TestCase
         $this->assertStringNotContainsString(route('backoffice.promos.edit', $promo->id, false), $html);
     }
 
-    public function test_active_outlet_narrows_the_promo_list_and_says_how_many_are_left_out(): void
+    public function test_promo_list_covers_every_accessible_outlet_and_a_leftover_selection_changes_nothing(): void
     {
         $atA = $this->promo('At Alpha', [$this->regular], [$this->a]);
         $atB = $this->promo('At Bravo', [$this->regular], [$this->b]);
@@ -672,13 +654,8 @@ class ProductWorkspaceStockPromoTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('data-pw-promo="'.$atA->id.'"', $html);
-        $this->assertStringNotContainsString('data-pw-promo="'.$atB->id.'"', $html);
-        $this->assertStringContainsString('1 Promo lain tidak ditampilkan karena tidak berlaku di outlet aktif', $html);
-
-        $this->post(route('backoffice.active-outlet.update'), ['outlet_id' => 0]);
-        $all = $this->promoPage();
-        $this->assertStringContainsString('data-pw-promo="'.$atB->id.'"', $all);
-        $this->assertStringNotContainsString('data-pw-promo-scope', $all);
+        $this->assertStringContainsString('data-pw-promo="'.$atB->id.'"', $html);
+        $this->assertStringNotContainsString('data-pw-promo-scope', $html);
     }
 
     public function test_promo_outlets_that_can_no_longer_sell_the_variant_are_flagged_not_fixed(): void

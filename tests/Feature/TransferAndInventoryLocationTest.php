@@ -95,21 +95,16 @@ class TransferAndInventoryLocationTest extends TestCase
 
     // ---- Inventory Control location filter ------------------------------------------------------
 
-    public function test_inventory_control_with_active_outlet_only_offers_that_outlet(): void
+    public function test_inventory_control_for_a_limited_user_only_offers_their_outlet_and_the_warehouse(): void
     {
-        $response = $this->actingAs($this->owner)
-            ->withSession(['active_backoffice_outlet_id' => $this->mainOutlet->id])
-            ->get(route('backoffice.stock-balances.index'));
+        $admin = $this->limitedUser('admin-ou', $this->mainOutlet);
+
+        $response = $this->actingAs($admin)->get(route('backoffice.stock-balances.index'));
 
         $response->assertOk()
-            ->assertSee('<th>Lokasi</th>', false)
-            ->assertDontSee('<th>Outlet</th>', false)
             ->assertSee('Outlet – Outlet Utama')
-            ->assertDontSee('value="warehouse:'.$this->warehouse->id.'"', false)
+            ->assertSee('value="warehouse:'.$this->warehouse->id.'"', false)
             ->assertDontSee('value="outlet:'.$this->otherOutlet->id.'"', false);
-
-        $this->assertCount(0, $response->viewData('summaryLocationWarehouses'));
-        $this->assertSame([$this->mainOutlet->id], $response->viewData('summaryLocationOutlets')->pluck('id')->all());
     }
 
     public function test_inventory_control_for_all_outlets_still_offers_warehouses(): void
@@ -220,8 +215,8 @@ class TransferAndInventoryLocationTest extends TestCase
         $toOutlet = $this->sendTransfer('warehouse:'.$this->warehouse->id, 'outlet:'.$this->otherOutlet->id, 10);
         $warehouseOnly = $this->sendTransfer('warehouse:'.$this->warehouse->id, 'warehouse:'.$secondWarehouse->id, 20);
 
-        // Owner's Active Outlet is not involved in either transfer; existing behavior still applies.
-        $this->actingAs($this->owner)->withSession(['active_backoffice_outlet_id' => $this->mainOutlet->id]);
+        // The owner is not involved in either transfer as an outlet; existing behavior still applies.
+        $this->actingAs($this->owner);
 
         $this->post(route('backoffice.transfers.mark-cancelled', $toOutlet))->assertRedirect(route('backoffice.transfers.index'));
         $this->assertSame('cancelled', $toOutlet->fresh()->status);
@@ -254,7 +249,7 @@ class TransferAndInventoryLocationTest extends TestCase
         $this->assertSame($expected, $this->exportTransferIds());   // F: same dataset as the index
     }
 
-    public function test_limited_user_with_specific_active_outlet_gets_intersection_of_access_and_context(): void
+    public function test_limited_user_with_two_outlets_sees_exactly_those_and_a_leftover_selection_changes_nothing(): void
     {
         $t = $this->transferMatrix();
         $admin = $this->limitedUser('admin-two', $this->mainOutlet, [$this->otherOutlet]);
@@ -263,17 +258,15 @@ class TransferAndInventoryLocationTest extends TestCase
         $all = [$t['warehouseToMine'], $t['warehouseToOther'], $t['mineToOther'], $t['otherToThird'], $t['legacyMine']];
         sort($all);
         $this->assertSame($all, $this->indexTransferIds());
-
-        $this->withSession(['active_backoffice_outlet_id' => $this->otherOutlet->id]);
-        $scoped = [$t['warehouseToOther'], $t['mineToOther'], $t['otherToThird']];
-        sort($scoped);
-        $this->assertSame($scoped, $this->indexTransferIds());
-        $this->assertSame($scoped, $this->exportTransferIds());
-
-        // A forged Active Outlet the user cannot access is discarded by the context, never widening scope.
-        $this->withSession(['active_backoffice_outlet_id' => $t['thirdOutletId']]);
-        $this->assertSame($all, $this->indexTransferIds());
         $this->assertSame($all, $this->exportTransferIds());
+
+        // A selection left in an old session (own outlet, or one the user cannot access) is ignored:
+        // it neither narrows nor widens anything.
+        foreach ([$this->otherOutlet->id, $t['thirdOutletId']] as $leftover) {
+            $this->withSession(['active_backoffice_outlet_id' => $leftover]);
+            $this->assertSame($all, $this->indexTransferIds());
+            $this->assertSame($all, $this->exportTransferIds());
+        }
     }
 
     public function test_owner_still_sees_every_transfer_in_index_and_export(): void
@@ -281,18 +274,16 @@ class TransferAndInventoryLocationTest extends TestCase
         $t = $this->transferMatrix();
         $everything = StockTransfer::orderBy('id')->pluck('id')->all();
 
-        // E: global role, "Semua Outlet".
+        // E: global role, every outlet.
         $this->actingAs($this->owner);
         $this->assertSame($everything, $this->indexTransferIds());
         $this->assertSame($everything, $this->exportTransferIds());
         $this->assertContains($t['warehouseToWarehouse'], $everything);
 
-        // With a specific Active Outlet the existing context filter still applies to the owner.
+        // A selection left in an old session does not narrow the owner's view either.
         $this->withSession(['active_backoffice_outlet_id' => $this->otherOutlet->id]);
-        $scoped = [$t['warehouseToOther'], $t['mineToOther'], $t['otherToThird']];
-        sort($scoped);
-        $this->assertSame($scoped, $this->indexTransferIds());
-        $this->assertSame($scoped, $this->exportTransferIds());
+        $this->assertSame($everything, $this->indexTransferIds());
+        $this->assertSame($everything, $this->exportTransferIds());
     }
 
     // ---- available-ingredients: outlet access ------------------------------------------------

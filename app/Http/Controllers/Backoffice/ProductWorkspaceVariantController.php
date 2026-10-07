@@ -89,7 +89,6 @@ class ProductWorkspaceVariantController extends Controller
 
         return $request->validate($writer->rowRules(), [
             'name.required' => 'Nama variant wajib diisi.',
-            'code.required' => 'Kode variant wajib diisi.',
             'outlet_ids.required' => 'Minimal pilih 1 outlet untuk Variant.',
             'price_dine_in.required' => 'Harga dine in wajib diisi.',
             'price_delivery.required' => 'Harga delivery wajib diisi.',
