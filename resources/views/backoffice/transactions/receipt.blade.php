@@ -193,9 +193,11 @@
         }
     }
     $receiptBrandName = "Lee Ong's Tea x Waspffle";
-    $receiptAddress = 'Alamat outlet / cabang';
-    // The outlet the sale was rung up at (the cashier's connected outlet), not a fixed name.
+    // Outlet identity always comes from the transaction's own outlet (never the logged-in outlet), so a
+    // reprint of an old sale still shows the outlet that made it. The address is the saved outlet address,
+    // on one line; with none saved the line is left out (the printers skip a null address).
     $receiptOutletName = trim((string) ($transaction->outlet->name ?? ''));
+    $receiptAddress = trim((string) preg_replace('/\s+/', ' ', (string) ($transaction->outlet->address ?? '')));
     $cashierName = $transaction->user->name ?? '-';
     $memberName = $transaction->member->name ?? null;
     $memberPhone = $transaction->member->phone ?? null;
@@ -250,7 +252,7 @@
     $receiptPayload = [
         'brand_name' => $receiptBrandName,
         'outlet_name' => $receiptOutletName !== '' ? $receiptOutletName : null,
-        'address' => $receiptAddress,
+        'address' => $receiptAddress !== '' ? $receiptAddress : null,
         'transaction_number' => $transactionNumber,
         'cashier_name' => $cashierName,
         'member_name' => $memberName,
