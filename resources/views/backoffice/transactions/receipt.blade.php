@@ -194,6 +194,8 @@
     }
     $receiptBrandName = "Lee Ong's Tea x Waspffle";
     $receiptAddress = 'Alamat outlet / cabang';
+    // The outlet the sale was rung up at (the cashier's connected outlet), not a fixed name.
+    $receiptOutletName = trim((string) ($transaction->outlet->name ?? ''));
     $cashierName = $transaction->user->name ?? '-';
     $memberName = $transaction->member->name ?? null;
     $memberPhone = $transaction->member->phone ?? null;
@@ -247,6 +249,7 @@
 
     $receiptPayload = [
         'brand_name' => $receiptBrandName,
+        'outlet_name' => $receiptOutletName !== '' ? $receiptOutletName : null,
         'address' => $receiptAddress,
         'transaction_number' => $transactionNumber,
         'cashier_name' => $cashierName,
@@ -487,6 +490,15 @@
                 align: 'center',
                 gap: 4,
             });
+
+            if (receipt.outlet_name) {
+                pushWrapped(receipt.outlet_name, {
+                    size: 17,
+                    weight: '700',
+                    align: 'center',
+                    gap: 4,
+                });
+            }
 
             if (receipt.address) {
                 pushWrapped(receipt.address, {
@@ -880,6 +892,10 @@
             raw([ESC, 0x61, 0x01]); // center
 
             wrapBluetoothText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach(line);
+
+            if (receipt.outlet_name) {
+                wrapBluetoothText(receipt.outlet_name, widthChars).forEach(line);
+            }
 
             if (receipt.address) {
                 wrapBluetoothText(receipt.address, widthChars).forEach(line);

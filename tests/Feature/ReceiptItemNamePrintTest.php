@@ -64,6 +64,29 @@ class ReceiptItemNamePrintTest extends TestCase
         }
     }
 
+    public function test_the_receipt_payload_carries_the_name_of_the_outlet_that_made_the_sale(): void
+    {
+        $this->assertSame('BXC', $this->receiptPayload($this->transaction)['outlet_name']);
+
+        // Another outlet's cashier: that outlet's name, not a fixed one.
+        $other = Outlet::create(['name' => 'Tea Bar Kemang', 'code' => 'TBK', 'is_active' => true]);
+        $second = SalesTransaction::create([
+            'transaction_number' => 'ATG-002',
+            'user_id' => $this->owner->id,
+            'outlet_id' => $other->id,
+            'subtotal' => 500,
+            'grand_total' => 500,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+            'amount_paid' => 500,
+            'change_amount' => 0,
+            'status' => 'completed',
+        ]);
+        $this->line($second, 'Sedotan', '*Sedotan Boba [DINE IN]', 1, 500);
+
+        $this->assertSame('Tea Bar Kemang', $this->receiptPayload($second)['outlet_name']);
+    }
+
     public function test_the_receipt_payload_has_one_clean_label_per_cart_line_and_unchanged_amounts(): void
     {
         $payload = $this->receiptPayload($this->transaction);

@@ -6722,6 +6722,10 @@
 
         cashierWrapText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach(line);
 
+        if (receipt.outlet_name) {
+            cashierWrapText(receipt.outlet_name, widthChars).forEach(line);
+        }
+
         if (receipt.address) {
             cashierWrapText(receipt.address, widthChars).forEach(line);
         }
