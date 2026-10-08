@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 /**
  * Single definition of the Backoffice sidebar: one standalone Dashboard link plus collapsible groups.
  *
+ * Variants are managed from the Product Workspace, so they have no sidebar entry (the Variant pages and
+ * routes still exist and resolve; a Variant page simply marks no sidebar item active, like any other
+ * page outside the menu).
+ *
  * Structure only. Every item is shown to every Backoffice user exactly as before (each controller
  * stays the only access guard), and each item keeps the route and active pattern it already had.
  *
@@ -29,7 +33,6 @@ class BackofficeNavigation
                 ]),
                 self::group('menu-products', 'Menu & Products', [
                     self::item('Products', 'backoffice.products.index', 'backoffice.products.*', 'blue', '<rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8 9h8"></path><path d="M8 13h8"></path><path d="M8 17h4"></path>'),
-                    self::item('Variants', 'backoffice.variants.index', 'backoffice.variants.*', 'violet', '<path d="M7 7h10"></path><path d="M7 12h10"></path><path d="M7 17h6"></path><path d="M5 7h.01"></path><path d="M5 12h.01"></path><path d="M5 17h.01"></path>'),
                     self::item('Recipes', 'backoffice.recipes.index', 'backoffice.recipes.*', 'orange', '<path d="M6 4h12"></path><path d="M8 4v16"></path><path d="M16 4v16"></path><path d="M8 9h8"></path><path d="M8 14h8"></path>'),
                     self::item('Menu Categories', 'backoffice.menu-categories.index', 'backoffice.menu-categories.*', 'blue', '<path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h10"></path>'),
                 ]),

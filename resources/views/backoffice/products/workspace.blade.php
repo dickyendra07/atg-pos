@@ -20,7 +20,8 @@
 
         <div class="pw-body">
             <nav class="pw-nav" aria-label="Bagian Product Workspace">
-                @foreach($sections as $sectionKey => $sectionLabel)
+                {{-- Only the visible sections get a tab; hidden ones (Recipe, Stock & Readiness, Promo) are still rendered below for deep links. --}}
+                @foreach($navSections as $sectionKey => $sectionLabel)
                     <a href="{{ \App\Services\ProductWorkspace::url($product, $sectionKey, $workspaceReturnTo) }}"
                        class="pw-nav-link {{ $section === $sectionKey ? 'is-active' : '' }}"
                        data-pw-nav="{{ $sectionKey }}"

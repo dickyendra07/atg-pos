@@ -23,14 +23,16 @@ class BackofficeNavigationTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** Every link the sidebar showed before UX-A1 (all roles saw all of them). */
+    /**
+     * Every link the sidebar showed before UX-A1 (all roles saw all of them), minus Variants: Variants are
+     * managed from the Product Workspace and have no sidebar entry any more.
+     */
     private const PREVIOUS_SIDEBAR_ROUTES = [
         'backoffice.index',
         'backoffice.outlets.index',
         'backoffice.warehouses.index',
         'backoffice.users.index',
         'backoffice.products.index',
-        'backoffice.variants.index',
         'backoffice.menu-categories.index',
         'backoffice.ingredients.index',
         'backoffice.ingredient-categories.index',
@@ -49,7 +51,7 @@ class BackofficeNavigationTest extends TestCase
 
     private const EXPECTED_GROUPS = [
         'sales' => ['Sales', ['backoffice.transactions.index', 'backoffice.shifts.index']],
-        'menu-products' => ['Menu & Products', ['backoffice.products.index', 'backoffice.variants.index', 'backoffice.recipes.index', 'backoffice.menu-categories.index']],
+        'menu-products' => ['Menu & Products', ['backoffice.products.index', 'backoffice.recipes.index', 'backoffice.menu-categories.index']],
         'promo-discount' => ['Promo & Discount', ['backoffice.promos.index', 'backoffice.discounts.index']],
         'ingredients-production' => ['Ingredients & Production', ['backoffice.ingredients.index', 'backoffice.ingredient-categories.index', 'backoffice.production-recipes.index', 'backoffice.productions.index']],
         'inventory' => ['Inventory', ['backoffice.stock-balances.index', 'backoffice.transfers.index', 'backoffice.purchase-history.index', 'backoffice.stock-adjustments.index']],
@@ -116,7 +118,6 @@ class BackofficeNavigationTest extends TestCase
             'dashboard' => ['backoffice.index', 'backoffice.index', null],
             'product list' => ['backoffice.products.index', 'backoffice.products.index', 'menu-products'],
             'product edit' => ['backoffice.products.edit', 'backoffice.products.index', 'menu-products'],
-            'variant create' => ['backoffice.variants.create', 'backoffice.variants.index', 'menu-products'],
             'recipe edit' => ['backoffice.recipes.edit', 'backoffice.recipes.index', 'menu-products'],
             'menu category edit' => ['backoffice.menu-categories.edit', 'backoffice.menu-categories.index', 'menu-products'],
             'transactions show' => ['backoffice.transactions.show', 'backoffice.transactions.index', 'sales'],
@@ -152,6 +153,31 @@ class BackofficeNavigationTest extends TestCase
 
         $openGroups = collect($navigation['groups'])->where('open', true)->pluck('key')->all();
         $this->assertSame($expectedGroup === null ? [] : [$expectedGroup], $openGroups);
+    }
+
+    public function test_variants_are_hidden_from_the_sidebar_but_their_pages_and_routes_still_work(): void
+    {
+        $this->assertNotContains('backoffice.variants.index', BackofficeNavigation::routeNames());
+
+        foreach (['backoffice.variants.index', 'backoffice.variants.create', 'backoffice.variants.edit', 'backoffice.variants.update', 'backoffice.variants.destroy'] as $routeName) {
+            $this->assertTrue(Route::has($routeName), $routeName);
+        }
+
+        // like any page outside the menu, a Variant page marks nothing active and opens no group
+        $navigation = BackofficeNavigation::resolve($this->requestFor('backoffice.variants.index'));
+        $this->assertSame([], collect($navigation['groups'])->where('open', true)->all());
+
+        [$owner] = $this->makeFixtures();
+        $html = $this->actingAs($owner)->get(route('backoffice.products.index'))->assertOk()->getContent();
+        $this->assertStringNotContainsString('<a href="'.route('backoffice.variants.index').'" class="sidebar-link', $html);
+        $this->assertStringNotContainsString('<span>Variants</span>', $html);
+
+        // Products, Recipes, Promos and Ingredients stay in the sidebar
+        foreach (['backoffice.products.index', 'backoffice.recipes.index', 'backoffice.promos.index', 'backoffice.ingredients.index'] as $routeName) {
+            $this->assertStringContainsString('<a href="'.route($routeName).'" class="sidebar-link', $html, $routeName);
+        }
+
+        $this->actingAs($owner)->get(route('backoffice.variants.index'))->assertOk();
     }
 
     public function test_pages_outside_the_menu_mark_nothing_active_and_open_no_group(): void

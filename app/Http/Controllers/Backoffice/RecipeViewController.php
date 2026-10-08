@@ -226,21 +226,16 @@ class RecipeViewController extends Controller
 
         $this->authorizeRecipeView($recipe, $user);
 
-        // One Recipe editor: the Product Workspace. Everyone with access to the Product pages (owner, admin
-        // pusat, admin outlet) is sent there for every Recipe state, without picking, activating or changing
-        // anything; the workspace shows view-only and ambiguous Recipes as they are. A Recipe whose ownership
-        // is inconsistent is never opened: safe message, nothing written, and no classic page as a way around.
-        // Compatibility exception: roles without Product access (staff_gudang) keep this classic page.
+        // The standalone Recipe editor (this page) is the normal place to manage a Recipe: the Recipe tab is not part
+        // of the Product Workspace rail any more, so Edit stays here. Who may open or change what is unchanged:
+        // authorizeRecipeView() above, authorizeRecipeMutation()/RecipeAccessPolicy on every write, and a Recipe whose
+        // ownership is inconsistent is still never opened for the Product roles (safe message, nothing written).
+        // (Old Workspace links such as ?section=recipe&recipe=ID keep rendering; nothing sends users there from here.)
         $recipe->load(['variant.product']);
-        $workspaceService = app(ProductWorkspace::class);
 
         if (ProductAccessPolicy::hasProductRole($user)) {
-            if ($problem = $workspaceService->recipeOwnershipProblem($recipe)) {
+            if ($problem = app(ProductWorkspace::class)->recipeOwnershipProblem($recipe)) {
                 return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)->with('error', $problem);
-            }
-
-            if ($workspaceUrl = $workspaceService->recipeEditUrl($user, $recipe, BackofficeReturnUrl::fromRequest($request))) {
-                return redirect($workspaceUrl);
             }
         }
 

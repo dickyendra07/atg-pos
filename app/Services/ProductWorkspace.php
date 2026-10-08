@@ -36,6 +36,13 @@ class ProductWorkspace
 
     public const DEFAULT_SECTION = 'general';
 
+    /**
+     * Sections that stay valid (deep links such as ?section=recipe&recipe=ID from the Recipes list keep working,
+     * and they are still rendered) but have no tab in the section rail: Recipe, Stock & Readiness and Promo are
+     * used from their own menus. Hiding is presentation only; nothing behind them is removed.
+     */
+    public const HIDDEN_FROM_NAV = ['recipe', 'stock', 'promo'];
+
     /** Mirrors PromoViewController::authorizeAccess() (primary role). */
     private const PROMO_ROLES = ['owner', 'admin_pusat', 'staff_gudang'];
 
@@ -72,6 +79,12 @@ class ProductWorkspace
         private readonly RecipeAccessPolicy $recipePolicy,
         private readonly IngredientWriter $ingredientWriter,
     ) {}
+
+    /** The sections that get a tab in the rail, in order. */
+    public static function navSections(): array
+    {
+        return array_diff_key(self::SECTIONS, array_flip(self::HIDDEN_FROM_NAV));
+    }
 
     public static function normalizeSection(mixed $section): string
     {
@@ -183,6 +196,7 @@ class ProductWorkspace
             'product' => $product,
             'section' => self::normalizeSection($section),
             'sections' => self::SECTIONS,
+            'navSections' => self::navSections(),
             'workspaceReturnTo' => $listReturnTo,
             'closeUrl' => $fromRecipes
                 ? $listReturnTo

@@ -196,9 +196,10 @@ class RecipeOutletScopeTest extends TestCase
     {
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
 
-        // An editable Recipe of any outlet hands over to the workspace; nothing is hidden by the old selection.
-        $this->get(route('backoffice.recipes.edit', $this->bazaarRecipe))
-            ->assertRedirect(url(route('backoffice.products.edit', [$this->bazaarVariant->product_id, 'section' => 'recipe', 'recipe' => $this->bazaarRecipe->id], false)));
+        // A Recipe of any outlet opens in the standalone editor (no hand-over to the Product Workspace); nothing is
+        // hidden by the old selection.
+        $edit = $this->get(route('backoffice.recipes.edit', $this->bazaarRecipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
+        $this->assertTrue($edit->viewData('canMutate'));
         $this->get(route('backoffice.recipes.index'))->assertOk()->assertSee('Matcha')->assertSee('Bazaar Only');
     }
 
@@ -299,9 +300,13 @@ class RecipeOutletScopeTest extends TestCase
         $this->get(route('backoffice.recipes.index'))->assertOk()
             ->assertSee('Triple')->assertSee('Lihat (read-only)');
 
-        // Product Workspace, read-only: shown with the reason, no drawer and no mutation control
-        $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))
-            ->assertRedirect(url(route('backoffice.products.edit', [$this->tripleVariant->product_id, 'section' => 'recipe', 'recipe' => $this->tripleRecipe->id], false)));
+        // The standalone editor opens it read-only: the reason is shown and there is no mutation control
+        $classic = $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
+        $this->assertFalse($classic->viewData('canMutate'));
+        $classic->assertSee('id="recipe-readonly-notice"', false)
+            ->assertDontSee('Update Header')->assertDontSee('Tambah Recipe Item');
+
+        // The old Product Workspace deep link still renders read-only too (bookmarks keep working)
         $workspace = $this->get(route('backoffice.products.edit', [$this->tripleVariant->product_id, 'section' => 'recipe', 'recipe' => $this->tripleRecipe->id]))->assertOk();
         $workspace->assertSee('Recipe ini digunakan di outlet lain di luar akses Anda. Anda dapat melihat Recipe ini, tetapi tidak dapat mengubahnya.')
             ->assertSee('data-pw-recipe-readonly', false)
@@ -325,8 +330,8 @@ class RecipeOutletScopeTest extends TestCase
     {
         $this->actingAs($this->bxcBazaarAdmin);
 
-        $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))
-            ->assertRedirect(url(route('backoffice.products.edit', [$this->sharedVariant->product_id, 'section' => 'recipe', 'recipe' => $this->sharedRecipe->id], false)));
+        $edit = $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
+        $this->assertTrue($edit->viewData('canMutate'));
 
         $this->assertMutationAllowed($this->sharedRecipe);
     }
@@ -337,7 +342,7 @@ class RecipeOutletScopeTest extends TestCase
         $this->actingAs($this->bxcBazaarAdmin)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
 
         $this->get(route('backoffice.recipes.index'))->assertOk()->assertSee('Matcha');
-        $this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertRedirect();
+        $this->assertTrue($this->get(route('backoffice.recipes.edit', $this->sharedRecipe))->assertOk()->viewData('canMutate'));
 
         $this->assertMutationAllowed($this->sharedRecipe);
     }
@@ -346,8 +351,8 @@ class RecipeOutletScopeTest extends TestCase
     public function test_single_outlet_recipe_is_editable_by_whoever_can_access_that_outlet(): void
     {
         foreach ([$this->bxcAdmin, $this->adminPusat] as $user) {
-            $this->actingAs($user)->get(route('backoffice.recipes.edit', $this->bxcRecipe))
-                ->assertRedirect(url(route('backoffice.products.edit', [$this->bxcVariant->product_id, 'section' => 'recipe', 'recipe' => $this->bxcRecipe->id], false)));
+            $edit = $this->actingAs($user)->get(route('backoffice.recipes.edit', $this->bxcRecipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
+            $this->assertTrue($edit->viewData('canMutate'), $user->username);
         }
 
         $this->assertMutationAllowed($this->bxcRecipe);
@@ -358,7 +363,7 @@ class RecipeOutletScopeTest extends TestCase
     {
         $this->actingAs($this->adminPusat)->withSession(['active_backoffice_outlet_id' => $this->bxc->id]);
 
-        $this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertRedirect();
+        $this->assertTrue($this->get(route('backoffice.recipes.edit', $this->tripleRecipe))->assertOk()->viewData('canMutate'));
 
         $this->assertMutationAllowed($this->tripleRecipe);
     }

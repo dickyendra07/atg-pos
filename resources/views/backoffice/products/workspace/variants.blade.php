@@ -80,7 +80,7 @@
             </table>
         </div>
         <p class="pw-note">
-            Variant nonaktif bisa diaktifkan kembali lewat Edit. Detail alasan siap jual ada di bagian Stock &amp; Readiness.
+            Variant nonaktif bisa diaktifkan kembali lewat Edit.
             @if($workspace['links']['variants_edit'])
                 Editor grup lama: <a href="{{ $workspace['links']['variants_edit'] }}" class="pw-link" data-pw-manage="variants">Kelola semua Variant</a>.
             @endif
