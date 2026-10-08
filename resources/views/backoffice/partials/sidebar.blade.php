@@ -43,15 +43,17 @@
                 <svg class="sidebar-group-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
             </button>
 
-            <div class="sidebar-menu sidebar-group-menu" id="sidebar-group-{{ $boGroup['key'] }}" role="group" aria-labelledby="sidebar-group-toggle-{{ $boGroup['key'] }}">
-                @foreach($boGroup['items'] as $boItem)
-                    <a href="{{ route($boItem['route']) }}" class="sidebar-link {{ $boItem['active'] ? 'active' : '' }}" @if($boItem['active']) aria-current="page" @endif>
-                        <span class="sidebar-nav-icon {{ $boItem['tone'] }}">
-                            <svg viewBox="0 0 24 24" aria-hidden="true">{!! $boItem['icon'] !!}</svg>
-                        </span>
-                        <span>{{ $boItem['label'] }}</span>
-                    </a>
-                @endforeach
+            <div class="sidebar-group-panel">
+                <div class="sidebar-menu sidebar-group-menu" id="sidebar-group-{{ $boGroup['key'] }}" role="group" aria-labelledby="sidebar-group-toggle-{{ $boGroup['key'] }}">
+                    @foreach($boGroup['items'] as $boItem)
+                        <a href="{{ route($boItem['route']) }}" class="sidebar-link {{ $boItem['active'] ? 'active' : '' }}" @if($boItem['active']) aria-current="page" @endif>
+                            <span class="sidebar-nav-icon {{ $boItem['tone'] }}">
+                                <svg viewBox="0 0 24 24" aria-hidden="true">{!! $boItem['icon'] !!}</svg>
+                            </span>
+                            <span>{{ $boItem['label'] }}</span>
+                        </a>
+                    @endforeach
+                </div>
             </div>
         </div>
     @endforeach

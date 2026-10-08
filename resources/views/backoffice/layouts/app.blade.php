@@ -150,8 +150,12 @@
             padding: 0 4px 4px;
         }
 
+        /* ---- Sidebar groups (accordion) -------------------------------------------------------------
+           One neutral 1px outline per group header; ATG orange only appears as a soft tint on hover and
+           while the group is open. Keyboard focus is a soft ring on :focus-visible (never after a mouse
+           click), drawn with box-shadow so the clipped .sidebar-inner can show it in full. */
         .sidebar-group {
-            margin-top: 10px;
+            margin-top: 8px;
         }
 
         .sidebar-group-toggle {
@@ -160,22 +164,29 @@
             align-items: center;
             justify-content: space-between;
             gap: 10px;
-            min-height: 36px;
+            min-height: 42px;
             margin: 0 0 6px;
-            padding: 6px 10px;
-            border: 0;
+            padding: 8px 12px;
+            border: 1px solid #e5e7eb;
             border-radius: 12px;
-            background: transparent;
-            color: #9ca3af;
+            background: #ffffff;
+            color: #6b7280;
             font: inherit;
             text-align: left;
             cursor: pointer;
-            transition: background 0.15s ease, color 0.15s ease;
+            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
         }
 
         .sidebar-group-toggle:hover {
-            background: rgba(255,255,255,0.90);
-            color: #6b7280;
+            background: #fffaf7;
+            border-color: rgba(232,106,58,0.38);
+            box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 2px 6px rgba(15,23,42,0.04);
+            color: #111827;
+        }
+
+        .sidebar-group-toggle:active {
+            background: #fff3eb;
         }
 
         .sidebar-group-toggle .sidebar-title {
@@ -187,6 +198,19 @@
             color: #374151;
         }
 
+        /* Expanded: a steady soft tint + orange hairline (no shadow), clearly different from the hover lift. */
+        .sidebar-group.is-open .sidebar-group-toggle {
+            background: #fff6f0;
+            border-color: rgba(232,106,58,0.50);
+            color: #111827;
+            box-shadow: none;
+        }
+
+        .sidebar-group.is-open .sidebar-group-toggle:hover {
+            background: #fff1e8;
+            box-shadow: 0 1px 3px rgba(15,23,42,0.06), 0 2px 6px rgba(15,23,42,0.04);
+        }
+
         .sidebar-group-chevron {
             width: 16px;
             height: 16px;
@@ -196,21 +220,60 @@
             stroke-width: 2;
             stroke-linecap: round;
             stroke-linejoin: round;
-            transition: transform 0.18s ease;
+            color: #9ca3af;
+            transition: transform 0.2s ease, color 0.18s ease;
+        }
+
+        .sidebar-group-toggle:hover .sidebar-group-chevron,
+        .sidebar-group.is-open .sidebar-group-chevron {
+            color: var(--brand-dark);
         }
 
         .sidebar-group.is-open .sidebar-group-chevron {
             transform: rotate(180deg);
         }
 
-        .bo-js .sidebar-group:not(.is-open) .sidebar-group-menu {
-            display: none;
+        /* Accordion panel: animates 0fr -> 1fr (height) only once JS is known to be running. Without JS the
+           panel is a plain block, so every link stays visible and reachable. Closed content is also made
+           invisible (after the animation) so its links drop out of the tab order. */
+        .bo-js .sidebar-group-panel {
+            display: grid;
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.2s ease;
         }
 
-        .sidebar-group-toggle:focus-visible,
+        .bo-js .sidebar-group.is-open .sidebar-group-panel {
+            grid-template-rows: 1fr;
+        }
+
+        .bo-js .sidebar-group-panel > .sidebar-group-menu {
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .bo-js .sidebar-group:not(.is-open) .sidebar-group-menu {
+            visibility: hidden;
+            transition: visibility 0s linear 0.2s;
+        }
+
+        .sidebar-group-toggle:focus {
+            outline: none;
+        }
+
+        /* Keyboard focus (also on an open or hovered header, so these selectors out-rank those states): soft orange ring + hairline. The transparent outline only shows in forced-colors
+           (high contrast) mode, where box-shadow is dropped. */
+        .sidebar-group .sidebar-group-toggle:focus-visible,
+        .sidebar-group.is-open .sidebar-group-toggle:focus-visible,
+        .sidebar-group.is-open .sidebar-group-toggle:hover:focus-visible,
         .sidebar-link:focus-visible {
-            outline: 2px solid var(--brand);
+            outline: 2px solid transparent;
             outline-offset: 2px;
+            border-color: var(--brand);
+            box-shadow: 0 0 0 3px rgba(232,106,58,0.28);
+        }
+
+        .sidebar-link:focus {
+            outline: none;
         }
 
         .sidebar-title {
@@ -227,22 +290,40 @@
             gap: 6px;
         }
 
+        /* Submenu: indented under its header, with a faint guide line (orange-tinted when it holds the
+           current page). The small padding gives the links' focus ring room inside the clipped panel. */
+        .sidebar-group-menu {
+            gap: 4px;
+            margin: 0 0 4px 14px;
+            padding: 3px 3px 3px 10px;
+            border-left: 1px solid #e8edf4;
+        }
+
+        .sidebar-group.has-active .sidebar-group-menu {
+            border-left-color: rgba(232,106,58,0.35);
+        }
+
         .sidebar-link {
             display: flex;
             align-items: center;
             gap: 12px;
             text-decoration: none;
             color: #374151;
-            padding: 10px 12px;
-            border-radius: 16px;
+            padding: 8px 10px;
+            border-radius: 12px;
             font-size: 14px;
             font-weight: 700;
-            transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+            transition: background-color 0.18s ease, box-shadow 0.18s ease, color 0.18s ease;
         }
 
-        .sidebar-link:hover {
-            background: rgba(255,255,255,0.90);
-            transform: translateX(2px);
+        .sidebar-link > span:last-child {
+            min-width: 0;
+            overflow-wrap: anywhere;
+        }
+
+        .sidebar-link:not(.active):hover {
+            background: rgba(15,23,42,0.045);
+            color: #111827;
         }
 
         .sidebar-link.active {
@@ -296,6 +377,16 @@
         .sidebar-nav-icon.violet {
             background: #f4f3ff;
             border-color: #e3deff;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .sidebar-group-toggle,
+            .sidebar-group-chevron,
+            .sidebar-link,
+            .bo-js .sidebar-group-panel,
+            .bo-js .sidebar-group:not(.is-open) .sidebar-group-menu {
+                transition: none;
+            }
         }
 
         .sidebar-footer {
@@ -610,9 +701,9 @@
             }
 
             .sidebar-link {
-                min-height: 58px;
+                min-height: 54px;
                 font-size: 16px;
-                border-radius: 18px;
+                border-radius: 14px;
             }
 
             .sidebar-nav-icon {
@@ -640,8 +731,7 @@
             }
 
             .sidebar-group-toggle {
-                min-height: 48px;
-                border-radius: 16px;
+                min-height: 50px;
             }
 
             .content {

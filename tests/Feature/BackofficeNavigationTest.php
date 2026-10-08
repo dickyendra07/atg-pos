@@ -216,6 +216,30 @@ class BackofficeNavigationTest extends TestCase
         $this->assertSame(1, substr_count($html, 'class="sidebar-link active"'));
     }
 
+    public function test_sidebar_group_styling_keeps_keyboard_focus_without_the_thick_orange_outline(): void
+    {
+        [$owner] = $this->makeFixtures();
+
+        $html = $this->actingAs($owner)->get(route('backoffice.products.index'))->assertOk()->getContent();
+
+        // Every group header is wrapped in the same animated panel; the menu inside keeps its ids/roles.
+        $this->assertSame(count(self::EXPECTED_GROUPS), substr_count($html, 'class="sidebar-group-panel"'));
+        foreach (array_keys(self::EXPECTED_GROUPS) as $groupKey) {
+            $this->assertMatchesRegularExpression('/class="sidebar-group-panel">\s*<div class="sidebar-menu sidebar-group-menu" id="sidebar-group-'.$groupKey.'" role="group"/', $html, $groupKey);
+        }
+
+        // Keyboard focus stays visible (soft ring via :focus-visible); the old solid brand outline is gone.
+        $this->assertStringContainsString('.sidebar-group .sidebar-group-toggle:focus-visible', $html);
+        // ...including on an expanded or hovered header, whose own rules would otherwise out-rank the ring.
+        $this->assertStringContainsString('.sidebar-group.is-open .sidebar-group-toggle:focus-visible', $html);
+        $this->assertStringContainsString('.sidebar-group.is-open .sidebar-group-toggle:hover:focus-visible', $html);
+        $this->assertStringContainsString('box-shadow: 0 0 0 3px rgba(232,106,58,0.28);', $html);
+        $this->assertStringNotContainsString('outline: 2px solid var(--brand);', $html);
+
+        // Motion is switched off for users who ask for it.
+        $this->assertMatchesRegularExpression('/@media \(prefers-reduced-motion: reduce\)\s*\{[^}]*\.sidebar-group-toggle/s', $html);
+    }
+
     public function test_rendered_sidebar_keeps_mobile_drawer_markup_and_accessibility_essentials(): void
     {
         [$owner] = $this->makeFixtures();
