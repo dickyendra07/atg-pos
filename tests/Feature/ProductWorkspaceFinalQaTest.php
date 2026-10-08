@@ -359,7 +359,8 @@ class ProductWorkspaceFinalQaTest extends TestCase
         $this->assertStringContainsString('aria-label="Hapus '.$f['ingredient']->name.' dari Recipe"', $form);
 
         $page = $this->get(route('backoffice.products.edit', $f['product']))->getContent();
-        $this->assertSame(6, substr_count($page, 'role="img" aria-label="Belum disimpan"'));
+        // one marker per tab in the rail: General, Outlets, Variants & Pricing (Recipe, Stock, Promo have no tab)
+        $this->assertSame(3, substr_count($page, 'role="img" aria-label="Belum disimpan"'));
         $this->assertStringContainsString('aria-live="polite"', $page);
         $this->assertStringContainsString('aria-modal="true"', $page);
         $this->assertStringContainsString('prefers-reduced-motion: reduce', $page);

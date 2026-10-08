@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Create Recipe - Back Office ATG POS</title>
+    {{-- Shown inside the Recipes list drawer (an iframe of this same page): drop the page header there. --}}
+    <script>if (window.self !== window.top) { document.documentElement.classList.add('is-embedded'); }</script>
+    <style>
+        .is-embedded .topbar { display: none; }
+        .is-embedded .wrap { margin: 16px auto; }
+        .is-embedded body { background: #fff; }
+    </style>
     <style>
         body {
             margin: 0;

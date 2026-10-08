@@ -816,7 +816,7 @@
             <div class="recipes-actions">
                 <a href="{{ route('backoffice.recipes.export.csv') }}" class="btn btn-blue">Export CSV</a>
                 <a href="{{ route('backoffice.recipes.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Recipe</a>
+                <a href="{{ route('backoffice.recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green" data-recipe-edit data-recipe-title="Tambah Recipe">Tambah Recipe</a>
                 <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
             </div>
         </div>
@@ -968,9 +968,9 @@
                                     <td>
                                         <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
                                             @if(in_array($recipe->id, $mutableRecipeIds, true))
-                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small">Edit</a>
+                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small" data-recipe-edit data-recipe-name="{{ $recipe->name }}">Edit</a>
                                             @else
-                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small" title="Recipe dipakai di beberapa outlet atau di luar akses Anda. Hanya bisa dilihat.">Lihat (read-only)</a>
+                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small" data-recipe-edit data-recipe-name="{{ $recipe->name }}" title="Recipe dipakai di beberapa outlet atau di luar akses Anda. Hanya bisa dilihat.">Lihat (read-only)</a>
                                             @endif
 
                                             @if($recipe->is_active && in_array($recipe->id, $mutableRecipeIds, true))
@@ -1000,4 +1000,125 @@
 
         </div>
     </div>
+
+    {{-- Edit / Tambah Recipe in place: the standalone editor and create form are shown in a side panel on this page (no page change). --}}
+    <style>
+        .rcp-drawer-backdrop { position: fixed; inset: 0; z-index: 9000; background: rgba(15, 23, 42, 0.45); display: none; }
+        .rcp-drawer { position: fixed; z-index: 9001; top: 0; right: 0; bottom: 0; width: min(1180px, 96vw); background: #fff; box-shadow: -20px 0 60px rgba(15, 23, 42, 0.25); display: none; flex-direction: column; }
+        .rcp-drawer.is-open, .rcp-drawer-backdrop.is-open { display: flex; }
+        .rcp-drawer-backdrop.is-open { display: block; }
+        .rcp-drawer-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid #e5e7eb; }
+        .rcp-drawer-title { margin: 0; font-size: 18px; font-weight: 800; color: #111827; overflow-wrap: anywhere; }
+        .rcp-drawer-close { min-height: 40px; padding: 0 16px; border: 1px solid #d1d5db; border-radius: 12px; background: #fff; font-weight: 800; cursor: pointer; }
+        .rcp-drawer-body { position: relative; flex: 1; min-height: 0; }
+        .rcp-drawer-frame { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+        .rcp-drawer-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #fff; color: #475569; font-weight: 700; }
+        .rcp-drawer-loading[hidden] { display: none; }
+        @media (max-width: 720px) { .rcp-drawer { width: 100vw; } }
+        @media (prefers-reduced-motion: no-preference) { .rcp-drawer.is-open { animation: rcp-in .18s ease-out; } @keyframes rcp-in { from { transform: translateX(24px); opacity: .6; } to { transform: none; opacity: 1; } } }
+    </style>
+
+    <div class="rcp-drawer-backdrop" id="rcp-drawer-backdrop"></div>
+    <aside class="rcp-drawer" id="rcp-drawer" role="dialog" aria-modal="true" aria-labelledby="rcp-drawer-title">
+        <div class="rcp-drawer-head">
+            <h2 class="rcp-drawer-title" id="rcp-drawer-title">Edit Recipe</h2>
+            <button type="button" class="rcp-drawer-close" id="rcp-drawer-close">Tutup</button>
+        </div>
+        <div class="rcp-drawer-body">
+            <iframe class="rcp-drawer-frame" id="rcp-drawer-frame" title="Edit Recipe"></iframe>
+            <div class="rcp-drawer-loading" id="rcp-drawer-loading" hidden>Memuat editor Recipe…</div>
+        </div>
+    </aside>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var drawer = document.getElementById('rcp-drawer');
+            var backdrop = document.getElementById('rcp-drawer-backdrop');
+            var frame = document.getElementById('rcp-drawer-frame');
+            var loading = document.getElementById('rcp-drawer-loading');
+            var title = document.getElementById('rcp-drawer-title');
+            var closeBtn = document.getElementById('rcp-drawer-close');
+            var TOAST_KEY = 'atg.recipes.drawerToasts';
+            var listPath = <?php echo json_encode(parse_url(route('backoffice.recipes.index', [], false), PHP_URL_PATH)); ?>;
+            var active = false, loads = 0, opener = null;
+
+            // The layout's .shell has a backdrop-filter, which makes it (not the screen) the reference for position:fixed
+            // and clips its children. Inside it the panel was as tall as the whole Recipes list, so its bottom ended up
+            // far below the screen. Hang the panel on <body> instead: then "fixed" means the real viewport.
+            document.body.appendChild(backdrop);
+            document.body.appendChild(drawer);
+
+            // A toast that was queued right before the list reloaded (after a save in the drawer).
+            // (BackofficeToast is defined by the layout's feedback script, which comes after this one: wait for the page.)
+            document.addEventListener('DOMContentLoaded', function () {
+                try {
+                    var queued = JSON.parse(sessionStorage.getItem(TOAST_KEY) || 'null');
+                    sessionStorage.removeItem(TOAST_KEY);
+                    if (queued && window.BackofficeToast) { queued.forEach(function (t) { window.BackofficeToast.show(t.type, t.message); }); }
+                } catch (e) { /* storage unavailable: the save itself already happened */ }
+            });
+
+            function open(link) {
+                opener = link;
+                active = true;
+                loads = 0;
+                title.textContent = link.getAttribute('data-recipe-title')
+                    || 'Edit Recipe' + (link.getAttribute('data-recipe-name') ? ' · ' + link.getAttribute('data-recipe-name') : '');
+                frame.title = title.textContent;
+                loading.hidden = false;
+                frame.src = link.href;
+                drawer.classList.add('is-open');
+                backdrop.classList.add('is-open');
+                document.body.style.overflow = 'hidden';
+                closeBtn.focus();
+            }
+
+            function close(reloadList) {
+                active = false;
+                drawer.classList.remove('is-open');
+                backdrop.classList.remove('is-open');
+                document.body.style.overflow = '';
+                frame.removeAttribute('src');
+
+                // Anything done inside the editor (item added / qty changed / header saved) may change this list.
+                if (reloadList) { location.reload(); return; }
+                if (opener && opener.focus) { try { opener.focus(); } catch (e) { /* ignore */ } }
+            }
+
+            frame.addEventListener('load', function () {
+                if (!active) { return; }
+                loads += 1;
+                loading.hidden = true;
+
+                var doc = null, path = '';
+                try { doc = frame.contentDocument; path = frame.contentWindow.location.pathname; } catch (e) { return; }
+
+                // The editor redirected to the Recipes list (header saved, or "Kembali"): the work is done here.
+                if (loads > 1 && path === listPath) {
+                    var toasts = [];
+                    doc.querySelectorAll('[data-bo-toast]').forEach(function (el) {
+                        var message = el.querySelector('.bo-toast-message');
+                        if (message) { toasts.push({ type: el.getAttribute('data-bo-toast-type') || 'info', message: message.textContent.trim() }); }
+                    });
+                    try { sessionStorage.setItem(TOAST_KEY, JSON.stringify(toasts)); } catch (e) { /* ignore */ }
+                    close(true);
+                }
+            });
+
+            document.addEventListener('click', function (event) {
+                var link = event.target.closest ? event.target.closest('a[data-recipe-edit]') : null;
+                if (!link || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) { return; }   // new tab etc. keep working
+                event.preventDefault();
+                open(link);
+            });
+
+            closeBtn.addEventListener('click', function () { close(loads > 1); });
+            backdrop.addEventListener('click', function () { close(loads > 1); });
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && active) { event.preventDefault(); close(loads > 1); }
+            });
+        })();
+    </script>
 @endsection

@@ -4,6 +4,30 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Edit Recipe - Back Office ATG POS</title>
+    {{-- Shown inside the Recipes list drawer (an iframe of this same page): drop the page header there. Decided in the
+         browser before anything is painted, so it also holds after a save or an item action inside the frame. --}}
+    <script>if (window.self !== window.top) { document.documentElement.classList.add('is-embedded'); }</script>
+    <style>
+        .is-embedded .topbar { display: none; }
+        .is-embedded .wrap { margin: 16px auto; }
+        .is-embedded body { background: #fff; }
+
+        /* In the drawer the long item list must not push "Tambah Bahan Recipe" out of sight: header and add-form stack
+           on the left, the item list is the tall column on the right (phone: header, add-form, then the list). */
+        .is-embedded .right-stack { display: contents; }
+        .is-embedded .grid-2 {
+            grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
+            grid-template-areas: "head items" "add items";
+            grid-template-rows: auto 1fr;
+        }
+        .is-embedded .recipe-header-card { grid-area: head; }
+        .is-embedded .recipe-header-card > .info { display: none; }   /* who / which outlet: already known from the page behind the panel */
+        .is-embedded #recipe-add-item { grid-area: add; }
+        .is-embedded #recipe-items { grid-area: items; }
+        @media (max-width: 980px) {
+            .is-embedded .grid-2 { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "add" "items"; grid-template-rows: auto; }
+        }
+    </style>
     <style>
         body {
             margin: 0;
@@ -176,6 +200,13 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+        }
+
+        /* Grid / flex children may shrink below their content: otherwise the items table (min-width 760px) widens
+           the whole page on a phone instead of scrolling inside .table-wrap. */
+        .grid-2 > *,
+        .right-stack > * {
+            min-width: 0;
         }
 
         .inline-form {
@@ -418,7 +449,7 @@
         @endunless
 
         <div class="grid-2">
-            <div class="card">
+            <div class="card recipe-header-card">
                 <div class="section-title">Header Recipe</div>
 
                 <div class="info">

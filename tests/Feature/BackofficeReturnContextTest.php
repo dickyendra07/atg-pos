@@ -451,36 +451,46 @@ class BackofficeReturnContextTest extends TestCase
             ->assertSessionHas('success');
     }
 
-    public function test_recipe_edit_url_hands_over_to_the_workspace_recipe_drawer_and_keeps_return_to(): void
+    public function test_recipe_edit_url_opens_the_standalone_editor_and_keeps_return_to(): void
     {
         $returnTo = '/backoffice/recipes?search=Kafei';
 
-        $this->actingAs($this->owner)
+        $html = $this->actingAs($this->owner)
             ->get(route('backoffice.recipes.edit', [$this->recipe, 'return_to' => $returnTo]))
-            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $this->recipe->id, 'return_to' => $returnTo], false)));
+            ->assertOk()
+            ->assertViewIs('backoffice.recipes.edit')
+            ->getContent();
 
-        // The workspace's own close / back link returns to that list.
+        // no hand-over to the Product Workspace; the standalone page carries the list context in its forms and back link
+        $this->assertStringNotContainsString('data-product-workspace', $html);
+        $this->assertStringContainsString('<input type="hidden" name="return_to" value="'.e($returnTo).'">', $html);
+        $this->assertStringContainsString('href="'.e($returnTo.'#recipe-'.$this->recipe->id).'"', $html);
+
+        // The old Workspace deep link keeps working, and its close / back link returns to that list.
         $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $this->recipe->id, 'return_to' => $returnTo]))
             ->assertOk()
             ->assertViewHas('closeUrl', $returnTo)
             ->assertViewHas('closeLabel', 'Kembali ke Recipes');
     }
 
-    public function test_classic_recipe_edit_page_for_warehouse_staff_threads_return_to_through_every_form_and_back_link(): void
+    public function test_standalone_recipe_edit_page_threads_return_to_through_every_form_and_back_link(): void
     {
         $returnTo = '/backoffice/recipes?search=Kafei';
         $recipe = $this->makeClassicOnlyRecipe();
 
-        $html = $this->actingAs($this->warehouse)
-            ->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => $returnTo]))
-            ->assertOk()
-            ->getContent();
+        // warehouse staff always had this page; owner / admin pusat / admin outlet use it too now
+        foreach ([$this->warehouse, $this->owner] as $user) {
+            $html = $this->actingAs($user)
+                ->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => $returnTo]))
+                ->assertOk()
+                ->getContent();
 
-        $hidden = '<input type="hidden" name="return_to" value="'.e($returnTo).'">';
-        // header form + qty form + delete form + add-item form
-        $this->assertSame(4, substr_count($html, $hidden));
-        $this->assertStringContainsString('id="recipe-item-'.$recipe->items()->value('id').'"', $html);
-        $this->assertStringContainsString('href="'.e($returnTo.'#recipe-'.$recipe->id).'"', $html);
+            $hidden = '<input type="hidden" name="return_to" value="'.e($returnTo).'">';
+            // header form + qty form + delete form + add-item form
+            $this->assertSame(4, substr_count($html, $hidden), $user->username);
+            $this->assertStringContainsString('id="recipe-item-'.$recipe->items()->value('id').'"', $html);
+            $this->assertStringContainsString('href="'.e($returnTo.'#recipe-'.$recipe->id).'"', $html);
+        }
     }
 
     public function test_recipe_index_hands_its_own_url_to_edit_links(): void
@@ -613,13 +623,14 @@ class BackofficeReturnContextTest extends TestCase
             $this->get($url)->assertOk();
         }
 
-        // warehouse staff have no Product pages: the classic Recipe page stays for them
+        // warehouse staff and owner both open the standalone Recipe editor (no hand-over to the Product Workspace)
         $this->actingAs($this->warehouse)->get(route('backoffice.recipes.edit', $this->recipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
         $this->actingAs($this->owner);
 
-        // an editable Recipe hands over to the Product Workspace, without inventing a return_to
-        $this->get(route('backoffice.recipes.edit', $this->recipe))
-            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $this->recipe->id], false)));
+        // and it opens fine without any return_to, never pointing into the Product Workspace
+        $html = $this->get(route('backoffice.recipes.edit', $this->recipe))->assertOk()->assertViewIs('backoffice.recipes.edit')->getContent();
+        $this->assertStringNotContainsString('section=recipe', $html);
+        $this->assertStringNotContainsString('data-product-workspace', $html);
     }
 
     // ---- validation failures ----------------------------------------------------------------------

@@ -854,20 +854,28 @@ class ProductWorkspaceRecipeTest extends TestCase
     // ---- helpers ------------------------------------------------------------------------------------
 
     // ================================================================================================
-    // ONE RECIPE EDITOR: the classic Edit URL hands over to the workspace drawer
+    // RECIPE MANAGEMENT: the standalone Recipe editor is the normal place; the old Workspace deep link still works
     // ================================================================================================
 
-    public function test_classic_edit_url_redirects_to_the_right_product_variant_and_recipe_drawer(): void
+    public function test_the_recipe_edit_url_opens_the_standalone_editor_for_the_right_recipe_and_the_old_deep_link_still_works(): void
     {
         $this->recipe($this->regular, true, [[$this->milk, 150]]);
         $large = $this->recipe($this->large, true, [[$this->milk, 200], [$this->sugar, 30]]);
         $this->recipe($this->otherVariant, true, [[$this->milk, 10]]);
         $returnTo = '/backoffice/recipes?status=active&search=Ube';
 
-        $this->actingAs($this->owner)
+        // Standalone editor: no redirect, the Product Workspace is not entered
+        $standalone = $this->actingAs($this->owner)
             ->get(route('backoffice.recipes.edit', [$large, 'return_to' => $returnTo]))
-            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $large->id, 'return_to' => $returnTo], false)));
+            ->assertOk()
+            ->assertViewIs('backoffice.recipes.edit');
+        $this->assertSame($large->id, $standalone->viewData('recipe')->id, 'the Large Recipe, not Regular or another Product');
+        $this->assertTrue($standalone->viewData('canMutate'));
+        $this->assertStringNotContainsString('data-product-workspace', $standalone->getContent());
+        $this->assertStringNotContainsString('data-pw-open-recipe-url', $standalone->getContent());
+        $this->assertStringContainsString('Liquid Sugar', $standalone->getContent());
 
+        // The old Workspace deep link (bookmarks) keeps rendering and opening the right drawer
         $page = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $large->id, 'return_to' => $returnTo]))->assertOk();
         $html = $page->getContent();
 
@@ -905,16 +913,18 @@ class ProductWorkspaceRecipeTest extends TestCase
         }
     }
 
-    public function test_a_recipe_of_a_variant_with_several_active_recipes_opens_in_the_workspace_and_is_never_picked(): void
+    public function test_a_recipe_of_a_variant_with_several_active_recipes_opens_standalone_and_is_never_picked(): void
     {
         [$one, $two] = $this->ambiguous();
         $before = $this->recipeFingerprint();
         $this->actingAs($this->owner);
 
         foreach ([$one, $two] as $recipe) {
-            // the classic URL no longer leads to the classic editor for owner / admin pusat
-            $this->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => '/backoffice/recipes']))
-                ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id, 'return_to' => '/backoffice/recipes'], false)));
+            // the standalone editor opens exactly this Recipe (nothing is chosen for the user) and writes nothing
+            $standalone = $this->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => '/backoffice/recipes']))
+                ->assertOk()->assertViewIs('backoffice.recipes.edit');
+            $this->assertSame($recipe->id, $standalone->viewData('recipe')->id);
+            $this->assertSame($before, $this->recipeFingerprint(), 'opening the standalone editor writes nothing');
 
             $page = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'general', 'recipe' => $recipe->id]))->assertOk();
             $html = $page->getContent();
@@ -932,30 +942,33 @@ class ProductWorkspaceRecipeTest extends TestCase
         $this->assertTrue($two->fresh()->is_active);
     }
 
-    public function test_opening_the_old_url_or_the_deep_link_writes_nothing(): void
+    public function test_opening_the_edit_url_or_the_old_deep_link_writes_nothing(): void
     {
         $recipe = $this->recipe($this->regular, true, [[$this->milk, 46084.0], [$this->sugar, 0.6]]);
         $before = $this->recipeFingerprint();
         $this->actingAs($this->owner);
 
-        $this->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => '/backoffice/recipes']))->assertRedirect();
+        $this->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => '/backoffice/recipes']))->assertOk()->assertViewIs('backoffice.recipes.edit');
         $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id]))->assertOk();
         $this->getJson(route('backoffice.products.workspace.recipes.edit-form', [$this->product, $this->regular, $recipe]))->assertOk();
 
         $this->assertSame($before, $this->recipeFingerprint());
     }
 
-    public function test_the_old_url_keeps_its_authorization_and_view_only_recipes_open_read_only_in_the_workspace(): void
+    public function test_the_edit_url_keeps_its_authorization_and_view_only_recipes_open_read_only(): void
     {
         $recipe = $this->recipe($this->regular, true, [[$this->milk, 150]]);
 
         // not signed in
         $this->get(route('backoffice.recipes.edit', $recipe))->assertRedirect();
 
-        // a limited user may view a Recipe used at outlets beyond their access: it opens READ-ONLY in the workspace
+        // a limited user may view a Recipe used at outlets beyond their access: it opens READ-ONLY in the standalone editor
         $limited = $this->user('admin_outlet', [$this->a]);
-        $this->actingAs($limited)->get(route('backoffice.recipes.edit', $recipe))
-            ->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id], false)));
+        $readOnly = $this->actingAs($limited)->get(route('backoffice.recipes.edit', $recipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
+        $this->assertFalse($readOnly->viewData('canMutate'));
+        $readOnly->assertSee('id="recipe-readonly-notice"', false)->assertDontSee('Update Header')->assertDontSee('Tambah Recipe Item');
+
+        // the old Workspace deep link still renders it read-only as well
         $html = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id]))->assertOk()->getContent();
         $this->assertStringContainsString('data-pw-focus-recipe="'.$recipe->id.'"', $html);
         $this->assertStringNotContainsString('data-pw-open-recipe-url=', $html);
@@ -969,7 +982,7 @@ class ProductWorkspaceRecipeTest extends TestCase
         $foreignRecipe = $this->recipe($foreign, true, [[$this->milk, 5]]);
         $this->actingAs($limited)->get(route('backoffice.recipes.edit', $foreignRecipe))->assertForbidden();
 
-        // COMPATIBILITY EXCEPTION: warehouse staff have no Product pages, so only they keep the classic page
+        // Warehouse staff have no Product pages: unchanged, they open the same standalone editor
         $warehouse = $this->user('staff_gudang', [$this->a, $this->b]);
         $this->actingAs($warehouse)->get(route('backoffice.recipes.edit', $recipe))->assertOk()->assertViewIs('backoffice.recipes.edit');
         $this->get(route('backoffice.products.edit', $this->product))->assertForbidden();
@@ -1027,7 +1040,46 @@ class ProductWorkspaceRecipeTest extends TestCase
         $this->assertStringNotContainsString(route('backoffice.recipes.edit', $recipe->id, false), $form);
     }
 
-    public function test_the_recipes_list_edit_link_leads_into_the_workspace(): void
+    public function test_owner_and_admin_pusat_manage_recipes_in_the_standalone_editor_while_the_workspace_tab_stays_hidden(): void
+    {
+        $recipe = $this->recipe($this->regular, true, [[$this->milk, 150]]);
+        $listUrl = '/backoffice/recipes?status=active';
+
+        foreach (['owner' => $this->owner, 'admin_pusat' => $this->user('admin_pusat', [$this->a, $this->b])] as $role => $user) {
+            $this->actingAs($user);
+
+            // Recipes list -> Edit: the standalone editor, not a redirect into the Product Workspace
+            $this->assertStringContainsString(e(route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listUrl])), $this->get($listUrl)->assertOk()->getContent());
+            $edit = $this->get(route('backoffice.recipes.edit', [$recipe, 'return_to' => $listUrl]))->assertOk()->assertViewIs('backoffice.recipes.edit');
+            $this->assertTrue($edit->viewData('canMutate'), $role);
+            $edit->assertSee('Update Header', false);
+
+            // Create is the standalone form too
+            $this->get(route('backoffice.recipes.create', ['return_to' => $listUrl]))->assertOk()->assertViewIs('backoffice.recipes.create');
+        }
+
+        // write flow: save / update return to the standalone Recipes list (the given return_to), never the Workspace
+        $this->actingAs($this->owner)
+            ->put(route('backoffice.recipes.update', $recipe), ['product_variant_id' => $this->regular->id, 'name' => 'Regular v2', 'is_active' => 1, 'return_to' => $listUrl])
+            ->assertRedirect(url($listUrl.'#recipe-'.$recipe->id));
+        $this->assertSame('Regular v2', $recipe->fresh()->name);
+
+        $this->actingAs($this->owner)
+            ->put(route('backoffice.recipes.update', $recipe), ['product_variant_id' => $this->regular->id, 'name' => 'Regular v3', 'is_active' => 1])
+            ->assertRedirect(route('backoffice.recipes.index'));
+
+        // the Product Workspace rail still has no Recipe tab (and no Stock / Promo tab) ...
+        $page = $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'general']))->assertOk()->getContent();
+        $this->assertSame(1, preg_match('#<nav class="pw-nav".*?</nav>#s', $page, $rail));
+        foreach (['recipe', 'stock', 'promo'] as $hidden) {
+            $this->assertStringNotContainsString('data-pw-nav="'.$hidden.'"', $rail[0], $hidden);
+        }
+
+        // ... and the old deep link still renders safely
+        $this->get(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id]))->assertOk()->assertSee('data-pw-section="recipe"', false);
+    }
+
+    public function test_the_recipes_list_edit_link_leads_to_the_standalone_editor(): void
     {
         $recipe = $this->recipe($this->regular, true, [[$this->milk, 150]]);
         $listUrl = '/backoffice/recipes?status=active';
@@ -1036,7 +1088,22 @@ class ProductWorkspaceRecipeTest extends TestCase
         $editUrl = route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listUrl]);
 
         $this->assertStringContainsString(e($editUrl), $html);
-        $this->get($editUrl)->assertRedirect(url(route('backoffice.products.edit', [$this->product, 'section' => 'recipe', 'recipe' => $recipe->id, 'return_to' => $listUrl], false)));
+
+        // the Edit links open the standalone editor in a side panel of the list itself (no page change); the href stays
+        // a real URL, so open-in-new-tab and no-JS keep working
+        $this->assertStringContainsString('data-recipe-edit', $html);
+        // "Tambah Recipe" opens the create form in the same panel; the href stays the real create URL
+        $this->assertMatchesRegularExpression('#<a href="[^"]*recipes/create[^"]*" class="btn btn-green" data-recipe-edit data-recipe-title="Tambah Recipe">#', $html);
+        $this->assertStringContainsString('id="rcp-drawer"', $html);
+        // the layout's .shell has a backdrop-filter (it would become the reference of position:fixed): the panel is moved to <body>
+        $this->assertStringContainsString('document.body.appendChild(drawer)', $html);
+        $this->assertStringContainsString('<iframe class="rcp-drawer-frame" id="rcp-drawer-frame"', $html);
+
+        // no redirect: the standalone editor renders and the Product Workspace is not entered
+        $standalone = $this->get($editUrl)->assertOk()->assertViewIs('backoffice.recipes.edit');
+        $this->assertSame($recipe->id, $standalone->viewData('recipe')->id);
+        $this->assertStringNotContainsString('data-product-workspace', $standalone->getContent());
+        $this->assertStringNotContainsString('section=recipe', $html);
     }
 
     private function recipeFingerprint(): array

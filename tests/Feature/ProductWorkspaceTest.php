@@ -84,7 +84,7 @@ class ProductWorkspaceTest extends TestCase
 
     // ---- access -------------------------------------------------------------------------------------
 
-    public function test_owner_opens_the_workspace_with_the_right_product_and_all_six_sections(): void
+    public function test_owner_opens_the_workspace_with_the_right_product_and_every_section_rendered_but_only_three_tabs(): void
     {
         $html = $this->actingAs($this->owner)->get(route('backoffice.products.edit', $this->product))->assertOk()->getContent();
 
@@ -93,11 +93,22 @@ class ProductWorkspaceTest extends TestCase
         $this->assertStringContainsString('<h1 class="pw-title" data-pw-title>Ube Latte</h1>', $html);
         $this->assertStringContainsString('UBE-LATTE', $html);
 
+        // Every section is still rendered (deep links keep working) ...
         foreach (array_keys(ProductWorkspace::SECTIONS) as $section) {
             $this->assertStringContainsString('data-pw-panel="'.$section.'"', $html);
-            $this->assertStringContainsString('data-pw-nav="'.$section.'"', $html);
         }
 
+        // ... but the rail only offers General, Outlets and Variants & Pricing. Recipe, Stock & Readiness and
+        // Promo are used from their own menus.
+        $rail = $this->railTag($html);
+        foreach (['general', 'outlets', 'variants'] as $section) {
+            $this->assertStringContainsString('data-pw-nav="'.$section.'"', $rail);
+        }
+        foreach (ProductWorkspace::HIDDEN_FROM_NAV as $section) {
+            $this->assertStringNotContainsString('data-pw-nav="'.$section.'"', $rail, $section);
+        }
+        $this->assertSame(3, substr_count($rail, 'class="pw-nav-link'), 'exactly three tabs');
+        $this->assertSame(['general', 'outlets', 'variants'], array_keys(ProductWorkspace::navSections()));
         $this->assertSame(['general', 'outlets', 'variants', 'recipe', 'stock', 'promo'], array_keys(ProductWorkspace::SECTIONS));
         $this->assertStringNotContainsStringIgnoringCase('modifier', $html);
     }
@@ -178,7 +189,16 @@ class ProductWorkspaceTest extends TestCase
                 : $this->assertStringContainsString(' hidden', $panel, $section);
         }
 
-        $this->assertMatchesRegularExpression('/class="pw-nav-link is-active"\s+data-pw-nav="'.$expected.'"/', $html);
+        $rail = $this->railTag($html);
+
+        if (array_key_exists($expected, ProductWorkspace::navSections())) {
+            $this->assertMatchesRegularExpression('/class="pw-nav-link is-active"\s+data-pw-nav="'.$expected.'"/', $rail);
+        } else {
+            // A hidden section reached by URL still opens (nothing crashes, the panel is the visible one) but
+            // has no tab in the rail, so no tab is marked active.
+            $this->assertStringNotContainsString('data-pw-nav="'.$expected.'"', $rail);
+            $this->assertStringNotContainsString('pw-nav-link is-active', $rail);
+        }
     }
 
     public function test_section_query_with_an_array_value_falls_back_safely(): void
@@ -201,8 +221,8 @@ class ProductWorkspaceTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('href="'.e($returnTo.'#product-'.$this->product->id).'" class="btn btn-dark" data-pw-close', $html);
-        $this->assertStringContainsString('href="'.e(ProductWorkspace::url($this->product, 'promo', $returnTo)).'"', $html);
-        $this->assertStringContainsString(e('section=promo&return_to='.urlencode($returnTo)), $html);
+        $this->assertStringContainsString('href="'.e(ProductWorkspace::url($this->product, 'outlets', $returnTo)).'"', $html);
+        $this->assertStringContainsString(e('section=outlets&return_to='.urlencode($returnTo)), $html);
     }
 
     public function test_close_without_return_to_goes_to_the_plain_index(): void
@@ -841,6 +861,14 @@ class ProductWorkspaceTest extends TestCase
         $user->outlets()->sync(collect($outlets)->pluck('id')->all());
 
         return $user;
+    }
+
+    /** The section rail (tabs) only; the panels contain their own in-page links. */
+    protected function railTag(string $html): string
+    {
+        $this->assertSame(1, preg_match('#<nav class="pw-nav".*?</nav>#s', $html, $match), 'section rail not found');
+
+        return $match[0];
     }
 
     protected function panelTag(string $html, string $section): string
