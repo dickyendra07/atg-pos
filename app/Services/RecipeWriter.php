@@ -60,10 +60,14 @@ class RecipeWriter
         return 'required|string|max:255';
     }
 
-    /** Default name of a new Recipe (same convention as the Recipe import). */
+    /**
+     * Default name of a new Recipe: "<Product> - <Variant>" (same convention as the Recipe import).
+     * The classic create form stores exactly this; it never takes a client-supplied name.
+     */
     public static function defaultName(ProductVariant $variant): string
     {
-        return ($variant->product?->name ?? 'Recipe').' - '.$variant->name;
+        // Capped at the `recipes.name` rule so two long names can never overflow the column.
+        return mb_substr(($variant->product?->name ?? 'Recipe').' - '.$variant->name, 0, 255);
     }
 
     // ---- Shared rules ---------------------------------------------------------------------------------
