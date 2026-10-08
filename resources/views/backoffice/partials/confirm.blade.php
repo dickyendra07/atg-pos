@@ -56,7 +56,7 @@
     }
 
     .bo-confirm-actions button.bo-confirm-ok { border-color: transparent; color: #fff; background: #dc2626; }
-    .bo-confirm-overlay[data-tone="warning"] .bo-confirm-ok { background: #ea580c; }
+    .bo-confirm-overlay[data-tone="warning"] .bo-confirm-ok { background: #fbbf24; color: #422006; }
     .bo-confirm-overlay[data-tone="primary"] .bo-confirm-ok { background: #166534; }
     .bo-confirm-actions button:focus-visible { outline: 3px solid rgba(37, 99, 235, 0.55); outline-offset: 2px; }
     .bo-confirm-actions button[disabled] { opacity: 0.6; cursor: wait; }

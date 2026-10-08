@@ -15,7 +15,7 @@
             <input id="pw-recipe-new-qty-{{ $index }}" type="text" inputmode="decimal" autocomplete="off" name="new_items[{{ $index }}][qty]" value="" placeholder="Qty">
             <span class="pw-recipe-unit" data-pw-recipe-unit>-</span>
         </div>
-        <button type="button" class="btn btn-light btn-sm" data-pw-recipe-remove-new aria-label="Hapus baris">&times;</button>
+        <button type="button" class="btn btn-secondary btn-sm" data-pw-recipe-remove-new aria-label="Hapus baris">&times;</button>
     </div>
     <div class="pw-field-error" data-pw-drawer-error="new_items.{{ $index }}.ingredient_id" hidden></div>
     <div class="pw-field-error" data-pw-drawer-error="new_items.{{ $index }}.qty" hidden></div>

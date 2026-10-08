@@ -305,8 +305,8 @@
             </div>
 
             <div class="top-actions">
-                <a href="{{ route('backoffice.transactions.receipt', $transaction->id) }}" class="btn btn-light" target="_blank">Print Receipt</a>
-                <a href="{{ route('backoffice.transactions.index') }}" class="btn">Kembali</a>
+                <a href="{{ route('backoffice.transactions.receipt', $transaction->id) }}" class="btn btn-secondary" target="_blank">Print Receipt</a>
+                <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-secondary">Kembali</a>
             </div>
         </div>
 
@@ -499,5 +499,6 @@
         @endif
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

@@ -193,7 +193,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.promos.create', ['return_to' => $listReturnTo]) }}" class="btn btn-brand">Create Promo</a>
+            <a href="{{ route('backoffice.promos.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Create Promo</a>
         </div>
 
 
@@ -228,8 +228,8 @@
                 </div>
 
                 <div class="actions">
-                    <button type="submit" class="btn btn-dark">Filter</button>
-                    <a href="{{ route('backoffice.promos.index') }}" class="btn btn-soft">Reset</a>
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ route('backoffice.promos.index') }}" class="btn btn-secondary">Reset</a>
                 </div>
             </form>
         </div>
@@ -325,12 +325,12 @@
                                 </td>
                                 <td>
                                     <div class="actions">
-                                        <a href="{{ route('backoffice.promos.edit', [$promo, 'return_to' => $listReturnTo]) }}" class="btn btn-dark">Edit</a>
+                                        <a href="{{ route('backoffice.promos.edit', [$promo, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary">Edit</a>
                                         <form method="POST" action="{{ route('backoffice.promos.destroy', $promo) }}" onsubmit="return confirm('Hapus promo ini?')">
                                             @csrf
                                             @method('DELETE')
                                             @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                            <button type="submit" class="btn btn-red">Delete</button>
+                                            <button type="submit" class="btn btn-danger">Delete</button>
                                         </form>
                                     </div>
                                 </td>

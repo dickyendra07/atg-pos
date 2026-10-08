@@ -485,14 +485,7 @@
         .filter-form .btn {
             width: auto !important;
             min-width: 112px !important;
-            height: 54px !important;
-            padding: 0 18px !important;
-            border-radius: 16px !important;
             white-space: nowrap !important;
-        }
-
-        .filter-form .btn-blue {
-            min-width: 126px !important;
         }
 
         @media (max-width: 1100px) {
@@ -522,10 +515,10 @@
             </div>
 
             <div class="ingredients-actions">
-                                <a href="{{ route('backoffice.ingredients.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
-<a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-green">Import Data</a>
-                <a href="{{ route('backoffice.ingredients.create', ['return_to' => $listReturnTo]) }}" class="btn btn-orange">Tambah Ingredient</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                                <a href="{{ route('backoffice.ingredients.export.csv', request()->query()) }}" class="btn btn-secondary">Export CSV</a>
+<a href="{{ route('backoffice.ingredients.import') }}" class="btn btn-secondary">Import Data</a>
+                <a href="{{ route('backoffice.ingredients.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah Ingredient</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -569,8 +562,8 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-orange">Apply Filter</button>
-                    <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Reset</a>
+                    <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-secondary">Reset</a>
                 </form>
             </div>
 
@@ -622,10 +615,10 @@
                                                 <span class="category-text" title="Ingredient ini tidak tersedia di outlet yang dapat kamu akses.">Hanya lihat</span>
                                             @else
                                             <div class="action-row">
-                                                <a href="{{ route('backoffice.ingredients.edit', [$ingredient, 'return_to' => $listReturnTo]) }}" class="btn-small btn-edit">Edit</a>
+                                                <a href="{{ route('backoffice.ingredients.edit', [$ingredient, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary btn-sm">Edit</a>
 
                                                 {{-- Real delete is the temporary cleanup action (flag + owner/admin pusat); no flag, no button. --}}
-                                                @include('backoffice.partials.cleanup-button', ['type' => 'ingredient', 'id' => $ingredient->id, 'name' => $ingredient->name, 'return' => $listReturnTo, 'class' => 'btn-small btn-delete', 'testid' => 'cleanup-ingredient-'.$ingredient->id])
+                                                @include('backoffice.partials.cleanup-button', ['type' => 'ingredient', 'id' => $ingredient->id, 'name' => $ingredient->name, 'return' => $listReturnTo, 'class' => 'btn btn-danger btn-sm', 'testid' => 'cleanup-ingredient-'.$ingredient->id])
                                             </div>
                                             @endif
                                         </td>

@@ -117,7 +117,7 @@
     <div class="wrap">
         <div class="topbar">
             <div class="title">Import Variants</div>
-            <a href="{{ route('backoffice.variants.index') }}" class="btn">Kembali</a>
+            <a href="{{ route('backoffice.variants.index') }}" class="btn btn-secondary">Kembali</a>
         </div>
 
 
@@ -143,8 +143,8 @@
                 </div>
 
                 <div class="actions">
-                    <a href="{{ route('backoffice.variants.import.template') }}" class="btn btn-primary">Download Template</a>
-                    <button type="submit" class="btn btn-success">Import Variants</button>
+                    <a href="{{ route('backoffice.variants.import.template') }}" class="btn btn-secondary">Download Template</a>
+                    <button type="submit" class="btn btn-primary">Import Variants</button>
                 </div>
             </form>
 
@@ -155,5 +155,6 @@
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

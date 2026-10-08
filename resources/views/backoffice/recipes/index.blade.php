@@ -64,44 +64,6 @@
             flex-wrap: wrap;
         }
 
-        .btn {
-            border: 0;
-            cursor: pointer;
-            min-height: 42px;
-            padding: 0 16px;
-            border-radius: 14px;
-            color: white;
-            font-size: 13px;
-            font-weight: 800;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 10px 20px rgba(15,23,42,0.10);
-            transition: transform 0.15s ease, opacity 0.15s ease;
-        }
-
-        .btn:hover {
-            transform: translateY(-1px);
-            opacity: 0.96;
-        }
-
-        .btn-dark {
-            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
-        }
-
-        .btn-green {
-            background: linear-gradient(135deg, #166534 0%, #1f7a44 100%);
-        }
-
-        .btn-blue {
-            background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
-        }
-
-        .btn-orange {
-            background: linear-gradient(135deg, #e86a3a 0%, #f08a57 100%);
-        }
-
         .alert {
             border-radius: 18px;
             padding: 16px 18px;
@@ -214,7 +176,6 @@
 
         table {
             width: 100%;
-            min-width: 1280px;
             border-collapse: collapse;
             background: white;
             border: 1px solid #e8edf4;
@@ -228,14 +189,14 @@
             color: #6b7280;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            padding: 16px 14px;
+            padding: 12px 14px;
             background: #f8fafc;
             border-bottom: 1px solid #e8edf4;
             white-space: nowrap;
         }
 
         tbody td {
-            padding: 16px 14px;
+            padding: 10px 14px;
             border-bottom: 1px solid #edf1f6;
             vertical-align: middle;
             font-size: 14px;
@@ -250,19 +211,6 @@
             font-weight: 800;
             color: #111827;
             font-size: 15px;
-        }
-
-        .item-pill {
-            display: inline-flex;
-            align-items: center;
-            background: #f8fafc;
-            color: #374151;
-            padding: 7px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 800;
-            margin: 2px 6px 2px 0;
-            border: 1px solid #e5e7eb;
         }
 
         .type-badge,
@@ -295,16 +243,6 @@
         .status-inactive {
             background: #fff1f1;
             color: #b42318;
-        }
-
-        .btn-small {
-            min-height: 34px;
-            padding: 8px 12px;
-            font-size: 12px;
-            border-radius: 10px;
-            box-shadow: none;
-            background: #2563eb;
-            color: white;
         }
 
         .error-list {
@@ -386,25 +324,6 @@
             box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
         }
 
-        .recipe-table th,
-        .recipe-table td {
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .recipe-items-cell {
-            text-align: center;
-        }
-
-        .recipe-item-row {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-bottom: 6px;
-        }
-
         @media (max-width: 980px) {
             .recipe-filter-form {
                 grid-template-columns: 1fr;
@@ -449,358 +368,100 @@
                 margin-right: 18px;
             }
         }
-    
-        .ingredient-type-pill {
-            display: inline-flex;
-            align-items: center;
-            width: fit-content;
-            padding: 7px 10px;
-            border-radius: 999px;
-            font-size: 11px;
-            font-weight: 800;
-            margin: 3px;
-            white-space: nowrap;
-        }
 
-        .ingredient-type-pill.raw {
-            background: #fff7ed;
-            color: #c2410c;
-            border: 1px solid #fed7aa;
-        }
-
-        .ingredient-type-pill.semi {
-            background: #eef2ff;
-            color: #3730a3;
-            border: 1px solid #dbe3ff;
-        }
-
-        .recipe-items {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            align-items: center;
-        }
-
-    
-        /* Recipe table compact items layout */
-        .recipe-items-cell {
-            width: 430px !important;
-            max-width: 430px !important;
-            display: grid !important;
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-            gap: 6px !important;
-            max-height: 150px !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            padding: 12px !important;
-            align-content: start !important;
-            vertical-align: top !important;
-        }
-
-        .recipe-items-cell::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .recipe-items-cell::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 999px;
-        }
-
-        .recipe-items-cell::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 999px;
-        }
-
-        .recipe-item-row {
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 0 !important;
-            padding: 6px 8px !important;
-            border-radius: 999px !important;
-            background: #f8fafc !important;
-            border: 1px solid #e5e7eb !important;
-            font-size: 11px !important;
-            line-height: 1.2 !important;
-            font-weight: 800 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            box-sizing: border-box !important;
-            margin: 0 !important;
-        }
-
-        .recipe-item-row * {
-            font-size: inherit !important;
-            line-height: inherit !important;
-            white-space: nowrap !important;
-        }
-
-        .table-wrap table {
-            table-layout: fixed !important;
-            min-width: 1240px !important;
-        }
-
-        .table-wrap th:nth-child(1),
-        .table-wrap td:nth-child(1) {
-            width: 220px !important;
-        }
-
-        .table-wrap th:nth-child(2),
-        .table-wrap td:nth-child(2) {
-            width: 190px !important;
-        }
-
-        .table-wrap th:nth-child(3),
-        .table-wrap td:nth-child(3) {
-            width: 110px !important;
-        }
-
-        .table-wrap th:nth-child(4),
-        .table-wrap td:nth-child(4) {
-            width: 430px !important;
-        }
-
-        .table-wrap th:nth-child(5),
-        .table-wrap td:nth-child(5) {
-            width: 140px !important;
-        }
-
-        .table-wrap th:nth-child(6),
-        .table-wrap td:nth-child(6) {
-            width: 100px !important;
-        }
-
-        .table-wrap th:nth-child(7),
-        .table-wrap td:nth-child(7) {
-            width: 110px !important;
-        }
-
-    
-        /* Recipe items compact scroll layout */
-        .recipe-items-list-cell {
-            width: 430px !important;
-            max-width: 430px !important;
-            vertical-align: top !important;
-            padding: 10px !important;
-        }
-
-        .recipe-items-scroll {
-            display: grid !important;
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-            gap: 6px !important;
-            max-height: 132px !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            padding-right: 4px !important;
-            align-content: start !important;
-        }
-
-        .recipe-items-scroll::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .recipe-items-scroll::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 999px;
-        }
-
-        .recipe-items-scroll::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 999px;
-        }
-
-        .recipe-items-scroll .recipe-item-row {
-            margin: 0 !important;
-            min-width: 0 !important;
-        }
-
-        .recipe-items-scroll .item-pill {
-            width: 100% !important;
-            max-width: 100% !important;
-            display: block !important;
-            padding: 6px 8px !important;
-            border-radius: 999px !important;
-            font-size: 10.5px !important;
-            line-height: 1.2 !important;
-            font-weight: 800 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            box-sizing: border-box !important;
-        }
-
-        .recipe-items-type-cell {
-            width: 140px !important;
-            max-width: 140px !important;
-            vertical-align: top !important;
-        }
-
-        .recipe-items-type-cell .recipe-item-row {
-            margin: 0 0 5px !important;
-        }
-
-        .recipe-items-type-cell .type-badge {
-            font-size: 10px !important;
-            padding: 5px 8px !important;
-            white-space: nowrap !important;
-        }
-
+        /* Recipe list: Name | Ingredient Type | Status | Action. Recipe Items are viewed/edited in the Recipe editor. */
         .recipe-table {
-            table-layout: fixed !important;
+            table-layout: fixed;
+            min-width: 720px;
         }
 
-        .recipe-table th:nth-child(4),
-        .recipe-table td:nth-child(4) {
-            width: 430px !important;
-        }
+        .recipe-table th:nth-child(1) { width: 38%; text-align: left; }
+        .recipe-table th:nth-child(2) { width: 18%; }
+        .recipe-table th:nth-child(3) { width: 12%; }
+        .recipe-table th:nth-child(4) { width: 32%; }
 
-        .recipe-table th:nth-child(5),
-        .recipe-table td:nth-child(5) {
-            width: 140px !important;
-        }
-
-    
-        /* Recipe table row alignment fix */
-        .recipe-table td {
-            vertical-align: middle !important;
-        }
-
-        .recipe-items-cell,
-        .recipe-items-list-cell,
-        .recipe-items-type-cell {
-            display: table-cell !important;
-            max-height: none !important;
-            overflow: visible !important;
-            vertical-align: middle !important;
-        }
-
-        .recipe-items-list-cell {
-            width: 440px !important;
-            max-width: 440px !important;
-            padding: 12px !important;
-        }
-
-        .recipe-items-scroll {
-            display: grid !important;
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-            gap: 6px !important;
-            max-height: 118px !important;
-            overflow-y: auto !important;
-            overflow-x: hidden !important;
-            padding-right: 4px !important;
-            align-content: start !important;
-        }
-
-        .recipe-items-scroll .recipe-item-row {
-            margin: 0 !important;
-            min-width: 0 !important;
-            display: block !important;
-        }
-
-        .recipe-items-scroll .item-pill {
-            width: 100% !important;
-            max-width: 100% !important;
-            display: block !important;
-            padding: 6px 8px !important;
-            border-radius: 999px !important;
-            font-size: 10.5px !important;
-            line-height: 1.2 !important;
-            font-weight: 800 !important;
-            white-space: nowrap !important;
-            overflow: hidden !important;
-            text-overflow: ellipsis !important;
-            box-sizing: border-box !important;
-        }
-
-        .recipe-items-type-cell {
-            width: 140px !important;
-            max-width: 140px !important;
-            text-align: center !important;
-        }
-
-        .recipe-items-type-cell .type-badge {
-            display: inline-flex !important;
-            margin: 3px !important;
-            font-size: 10px !important;
-            padding: 6px 10px !important;
-            white-space: nowrap !important;
-        }
-
-        .recipe-table {
-            table-layout: fixed !important;
-            min-width: 1240px !important;
-        }
-
-        .recipe-table th:nth-child(1),
-        .recipe-table td:nth-child(1) {
-            width: 210px !important;
-        }
-
-        .recipe-table th:nth-child(2),
-        .recipe-table td:nth-child(2) {
-            width: 190px !important;
-        }
-
-        .recipe-table th:nth-child(3),
-        .recipe-table td:nth-child(3) {
-            width: 90px !important;
-        }
-
-        .recipe-table th:nth-child(4),
-        .recipe-table td:nth-child(4) {
-            width: 440px !important;
-        }
-
-        .recipe-table th:nth-child(5),
-        .recipe-table td:nth-child(5) {
-            width: 140px !important;
-        }
-
-        .recipe-table th:nth-child(6),
-        .recipe-table td:nth-child(6) {
-            width: 100px !important;
-        }
-
-        .recipe-table th:nth-child(7),
-        .recipe-table td:nth-child(7) {
-            width: 110px !important;
-        }
-
-    
-        /* Recipe table simplified columns */
-        .recipe-table {
-            table-layout: fixed !important;
-            min-width: 980px !important;
-        }
-
-        .recipe-table th:nth-child(1),
-        .recipe-table td:nth-child(1) {
-            width: 260px !important;
-        }
-
-        .recipe-table th:nth-child(2),
-        .recipe-table td:nth-child(2) {
-            width: 430px !important;
-        }
-
-        .recipe-table th:nth-child(3),
-        .recipe-table td:nth-child(3) {
-            width: 150px !important;
-        }
-
-        .recipe-table th:nth-child(4),
-        .recipe-table td:nth-child(4) {
-            width: 100px !important;
-        }
-
-        .recipe-table th:nth-child(5),
-        .recipe-table td:nth-child(5) {
-            width: 120px !important;
-        }
+        .recipe-table td { text-align: center; vertical-align: middle; }
+        .recipe-table td.recipe-name-cell { text-align: left; }
 
         .recipe-name {
-            text-align: left !important;
-            line-height: 1.25 !important;
+            font-size: 14px;
+            line-height: 1.35;
+            overflow-wrap: anywhere;
+        }
+
+        .type-badge,
+        .status-badge {
+            margin: 0;
+            padding: 5px 10px;
+            font-size: 11px;
+        }
+
+        .recipe-type-cell .type-badge + .type-badge {
+            margin-left: 4px;
+        }
+
+        .recipe-actions {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .recipe-actions form {
+            margin: 0;
+        }
+
+        /* Phones: each recipe becomes a compact card, so the page never scrolls sideways. */
+        @media (max-width: 640px) {
+            .recipe-table,
+            .recipe-table tbody,
+            .recipe-table tr,
+            .recipe-table td {
+                display: block;
+                width: 100%;
+                min-width: 0;
+            }
+
+            .recipe-table {
+                border: 0;
+                border-radius: 0;
+                overflow: visible;
+                background: transparent;
+            }
+
+            .recipe-table thead {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                clip: rect(0 0 0 0);
+            }
+
+            .recipe-table tbody tr {
+                background: #ffffff;
+                border: 1px solid #e8edf4;
+                border-radius: 16px;
+                padding: 12px 14px;
+                margin-bottom: 10px;
+                display: grid;
+                grid-template-columns: 1fr auto;
+                gap: 8px 10px;
+                align-items: center;
+            }
+
+            .recipe-table tbody td {
+                padding: 0;
+                border: 0;
+                width: auto;
+                text-align: left;
+            }
+
+            .recipe-table td.recipe-name-cell { grid-column: 1 / -1; }
+            .recipe-table td.recipe-actions-cell { grid-column: 1 / -1; }
+            .recipe-table td.recipe-status-cell { text-align: right; }
+            .recipe-actions { justify-content: flex-start; }
+            .table-wrap { overflow-x: visible !important; }
         }
 
     </style>
@@ -814,10 +475,10 @@
             </div>
 
             <div class="recipes-actions">
-                <a href="{{ route('backoffice.recipes.export.csv') }}" class="btn btn-blue">Export CSV</a>
-                <a href="{{ route('backoffice.recipes.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green" data-recipe-edit data-recipe-title="Tambah Recipe">Tambah Recipe</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.recipes.export.csv') }}" class="btn btn-secondary">Export CSV</a>
+                <a href="{{ route('backoffice.recipes.import') }}" class="btn btn-secondary">Import CSV</a>
+                <a href="{{ route('backoffice.recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary" data-recipe-edit data-recipe-title="Tambah Recipe">Tambah Recipe</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -896,8 +557,8 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-orange">Filter</button>
-                    <a href="{{ route('backoffice.recipes.index') }}" class="btn btn-dark">Reset</a>
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ route('backoffice.recipes.index') }}" class="btn btn-secondary">Reset</a>
                 </form>
             </div>
 
@@ -907,7 +568,6 @@
                         <thead>
                             <tr>
                                 <th>Recipe Name</th>
-                                <th>Recipe Items</th>
                                 <th>Ingredient Type</th>
                                 <th>Status</th>
                                 <th>Action</th>
@@ -916,25 +576,10 @@
                         <tbody>
                             @foreach($recipes as $recipe)
                                 <tr id="recipe-{{ $recipe->id }}">
-                                    <td>
+                                    <td class="recipe-name-cell">
                                         <div class="recipe-name">{{ preg_replace('/^Recipe\s*-\s*/i', '', $recipe->name) }}</div>
                                     </td>
-                                    <td class="recipe-items-cell recipe-items-list-cell">
-                                        <div class="recipe-items-scroll">
-                                            @forelse($recipe->items as $item)
-                                                <div class="recipe-item-row">
-                                                    <span class="item-pill">
-                                                        {{ $item->ingredient->name ?? '-' }}
-                                                        - {{ number_format((float) $item->qty, 2, ',', '.') }}
-                                                        {{ $item->unit ?? $item->ingredient->unit ?? '' }}
-                                                    </span>
-                                                </div>
-                                            @empty
-                                                -
-                                            @endforelse
-                                        </div>
-                                    </td>
-                                    <td class="recipe-items-type-cell">
+                                    <td class="recipe-type-cell" data-label="Ingredient Type">
                                         @php
                                             $ingredientTypes = $recipe->items
                                                 ->map(fn($item) => $item->ingredient?->ingredient_type ?? \App\Models\Ingredient::TYPE_RAW)
@@ -958,33 +603,33 @@
                                             -
                                         @endforelse
                                     </td>
-                                    <td>
+                                    <td class="recipe-status-cell" data-label="Status">
                                         @if($recipe->is_active)
                                             <span class="status-badge status-active">Active</span>
                                         @else
                                             <span class="status-badge status-inactive">Inactive</span>
                                         @endif
                                     </td>
-                                    <td>
-                                        <div style="display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap;">
+                                    <td class="recipe-actions-cell" data-label="Action">
+                                        <div class="recipe-actions">
                                             @if(in_array($recipe->id, $mutableRecipeIds, true))
-                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small" data-recipe-edit data-recipe-name="{{ $recipe->name }}">Edit</a>
+                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary btn-sm" data-recipe-edit data-recipe-name="{{ $recipe->name }}">Edit</a>
                                             @else
-                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small" data-recipe-edit data-recipe-name="{{ $recipe->name }}" title="Recipe dipakai di beberapa outlet atau di luar akses Anda. Hanya bisa dilihat.">Lihat (read-only)</a>
+                                                <a href="{{ route('backoffice.recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary btn-sm" data-recipe-edit data-recipe-name="{{ $recipe->name }}" title="Recipe dipakai di beberapa outlet atau di luar akses Anda. Hanya bisa dilihat.">Lihat (read-only)</a>
                                             @endif
 
                                             @if($recipe->is_active && in_array($recipe->id, $mutableRecipeIds, true))
-                                                <form method="POST" action="{{ route('backoffice.recipes.destroy', $recipe->id) }}" onsubmit="return confirm('Yakin ingin menonaktifkan recipe ini?');" style="margin: 0;">
+                                                <form method="POST" action="{{ route('backoffice.recipes.destroy', $recipe->id) }}" onsubmit="return confirm('Yakin ingin menonaktifkan recipe ini?');">
                                                     @csrf
                                                     @method('DELETE')
                                                     @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                                    <button type="submit" class="btn btn-small" style="background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);">
+                                                    <button type="submit" class="btn btn-warning btn-sm">
                                                         Nonaktifkan
                                                     </button>
                                                 </form>
                                             @endif
 
-                                            @include('backoffice.partials.cleanup-button', ['type' => 'recipe', 'id' => $recipe->id, 'name' => $recipe->name, 'return' => $listReturnTo, 'label' => 'Hapus Permanen', 'class' => 'btn btn-small', 'testid' => 'cleanup-recipe-'.$recipe->id])
+                                            @include('backoffice.partials.cleanup-button', ['type' => 'recipe', 'id' => $recipe->id, 'name' => $recipe->name, 'return' => $listReturnTo, 'label' => 'Hapus Permanen', 'class' => 'btn btn-danger btn-sm', 'testid' => 'cleanup-recipe-'.$recipe->id])
                                         </div>
                                     </td>
                                 </tr>

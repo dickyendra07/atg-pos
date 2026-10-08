@@ -400,7 +400,7 @@
 
             <div class="outlets-actions">
                 <a href="{{ route('backoffice.outlets.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah Outlet</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -470,7 +470,7 @@
                                         </td>
                                         <td>
                                             <div class="action-row">
-                                                <a href="{{ route('backoffice.outlets.edit', [$outlet, 'return_to' => $listReturnTo]) }}" class="btn btn-info">Edit</a>
+                                                <a href="{{ route('backoffice.outlets.edit', [$outlet, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary">Edit</a>
 
                                                 <form method="POST" action="{{ route('backoffice.outlets.destroy', $outlet) }}" class="delete-form" onsubmit="return confirm('Yakin hapus outlet ini?')">
                                                     @csrf

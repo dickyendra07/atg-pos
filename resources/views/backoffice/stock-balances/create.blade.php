@@ -423,7 +423,7 @@
             </div>
 
             <div class="receive-actions">
-                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Kembali</a>
+                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-secondary">Kembali</a>
             </div>
         </div>
 
@@ -514,7 +514,7 @@
                                 <div class="items-title">Daftar Item Penerimaan</div>
 
                             </div>
-                            <button type="button" class="btn btn-blue" id="add-item-btn">Tambah Baris</button>
+                            <button type="button" class="btn btn-secondary" id="add-item-btn">Tambah Baris</button>
                         </div>
 
                         <div id="items-wrapper"></div>
@@ -525,8 +525,8 @@
                         </div>
 
                         <div class="actions">
-                            <button type="submit" class="btn btn-green">Simpan Penerimaan Barang</button>
-                            <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Batal</a>
+                            <button type="submit" class="btn btn-primary">Simpan Penerimaan Barang</button>
+                            <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-secondary">Batal</a>
                         </div>
                     </form>
                 </div>
@@ -566,7 +566,7 @@
 
                 <div class="field" style="margin-bottom:0;">
                     <label>&nbsp;</label>
-                    <button type="button" class="btn btn-red remove-item-btn">Hapus</button>
+                    <button type="button" class="btn btn-danger remove-item-btn">Hapus</button>
                 </div>
             </div>
         </div>

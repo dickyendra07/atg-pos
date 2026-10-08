@@ -432,8 +432,8 @@
             </div>
 
             <div class="production-recipes-actions">
-                <a href="{{ route('backoffice.production-recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Production Recipe</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.production-recipes.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah Production Recipe</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -519,7 +519,7 @@
                                             @endif
                                         </td>
                                         <td>
-                                            <a href="{{ route('backoffice.production-recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small">Kelola Recipe</a>
+                                            <a href="{{ route('backoffice.production-recipes.edit', [$recipe->id, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary btn-sm">Kelola Recipe</a>
                                         </td>
                                     </tr>
                                 @endforeach

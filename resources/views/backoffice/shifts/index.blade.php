@@ -439,8 +439,8 @@
             </div>
 
             <div class="shifts-actions">
-                <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-green">Transactions</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-secondary">Transactions</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -500,8 +500,8 @@
                     </div>
 
                     <div class="filter-actions">
-                        <button type="submit" class="btn btn-green">Apply Filter</button>
-                        <a href="{{ route('backoffice.shifts.index') }}" class="btn btn-dark">Reset</a>
+                        <button type="submit" class="btn btn-primary">Apply Filter</button>
+                        <a href="{{ route('backoffice.shifts.index') }}" class="btn btn-secondary">Reset</a>
                     </div>
                 </form>
             </div>
@@ -626,7 +626,7 @@
                                             <strong>{{ $metrics['void_transactions_count'] }}</strong>
                                         </td>
                                         <td>
-                                            <a href="{{ route('backoffice.shifts.show', $shift->id) }}" class="btn btn-dark">Detail</a>
+                                            <a href="{{ route('backoffice.shifts.show', $shift->id) }}" class="btn btn-secondary">Detail</a>
                                         </td>
                                     </tr>
                                 @endforeach

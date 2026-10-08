@@ -198,8 +198,8 @@
             </div>
 
             <div class="import-actions">
-                <a href="{{ route('backoffice.ingredients.import.template') }}" class="btn btn-green">Download Template CSV</a>
-                <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Kembali ke Ingredients</a>
+                <a href="{{ route('backoffice.ingredients.import.template') }}" class="btn btn-secondary">Download Template CSV</a>
+                <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-secondary">Kembali ke Ingredients</a>
             </div>
         </div>
 
@@ -241,8 +241,8 @@
                         </div>
 
                         <div class="form-actions">
-                            <button type="submit" class="btn btn-orange">Import Ingredients</button>
-                            <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-dark">Batal</a>
+                            <button type="submit" class="btn btn-primary">Import Ingredients</button>
+                            <a href="{{ route('backoffice.ingredients.index') }}" class="btn btn-secondary">Batal</a>
                         </div>
                     </form>
                 </div>

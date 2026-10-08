@@ -171,7 +171,7 @@
             </p>
         </div>
 
-        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.products.index', [], null) }}" class="btn btn-dark">
+        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.products.index', [], null) }}" class="btn btn-secondary">
             Kembali
         </a>
     </div>
@@ -297,12 +297,12 @@
 
             <div class="actions">
 
-                <button type="submit" class="btn btn-success">
+                <button type="submit" class="btn btn-primary">
                     Simpan Product
                 </button>
 
                 <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.products.index', [], null) }}"
-                   class="btn btn-dark">
+                   class="btn btn-secondary">
                     Batal
                 </a>
 

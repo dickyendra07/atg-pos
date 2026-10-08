@@ -39,8 +39,8 @@
         </label>
 
         <div style="display:flex;gap:10px">
-            <button class="btn" type="submit">Simpan</button>
-            <a class="btn btn-dark" href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), $cfg['route'].'.index', [], $category ? 'category-'.$category->id : null) }}">Batal</a>
+            <button class="btn btn-primary" type="submit">Simpan</button>
+            <a class="btn btn-secondary" href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), $cfg['route'].'.index', [], $category ? 'category-'.$category->id : null) }}">Batal</a>
         </div>
     </form>
 </div>

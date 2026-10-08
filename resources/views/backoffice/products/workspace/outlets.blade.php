@@ -21,7 +21,7 @@
             <p class="pw-card-sub">Outlet tempat Product tersedia. Outlet Variant harus berada di dalam outlet Product.</p>
         </div>
         <div class="pw-card-actions">
-            <button type="submit" class="btn btn-green" data-pw-save>Simpan Outlets</button>
+            <button type="submit" class="btn btn-primary" data-pw-save>Simpan Outlets</button>
         </div>
     </div>
 

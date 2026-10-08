@@ -506,10 +506,10 @@
             </div>
 
             <div class="variants-actions">
-                <a href="{{ route('backoffice.variants.export.csv') }}" class="btn btn-blue">Export CSV</a>
-                <a href="{{ route('backoffice.variants.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.variants.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Multi Variant</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.variants.export.csv') }}" class="btn btn-secondary">Export CSV</a>
+                <a href="{{ route('backoffice.variants.import') }}" class="btn btn-secondary">Import CSV</a>
+                <a href="{{ route('backoffice.variants.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah Multi Variant</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -575,8 +575,8 @@
                     </select>
                 </div>
 
-                <button type="submit" class="btn btn-blue">Cari</button>
-                <a href="{{ route('backoffice.variants.index') }}" class="btn btn-dark">Reset</a>
+                <button type="submit" class="btn btn-primary">Cari</button>
+                <a href="{{ route('backoffice.variants.index') }}" class="btn btn-secondary">Reset</a>
             </form>
         </div>
 
@@ -610,11 +610,11 @@
                             </div>
 
                             <div class="group-actions">
-                                <button type="button" class="btn btn-small btn-toggle" data-toggle-group>
+                                <button type="button" class="btn btn-secondary btn-sm btn-toggle" data-toggle-group>
                                     {{ $isOpen ? 'Tutup' : 'Variant' }}
                                 </button>
 
-                                <a href="{{ route('backoffice.variants.edit', [$group['first_variant_id'], 'return_to' => $listReturnTo]) }}" class="btn btn-small btn-blue">
+                                <a href="{{ route('backoffice.variants.edit', [$group['first_variant_id'], 'return_to' => $listReturnTo]) }}" class="btn btn-secondary btn-sm">
                                     Edit
                                 </a>
                             </div>
@@ -664,7 +664,7 @@
                                                         @csrf
                                                         @method('DELETE')
                                                         @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                                        <button type="submit" class="btn btn-small btn-small-red">Nonaktifkan</button>
+                                                        <button type="submit" class="btn btn-warning btn-sm">Nonaktifkan</button>
                                                     </form>
                                                 @endif
                                                 @include('backoffice.partials.cleanup-button', ['type' => 'variant', 'id' => $variant->id, 'name' => $variant->name, 'return' => $listReturnTo, 'testid' => 'cleanup-variant-'.$variant->id])

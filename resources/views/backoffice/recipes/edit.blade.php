@@ -426,7 +426,7 @@
     <div class="wrap">
         <div class="topbar">
             <div class="title">Edit Recipe</div>
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], 'recipe-'.$recipe->id) }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], 'recipe-'.$recipe->id) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -491,7 +491,7 @@
 
                     @if($canMutate)
                         <div class="actions">
-                            <button type="submit" class="btn btn-success">Update Header</button>
+                            <button type="submit" class="btn btn-primary">Update Header</button>
                         </div>
                     @endif
                     </fieldset>
@@ -571,13 +571,13 @@
                                                             class="qty-input"
                                                         >
 
-                                                        <button class="btn-save">
+                                                        <button class="btn btn-primary btn-sm">
                                                             ✓ Simpan
                                                         </button>
 
 
                                                         <button type="button"
-                                                                class="btn-cancel"
+                                                                class="btn btn-secondary btn-sm"
                                                                 onclick="closeQty(this)">
                                                             Batal
                                                         </button>
@@ -596,7 +596,7 @@
                                                     @if($canMutate)
 
                                                     <button type="button"
-                                                            class="btn-edit"
+                                                            class="btn btn-secondary btn-sm"
                                                             onclick="openQty(this)">
                                                         ✏ Edit
                                                     </button>
@@ -610,7 +610,7 @@
                                                         @method('DELETE')
                                                         @include('backoffice.partials.return-to-field')
 
-                                                        <button class="btn-danger">
+                                                        <button class="btn btn-danger btn-sm">
                                                             🗑 Hapus
                                                         </button>
 
@@ -675,7 +675,7 @@
                         </div>
 
                         <div class="actions">
-                            <button type="submit" class="btn btn-success">Tambah Recipe Item</button>
+                            <button type="submit" class="btn btn-primary">Tambah Recipe Item</button>
                         </div>
                     </form>
                     @endunless
@@ -808,5 +808,6 @@ function closeQty(button){
 </script>
 
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

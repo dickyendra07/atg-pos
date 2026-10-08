@@ -456,8 +456,8 @@
             </div>
 
             <div class="import-actions">
-                <a href="{{ route('backoffice.stock-balances.import.template') }}" class="btn btn-success">Download Template CSV</a>
-                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Kembali</a>
+                <a href="{{ route('backoffice.stock-balances.import.template') }}" class="btn btn-secondary">Download Template CSV</a>
+                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-secondary">Kembali</a>
             </div>
         </div>
 
@@ -519,7 +519,7 @@
 
                             <div class="actions">
                                 <button type="submit" class="btn btn-primary">Import Opening Stock</button>
-                                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Batal</a>
+                                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-secondary">Batal</a>
                             </div>
                         </form>
 

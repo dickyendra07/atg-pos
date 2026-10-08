@@ -243,7 +243,7 @@
 <div class="users-form-shell">
         <div class="topbar">
             <div class="title">Edit User</div>
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], 'user-'.$managedUser->id) }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], 'user-'.$managedUser->id) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -373,8 +373,8 @@
                 </div>
 
                 <div class="actions">
-                    <button type="submit" class="btn btn-success">Update User</button>
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], 'user-'.$managedUser->id) }}" class="btn">Batal</a>
+                    <button type="submit" class="btn btn-primary">Update User</button>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], 'user-'.$managedUser->id) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
         </div>

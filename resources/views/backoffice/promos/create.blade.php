@@ -171,7 +171,7 @@
 
             </div>
 
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.promos.index', [], null) }}" class="btn btn-soft">Back to Promos</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.promos.index', [], null) }}" class="btn btn-secondary">Back to Promos</a>
         </div>
 
         <div class="card">
@@ -251,7 +251,7 @@
                     <div id="requirementsList" class="rule-list"></div>
 
                     <div style="margin-top:14px;">
-                        <button type="button" class="btn-mini btn-add" onclick="addRequirement()">+ Add Requirement</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addRequirement()">+ Add Requirement</button>
                     </div>
                 </div>
 
@@ -262,7 +262,7 @@
                     <div id="rewardsList" class="rule-list"></div>
 
                     <div style="margin-top:14px;">
-                        <button type="button" class="btn-mini btn-add" onclick="addReward()">+ Add Reward</button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="addReward()">+ Add Reward</button>
                     </div>
                 </div>
 
@@ -329,8 +329,8 @@
                 </div>
 
                 <div class="actions">
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.promos.index', [], null) }}" class="btn btn-soft">Cancel</a>
-                    <button type="submit" class="btn btn-brand">Save Promo</button>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.promos.index', [], null) }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Promo</button>
                 </div>
             </form>
         </div>
@@ -365,7 +365,7 @@
                     <label>Qty</label>
                     <input type="number" name="requirements[${requirementIndex}][qty]" value="${data.qty || 1}" min="1" step="1" required>
                 </div>
-                <button type="button" class="btn-mini btn-remove" onclick="this.closest('.rule-row').remove()">Remove</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.rule-row').remove()">Remove</button>
             `;
 
             document.getElementById('requirementsList').appendChild(wrapper);
@@ -403,7 +403,7 @@
                     <label>Qty</label>
                     <input type="number" name="rewards[${rewardIndex}][qty]" value="${data.qty || 1}" min="1" step="1">
                 </div>
-                <button type="button" class="btn-mini btn-remove" onclick="this.closest('.reward-row').remove()">Remove</button>
+                <button type="button" class="btn btn-danger btn-sm" onclick="this.closest('.reward-row').remove()">Remove</button>
             `;
 
             document.getElementById('rewardsList').appendChild(wrapper);

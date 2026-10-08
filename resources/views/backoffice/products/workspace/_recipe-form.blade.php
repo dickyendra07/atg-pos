@@ -76,7 +76,7 @@
                                         <input type="hidden" name="items[{{ $pwItem['id'] }}][remove]" value="0" data-pw-recipe-remove-flag>
                                         <span class="pw-recipe-unit" title="Unit tersimpan">{{ $pwItem['unit'] ?? '-' }}</span>
                                     </div>
-                                    <button type="button" class="btn btn-light btn-sm" data-pw-recipe-remove aria-label="Hapus {{ $pwItem['ingredient'] }} dari Recipe">Hapus</button>
+                                    <button type="button" class="btn btn-danger btn-sm" data-pw-recipe-remove aria-label="Hapus {{ $pwItem['ingredient'] }} dari Recipe">Hapus</button>
                                 </div>
                                 <div class="pw-field-error" data-pw-drawer-error="items.{{ $pwItem['id'] }}.qty" hidden></div>
                                 <div class="pw-recipe-removed-note">Bahan ini akan dihapus dari Recipe saat disimpan.</div>
@@ -102,9 +102,9 @@
             </template>
 
             <div class="pw-row-actions">
-                <button type="button" class="btn btn-light btn-sm" data-pw-recipe-add-row>+ Tambah bahan</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-pw-recipe-add-row>+ Tambah bahan</button>
                 @if($ingredientCreateUrl)
-                    <button type="button" class="btn btn-light btn-sm" data-pw-open-drawer="ingredient" data-pw-form-url="{{ $ingredientCreateUrl }}">+ Buat Ingredient</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-pw-open-drawer="ingredient" data-pw-form-url="{{ $ingredientCreateUrl }}">+ Buat Ingredient</button>
                 @endif
             </div>
             <p class="pw-note">
@@ -116,7 +116,7 @@
     </div>
 
     <div class="pw-drawer-foot">
-        <button type="button" class="btn btn-light" data-pw-drawer-cancel>Batal</button>
-        <button type="submit" class="btn btn-green" data-pw-drawer-save>{{ $recipe ? 'Simpan Recipe' : 'Buat Recipe' }}</button>
+        <button type="button" class="btn btn-secondary" data-pw-drawer-cancel>Batal</button>
+        <button type="submit" class="btn btn-primary" data-pw-drawer-save>{{ $recipe ? 'Simpan Recipe' : 'Buat Recipe' }}</button>
     </div>
 </form>

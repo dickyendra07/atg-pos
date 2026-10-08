@@ -291,14 +291,14 @@
                         <div class="items-title">Daftar Item Transfer</div>
 
                     </div>
-                    <button type="button" class="btn btn-add" id="add-item-btn">Tambah Baris</button>
+                    <button type="button" class="btn btn-secondary" id="add-item-btn">Tambah Baris</button>
                 </div>
 
                 <div id="items-wrapper"></div>
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Simpan Transfer</button>
-                    <a href="{{ route('backoffice.transfers.index') }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ route('backoffice.transfers.index') }}" class="btn btn-secondary">Batal</a>
                 </div>
 
                 <div class="hint" id="transfer_hint">
@@ -327,7 +327,7 @@
 
                 <div class="field item-field action-field" style="margin-bottom:0;">
                     <label>&nbsp;</label>
-                    <button type="button" class="btn btn-danger-lite remove-item-btn">Hapus</button>
+                    <button type="button" class="btn btn-danger btn-sm remove-item-btn">Hapus</button>
                 </div>
             </div>
         </div>

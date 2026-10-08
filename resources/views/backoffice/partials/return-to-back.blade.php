@@ -4,5 +4,5 @@
     $boBackTo = \App\Support\BackofficeReturnUrl::sanitize($returnTo ?? request('return_to'));
 @endphp
 @if($boBackTo)
-    <a href="{{ $boBackTo }}" class="btn btn-brand" data-return-to-back>{{ $label ?? 'Kembali' }}</a>
+    <a href="{{ $boBackTo }}" class="btn btn-secondary" data-return-to-back>{{ $label ?? 'Kembali' }}</a>
 @endif

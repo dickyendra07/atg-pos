@@ -193,7 +193,11 @@
         }
     }
     $receiptBrandName = "Lee Ong's Tea x Waspffle";
-    $receiptAddress = 'Alamat outlet / cabang';
+    // Outlet identity always comes from the transaction's own outlet (never the logged-in outlet), so a
+    // reprint of an old sale still shows the outlet that made it. The address is the saved outlet address,
+    // on one line; with none saved the line is left out (the printers skip a null address).
+    $receiptOutletName = trim((string) ($transaction->outlet->name ?? ''));
+    $receiptAddress = trim((string) preg_replace('/\s+/', ' ', (string) ($transaction->outlet->address ?? '')));
     $cashierName = $transaction->user->name ?? '-';
     $memberName = $transaction->member->name ?? null;
     $memberPhone = $transaction->member->phone ?? null;
@@ -247,7 +251,8 @@
 
     $receiptPayload = [
         'brand_name' => $receiptBrandName,
-        'address' => $receiptAddress,
+        'outlet_name' => $receiptOutletName !== '' ? $receiptOutletName : null,
+        'address' => $receiptAddress !== '' ? $receiptAddress : null,
         'transaction_number' => $transactionNumber,
         'cashier_name' => $cashierName,
         'member_name' => $memberName,
@@ -487,6 +492,15 @@
                 align: 'center',
                 gap: 4,
             });
+
+            if (receipt.outlet_name) {
+                pushWrapped(receipt.outlet_name, {
+                    size: 17,
+                    weight: '700',
+                    align: 'center',
+                    gap: 4,
+                });
+            }
 
             if (receipt.address) {
                 pushWrapped(receipt.address, {
@@ -880,6 +894,10 @@
             raw([ESC, 0x61, 0x01]); // center
 
             wrapBluetoothText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach(line);
+
+            if (receipt.outlet_name) {
+                wrapBluetoothText(receipt.outlet_name, widthChars).forEach(line);
+            }
 
             if (receipt.address) {
                 wrapBluetoothText(receipt.address, widthChars).forEach(line);

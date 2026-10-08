@@ -1203,7 +1203,6 @@
 
             .filter-actions .btn {
                 width: 100%;
-                min-height: 46px;
             }
 
             .premium-card,
@@ -1453,9 +1452,6 @@
 
             .filter-actions .btn {
                 width: 100%;
-                min-height: 52px;
-                font-size: 15px;
-                border-radius: 18px;
                 margin: 0 !important;
             }
 
@@ -1999,12 +1995,12 @@
                 </div>
 
                 <div class="approval-history-filter-actions">
-                    <button type="submit" class="btn btn-brand">Filter</button>
+                    <button type="submit" class="btn btn-primary">Filter</button>
                     <a href="{{ route('backoffice.index', array_filter([
                         'outlet_id' => $filters['outlet_id'] ?? null,
                         'date_from' => $filters['date_from'] ?? null,
                         'date_to' => $filters['date_to'] ?? null,
-                    ])) }}" class="btn btn-soft">Reset</a>
+                    ])) }}" class="btn btn-secondary">Reset</a>
                 </div>
             </form>
 
@@ -2071,7 +2067,7 @@
 
                             @if($history->sales_transaction_id)
                                 <div style="margin-top:10px;">
-                                    <a href="{{ route('backoffice.transactions.show', $history->sales_transaction_id) }}" class="btn btn-dark">
+                                    <a href="{{ route('backoffice.transactions.show', $history->sales_transaction_id) }}" class="btn btn-secondary">
                                         Lihat Transaksi
                                     </a>
                                 </div>
@@ -2111,8 +2107,8 @@
                 </div>
 
                 <div class="filter-actions">
-                    <button type="submit" class="btn btn-brand">Apply Filter</button>
-                    <a href="{{ route('backoffice.index') }}" class="btn btn-soft">Reset</a>
+                    <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Reset</a>
                 </div>
             </form>
         </div>
@@ -2178,11 +2174,11 @@
                                         <input type="hidden" name="notification_id" value="{{ $notification->id }}">
                                         <input type="hidden" name="sales_transaction_id" value="{{ $notification->sales_transaction_id }}">
                                         <input type="hidden" name="purpose" value="{{ $pinPurpose }}">
-                                        <button type="submit" class="btn btn-brand">Generate PIN</button>
+                                        <button type="submit" class="btn btn-primary">Generate PIN</button>
                                     </form>
                                 @endif
 
-                                <a href="{{ route('backoffice.transactions.show', $notification->sales_transaction_id) }}" class="btn btn-dark">
+                                <a href="{{ route('backoffice.transactions.show', $notification->sales_transaction_id) }}" class="btn btn-secondary">
                                     Lihat Transaksi
                                 </a>
                             @endif
@@ -2479,10 +2475,10 @@
             </div>
 
             <div class="bottom-actions">
-                <a href="{{ route('backoffice.print-summary', request()->query()) }}" target="_blank" class="btn btn-dark">
+                <a href="{{ route('backoffice.print-summary', request()->query()) }}" target="_blank" class="btn btn-secondary">
                     Print Summary
                 </a>
-                <a href="{{ route('backoffice.transactions.index', request()->query()) }}" class="btn btn-brand">
+                <a href="{{ route('backoffice.transactions.index', request()->query()) }}" class="btn btn-secondary">
                     Buka Transactions
                 </a>
             </div>

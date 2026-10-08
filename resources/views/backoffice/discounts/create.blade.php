@@ -266,7 +266,7 @@
 
             </div>
 
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.discounts.index', [], null) }}" class="btn btn-soft">Back to Discounts</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.discounts.index', [], null) }}" class="btn btn-secondary">Back to Discounts</a>
         </div>
 
         <div class="card">
@@ -347,8 +347,8 @@
                 </div>
 
                 <div class="actions">
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.discounts.index', [], null) }}" class="btn btn-soft">Cancel</a>
-                    <button type="submit" class="btn btn-brand">Save Discount</button>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.discounts.index', [], null) }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Discount</button>
                 </div>
             </form>
         </div>

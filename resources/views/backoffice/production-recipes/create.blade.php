@@ -234,7 +234,7 @@
 
             </div>
 
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         <div class="content">
@@ -295,7 +295,7 @@
 
                         <div class="actions-row">
                             <button type="submit" class="btn btn-primary">Simpan Production Recipe</button>
-                            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-dark">Batal</a>
+                            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-secondary">Batal</a>
                         </div>
                     </form>
 
@@ -308,5 +308,6 @@
     </div>
 </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

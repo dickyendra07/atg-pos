@@ -541,8 +541,8 @@
                     <div class="mini-info">
                         {{ $user->name }} • {{ $user->role->name ?? '-' }}
                     </div>
-                    <a href="{{ route('backoffice.shifts.index') }}" class="btn btn-brand">Shift List</a>
-                    <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Back Office</a>
+                    <a href="{{ route('backoffice.shifts.index') }}" class="btn btn-secondary">Shift List</a>
+                    <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Back Office</a>
                 </div>
             </div>
 
@@ -573,8 +573,8 @@
                         </div>
 
                         <div class="session-actions">
-                            <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-brand">Transactions</a>
-                            <a href="{{ route('backoffice.shifts.index') }}" class="btn btn-dark">Back</a>
+                            <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-secondary">Transactions</a>
+                            <a href="{{ route('backoffice.shifts.index') }}" class="btn btn-secondary">Back</a>
                         </div>
                     </div>
                 </div>
@@ -802,7 +802,7 @@
                                                 @endforeach
                                             </td>
                                             <td>
-                                                <a href="{{ route('backoffice.transactions.show', $transaction->id) }}" class="btn btn-dark">Detail</a>
+                                                <a href="{{ route('backoffice.transactions.show', $transaction->id) }}" class="btn btn-secondary">Detail</a>
                                             </td>
                                         </tr>
                                     @endforeach
@@ -818,5 +818,6 @@
             </div>
         </div>
     </div>
+@include('backoffice.partials.button-system')
 </body>
 </html>

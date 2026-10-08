@@ -11,14 +11,14 @@
     @media(max-width:900px){.filters{grid-template-columns:1fr 1fr}}@media(max-width:560px){.filters{grid-template-columns:1fr}}
 </style>
 <div class="purchase-shell">
-    <div class="purchase-head"><div><h1>Purchase / Goods Receipt History</h1><p>Riwayat penerimaan barang yang benar-benar tersimpan.</p></div><a class="btn" href="{{ route('backoffice.stock-balances.create') }}">Penerimaan Baru</a></div>
+    <div class="purchase-head"><div><h1>Purchase / Goods Receipt History</h1><p>Riwayat penerimaan barang yang benar-benar tersimpan.</p></div><a class="btn btn-primary" href="{{ route('backoffice.stock-balances.create') }}">Penerimaan Baru</a></div>
     <div class="purchase-card">
         <form class="filters" method="GET">
             <div class="field"><label>Outlet / Location</label><select name="outlet_id"><option value="all">Semua lokasi</option><option value="warehouse" @selected(($filters['outlet_id']??'')==='warehouse')>Semua Warehouse</option>@foreach($backofficeOutletOptions as $outlet)<option value="{{ $outlet->id }}" @selected((string)($filters['outlet_id']??$activeBackofficeOutlet?->id)===(string)$outlet->id)>{{ $outlet->name }}</option>@endforeach</select></div>
             <div class="field"><label>Date From</label><input type="date" name="date_from" value="{{ $filters['date_from']??'' }}"></div>
             <div class="field"><label>Date To</label><input type="date" name="date_to" value="{{ $filters['date_to']??'' }}"></div>
             <div class="field"><label>Status</label><select name="status"><option value="">Semua status</option><option value="received" @selected(($filters['status']??'')==='received')>Received</option></select></div>
-            <div class="field"><label>Search reference / supplier</label><input name="search" value="{{ $filters['search']??'' }}"><button class="btn" style="margin-top:8px">Apply</button></div>
+            <div class="field"><label>Search reference / supplier</label><input name="search" value="{{ $filters['search']??'' }}"><button class="btn btn-primary" style="margin-top:8px">Apply</button></div>
         </form>
     </div>
     <div class="purchase-card table-wrap"><table><thead><tr><th>Reference</th><th>Date</th><th>Supplier</th><th>Destination</th><th>Total</th><th>Status</th></tr></thead><tbody>

@@ -80,7 +80,7 @@
     </div>
 
     <div class="pw-drawer-foot">
-        <button type="button" class="btn btn-light" data-pw-drawer-cancel>Batal</button>
-        <button type="submit" class="btn btn-green" data-pw-drawer-save>{{ $variant ? 'Simpan Variant' : 'Tambah Variant' }}</button>
+        <button type="button" class="btn btn-secondary" data-pw-drawer-cancel>Batal</button>
+        <button type="submit" class="btn btn-primary" data-pw-drawer-save>{{ $variant ? 'Simpan Variant' : 'Tambah Variant' }}</button>
     </div>
 </form>

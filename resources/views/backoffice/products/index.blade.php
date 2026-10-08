@@ -567,10 +567,10 @@
             </div>
 
             <div class="products-actions">
-                <a href="{{ route('backoffice.products.export.csv') }}" class="btn btn-blue">Export CSV</a>
-                <a href="{{ route('backoffice.products.import') }}" class="btn btn-orange">Import CSV</a>
-                <a href="{{ route('backoffice.products.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah Product</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.products.export.csv') }}" class="btn btn-secondary">Export CSV</a>
+                <a href="{{ route('backoffice.products.import') }}" class="btn btn-secondary">Import CSV</a>
+                <a href="{{ route('backoffice.products.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah Product</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -643,8 +643,8 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-orange">Filter</button>
-                    <a href="{{ route('backoffice.products.index') }}" class="btn btn-dark">Reset</a>
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ route('backoffice.products.index') }}" class="btn btn-secondary">Reset</a>
                 </form>
             </div>
 
@@ -695,7 +695,7 @@
                                             </td>
                                             <td>
                                                 <div class="action-stack">
-                                                    <a href="{{ route('backoffice.products.edit', [$product->id, 'return_to' => $listReturnTo]) }}" class="btn btn-small btn-small-blue">Edit</a>
+                                                    <a href="{{ route('backoffice.products.edit', [$product->id, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary btn-sm">Edit</a>
 
                                                     @if($product->is_active)
                                                         <form method="POST" action="{{ route('backoffice.products.destroy', $product->id) }}" class="inline-form"
@@ -707,7 +707,7 @@
                                                             @csrf
                                                             @method('DELETE')
                                                             @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                                            <button type="submit" class="btn btn-small btn-small-orange">Nonaktifkan</button>
+                                                            <button type="submit" class="btn btn-warning btn-sm">Nonaktifkan</button>
                                                         </form>
                                                     @endif
 

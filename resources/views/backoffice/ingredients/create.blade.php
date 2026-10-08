@@ -390,35 +390,13 @@
                 ">
 
 
-                    <button
-                        type="submit"
-                        style="
-                            border:0;
-                            cursor:pointer;
-                            padding:13px 22px;
-                            border-radius:14px;
-                            background:linear-gradient(135deg,#e86a3a,#f08a57);
-                            color:white;
-                            font-weight:900;
-                            box-shadow:0 12px 24px rgba(232,106,58,.25);
-                        "
-                    >
+                    <button type="submit" class="btn btn-primary">
                         ✓ Create Ingredient
                     </button>
 
 
 
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], null) }}"
-                       style="
-                            display:inline-flex;
-                            align-items:center;
-                            padding:13px 22px;
-                            border-radius:14px;
-                            background:#111827;
-                            color:white;
-                            text-decoration:none;
-                            font-weight:900;
-                       ">
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], null) }}" class="btn btn-secondary">
                         Cancel
                     </a>
 

@@ -14,7 +14,7 @@
             <p class="pw-card-sub">Informasi dasar Product. Harga disimpan per Variant, bukan di Product.</p>
         </div>
         <div class="pw-card-actions">
-            <button type="submit" class="btn btn-green" data-pw-save>Simpan General</button>
+            <button type="submit" class="btn btn-primary" data-pw-save>Simpan General</button>
         </div>
     </div>
 
@@ -39,7 +39,7 @@
                 </select>
                 @if($canCreateCategory)
                     {{-- The drawer needs JS; without it the Category page link below still works. --}}
-                    <button type="button" class="btn btn-light" data-pw-open-drawer="category" hidden>+ Buat Category</button>
+                    <button type="button" class="btn btn-primary" data-pw-open-drawer="category" hidden>+ Buat Category</button>
                 @endif
             </div>
             <noscript><a href="{{ route('backoffice.menu-categories.index') }}" class="pw-link">Kelola Category Menu</a></noscript>
@@ -84,7 +84,7 @@
                 <p class="pw-card-sub">Hapus Product ini dari sistem (pembersihan data uji). Product dan semua Variant-nya hilang dari seluruh tampilan operasional dan Cashier; Recipe-nya dihapus permanen. Riwayat transaksi, pembayaran, dan stok tetap tersimpan. Dampak ditampilkan sebelum konfirmasi.</p>
             </div>
             <div class="pw-card-actions">
-                @include('backoffice.partials.cleanup-button', ['type' => 'product', 'id' => $product->id, 'name' => $product->name, 'return' => $workspaceReturnTo, 'class' => 'btn btn-red', 'testid' => 'cleanup-product-'.$product->id])
+                @include('backoffice.partials.cleanup-button', ['type' => 'product', 'id' => $product->id, 'name' => $product->name, 'return' => $workspaceReturnTo, 'class' => 'btn btn-danger', 'testid' => 'cleanup-product-'.$product->id])
             </div>
         </div>
     </section>

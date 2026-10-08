@@ -183,11 +183,12 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Simpan Transfer</button>
-                    <a href="{{ route('backoffice.warehouses.stock.index', $warehouse) }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ route('backoffice.warehouses.stock.index', $warehouse) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

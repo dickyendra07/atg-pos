@@ -64,6 +64,81 @@ class ReceiptItemNamePrintTest extends TestCase
         }
     }
 
+    public function test_the_receipt_payload_carries_the_name_of_the_outlet_that_made_the_sale(): void
+    {
+        $this->assertSame('BXC', $this->receiptPayload($this->transaction)['outlet_name']);
+
+        // Another outlet's cashier: that outlet's name, not a fixed one.
+        $other = Outlet::create(['name' => 'Tea Bar Kemang', 'code' => 'TBK', 'is_active' => true]);
+        $second = SalesTransaction::create([
+            'transaction_number' => 'ATG-002',
+            'user_id' => $this->owner->id,
+            'outlet_id' => $other->id,
+            'subtotal' => 500,
+            'grand_total' => 500,
+            'payment_method' => 'cash',
+            'payment_status' => 'paid',
+            'amount_paid' => 500,
+            'change_amount' => 0,
+            'status' => 'completed',
+        ]);
+        $this->line($second, 'Sedotan', '*Sedotan Boba [DINE IN]', 1, 500);
+
+        $this->assertSame('Tea Bar Kemang', $this->receiptPayload($second)['outlet_name']);
+    }
+
+    public function test_the_receipt_address_is_the_saved_outlet_address_on_one_line(): void
+    {
+        $this->outlet->update(['address' => "Jl. Bintaro Utama 3A No. 1\n  Tangerang Selatan "]);
+
+        $payload = $this->receiptPayload($this->transaction);
+
+        $this->assertSame('BXC', $payload['outlet_name']);
+        $this->assertSame('Jl. Bintaro Utama 3A No. 1 Tangerang Selatan', $payload['address']);
+        $this->assertSame("Lee Ong's Tea x Waspffle", $payload['brand_name']);
+    }
+
+    public function test_an_outlet_without_an_address_gets_no_address_line_and_never_the_old_placeholder(): void
+    {
+        foreach ([null, '', "  \n "] as $empty) {
+            $this->outlet->update(['address' => $empty]);
+
+            $payload = $this->receiptPayload($this->transaction);
+
+            $this->assertNull($payload['address']);
+            $this->assertSame('BXC', $payload['outlet_name']);
+        }
+
+        $html = $this->actingAs($this->owner)->get(route('backoffice.transactions.receipt', $this->transaction))->assertOk()->getContent();
+        $this->assertStringNotContainsString('Alamat outlet / cabang', $html);
+        // every renderer (preview/PNG, Bluetooth) only prints the address line when there is one
+        $this->assertStringContainsString('if (receipt.address)', $html);
+    }
+
+    public function test_a_reprint_uses_the_outlet_of_the_transaction_not_the_logged_in_outlet(): void
+    {
+        $this->outlet->update(['address' => 'Alamat BXC']);
+        $other = Outlet::create(['name' => 'Tea Bar Kemang', 'code' => 'TBK', 'address' => 'Alamat Kemang', 'is_active' => true]);
+
+        // The viewer is signed in at a different outlet than the one that made the sale.
+        $this->owner->update(['outlet_id' => $other->id]);
+        $this->owner->outlets()->sync([$other->id, $this->outlet->id]);
+
+        $payload = $this->receiptPayload($this->transaction->fresh());
+
+        $this->assertSame('BXC', $payload['outlet_name']);
+        $this->assertSame('Alamat BXC', $payload['address']);
+    }
+
+    public function test_the_cashier_printer_reads_outlet_name_and_address_from_the_same_payload(): void
+    {
+        $cashier = file_get_contents(resource_path('views/cashier/index.blade.php'));
+
+        $this->assertStringContainsString('receipt.outlet_name', $cashier);
+        $this->assertStringContainsString('receipt.address', $cashier);
+        $this->assertStringNotContainsString('Alamat outlet / cabang', $cashier);
+    }
+
     public function test_the_receipt_payload_has_one_clean_label_per_cart_line_and_unchanged_amounts(): void
     {
         $payload = $this->receiptPayload($this->transaction);

@@ -209,7 +209,7 @@
     <div class="wrap">
         <div class="topbar">
             <div class="title">Back Office - Warehouse Transfers</div>
-            <a href="{{ route('backoffice.index') }}" class="btn">Kembali</a>
+            <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Kembali</a>
         </div>
 
 
@@ -248,8 +248,8 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-filter">Apply Filter</button>
-                    <a href="{{ route('backoffice.warehouse-transfers.index') }}" class="btn btn-reset">Reset</a>
+                    <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    <a href="{{ route('backoffice.warehouse-transfers.index') }}" class="btn btn-secondary">Reset</a>
                 </div>
             </form>
 
@@ -296,5 +296,6 @@
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

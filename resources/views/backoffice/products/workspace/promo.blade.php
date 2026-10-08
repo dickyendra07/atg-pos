@@ -10,7 +10,7 @@
         </div>
         @if($pwPromos['create_url'])
             <div class="pw-card-actions">
-                <a href="{{ $pwPromos['create_url'] }}" class="btn btn-green" data-pw-promo-create>+ Buat Promo</a>
+                <a href="{{ $pwPromos['create_url'] }}" class="btn btn-primary" data-pw-promo-create>+ Buat Promo</a>
             </div>
         @endif
     </div>
@@ -87,7 +87,7 @@
             @endif
 
             @if($pwPromo['edit_url'])
-                <div class="pw-row-actions"><a href="{{ $pwPromo['edit_url'] }}" class="btn btn-blue btn-sm" data-pw-promo-edit>Kelola Promo</a></div>
+                <div class="pw-row-actions"><a href="{{ $pwPromo['edit_url'] }}" class="btn btn-secondary btn-sm" data-pw-promo-edit>Kelola Promo</a></div>
             @elseif($pwPromo['read_only_reason'])
                 <p class="pw-note">{{ $pwPromo['read_only_reason'] }}</p>
             @endif
