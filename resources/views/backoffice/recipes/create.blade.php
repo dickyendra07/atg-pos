@@ -148,6 +148,50 @@
             box-shadow: 0 0 0 4px rgba(232,106,58,0.10);
         }
 
+        .field select:disabled,
+        .field input:read-only {
+            background: #f3f4f6;
+            color: #6b7280;
+            cursor: not-allowed;
+        }
+
+        .field input:read-only {
+            font-weight: bold;
+            color: #111827;
+            cursor: default;
+        }
+
+        .field.has-error select {
+            border-color: #dc2626;
+        }
+
+        .field-error {
+            margin-top: 6px;
+            font-size: 12px;
+            font-weight: bold;
+            color: #b91c1c;
+        }
+
+        .existing-recipes {
+            margin-top: 8px;
+            background: #fff7ed;
+            border: 1px solid #fed7aa;
+            color: #9a3412;
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        .existing-recipes[hidden] {
+            display: none;
+        }
+
+        .existing-recipes a {
+            color: #c2410c;
+            font-weight: bold;
+        }
+
         .helper {
             margin-top: 6px;
             font-size: 12px;
@@ -247,27 +291,36 @@
                 @csrf
                 @include('backoffice.partials.return-to-field')
 
-                <div class="field">
-                    <label>Product Variant</label>
-                    <select name="product_variant_id" required>
-                        <option value="">Pilih variant</option>
-                        @foreach($variants as $variant)
-                            <option value="{{ $variant->id }}" @selected(old('product_variant_id') == $variant->id)>
-                                {{ $variant->product->name ?? '-' }} - {{ $variant->name }}
-                            </option>
-                        @endforeach
+                <div class="field {{ $errors->has('product_id') ? 'has-error' : '' }}">
+                    <label for="recipe-product">Menu / Product</label>
+                    <select id="recipe-product" name="product_id" required aria-describedby="recipe-product-help">
+                        <option value="">Pilih Menu</option>
                     </select>
-                    <div class="info" style="margin-top:8px;">
-                        Recipe berlaku ke semua outlet yang memakai Variant. Hanya Variant yang boleh kamu ubah yang ditampilkan:
+                    @error('product_id')
+                        <div class="field-error">{{ $message }}</div>
+                    @enderror
+                    <div class="helper" id="recipe-product-help">
+                        Recipe berlaku ke semua outlet yang memakai Variant. Hanya Menu dan Variant yang boleh kamu ubah yang ditampilkan:
                         untuk Variant multi-outlet, kamu harus punya akses ke seluruh outlet pemakainya.
                     </div>
+                </div>
 
+                <div class="field {{ $errors->has('product_variant_id') ? 'has-error' : '' }}">
+                    <label for="recipe-variant">Variant / Size</label>
+                    <select id="recipe-variant" name="product_variant_id" required disabled aria-describedby="recipe-variant-help">
+                        <option value="">Pilih Menu dulu</option>
+                    </select>
+                    @error('product_variant_id')
+                        <div class="field-error">{{ $message }}</div>
+                    @enderror
+                    <div class="helper" id="recipe-variant-help" aria-live="polite"></div>
+                    <div class="existing-recipes" id="recipe-existing" hidden></div>
                 </div>
 
                 <div class="field">
-                    <label>Recipe Name</label>
-                    <input type="text" name="name" value="{{ old('name') }}" placeholder="Contoh: Waffle Coklat / Es Teh Cream Base" required>
-
+                    <label for="recipe-name-preview">Nama Recipe Otomatis</label>
+                    {{-- Display only (no name attribute): the stored name is always built server-side. --}}
+                    <input type="text" id="recipe-name-preview" value="" placeholder="Otomatis terisi setelah memilih Variant" readonly tabindex="-1" aria-live="polite">
                 </div>
 
                 <div class="field">
@@ -287,6 +340,126 @@
 
         </div>
     </div>
+
+    <script>
+        (function () {
+            var menus = @json($menuOptions);
+            var oldProduct = @json((string) old('product_id', ''));
+            var oldVariant = @json((string) old('product_variant_id', ''));
+
+            var productSelect = document.getElementById('recipe-product');
+            var variantSelect = document.getElementById('recipe-variant');
+            var preview = document.getElementById('recipe-name-preview');
+            var help = document.getElementById('recipe-variant-help');
+            var existingBox = document.getElementById('recipe-existing');
+
+            function option(value, label, disabled) {
+                var el = document.createElement('option');
+                el.value = value;
+                el.textContent = label;
+                el.disabled = !!disabled;
+                return el;
+            }
+
+            function findMenu(id) {
+                for (var i = 0; i < menus.length; i++) {
+                    if (String(menus[i].id) === String(id)) { return menus[i]; }
+                }
+                return null;
+            }
+
+            function findVariant(menu, id) {
+                if (!menu) { return null; }
+                for (var i = 0; i < menu.variants.length; i++) {
+                    if (String(menu.variants[i].id) === String(id)) { return menu.variants[i]; }
+                }
+                return null;
+            }
+
+            function renderExisting(menu) {
+                var taken = menu ? menu.variants.filter(function (v) { return v.existing; }) : [];
+                existingBox.textContent = '';
+                existingBox.hidden = taken.length === 0;
+
+                if (taken.length === 0) { return; }
+
+                existingBox.appendChild(document.createTextNode('Sudah punya Recipe: '));
+                taken.forEach(function (v, index) {
+                    if (index > 0) { existingBox.appendChild(document.createTextNode(', ')); }
+                    var link = document.createElement('a');
+                    link.href = v.existing.url;
+                    link.textContent = v.name + ' (buka Recipe)';
+                    existingBox.appendChild(link);
+                });
+            }
+
+            function renderPreview() {
+                var menu = findMenu(productSelect.value);
+                var variant = findVariant(menu, variantSelect.value);
+                preview.value = variant ? variant.recipe_name : '';
+            }
+
+            // Rebuild the Variant list for the chosen Menu; keepId is only used for the first paint after a failed submit.
+            function renderVariants(keepId) {
+                var menu = findMenu(productSelect.value);
+                variantSelect.textContent = '';
+                variantSelect.setCustomValidity('');
+                help.textContent = '';
+
+                if (!menu) {
+                    variantSelect.appendChild(option('', 'Pilih Menu dulu'));
+                    variantSelect.disabled = true;
+                    renderExisting(null);
+                    renderPreview();
+                    return;
+                }
+
+                var free = menu.variants.filter(function (v) { return !v.existing; });
+
+                // Every Variant stays listed; those that already have a Recipe are disabled options. When none is
+                // left the select stays enabled (so keyboard and screen-reader users can still open it and read the
+                // list) but its only selectable value is the empty placeholder, so the required field blocks Simpan.
+                variantSelect.appendChild(option('', free.length === 0 ? 'Semua Variant sudah punya Recipe' : 'Pilih Variant'));
+                menu.variants.forEach(function (v) {
+                    variantSelect.appendChild(option(v.id, v.existing ? v.name + ' — Sudah ada Recipe' : v.name, !!v.existing));
+                });
+                variantSelect.disabled = false;
+
+                if (free.length === 0) {
+                    help.textContent = 'Semua Variant Menu ini sudah punya Recipe. Buka Recipe yang ada di bawah, atau pilih Menu lain.';
+                    variantSelect.setCustomValidity('Semua Variant Menu ini sudah punya Recipe.');
+                }
+
+                if (keepId && findVariant(menu, keepId) && !findVariant(menu, keepId).existing) {
+                    variantSelect.value = String(keepId);
+                }
+
+                renderExisting(menu);
+                renderPreview();
+            }
+
+            menus.forEach(function (menu) {
+                productSelect.appendChild(option(menu.id, menu.name));
+            });
+
+            // Legacy/failed submit with only a Variant id: recover its Menu from the list.
+            if (!oldProduct && oldVariant) {
+                menus.forEach(function (menu) {
+                    if (findVariant(menu, oldVariant)) { oldProduct = String(menu.id); }
+                });
+            }
+
+            if (oldProduct && findMenu(oldProduct)) {
+                productSelect.value = String(oldProduct);
+            }
+
+            renderVariants(oldVariant);
+
+            // Changing the Menu always resets the Variant.
+            productSelect.addEventListener('change', function () { renderVariants(null); });
+            variantSelect.addEventListener('change', renderPreview);
+        })();
+    </script>
     @include('backoffice.partials.feedback')
 @include('backoffice.partials.button-system')
 </body>

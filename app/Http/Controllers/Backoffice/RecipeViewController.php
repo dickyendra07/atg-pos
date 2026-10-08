@@ -184,9 +184,11 @@ class RecipeViewController extends Controller
         $user = $this->authorizeAccess();
         $user->load(['outlet']);
 
-        // Only Variants this user may create a Recipe for in the current context (global Recipe rule).
-        $variants = ProductVariant::with(['product.outlets', 'outlets'])
+        // Only Variants this user may create a Recipe for in the current context (global Recipe rule),
+        // and never those of a deleted Product (the product() relation is withTrashed).
+        $variants = ProductVariant::with(['product.outlets', 'outlets', 'recipe'])
             ->inOutletScope($this->outletScope($user))
+            ->whereHas('product', fn ($query) => $query->whereNull('products.deleted_at'))
             ->orderBy('name')
             ->get()
             ->filter(fn (ProductVariant $variant) => $this->recipePolicy()->canMutateVariantRecipe($user, $variant))
@@ -195,24 +197,76 @@ class RecipeViewController extends Controller
         return view('backoffice.recipes.create', [
             'user' => $user,
             'variants' => $variants,
+            'menuOptions' => $this->menuOptions($variants),
         ]);
+    }
+
+    /**
+     * Menu -> Variant options for the create form, built only from the Variants already filtered by
+     * scope + mutation rule. The auto-generated name comes from RecipeWriter::defaultName() so the
+     * preview and the stored name can never use two different rules.
+     *
+     * A Variant that already has a Recipe is listed (so the form can explain it and link to it) but
+     * flagged `existing`; the form does not let it be picked and store() rejects it anyway. Every
+     * listed Variant is inside the user's view scope, which is exactly the rule for viewing its Recipe.
+     */
+    protected function menuOptions($variants): array
+    {
+        return $variants
+            ->groupBy('product_id')
+            ->map(fn ($group) => [
+                'id' => $group->first()->product_id,
+                'name' => $group->first()->product->name,
+                'variants' => $group->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)->map(fn (ProductVariant $variant) => [
+                    'id' => $variant->id,
+                    'name' => $variant->name,
+                    'recipe_name' => RecipeWriter::defaultName($variant),
+                    'existing' => $variant->recipe ? [
+                        'name' => $variant->recipe->name,
+                        'url' => route('backoffice.recipes.edit', $variant->recipe),
+                    ] : null,
+                ])->values()->all(),
+            ])
+            ->sortBy('name', SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->all();
     }
 
     public function store(Request $request)
     {
         $user = $this->authorizeAccess();
 
+        // `name` is deliberately not accepted: the stored name is always derived from the Variant below.
+        // `product_id` is optional so older callers that only send the Variant keep working; when
+        // present it must be the Variant's own Product.
         $validated = $request->validate([
-            'product_variant_id' => 'required|exists:product_variants,id,deleted_at,NULL|unique:recipes,product_variant_id',
-            'name' => 'required|string|max:255',
+            'product_id' => 'nullable|integer|exists:products,id,deleted_at,NULL',
+            'product_variant_id' => 'required|integer|exists:product_variants,id,deleted_at,NULL|unique:recipes,product_variant_id',
             'is_active' => 'required|boolean',
+        ], [
+            'product_id.exists' => 'Menu / Product tidak ditemukan atau sudah dihapus.',
+            'product_variant_id.required' => 'Pilih Variant / Size terlebih dahulu.',
+            'product_variant_id.exists' => 'Variant tidak ditemukan atau sudah dihapus.',
+            'product_variant_id.unique' => 'Variant ini sudah memiliki Recipe. Buka Recipe yang ada, jangan buat yang baru.',
         ]);
 
-        $variant = ProductVariant::findOrFail($validated['product_variant_id']);
+        $variant = ProductVariant::with('product')->findOrFail($validated['product_variant_id']);
+
+        if (! empty($validated['product_id']) && (int) $validated['product_id'] !== (int) $variant->product_id) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'product_variant_id' => 'Variant tidak sesuai dengan Menu / Product yang dipilih.',
+            ]);
+        }
+
+        if (! $variant->product || $variant->product->trashed()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'product_id' => 'Menu / Product tidak ditemukan atau sudah dihapus.',
+            ]);
+        }
 
         $this->assertVariantMutable($variant, $user);
 
-        $recipe = $this->writer()->create($variant, $validated['name'], (bool) $validated['is_active']);
+        $recipe = $this->writer()->create($variant, RecipeWriter::defaultName($variant), (bool) $validated['is_active']);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.recipes.index', [], 'recipe-'.$recipe->id)
             ->with('success', 'Recipe berhasil ditambahkan.');
