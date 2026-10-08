@@ -172,7 +172,7 @@
 
             <div class="actions">
                 <a href="{{ route('backoffice.warehouses.stock.create', $warehouse) }}" class="btn btn-primary">Stock In Warehouse</a>
-                <a href="{{ route('backoffice.warehouses.stock.index', $warehouse) }}" class="btn btn-dark">Kembali ke Stock</a>
+                <a href="{{ route('backoffice.warehouses.stock.index', $warehouse) }}" class="btn btn-secondary">Kembali ke Stock</a>
             </div>
         </div>
 
@@ -234,5 +234,6 @@
             @endif
         </div>
     </div>
+@include('backoffice.partials.button-system')
 </body>
 </html>

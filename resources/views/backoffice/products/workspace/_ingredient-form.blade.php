@@ -29,7 +29,7 @@
                     @endforeach
                 </select>
                 @if($canCreateCategory)
-                    <button type="button" class="btn btn-light" data-pw-open-drawer="ingredient-category">+ Buat Category</button>
+                    <button type="button" class="btn btn-primary" data-pw-open-drawer="ingredient-category">+ Buat Category</button>
                 @endif
             </div>
             <div class="pw-field-error" data-pw-drawer-error="ingredient_category_id" hidden></div>
@@ -115,9 +115,9 @@
     <div class="pw-drawer-foot">
         @if($ingredient)
             {{-- Temporary cleanup delete (flag + owner/admin pusat): tombstone, blocked while a Recipe still uses it. --}}
-            @include('backoffice.partials.cleanup-button', ['type' => 'ingredient', 'id' => $ingredient->id, 'name' => $ingredient->name, 'return' => \App\Services\ProductWorkspace::url($product, 'recipe', $workspaceReturnTo), 'class' => 'btn btn-red', 'testid' => 'cleanup-ingredient-'.$ingredient->id])
+            @include('backoffice.partials.cleanup-button', ['type' => 'ingredient', 'id' => $ingredient->id, 'name' => $ingredient->name, 'return' => \App\Services\ProductWorkspace::url($product, 'recipe', $workspaceReturnTo), 'class' => 'btn btn-danger', 'testid' => 'cleanup-ingredient-'.$ingredient->id])
         @endif
-        <button type="button" class="btn btn-light" data-pw-drawer-cancel>Batal</button>
-        <button type="submit" class="btn btn-green" data-pw-drawer-save>{{ $ingredient ? 'Simpan Ingredient' : 'Buat Ingredient' }}</button>
+        <button type="button" class="btn btn-secondary" data-pw-drawer-cancel>Batal</button>
+        <button type="submit" class="btn btn-primary" data-pw-drawer-save>{{ $ingredient ? 'Simpan Ingredient' : 'Buat Ingredient' }}</button>
     </div>
 </form>

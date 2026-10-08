@@ -8,7 +8,7 @@
         </div>
         <div class="pw-card-actions">
             <a href="{{ $workspace['links']['variants_create'] }}"
-               class="btn btn-green"
+               class="btn btn-primary"
                data-pw-open-drawer="variant"
                data-pw-form-url="{{ $workspace['links']['variant_create_form'] }}">+ Tambah Variant</a>
         </div>
@@ -53,7 +53,7 @@
                             <td>
                                 <div class="pw-row-buttons">
                                     <a href="{{ $pwVariant['legacy_edit_url'] }}"
-                                       class="btn btn-blue btn-sm"
+                                       class="btn btn-secondary btn-sm"
                                        data-pw-open-drawer="variant"
                                        data-pw-form-url="{{ $pwVariant['form_url'] }}">Edit</a>
                                     @if($pwVariant['is_active'])
@@ -67,11 +67,11 @@
                                             @csrf
                                             @method('PATCH')
                                             @include('backoffice.partials.return-to-field', ['returnTo' => $workspaceReturnTo])
-                                            <button type="submit" class="btn btn-orange btn-sm">Nonaktifkan</button>
+                                            <button type="submit" class="btn btn-warning btn-sm">Nonaktifkan</button>
                                         </form>
                                     @endif
                                     {{-- Temporary cleanup delete (flag + owner/admin pusat): tombstone, history stays. --}}
-                                    @include('backoffice.partials.cleanup-button', ['type' => 'variant', 'id' => $pwVariant['id'], 'name' => $pwVariant['name'], 'return' => \App\Services\ProductWorkspace::url($product, 'variants', $workspaceReturnTo), 'class' => 'btn btn-red btn-sm', 'testid' => 'cleanup-variant-'.$pwVariant['id']])
+                                    @include('backoffice.partials.cleanup-button', ['type' => 'variant', 'id' => $pwVariant['id'], 'name' => $pwVariant['name'], 'return' => \App\Services\ProductWorkspace::url($product, 'variants', $workspaceReturnTo), 'class' => 'btn btn-danger btn-sm', 'testid' => 'cleanup-variant-'.$pwVariant['id']])
                                 </div>
                             </td>
                         </tr>

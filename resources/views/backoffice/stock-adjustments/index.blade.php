@@ -14,7 +14,7 @@
 <div class="adj-page">
     <div class="adj-head">
         <div><h1>Adjustment History</h1><div style="color:#64748b">Riwayat koreksi stok untuk semua outlet dan gudang yang dapat diakses akun ini.</div></div>
-        <a class="btn" href="{{ route('backoffice.stock-balances.adjustment.create') }}">Buat Adjustment</a>
+        <a class="btn btn-primary" href="{{ route('backoffice.stock-balances.adjustment.create') }}">Buat Adjustment</a>
     </div>
 
     <div class="adj-card">
@@ -23,7 +23,7 @@
             <div class="field"><label>Date From</label><input type="date" name="date_from" value="{{ $filters['date_from'] ?? '' }}"></div>
             <div class="field"><label>Date To</label><input type="date" name="date_to" value="{{ $filters['date_to'] ?? '' }}"></div>
             <div class="field"><label>User</label><select name="user_id"><option value="">Semua user</option>@foreach($users as $u)<option value="{{ $u->id }}" @selected((string) ($filters['user_id'] ?? '') === (string) $u->id)>{{ $u->name }}</option>@endforeach</select></div>
-            <div class="field"><label>Search reference / note</label><input name="search" value="{{ $filters['search'] ?? '' }}"><button class="btn" style="margin-top:8px">Apply</button></div>
+            <div class="field"><label>Search reference / note</label><input name="search" value="{{ $filters['search'] ?? '' }}"><button class="btn btn-primary" style="margin-top:8px">Apply</button></div>
         </form>
     </div>
 

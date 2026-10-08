@@ -416,8 +416,8 @@
             </div>
 
             <div class="users-actions">
-                <a href="{{ route('backoffice.users.create', ['return_to' => $listReturnTo]) }}" class="btn btn-green">Tambah User</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.users.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Tambah User</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -505,14 +505,14 @@
                                         <td>{{ $managedUser->created_at?->format('Y-m-d H:i') ?? '-' }}</td>
                                         <td>
                                             <div class="action-buttons">
-                                                <a href="{{ route('backoffice.users.edit', [$managedUser->id, 'return_to' => $listReturnTo]) }}" class="btn btn-blue">Edit</a>
+                                                <a href="{{ route('backoffice.users.edit', [$managedUser->id, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary">Edit</a>
 
                                                 @if((int) $managedUser->id !== (int) auth()->id())
                                                     <form method="POST" action="{{ route('backoffice.users.destroy', $managedUser->id) }}" class="delete-form" onsubmit="return confirm('Yakin hapus user ini?')">
                                                         @csrf
                                                         @method('DELETE')
                                                         @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                                        <button type="submit" class="btn btn-red">Delete</button>
+                                                        <button type="submit" class="btn btn-danger">Delete</button>
                                                     </form>
                                                 @endif
                                             </div>

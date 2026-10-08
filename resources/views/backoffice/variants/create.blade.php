@@ -382,7 +382,7 @@
             </div>
 
             <div class="variant-form-actions">
-                <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.variants.index', [], null) }}" class="btn btn-dark">Kembali</a>
+                <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.variants.index', [], null) }}" class="btn btn-secondary">Kembali</a>
             </div>
         </div>
 
@@ -426,7 +426,7 @@
                             <div class="variant-row" data-variant-row>
                                 <div class="variant-row-top">
                                     <div class="variant-row-title">Variant Row</div>
-                                    <button type="button" class="btn btn-red btn-remove-row">Hapus Row</button>
+                                    <button type="button" class="btn btn-danger btn-remove-row">Hapus Row</button>
                                 </div>
 
                                 <div class="variant-grid">
@@ -484,9 +484,9 @@
                     </div>
 
                     <div class="bottom-actions" style="margin-top: 18px;">
-                        <button type="button" class="btn btn-blue" id="add-row-button">Tambah Variant Row</button>
-                        <button type="submit" class="btn btn-green">Simpan Semua Variant</button>
-                        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.variants.index', [], null) }}" class="btn btn-dark">Batal</a>
+                        <button type="button" class="btn btn-secondary" id="add-row-button">Tambah Variant Row</button>
+                        <button type="submit" class="btn btn-primary">Simpan Semua Variant</button>
+                        <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.variants.index', [], null) }}" class="btn btn-secondary">Batal</a>
                     </div>
                 </form>
 
@@ -501,7 +501,7 @@
         <div class="variant-row" data-variant-row>
             <div class="variant-row-top">
                 <div class="variant-row-title">Variant Row</div>
-                <button type="button" class="btn btn-red btn-remove-row">Hapus Row</button>
+                <button type="button" class="btn btn-danger btn-remove-row">Hapus Row</button>
             </div>
 
             <div class="variant-grid">

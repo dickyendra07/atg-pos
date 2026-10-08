@@ -392,8 +392,8 @@
             </div>
 
             <div class="productions-actions">
-                <a href="{{ route('backoffice.productions.create') }}" class="btn btn-green">Buat Produksi</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.productions.create') }}" class="btn btn-primary">Buat Produksi</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -465,7 +465,7 @@
                                         <td>{{ $production->producedBy->name ?? '-' }}</td>
                                         <td><span class="badge badge-status">{{ ucfirst($production->status ?? 'completed') }}</span></td>
                                         <td>
-                                            <a href="{{ route('backoffice.productions.show', $production->id) }}" class="btn-small">Detail</a>
+                                            <a href="{{ route('backoffice.productions.show', $production->id) }}" class="btn btn-secondary btn-sm">Detail</a>
                                         </td>
                                     </tr>
                                 @endforeach

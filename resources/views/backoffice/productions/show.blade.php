@@ -201,7 +201,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.productions.index') }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ route('backoffice.productions.index') }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         <div class="content">
@@ -286,5 +286,6 @@
     </div>
 </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

@@ -31,12 +31,12 @@
         <div class="pw-card-actions">
             @if($workspace['links']['can_manage_ingredients'])
                 <a href="{{ $workspace['links']['ingredient_create'] }}"
-                   class="btn btn-green"
+                   class="btn btn-primary"
                    data-pw-open-drawer="ingredient"
                    data-pw-form-url="{{ $workspace['links']['ingredient_create_form'] }}?return_section=stock">+ Buat Ingredient</a>
             @endif
             @if($pwStock['links']['stock_balances'])
-                <a href="{{ $pwStock['links']['stock_balances'] }}" class="btn btn-dark">Inventory Control</a>
+                <a href="{{ $pwStock['links']['stock_balances'] }}" class="btn btn-secondary">Inventory Control</a>
             @endif
         </div>
     </div>
@@ -145,14 +145,14 @@
                                                         <div class="pw-row-buttons pw-row-buttons-left pw-mt-sm">
                                                             @if($pwItem['links'])
                                                                 <a href="{{ $pwItem['links']['legacy_edit_url'] }}"
-                                                                   class="btn btn-blue btn-sm"
+                                                                   class="btn btn-secondary btn-sm"
                                                                    data-pw-open-drawer="ingredient"
                                                                    data-pw-form-url="{{ $pwItem['links']['form_url'] }}"
                                                                    data-pw-ingredient="{{ $pwItem['ingredient_id'] }}">Edit Ingredient</a>
                                                             @endif
                                                             @if($pwItem['stock_url'])
-                                                                <a href="{{ $pwItem['stock_url'] }}" class="btn btn-light btn-sm" data-pw-stock-link="balance">Lihat Stok</a>
-                                                                <a href="{{ $pwItem['movement_url'] }}" class="btn btn-light btn-sm" data-pw-stock-link="movement">Riwayat Stok</a>
+                                                                <a href="{{ $pwItem['stock_url'] }}" class="btn btn-secondary btn-sm" data-pw-stock-link="balance">Lihat Stok</a>
+                                                                <a href="{{ $pwItem['movement_url'] }}" class="btn btn-secondary btn-sm" data-pw-stock-link="movement">Riwayat Stok</a>
                                                             @endif
                                                         </div>
                                                     </td>

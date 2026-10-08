@@ -778,6 +778,7 @@
         })();
     </script>
 
+    @include('backoffice.partials.button-system')
     @include('backoffice.partials.feedback')
     @include('backoffice.partials.confirm')
     @if (\App\Services\CleanupDeletionService::available(auth()->user()))

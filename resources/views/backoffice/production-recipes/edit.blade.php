@@ -326,7 +326,7 @@
 
             </div>
 
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.production-recipes.index', [], null) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         <div class="content">
@@ -435,7 +435,7 @@
                             </div>
 
                             <div class="actions-row">
-                                <button type="submit" class="btn btn-green">Tambah Bahan Input</button>
+                                <button type="submit" class="btn btn-secondary">Tambah Bahan Input</button>
                             </div>
                         </form>
 
@@ -479,7 +479,7 @@
                                                 @csrf
                                                 @method('DELETE')
                                                 @include('backoffice.partials.return-to-field')
-                                                <button type="submit" class="btn-danger-small">Hapus</button>
+                                                <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
                                             </form>
                                         </td>
                                     </tr>
@@ -498,5 +498,6 @@
     </div>
 </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

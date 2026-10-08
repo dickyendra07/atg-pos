@@ -379,7 +379,7 @@
             </div>
 
             <div class="opname-actions">
-                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Kembali</a>
+                <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-secondary">Kembali</a>
             </div>
         </div>
 
@@ -462,8 +462,8 @@
                         </div>
 
                         <div class="actions">
-                            <button type="submit" class="btn btn-info">Simpan Opname Gudang</button>
-                            <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-dark">Batal</a>
+                            <button type="submit" class="btn btn-primary">Simpan Opname Gudang</button>
+                            <a href="{{ route('backoffice.stock-balances.index') }}" class="btn btn-secondary">Batal</a>
                         </div>
                     </form>
 

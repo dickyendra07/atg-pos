@@ -229,7 +229,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.discounts.create', ['return_to' => $listReturnTo]) }}" class="btn btn-brand">Create Discount</a>
+            <a href="{{ route('backoffice.discounts.create', ['return_to' => $listReturnTo]) }}" class="btn btn-primary">Create Discount</a>
         </div>
 
 
@@ -271,8 +271,8 @@
                 </div>
 
                 <div class="actions">
-                    <button type="submit" class="btn btn-dark">Filter</button>
-                    <a href="{{ route('backoffice.discounts.index') }}" class="btn btn-soft">Reset</a>
+                    <button type="submit" class="btn btn-primary">Filter</button>
+                    <a href="{{ route('backoffice.discounts.index') }}" class="btn btn-secondary">Reset</a>
                 </div>
             </form>
         </div>
@@ -318,12 +318,12 @@
                                 <td>{{ $discount->updated_at?->format('d M Y H:i') ?? '-' }}</td>
                                 <td>
                                     <div class="actions">
-                                        <a href="{{ route('backoffice.discounts.edit', [$discount, 'return_to' => $listReturnTo]) }}" class="btn btn-dark">Edit</a>
+                                        <a href="{{ route('backoffice.discounts.edit', [$discount, 'return_to' => $listReturnTo]) }}" class="btn btn-secondary">Edit</a>
                                         <form method="POST" action="{{ route('backoffice.discounts.destroy', $discount) }}" onsubmit="return confirm('Hapus discount ini?')">
                                             @csrf
                                             @method('DELETE')
                                             @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                            <button type="submit" class="btn btn-red">Delete</button>
+                                            <button type="submit" class="btn btn-danger">Delete</button>
                                         </form>
                                     </div>
                                 </td>

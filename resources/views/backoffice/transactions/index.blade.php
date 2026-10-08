@@ -550,9 +550,9 @@
                 <div style="font-size:13px; color:#6b7280; padding:10px 14px; border-radius:999px; background:rgba(255,255,255,0.80); border:1px solid #e5e7eb;">
                     {{ $user->name }} • {{ $user->role->name ?? '-' }}
                 </div>
-                <a href="{{ route('backoffice.transactions.export.csv', request()->query()) }}" class="btn btn-brand">Export CSV</a>
-                <a href="{{ route('backoffice.transactions.print', request()->query()) }}" class="btn btn-green" target="_blank">Print Summary</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.transactions.export.csv', request()->query()) }}" class="btn btn-secondary">Export CSV</a>
+                <a href="{{ route('backoffice.transactions.print', request()->query()) }}" class="btn btn-secondary" target="_blank">Print Summary</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -657,8 +657,8 @@
                     </div>
 
                     <div class="button-stack">
-                        <button type="submit" class="btn btn-green">Apply Filter</button>
-                        <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-dark">Reset</a>
+                        <button type="submit" class="btn btn-primary">Apply Filter</button>
+                        <a href="{{ route('backoffice.transactions.index') }}" class="btn btn-secondary">Reset</a>
                     </div>
                 </form>
             </div>
@@ -800,8 +800,8 @@
                                         </td>
                                         <td>
                                             <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                                                <a href="{{ route('backoffice.transactions.show', $transaction->id) }}" class="btn btn-dark">Detail</a>
-                                                <a href="{{ route('backoffice.transactions.receipt', $transaction->id) }}" class="btn btn-brand" target="_blank">Receipt</a>
+                                                <a href="{{ route('backoffice.transactions.show', $transaction->id) }}" class="btn btn-secondary">Detail</a>
+                                                <a href="{{ route('backoffice.transactions.receipt', $transaction->id) }}" class="btn btn-secondary" target="_blank">Receipt</a>
                                             </div>
                                         </td>
                                     </tr>

@@ -18,15 +18,15 @@
 <div class="cat-page">
     <div class="cat-head">
         <div><h1>{{ $cfg['title'] }}</h1><div style="color:#64748b">{{ $cfg['kicker'] }} — master data dipakai bersama oleh semua outlet. Ketersediaan item tetap diatur per outlet.</div></div>
-        <a class="btn" href="{{ route($cfg['route'].'.create', ['return_to' => $listReturnTo]) }}">Tambah Category</a>
+        <a class="btn btn-primary" href="{{ route($cfg['route'].'.create', ['return_to' => $listReturnTo]) }}">Tambah Category</a>
     </div>
 
 
     <div class="cat-card">
         <form method="GET" class="cat-search">
             <input type="text" name="search" value="{{ $search }}" placeholder="Cari nama category">
-            <button class="btn">Cari</button>
-            <a class="btn btn-dark" href="{{ route($cfg['route'].'.index') }}">Reset</a>
+            <button class="btn btn-primary">Cari</button>
+            <a class="btn btn-secondary" href="{{ route($cfg['route'].'.index') }}">Reset</a>
         </form>
     </div>
 
@@ -49,7 +49,7 @@
                                     @csrf
                                     @method('DELETE')
                                     @include('backoffice.partials.return-to-field', ['returnTo' => $listReturnTo])
-                                    <button type="submit" class="btn btn-danger btn-small">Hapus</button>
+                                    <button type="submit" class="btn btn-danger btn-sm">Hapus</button>
                                 </form>
                             @endif
                         </div>

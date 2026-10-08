@@ -284,7 +284,7 @@
 
             </div>
 
-            <a href="{{ route('backoffice.productions.index') }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ route('backoffice.productions.index') }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         <div class="content">
@@ -350,7 +350,7 @@
 
                             <div class="actions-row">
                                 <button type="submit" class="btn btn-primary">Simpan Produksi</button>
-                                <a href="{{ route('backoffice.productions.index') }}" class="btn btn-dark">Batal</a>
+                                <a href="{{ route('backoffice.productions.index') }}" class="btn btn-secondary">Batal</a>
                             </div>
                         </form>
                     </div>
@@ -478,5 +478,6 @@
     });
 </script>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

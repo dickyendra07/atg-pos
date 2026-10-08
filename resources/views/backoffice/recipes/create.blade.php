@@ -221,7 +221,7 @@
 
             </div>
 
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], null) }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], null) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -279,8 +279,8 @@
                 </div>
 
                 <div class="actions">
-                    <button type="submit" class="btn btn-success">Simpan Recipe</button>
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], null) }}" class="btn">Batal</a>
+                    <button type="submit" class="btn btn-primary">Simpan Recipe</button>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.recipes.index', [], null) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
 
@@ -288,5 +288,6 @@
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

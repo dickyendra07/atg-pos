@@ -154,10 +154,10 @@
             </div>
 
             <div class="actions">
-                <a href="{{ route('backoffice.transfers.create', ['from_location_type' => 'warehouse', 'from_location_id' => $warehouse->id]) }}" class="btn btn-green">Transfer</a>
+                <a href="{{ route('backoffice.transfers.create', ['from_location_type' => 'warehouse', 'from_location_id' => $warehouse->id]) }}" class="btn btn-secondary">Transfer</a>
                 <a href="{{ route('backoffice.warehouses.stock.create', $warehouse) }}" class="btn btn-primary">Stock In Warehouse</a>
 
-                <a href="{{ route('backoffice.warehouses.index') }}" class="btn btn-dark">Kembali</a>
+                <a href="{{ route('backoffice.warehouses.index') }}" class="btn btn-secondary">Kembali</a>
             </div>
         </div>
 
@@ -201,5 +201,6 @@
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

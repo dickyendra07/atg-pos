@@ -220,7 +220,7 @@ class ProductWorkspaceTest extends TestCase
             ->assertOk()
             ->getContent();
 
-        $this->assertStringContainsString('href="'.e($returnTo.'#product-'.$this->product->id).'" class="btn btn-dark" data-pw-close', $html);
+        $this->assertStringContainsString('href="'.e($returnTo.'#product-'.$this->product->id).'" class="btn btn-secondary" data-pw-close', $html);
         $this->assertStringContainsString('href="'.e(ProductWorkspace::url($this->product, 'outlets', $returnTo)).'"', $html);
         $this->assertStringContainsString(e('section=outlets&return_to='.urlencode($returnTo)), $html);
     }
@@ -230,7 +230,7 @@ class ProductWorkspaceTest extends TestCase
         $html = $this->actingAs($this->owner)->get(route('backoffice.products.edit', $this->product))->getContent();
 
         // Same fallback as every Backoffice editor: no return_to -> the plain index, no anchor.
-        $this->assertStringContainsString('href="/backoffice/products" class="btn btn-dark" data-pw-close', $html);
+        $this->assertStringContainsString('href="/backoffice/products" class="btn btn-secondary" data-pw-close', $html);
     }
 
     public function test_hostile_return_to_is_ignored_everywhere_in_the_workspace(): void

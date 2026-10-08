@@ -440,8 +440,8 @@
 
             <div class="movement-actions">
                 @include('backoffice.partials.return-to-back', ['label' => 'Kembali ke Product Workspace'])
-                <a href="{{ route('backoffice.stock-movements.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.stock-movements.export.csv', request()->query()) }}" class="btn btn-secondary">Export CSV</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -511,8 +511,8 @@
                         <input type="text" name="search" value="{{ $filters['search'] ?? '' }}" placeholder="contoh: produksi / opname / transfer">
                     </div>
 
-                    <button type="submit" class="btn btn-green">Apply Filter</button>
-                    <a href="{{ route('backoffice.stock-movements.index', array_filter(['return_to' => \App\Support\BackofficeReturnUrl::fromRequest()])) }}" class="btn btn-dark">Reset</a>
+                    <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    <a href="{{ route('backoffice.stock-movements.index', array_filter(['return_to' => \App\Support\BackofficeReturnUrl::fromRequest()])) }}" class="btn btn-secondary">Reset</a>
                 </form>
             </div>
 

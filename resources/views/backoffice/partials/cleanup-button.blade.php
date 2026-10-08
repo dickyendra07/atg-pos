@@ -5,12 +5,12 @@
         @include('backoffice.partials.cleanup-button', [
             'type' => 'product|variant|ingredient|recipe', 'id' => 12, 'name' => 'Es Kopi',
             'return' => '/backoffice/products?...',   // where to land afterwards (local path)
-            'label' => 'Hapus dari Sistem', 'class' => 'btn btn-red btn-sm', 'testid' => 'optional',
+            'label' => 'Hapus dari Sistem', 'class' => 'btn btn-danger btn-sm', 'testid' => 'optional',
         ])
 --}}
 @if (\App\Services\CleanupDeletionService::available(auth()->user()))
     <button type="button"
-            class="{{ $class ?? 'btn btn-small btn-small-red' }}"
+            class="{{ $class ?? 'btn btn-danger btn-sm' }}"
             data-cleanup-delete
             data-cleanup-type="{{ $type }}"
             data-cleanup-id="{{ $id }}"

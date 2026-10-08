@@ -7,7 +7,7 @@
     <div style="padding:28px 30px 0;">
 
         <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id) }}"
-           class="btn btn-dark"
+           class="btn btn-secondary"
            style="text-decoration:none;display:inline-flex;margin-bottom:18px;">
             ← Back
         </a>
@@ -275,39 +275,13 @@
                     align-items:center;
                 ">
 
-                    <button
-                        type="submit"
-                        style="
-                            border:none;
-                            cursor:pointer;
-                            padding:13px 24px;
-                            border-radius:14px;
-                            background:linear-gradient(135deg,#2563eb,#3b82f6);
-                            color:white;
-                            font-size:14px;
-                            font-weight:800;
-                            box-shadow:0 12px 25px rgba(37,99,235,.25);
-                        "
-                    >
+                    <button type="submit" class="btn btn-primary">
                         ✓ Update Ingredient
                     </button>
 
 
                     <a
-                        href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id) }}"
-                        style="
-                            display:inline-flex;
-                            align-items:center;
-                            justify-content:center;
-                            padding:13px 24px;
-                            border-radius:14px;
-                            background:#111827;
-                            color:white;
-                            text-decoration:none;
-                            font-size:14px;
-                            font-weight:800;
-                            box-shadow:0 10px 20px rgba(15,23,42,.15);
-                        "
+                        href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.ingredients.index', [], 'ingredient-'.$ingredient->id) }}" class="btn btn-secondary"
                     >
                         Cancel
                     </a>

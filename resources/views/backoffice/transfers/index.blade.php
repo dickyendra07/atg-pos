@@ -685,7 +685,6 @@
 
         .filter-form .btn {
             width: 100%;
-            min-height: 52px;
         }
 
         .transfer-master-detail {
@@ -781,9 +780,9 @@
             </div>
 
             <div class="transfer-actions">
-                <a href="{{ route('backoffice.transfers.export.csv', request()->query()) }}" class="btn btn-blue">Export CSV</a>
-                <a href="{{ route('backoffice.transfers.create') }}" class="btn btn-green">Buat Transfer</a>
-                <a href="{{ route('backoffice.index') }}" class="btn btn-dark">Dashboard</a>
+                <a href="{{ route('backoffice.transfers.export.csv', request()->query()) }}" class="btn btn-secondary">Export CSV</a>
+                <a href="{{ route('backoffice.transfers.create') }}" class="btn btn-primary">Buat Transfer</a>
+                <a href="{{ route('backoffice.index') }}" class="btn btn-secondary">Dashboard</a>
             </div>
         </div>
 
@@ -878,8 +877,8 @@
                         </select>
                     </div>
 
-                    <button type="submit" class="btn btn-green">Apply Filter</button>
-                    <a href="{{ route('backoffice.transfers.index') }}" class="btn btn-dark">Reset</a>
+                    <button type="submit" class="btn btn-primary">Apply Filter</button>
+                    <a href="{{ route('backoffice.transfers.index') }}" class="btn btn-secondary">Reset</a>
                 </form>
             </div>
 
@@ -940,7 +939,7 @@
                                         <td>{{ $group['sender_name'] ?? '-' }}</td>
                                         <td>{{ $group['transferred_by'] ?? '-' }}</td>
                                         <td>
-                                            <button type="button" class="btn btn-small btn-toggle-detail" data-transfer-toggle="{{ $detailId }}">
+                                            <button type="button" class="btn btn-secondary btn-sm btn-toggle-detail" data-transfer-toggle="{{ $detailId }}">
                                                 Detail
                                             </button>
                                         </td>
@@ -993,32 +992,32 @@
                                                                             @if($transfer->status === 'pending')
                                                                                 <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Ubah item transfer ini menjadi in transit?');">
                                                                                     @csrf
-                                                                                    <button type="submit" class="btn btn-blue btn-small">Kirimkan Item</button>
+                                                                                    <button type="submit" class="btn btn-primary btn-sm">Kirimkan Item</button>
                                                                                 </form>
 
                                                                                 <form method="POST" action="{{ route('backoffice.transfers.mark-cancelled', $transfer) }}" class="inline-form" onsubmit="return confirm('Batalkan item transfer ini dan rollback stok?');">
                                                                                     @csrf
-                                                                                    <button type="submit" class="btn btn-danger btn-small">Batalkan Item</button>
+                                                                                    <button type="submit" class="btn btn-danger btn-sm">Batalkan Item</button>
                                                                                 </form>
                                                                             @elseif($transfer->status === 'in_transit')
                                                                                 <form method="POST" action="{{ route('backoffice.transfers.mark-received', $transfer) }}" class="inline-form" onsubmit="return confirm('Tandai item transfer ini sebagai diterima?');">
                                                                                     @csrf
-                                                                                    <button type="submit" class="btn btn-blue btn-small">Tandai Diterima</button>
+                                                                                    <button type="submit" class="btn btn-primary btn-sm">Tandai Diterima</button>
                                                                                 </form>
 
                                                                                 <form method="POST" action="{{ route('backoffice.transfers.mark-cancelled', $transfer) }}" class="inline-form" onsubmit="return confirm('Batalkan item transfer ini dan rollback stok?');">
                                                                                     @csrf
-                                                                                    <button type="submit" class="btn btn-danger btn-small">Batalkan Item</button>
+                                                                                    <button type="submit" class="btn btn-danger btn-sm">Batalkan Item</button>
                                                                                 </form>
                                                                             @elseif($transfer->status === 'received')
                                                                                 <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Kembalikan item transfer ini ke in transit?');">
                                                                                     @csrf
-                                                                                    <button type="submit" class="btn btn-warning btn-small">Kembalikan ke In Transit</button>
+                                                                                    <button type="submit" class="btn btn-warning btn-sm">Kembalikan ke In Transit</button>
                                                                                 </form>
                                                                             @elseif($transfer->status === 'cancelled')
                                                                                 <form method="POST" action="{{ route('backoffice.transfers.mark-in-transit', $transfer) }}" class="inline-form" onsubmit="return confirm('Aktifkan lagi item transfer ini ke status in transit? Stock akan dipindahkan lagi.');">
                                                                                     @csrf
-                                                                                    <button type="submit" class="btn btn-secondary btn-small">Aktifkan Lagi</button>
+                                                                                    <button type="submit" class="btn btn-success btn-sm">Aktifkan Lagi</button>
                                                                                 </form>
                                                                             @else
                                                                                 <span style="color:#6b7280; font-size:12px; font-weight:700;">Tidak ada aksi</span>

@@ -154,7 +154,7 @@
                 <div class="title">Tambah Outlet</div>
 
             </div>
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], null) }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], null) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -205,11 +205,12 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Simpan Outlet</button>
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], null) }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], null) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

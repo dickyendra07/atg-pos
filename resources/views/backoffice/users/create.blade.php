@@ -234,7 +234,7 @@
 <div class="users-form-shell">
         <div class="topbar">
             <div class="title">Tambah User</div>
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], null) }}" class="btn">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], null) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -359,8 +359,8 @@
                 </div>
 
                 <div class="actions">
-                    <button type="submit" class="btn btn-success">Simpan User</button>
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], null) }}" class="btn">Batal</a>
+                    <button type="submit" class="btn btn-primary">Simpan User</button>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.users.index', [], null) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
         </div>

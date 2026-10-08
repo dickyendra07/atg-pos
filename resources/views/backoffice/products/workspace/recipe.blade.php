@@ -55,7 +55,7 @@
                         <div class="pw-row-buttons">
                             @if($pwRecipe['form_url'])
                                 <a href="{{ $pwRecipe['edit_url'] }}"
-                                   class="btn btn-blue btn-sm"
+                                   class="btn btn-secondary btn-sm"
                                    data-pw-open-drawer="recipe"
                                    data-pw-form-url="{{ $pwRecipe['form_url'] }}">Edit Recipe</a>
                             @else
@@ -74,7 +74,7 @@
                                     @csrf
                                     @method('PATCH')
                                     @include('backoffice.partials.return-to-field', ['returnTo' => $workspaceReturnTo])
-                                    <button type="submit" class="btn btn-green btn-sm">Aktifkan</button>
+                                    <button type="submit" class="btn btn-success btn-sm">Aktifkan</button>
                                 </form>
                             @endif
                             @if($pwRecipe['deactivate_url'])
@@ -89,11 +89,11 @@
                                     @csrf
                                     @method('PATCH')
                                     @include('backoffice.partials.return-to-field', ['returnTo' => $workspaceReturnTo])
-                                    <button type="submit" class="btn btn-orange btn-sm">Nonaktifkan</button>
+                                    <button type="submit" class="btn btn-warning btn-sm">Nonaktifkan</button>
                                 </form>
                             @endif
                             {{-- Temporary cleanup delete (flag + owner/admin pusat): a real delete of this Recipe and its items only. --}}
-                            @include('backoffice.partials.cleanup-button', ['type' => 'recipe', 'id' => $pwRecipe['id'], 'name' => $pwRecipe['name'], 'return' => \App\Services\ProductWorkspace::url($product, 'recipe', $workspaceReturnTo), 'label' => 'Hapus Permanen', 'class' => 'btn btn-red btn-sm', 'testid' => 'cleanup-recipe-'.$pwRecipe['id']])
+                            @include('backoffice.partials.cleanup-button', ['type' => 'recipe', 'id' => $pwRecipe['id'], 'name' => $pwRecipe['name'], 'return' => \App\Services\ProductWorkspace::url($product, 'recipe', $workspaceReturnTo), 'label' => 'Hapus Permanen', 'class' => 'btn btn-danger btn-sm', 'testid' => 'cleanup-recipe-'.$pwRecipe['id']])
                         </div>
                     </div>
 
@@ -153,7 +153,7 @@
                 @if($pwRecipeRow['create_url'])
                     <div class="pw-row-actions">
                         <a href="{{ $pwRecipeRow['create_url'] }}"
-                           class="btn btn-green btn-sm"
+                           class="btn btn-primary btn-sm"
                            @if($pwRecipeRow['create_form_url'])
                                data-pw-open-drawer="recipe"
                                data-pw-form-url="{{ $pwRecipeRow['create_form_url'] }}"

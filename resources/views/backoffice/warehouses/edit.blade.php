@@ -154,7 +154,7 @@
                 <div class="title">Edit Warehouse</div>
 
             </div>
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id) }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -206,7 +206,7 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Update Warehouse</button>
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id) }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], 'warehouse-'.$warehouse->id) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
 
@@ -216,5 +216,6 @@
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

@@ -193,7 +193,7 @@ class BackofficeReturnContextTest extends TestCase
         // Closing the workspace still lands on the list the user came from, at the new record.
         $this->get(\App\Services\ProductWorkspace::url($product, 'variants', $listUrl))
             ->assertOk()
-            ->assertSee('href="'.e($listUrl.'#product-'.$product->id).'" class="btn btn-dark" data-pw-close', false);
+            ->assertSee('href="'.e($listUrl.'#product-'.$product->id).'" class="btn btn-secondary" data-pw-close', false);
     }
 
     public function test_product_inactivate_returns_to_list_context_and_keeps_the_row_anchor(): void

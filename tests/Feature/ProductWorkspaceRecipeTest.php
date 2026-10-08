@@ -1093,7 +1093,7 @@ class ProductWorkspaceRecipeTest extends TestCase
         // a real URL, so open-in-new-tab and no-JS keep working
         $this->assertStringContainsString('data-recipe-edit', $html);
         // "Tambah Recipe" opens the create form in the same panel; the href stays the real create URL
-        $this->assertMatchesRegularExpression('#<a href="[^"]*recipes/create[^"]*" class="btn btn-green" data-recipe-edit data-recipe-title="Tambah Recipe">#', $html);
+        $this->assertMatchesRegularExpression('#<a href="[^"]*recipes/create[^"]*" class="btn btn-primary" data-recipe-edit data-recipe-title="Tambah Recipe">#', $html);
         $this->assertStringContainsString('id="rcp-drawer"', $html);
         // the layout's .shell has a backdrop-filter (it would become the reference of position:fixed): the panel is moved to <body>
         $this->assertStringContainsString('document.body.appendChild(drawer)', $html);

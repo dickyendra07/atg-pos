@@ -145,11 +145,12 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Simpan Warehouse</button>
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], null) }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.warehouses.index', [], null) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>

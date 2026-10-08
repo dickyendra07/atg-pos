@@ -134,7 +134,7 @@
     <div class="wrap">
         <div class="topbar">
             <div class="title">Edit Outlet</div>
-            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], 'outlet-'.$outlet->id) }}" class="btn btn-dark">Kembali</a>
+            <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], 'outlet-'.$outlet->id) }}" class="btn btn-secondary">Kembali</a>
         </div>
 
         @if($errors->any())
@@ -190,7 +190,7 @@
 
                 <div class="actions">
                     <button type="submit" class="btn btn-primary">Update Outlet</button>
-                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], 'outlet-'.$outlet->id) }}" class="btn btn-dark">Batal</a>
+                    <a href="{{ \App\Support\BackofficeReturnUrl::resolve(request(), 'backoffice.outlets.index', [], 'outlet-'.$outlet->id) }}" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
 
@@ -200,5 +200,6 @@
         </div>
     </div>
     @include('backoffice.partials.feedback')
+@include('backoffice.partials.button-system')
 </body>
 </html>
