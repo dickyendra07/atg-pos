@@ -289,8 +289,8 @@
 
 <div class="page">
     <div class="actions">
-        <button onclick="window.print()" class="btn btn-secondary">Print</button>
-        <a href="{{ route('backoffice.index', request()->query()) }}" class="btn btn-secondary">Kembali ke Dashboard</a>
+        <button onclick="window.print()" class="btn btn-blue">Print</button>
+        <a href="{{ route('backoffice.index', request()->query()) }}" class="btn btn-dark">Kembali ke Dashboard</a>
     </div>
 
     <div class="topbar">
