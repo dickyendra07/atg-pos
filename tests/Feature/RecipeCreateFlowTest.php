@@ -13,6 +13,7 @@ use App\Models\Recipe;
 use App\Models\RecipeItem;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\RecipeWriter;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -143,6 +144,124 @@ class RecipeCreateFlowTest extends TestCase
         $menus = collect($this->actingAs($this->adminPusat)->get(route('backoffice.recipes.create'))->viewData('menuOptions'))->keyBy('id');
 
         $this->assertNotNull($menus[$this->remedy->id]['variants'][0]['existing']);
+    }
+
+    public function test_when_every_variant_is_taken_all_stay_listed_and_nothing_can_be_created(): void
+    {
+        foreach ([$this->milkRc, $this->milkL, $this->milk1L] as $variant) {
+            $this->makeRecipe($variant, 'Legacy '.$variant->name)->update(['is_active' => $variant->id % 2 === 0]);
+        }
+
+        $page = $this->actingAs($this->adminPusat)->get(route('backoffice.recipes.create'))->assertOk();
+        $variants = collect(collect($page->viewData('menuOptions'))->keyBy('id')[$this->milk->id]['variants']);
+
+        // All three remain visible, each pointing at its existing Recipe (disabled options in the form).
+        $this->assertCount(3, $variants);
+        $this->assertSame([], $variants->whereNull('existing')->all());
+        $this->assertSame(
+            route('backoffice.recipes.edit', Recipe::where('product_variant_id', $this->milkRc->id)->first()),
+            $variants->firstWhere('id', $this->milkRc->id)['existing']['url'],
+        );
+
+        // The form keeps the select reachable by keyboard and blocks submit via a required placeholder.
+        $page->assertSee('Semua Variant sudah punya Recipe')->assertSee('setCustomValidity', false)->assertSee('Sudah ada Recipe');
+
+        // A hand-made request cannot create a second Recipe for any of them.
+        foreach ([$this->milkRc, $this->milkL, $this->milk1L] as $variant) {
+            $this->post(route('backoffice.recipes.store'), ['product_id' => $this->milk->id, 'product_variant_id' => $variant->id, 'is_active' => 1])
+                ->assertSessionHasErrors('product_variant_id');
+        }
+        $this->post(route('backoffice.recipes.store'), ['product_id' => $this->milk->id, 'product_variant_id' => '', 'is_active' => 1])
+            ->assertSessionHasErrors('product_variant_id');
+
+        $this->assertSame(3, Recipe::count());
+    }
+
+    // ---- Long names ----------------------------------------------------------------------------------
+
+    public function test_names_that_fit_are_never_altered(): void
+    {
+        $this->assertSame('Brown Sugar Fresh Milk - 1L', RecipeWriter::defaultName($this->milk1L->load('product')));
+
+        $exact = $this->nameFor(str_repeat('P', 255 - 3 - 4), 'Size');
+        $this->assertSame(255, mb_strlen($exact));
+        $this->assertSame(str_repeat('P', 248).' - Size', $exact);
+    }
+
+    public function test_long_product_name_is_cut_first_and_the_variant_suffix_survives(): void
+    {
+        $name = $this->nameFor(str_repeat('A', 400), '1L');
+
+        $this->assertSame(255, mb_strlen($name));
+        $this->assertStringEndsWith('… - 1L', $name);
+        $this->assertStringStartsWith(str_repeat('A', 100), $name);
+    }
+
+    public function test_long_variant_name_is_shortened_with_an_ellipsis_and_the_product_keeps_its_room(): void
+    {
+        $name = $this->nameFor('Matcha', str_repeat('V', 400));
+
+        $this->assertLessThanOrEqual(255, mb_strlen($name));
+        $this->assertSame('Matcha - '.str_repeat('V', 99).'…', $name);
+
+        // Product and Variant both far too long: Variant capped at 100, Product takes the rest, total exactly 255.
+        $both = $this->nameFor(str_repeat('P', 500), str_repeat('V', 500));
+        $this->assertSame(255, mb_strlen($both));
+        $this->assertStringEndsWith(' - '.str_repeat('V', 99).'…', $both);
+        $this->assertStringStartsWith(str_repeat('P', 100), $both);
+    }
+
+    public function test_names_are_cut_by_character_never_in_the_middle_of_a_multibyte_character(): void
+    {
+        foreach ([str_repeat('抹茶', 200), str_repeat('Café Crème ', 60), str_repeat("\u{1F375}", 300)] as $product) {
+            foreach (['1L', str_repeat('大', 300), 'Regülär'] as $variant) {
+                $name = $this->nameFor($product, $variant);
+
+                $this->assertLessThanOrEqual(255, mb_strlen($name));
+                $this->assertTrue(mb_check_encoding($name, 'UTF-8'));
+                $this->assertNotSame(false, json_encode($name), 'valid UTF-8 survives encoding');
+            }
+        }
+
+        $this->assertStringEndsWith(' - Regülär', $this->nameFor(str_repeat('抹茶', 200), 'Regülär'));
+    }
+
+    public function test_a_long_generated_name_is_stored_and_is_never_over_255(): void
+    {
+        $product = $this->makeProduct(str_repeat('Brown Sugar ', 40), 'LONG', [$this->bxc]);
+        $variant = $this->makeVariant($product, '1L', [$this->bxc]);
+
+        $this->actingAs($this->adminPusat)
+            ->post(route('backoffice.recipes.store'), ['product_id' => $product->id, 'product_variant_id' => $variant->id, 'is_active' => 1])
+            ->assertSessionHasNoErrors();
+
+        $stored = Recipe::where('product_variant_id', $variant->id)->value('name');
+        $this->assertLessThanOrEqual(255, mb_strlen($stored));
+        $this->assertStringEndsWith('… - 1L', $stored);
+
+        // The preview shown on the form is the very same string.
+        $menus = collect($this->get(route('backoffice.recipes.create'))->viewData('menuOptions'))->keyBy('id');
+        $this->assertSame($stored, $menus[$product->id]['variants'][0]['recipe_name']);
+    }
+
+    public function test_product_workspace_prefill_uses_the_same_name_and_is_accepted_by_its_own_store(): void
+    {
+        $product = $this->makeProduct(str_repeat('Waspffle ', 60), 'WORK', [$this->bxc]);
+        $variant = $this->makeVariant($product, 'Regular', [$this->bxc]);
+        $this->actingAs($this->adminPusat);
+
+        $html = $this->getJson(route('backoffice.products.workspace.recipes.create-form', [$product, $variant]))
+            ->assertOk()->assertJsonPath('ok', true)->json('html');
+
+        $this->assertSame(1, preg_match('/id="pw-recipe-name"[^>]*value="([^"]*)"/', $html, $m));
+        $prefill = html_entity_decode($m[1], ENT_QUOTES);
+        $this->assertSame(RecipeWriter::defaultName($variant->fresh('product')), $prefill);
+        $this->assertLessThanOrEqual(255, mb_strlen($prefill));
+        $this->assertStringEndsWith('… - Regular', $prefill);
+
+        $this->postJson(route('backoffice.products.workspace.recipes.store', [$product, $variant]), ['name' => $prefill])
+            ->assertOk()->assertJson(['ok' => true]);
+        $this->assertSame($prefill, Recipe::where('product_variant_id', $variant->id)->value('name'));
     }
 
     // ---- Saving -----------------------------------------------------------------------------------
@@ -356,6 +475,14 @@ class RecipeCreateFlowTest extends TestCase
     }
 
     // ---- helpers -------------------------------------------------------------------------------------
+
+    /** defaultName() for an unsaved Product + Variant pair. */
+    private function nameFor(string $product, string $variant): string
+    {
+        return RecipeWriter::defaultName(
+            (new ProductVariant(['name' => $variant]))->setRelation('product', new Product(['name' => $product]))
+        );
+    }
 
     private function makeProduct(string $name, string $code, array $outlets): Product
     {

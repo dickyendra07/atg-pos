@@ -403,6 +403,7 @@
             function renderVariants(keepId) {
                 var menu = findMenu(productSelect.value);
                 variantSelect.textContent = '';
+                variantSelect.setCustomValidity('');
                 help.textContent = '';
 
                 if (!menu) {
@@ -415,16 +416,18 @@
 
                 var free = menu.variants.filter(function (v) { return !v.existing; });
 
+                // Every Variant stays listed; those that already have a Recipe are disabled options. When none is
+                // left the select stays enabled (so keyboard and screen-reader users can still open it and read the
+                // list) but its only selectable value is the empty placeholder, so the required field blocks Simpan.
+                variantSelect.appendChild(option('', free.length === 0 ? 'Semua Variant sudah punya Recipe' : 'Pilih Variant'));
+                menu.variants.forEach(function (v) {
+                    variantSelect.appendChild(option(v.id, v.existing ? v.name + ' — Sudah ada Recipe' : v.name, !!v.existing));
+                });
+                variantSelect.disabled = false;
+
                 if (free.length === 0) {
-                    variantSelect.appendChild(option('', 'Tidak ada Variant tersedia'));
-                    variantSelect.disabled = true;
-                    help.textContent = 'Semua Variant Menu ini sudah punya Recipe.';
-                } else {
-                    variantSelect.appendChild(option('', 'Pilih Variant'));
-                    menu.variants.forEach(function (v) {
-                        variantSelect.appendChild(option(v.id, v.existing ? v.name + ' (sudah ada Recipe)' : v.name, !!v.existing));
-                    });
-                    variantSelect.disabled = false;
+                    help.textContent = 'Semua Variant Menu ini sudah punya Recipe. Buka Recipe yang ada di bawah, atau pilih Menu lain.';
+                    variantSelect.setCustomValidity('Semua Variant Menu ini sudah punya Recipe.');
                 }
 
                 if (keepId && findVariant(menu, keepId) && !findVariant(menu, keepId).existing) {

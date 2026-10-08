@@ -60,14 +60,47 @@ class RecipeWriter
         return 'required|string|max:255';
     }
 
+    /** Longest stored Recipe name (the `nameRule()` / `recipes.name` limit), counted in characters. */
+    public const NAME_MAX = 255;
+
+    /** A Variant/Size label longer than this is shortened (with an ellipsis) so the Product name keeps room. */
+    public const VARIANT_NAME_MAX = 100;
+
     /**
      * Default name of a new Recipe: "<Product> - <Variant>" (same convention as the Recipe import).
      * The classic create form stores exactly this; it never takes a client-supplied name.
+     *
+     * A name that fits in NAME_MAX characters is returned untouched. Otherwise, so the size stays
+     * readable: the Variant/Size suffix is kept whole (up to VARIANT_NAME_MAX characters; a longer
+     * Variant is cut to that with a trailing "…") and the Product name gives way first, also ending
+     * in "…". Lengths are counted in characters (mb_*), so multibyte text is never split mid-character.
      */
     public static function defaultName(ProductVariant $variant): string
     {
-        // Capped at the `recipes.name` rule so two long names can never overflow the column.
-        return mb_substr(($variant->product?->name ?? 'Recipe').' - '.$variant->name, 0, 255);
+        $separator = ' - ';
+        $product = (string) ($variant->product?->name ?? 'Recipe');
+        $variantName = (string) $variant->name;
+
+        $name = $product.$separator.$variantName;
+
+        if (mb_strlen($name) <= self::NAME_MAX) {
+            return $name;
+        }
+
+        $variantName = self::shorten($variantName, self::VARIANT_NAME_MAX);
+        $product = self::shorten($product, self::NAME_MAX - mb_strlen($separator) - mb_strlen($variantName));
+
+        return $product.$separator.$variantName;
+    }
+
+    /** Cut to at most $max characters; a cut ends in "…" (which counts towards $max). */
+    private static function shorten(string $value, int $max): string
+    {
+        if (mb_strlen($value) <= $max) {
+            return $value;
+        }
+
+        return rtrim(mb_substr($value, 0, max($max - 1, 0))).'…';
     }
 
     // ---- Shared rules ---------------------------------------------------------------------------------
