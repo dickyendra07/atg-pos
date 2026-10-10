@@ -768,6 +768,83 @@
             }
         }
 
+
+        /* STOCK_SUMMARY_COMPACT: every selector below is scoped to .stock-summary-wrap / .stock-summary-table, so
+           no other table on this page (or any other page) changes. Presentation only: the values, their
+           formatting and the column order are exactly what the controller and the cells above produce. */
+        .stock-summary-wrap {
+            padding: 0 14px 16px;
+        }
+
+        .stock-summary-table {
+            min-width: 720px;
+            border-radius: 14px;
+        }
+
+        .inventory-table-center.stock-summary-table th,
+        .inventory-table-center.stock-summary-table td {
+            padding: 10px 6px;
+            font-size: 13px;
+            line-height: 1.35;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .inventory-table-center.stock-summary-table th {
+            padding-top: 11px;
+            padding-bottom: 11px;
+            font-size: 11px;
+            letter-spacing: 0.02em;
+        }
+
+        .inventory-table-center.stock-summary-table th:first-child,
+        .inventory-table-center.stock-summary-table td:first-child {
+            padding-left: 12px;
+        }
+
+        .inventory-table-center.stock-summary-table th:last-child,
+        .inventory-table-center.stock-summary-table td:last-child {
+            padding-right: 12px;
+        }
+
+        /* Text columns read left to right and may wrap; the ingredient name takes the spare width. */
+        .inventory-table-center.stock-summary-table thead th:nth-child(-n+3),
+        .inventory-table-center.stock-summary-table .col-name,
+        .inventory-table-center.stock-summary-table .col-cat,
+        .inventory-table-center.stock-summary-table .col-loc {
+            text-align: left !important;
+            white-space: normal;
+            overflow-wrap: break-word;
+        }
+
+        .inventory-table-center.stock-summary-table td.col-name {
+            min-width: 120px;
+            font-weight: 800;
+            color: #111827;
+        }
+
+        .inventory-table-center.stock-summary-table td.col-cat {
+            min-width: 68px;
+            color: #6b7280;
+            font-weight: 600;
+        }
+
+        .inventory-table-center.stock-summary-table td.col-loc {
+            min-width: 84px;
+            color: #374151;
+        }
+
+        /* Figures line up on the right; they never wrap or shrink. */
+        .inventory-table-center.stock-summary-table .col-num {
+            text-align: right !important;
+            white-space: nowrap;
+        }
+
+        .inventory-table-center.stock-summary-table .qty-zero,
+        .inventory-table-center.stock-summary-table .qty-value {
+            padding: 3px 6px;
+            border-radius: 8px;
+        }
+
 </style>
 
     <div class="inventory-shell">
@@ -928,19 +1005,19 @@
                     </div>
                 </form>
 
-                <div class="table-wrap">
-                    <table class="inventory-table-center">
+                <div class="table-wrap stock-summary-wrap">
+                    <table class="inventory-table-center stock-summary-table">
                         <thead>
                             <tr>
                                 <th>Name</th>
                                 <th>Category</th>
                                 <th>Lokasi</th>
-                                <th>Beginning</th>
-                                <th>Purchase</th>
-                                <th>Transfer</th>
-                                <th>Sales</th>
-                                <th>Adjustment</th>
-                                <th>Ending</th>
+                                <th class="col-num">Beginning</th>
+                                <th class="col-num">Purchase</th>
+                                <th class="col-num">Transfer</th>
+                                <th class="col-num">Sales</th>
+                                <th class="col-num">Adjustment</th>
+                                <th class="col-num">Ending</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -954,21 +1031,21 @@
                                     $formatSummaryQty = fn ($value) => \App\Support\QuantityFormatter::twoDecimals($value);
                                 @endphp
                                 <tr>
-                                    <td class="text-left-cell">{{ $row['ingredient_name'] ?? '-' }}</td>
-                                    <td>{{ $row['category_name'] ?? '-' }}</td>
-                                    <td class="text-left-cell">{{ $row['location_name'] ?? '-' }}</td>
-                                    <td class="movement-neutral">{{ $formatSummaryQty($row['opening_balance'] ?? 0) }}</td>
-                                    <td class="movement-plus">{{ $formatSummaryQty($row['purchase'] ?? 0) }}</td>
-                                    <td class="{{ $transferQty < 0 ? 'movement-minus' : ($transferQty > 0 ? 'movement-plus' : 'movement-neutral') }}">
+                                    <td class="text-left-cell col-name">{{ $row['ingredient_name'] ?? '-' }}</td>
+                                    <td class="col-cat">{{ $row['category_name'] ?? '-' }}</td>
+                                    <td class="text-left-cell col-loc">{{ $row['location_name'] ?? '-' }}</td>
+                                    <td class="col-num movement-neutral">{{ $formatSummaryQty($row['opening_balance'] ?? 0) }}</td>
+                                    <td class="col-num movement-plus">{{ $formatSummaryQty($row['purchase'] ?? 0) }}</td>
+                                    <td class="col-num {{ $transferQty < 0 ? 'movement-minus' : ($transferQty > 0 ? 'movement-plus' : 'movement-neutral') }}">
                                         {{ $formatSummaryQty($transferQty) }}
                                     </td>
-                                    <td class="{{ $salesQty > 0 ? 'movement-minus' : 'movement-neutral' }}">
+                                    <td class="col-num {{ $salesQty > 0 ? 'movement-minus' : 'movement-neutral' }}">
                                         {{ $salesQty > 0 ? '-' : '' }}{{ $formatSummaryQty(abs($salesQty)) }}
                                     </td>
-                                    <td class="{{ $adjustmentQty < 0 ? 'movement-minus' : ($adjustmentQty > 0 ? 'movement-plus' : 'movement-neutral') }}">
+                                    <td class="col-num {{ $adjustmentQty < 0 ? 'movement-minus' : ($adjustmentQty > 0 ? 'movement-plus' : 'movement-neutral') }}">
                                         {{ $formatSummaryQty($adjustmentQty) }}
                                     </td>
-                                    <td>
+                                    <td class="col-num">
                                         @if($endingQty <= 0)
                                             <span class="qty-zero">{{ $formatSummaryQty($endingQty) }}</span>
                                         @else
