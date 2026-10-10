@@ -456,7 +456,21 @@ class CartController extends Controller
         return $cart;
     }
 
-    public function applyPromo(Request $request, Promo $promo)
+    private function promoRefusedResponse(Request $request, string $message, ?string $cashierMessage = null, ?string $reason = null)
+    {
+        if ($request->expectsJson()) {
+            return response()->json(array_filter([
+                'success' => false,
+                'message' => $message,
+                'cashier_message' => $cashierMessage,
+                'reason' => $reason,
+            ], fn ($value) => $value !== null), 422);
+        }
+
+        return redirect()->route('cashier.index')->with('error', $message);
+    }
+
+    public function applyPromo(Request $request, Promo $promo, SaleEligibilityService $saleEligibilityService)
     {
         $user = $this->authorizeCashierAccess();
 
@@ -528,6 +542,16 @@ class CartController extends Controller
                 promo: $promo,
                 isReward: true
             );
+        }
+
+        // Same rules as add-to-cart and checkout (SaleEligibilityService). All or nothing: when any promo item can
+        // not be sold at this outlet the promo is refused and the cart in the session stays exactly as it was.
+        try {
+            $saleEligibilityService->requirementsForCart($cart, (int) $user->outlet_id);
+        } catch (SaleNotEligibleException $e) {
+            return $this->promoRefusedResponse($request, $e->getMessage(), trim(($e->displayName ? $e->displayName.': ' : '').$e->cashierMessage), $e->reason);
+        } catch (RuntimeException $e) {
+            return $this->promoRefusedResponse($request, $e->getMessage());
         }
 
         session([

@@ -12,6 +12,7 @@ use App\Services\VariantWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductVariantViewController extends Controller
@@ -52,7 +53,7 @@ class ProductVariantViewController extends Controller
         return app(VariantWriter::class);
     }
 
-    /** Group-editor rules: the shared row rules plus the legacy per-row outlet_id column. */
+    /** Group-editor rules: the shared row rules plus the legacy per-row outlet_id column (validated but ignored by the writer). */
     protected function groupRules(): array
     {
         return [
@@ -188,7 +189,7 @@ class ProductVariantViewController extends Controller
         $this->authorizeVariantProduct($user, $variant);
 
         $variantName = $variant->name;
-        $this->writer()->deactivate($variant);
+        $this->writer()->deactivate($user, $variant);
 
         // Inactivating keeps the variant listed under its product group, so the group stays the anchor.
         return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$variant->product_id)
@@ -348,123 +349,152 @@ class ProductVariantViewController extends Controller
         }
 
         $imported = 0;
-        $updated = 0;
+        $assigned = 0;
+        $unchanged = 0;
         $skipped = 0;
         $errors = [];
+        $warnings = [];
 
-        foreach (array_slice($lines, 1) as $index => $line) {
-            $rowNumber = $index + 2;
+        // One transaction: an unexpected failure rolls the whole file back instead of leaving half of it behind.
+        DB::transaction(function () use ($lines, $delimiter, $user, &$imported, &$assigned, &$unchanged, &$skipped, &$errors, &$warnings) {
+            foreach (array_slice($lines, 1) as $index => $line) {
+                $rowNumber = $index + 2;
 
-            if (trim($line) === '') {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: baris kosong.";
+                if (trim($line) === '') {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: baris kosong.";
 
-                continue;
+                    continue;
+                }
+
+                $row = str_getcsv($line, $delimiter);
+
+                if (count($row) < 7) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 7.";
+
+                    continue;
+                }
+
+                $productCode = trim($row[0] ?? '');
+                $outletCode = trim($row[1] ?? '');
+                $name = trim($row[2] ?? '');
+                $code = strtoupper(trim($row[3] ?? ''));
+                $priceDineInRaw = trim($row[4] ?? '');
+                $priceDeliveryRaw = trim($row[5] ?? '');
+                $isActiveRaw = trim($row[6] ?? '');
+
+                if ($productCode === '' || $outletCode === '' || $name === '' || $code === '') {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: product_code, outlet_code, name, dan code wajib diisi.";
+
+                    continue;
+                }
+
+                $priceDineIn = is_numeric($priceDineInRaw) ? (float) $priceDineInRaw : null;
+                $priceDelivery = is_numeric($priceDeliveryRaw) ? (float) $priceDeliveryRaw : null;
+
+                if ($priceDineIn === null || $priceDineIn < 0) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: price_dine_in tidak valid.";
+
+                    continue;
+                }
+
+                if ($priceDelivery === null || $priceDelivery < 0) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: price_delivery tidak valid.";
+
+                    continue;
+                }
+
+                $product = Product::whereRaw('LOWER(code) = ?', [mb_strtolower($productCode)])->first();
+
+                if (! $product) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: product code '{$productCode}' tidak ditemukan.";
+
+                    continue;
+                }
+
+                $outlet = Outlet::whereRaw('LOWER(code) = ?', [mb_strtolower($outletCode)])->first();
+
+                if (! $outlet || ! $outlet->is_active || ! $this->outletContext()->canAccess($user, (int) $outlet->id)) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: outlet code '{$outletCode}' tidak aktif atau tidak tersedia untuk akun ini.";
+
+                    continue;
+                }
+
+                $outletId = $outlet->id;
+
+                if (! $product->outlets()->whereKey($outletId)->exists()) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: outlet '{$outletCode}' belum tersedia pada Product '{$product->name}'.";
+
+                    continue;
+                }
+
+                $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
+
+                $variant = ProductVariant::where('product_id', $product->id)
+                    ->whereRaw('UPPER(code) = ?', [strtoupper($code)])
+                    ->first();
+
+                if ($variant) {
+                    // EXISTING Variant: assignment only. Prices, name and status are shared by every outlet that sells
+                    // it, so an import for one outlet must never change what another outlet charges.
+                    $currentDineIn = (float) ($variant->price_dine_in ?? $variant->price ?? 0);
+                    $currentDelivery = (float) ($variant->price_delivery ?? $variant->price ?? 0);
+
+                    if (round($priceDineIn, 2) !== round($currentDineIn, 2) || round($priceDelivery, 2) !== round($currentDelivery, 2)) {
+                        $skipped++;
+                        $errors[] = "Baris {$rowNumber}: Variant {$code} pada {$product->code} sudah ada dengan harga global Dine In ".(float) $currentDineIn.' / Delivery '.(float) $currentDelivery
+                            .", sedangkan CSV berisi {$priceDineIn} / {$priceDelivery}. Baris ditolak karena harga dipakai bersama semua outlet; ubah lewat Product Workspace > Variants & Pricing.";
+
+                        continue;
+                    }
+
+                    if ($variant->outlets()->whereKey($outletId)->exists()) {
+                        $unchanged++;
+                    } else {
+                        $variant->outlets()->attach($outletId);
+                        $assigned++;
+                    }
+
+                    $mismatches = [];
+
+                    if (trim((string) $variant->name) !== $name) {
+                        $mismatches[] = "nama (CSV \"{$name}\", sistem \"{$variant->name}\")";
+                    }
+                    if ((bool) $isActive !== (bool) $variant->is_active) {
+                        $mismatches[] = 'status (CSV '.($isActive ? 'aktif' : 'nonaktif').', sistem '.($variant->is_active ? 'aktif' : 'nonaktif').')';
+                    }
+
+                    if ($mismatches !== []) {
+                        $warnings[] = ['text' => "Baris {$rowNumber}: Variant {$code} pada {$product->code} sudah ada, jadi hanya outlet yang di-assign. Data global TIDAK diubah: ".implode(', ', $mismatches).'.', 'url' => null];
+                    }
+                } else {
+                    $variant = ProductVariant::create([
+                        'product_id' => $product->id,
+                        'outlet_id' => null,
+                        'name' => $name,
+                        'code' => $code,
+                        'price' => $priceDineIn,
+                        'price_dine_in' => $priceDineIn,
+                        'price_delivery' => $priceDelivery,
+                        'is_active' => $isActive,
+                    ]);
+                    $variant->outlets()->sync([$outletId]);
+                    $imported++;
+                }
             }
-
-            $row = str_getcsv($line, $delimiter);
-
-            if (count($row) < 7) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 7.";
-
-                continue;
-            }
-
-            $productCode = trim($row[0] ?? '');
-            $outletCode = trim($row[1] ?? '');
-            $name = trim($row[2] ?? '');
-            $code = strtoupper(trim($row[3] ?? ''));
-            $priceDineInRaw = trim($row[4] ?? '');
-            $priceDeliveryRaw = trim($row[5] ?? '');
-            $isActiveRaw = trim($row[6] ?? '');
-
-            if ($productCode === '' || $outletCode === '' || $name === '' || $code === '') {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: product_code, outlet_code, name, dan code wajib diisi.";
-
-                continue;
-            }
-
-            $priceDineIn = is_numeric($priceDineInRaw) ? (float) $priceDineInRaw : null;
-            $priceDelivery = is_numeric($priceDeliveryRaw) ? (float) $priceDeliveryRaw : null;
-
-            if ($priceDineIn === null || $priceDineIn < 0) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: price_dine_in tidak valid.";
-
-                continue;
-            }
-
-            if ($priceDelivery === null || $priceDelivery < 0) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: price_delivery tidak valid.";
-
-                continue;
-            }
-
-            $product = Product::whereRaw('LOWER(code) = ?', [mb_strtolower($productCode)])->first();
-
-            if (! $product) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: product code '{$productCode}' tidak ditemukan.";
-
-                continue;
-            }
-
-            $outlet = Outlet::whereRaw('LOWER(code) = ?', [mb_strtolower($outletCode)])->first();
-
-            if (! $outlet || ! $outlet->is_active || ! $this->outletContext()->canAccess($user, (int) $outlet->id)) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: outlet code '{$outletCode}' tidak aktif atau tidak tersedia untuk akun ini.";
-
-                continue;
-            }
-
-            $outletId = $outlet->id;
-
-            if (! $product->outlets()->whereKey($outletId)->exists()) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: outlet '{$outletCode}' belum tersedia pada Product '{$product->name}'.";
-
-                continue;
-            }
-
-            $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
-
-            $variant = ProductVariant::where('product_id', $product->id)
-                ->whereRaw('UPPER(code) = ?', [strtoupper($code)])
-                ->first();
-
-            if ($variant) {
-                $variant->update([
-                    'name' => $name,
-                    'price' => $priceDineIn,
-                    'price_dine_in' => $priceDineIn,
-                    'price_delivery' => $priceDelivery,
-                    'is_active' => $isActive,
-                ]);
-                $variant->outlets()->syncWithoutDetaching([$outletId]);
-                $updated++;
-            } else {
-                $variant = ProductVariant::create([
-                    'product_id' => $product->id,
-                    'outlet_id' => null,
-                    'name' => $name,
-                    'code' => $code,
-                    'price' => $priceDineIn,
-                    'price_dine_in' => $priceDineIn,
-                    'price_delivery' => $priceDelivery,
-                    'is_active' => $isActive,
-                ]);
-                $variant->outlets()->sync([$outletId]);
-                $imported++;
-            }
-        }
+        });
 
         return redirect()
             ->route('backoffice.variants.index')
-            ->with('success', "Import variants selesai. Baru: {$imported}. Update: {$updated}. Dilewati: {$skipped}.")
-            ->with('import_errors', $errors);
+            ->with('success', "Import variants selesai. Baru: {$imported}. Di-assign ke outlet: {$assigned}. Sudah tersedia (tidak berubah): {$unchanged}. Dilewati: {$skipped}.".($warnings !== [] ? ' Ada '.count($warnings).' peringatan.' : ''))
+            ->with('import_errors', $errors)
+            ->with('import_warnings', $warnings);
     }
 }

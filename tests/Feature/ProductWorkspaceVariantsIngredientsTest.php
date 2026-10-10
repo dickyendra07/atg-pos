@@ -336,13 +336,14 @@ class ProductWorkspaceVariantsIngredientsTest extends TestCase
         $this->assertStringNotContainsString('name="outlet_ids[]" value="'.$this->c->id.'"', $form);
         $this->assertStringContainsString('pw-chip-locked">Charlie', $form);
 
-        $this->putJson(route('backoffice.products.workspace.variants.update', [$this->product, $this->regular]), $this->variantPayload(['name' => 'Regular', 'code' => 'UBE-R', 'outlet_ids' => [$this->a->id]]))
+        // Prices are re-sent unchanged: Charlie is outside this user's access, so a price change would need Owner / Admin Pusat.
+        $this->putJson(route('backoffice.products.workspace.variants.update', [$this->product, $this->regular]), $this->variantPayload(['name' => 'Regular', 'code' => 'UBE-R', 'price_dine_in' => 'Rp. 20.000', 'price_delivery' => 'Rp. 22.000', 'outlet_ids' => [$this->a->id]]))
             ->assertOk();
 
         $this->assertEqualsCanonicalizing([$this->a->id, $this->c->id], $this->regular->outlets()->pluck('outlets.id')->all());
 
         // ...and cannot add an outlet outside their access.
-        $this->putJson(route('backoffice.products.workspace.variants.update', [$this->product, $this->regular]), $this->variantPayload(['name' => 'Regular', 'code' => 'UBE-R', 'outlet_ids' => [$this->a->id, $this->c->id]]))
+        $this->putJson(route('backoffice.products.workspace.variants.update', [$this->product, $this->regular]), $this->variantPayload(['name' => 'Regular', 'code' => 'UBE-R', 'price_dine_in' => 'Rp. 20.000', 'price_delivery' => 'Rp. 22.000', 'outlet_ids' => [$this->a->id, $this->c->id]]))
             ->assertStatus(422)
             ->assertJsonValidationErrors(['outlet_ids']);
     }
@@ -372,7 +373,7 @@ class ProductWorkspaceVariantsIngredientsTest extends TestCase
         $limited = $this->user('admin_outlet', [$this->a, $this->b]);
 
         $this->actingAs($limited)
-            ->putJson(route('backoffice.products.workspace.variants.update', [$this->product, $this->regular]), $this->variantPayload(['name' => 'Regular', 'code' => 'UBE-R', 'outlet_ids' => [$this->a->id]]))
+            ->putJson(route('backoffice.products.workspace.variants.update', [$this->product, $this->regular]), $this->variantPayload(['name' => 'Regular', 'code' => 'UBE-R', 'price_dine_in' => 'Rp. 20.000', 'price_delivery' => 'Rp. 22.000', 'outlet_ids' => [$this->a->id]]))
             ->assertOk();
 
         $this->assertSame([$this->a->id], $this->regular->outlets()->pluck('outlets.id')->all());

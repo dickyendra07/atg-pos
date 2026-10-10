@@ -133,7 +133,7 @@
                 if (!target.closest || !target.closest('[data-pw-form], [data-pw-drawer-form]')) { return; }
                 if (type === 'input' && target.classList.contains('pw-rupiah')) { formatRupiahInput(target); }
                 refreshState();
-                if (type === 'change' && target.hasAttribute('data-pw-outlet-checkbox')) { schedulePreview(); }
+                if (type === 'change' && (target.hasAttribute('data-pw-outlet-checkbox') || target.hasAttribute('data-pw-assign-variants'))) { schedulePreview(); }
             });
         });
 
@@ -258,19 +258,32 @@
             syncHeaderHeight();
         }
 
-        function save(form, key) {
+        function save(form, key, confirmSimilar) {
             var button = form.querySelector('[data-pw-save]');
+            var body = new FormData(form);
+
+            if (confirmSimilar) { body.set('confirm_similar', '1'); }
 
             clearErrors(form, 'data-pw-error');
             saving = true;
             if (button) { button.disabled = true; }
             refreshState();
 
-            return send(form.action, new FormData(form)).then(function (result) {
+            return send(form.action, body).then(function (result) {
                 if (result.ok && result.data.ok) {
                     applySaved(result.data, key);
                     toast('success', result.data.message);
                     return;
+                }
+                // A look-alike Product exists: nothing was saved. Ask, and only an explicit yes saves it.
+                if (result.status === 409 && result.data.needs_confirmation === 'similar_product') {
+                    return confirmAsk({
+                        title: 'Product serupa sudah ada',
+                        body: result.data.message,
+                        note: '',
+                        label: 'Tetap simpan',
+                        tone: 'warning'
+                    }).then(function (ok) { if (ok) { return save(form, key, true); } });
                 }
                 if (result.status === 422) { showErrors(form, 'data-pw-error', result.data.errors); }
                 failureToast(result);
@@ -310,7 +323,9 @@
                     title: 'Simpan perubahan outlet?',
                     body: preview.deactivated_variant_ids.length
                         ? preview.deactivated_variant_ids.length + ' Variant akan dinonaktifkan karena tidak lagi memiliki outlet. Detailnya ada di ringkasan di atas tombol ini.'
-                        : 'Outlet beberapa Variant atau Promo ikut terdampak. Periksa ringkasan perubahan sebelum menyimpan.',
+                        : preview.assigned_variant_ids.length
+                            ? preview.assigned_variant_ids.length + ' Variant aktif akan di-assign ke outlet baru. Kesiapan jual tetap bergantung pada Recipe dan Ingredient outlet tersebut.'
+                            : 'Outlet beberapa Variant atau Promo ikut terdampak. Periksa ringkasan perubahan sebelum menyimpan.',
                     note: preview.promo_ids.length ? 'Promo tidak diubah otomatis.' : '',
                     label: 'Simpan Outlets',
                     tone: 'warning'
@@ -353,6 +368,8 @@
 
             body.append('_token', csrf);
             form.querySelectorAll('[data-pw-outlet-checkbox]:checked').forEach(function (box) { body.append('outlet_ids[]', box.value); });
+            var assign = form.querySelector('[data-pw-assign-variants]');
+            if (assign && assign.checked) { body.append('assign_variants', '1'); }
 
             return send(form.getAttribute('data-pw-preview-url'), body).then(function (result) {
                 if (seq !== previewSeq) { return null; }

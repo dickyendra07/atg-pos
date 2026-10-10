@@ -7,14 +7,17 @@ use App\Models\Brand;
 use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductCategory;
+use App\Models\ProductVariant;
 use App\Services\BackofficeOutletContext;
 use App\Services\ProductAccessPolicy;
+use App\Services\ProductDuplicateGuard;
 use App\Services\CleanupDeletionService as Cleanup;
 use App\Services\ProductWorkspace;
 use App\Services\ProductWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductViewController extends Controller
@@ -112,9 +115,23 @@ class ProductViewController extends Controller
     {
         $user = $this->authorizeAccess();
 
-        $validated = $request->validate(array_merge($this->writer()->generalRules(), $this->writer()->outletRules()));
+        $validated = $request->validate(array_merge($this->writer()->generalRules(), $this->writer()->outletRules(), ['confirm_similar' => 'nullable|boolean']));
 
-        $product = $this->writer()->create($user, $validated);
+        // A Product with the same name, Brand and Category already exists: warn first (nothing is written), and
+        // only create another one when the user confirms. Distinct Products with the same name stay possible.
+        $guard = app(ProductDuplicateGuard::class);
+        $similar = $guard->similar($validated['name'], (int) $validated['brand_id'], (int) $validated['product_category_id']);
+
+        if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
+            $split = $guard->split($similar, $user);
+
+            return back()
+                ->withInput($request->except('confirm_similar'))
+                ->with('similar_products', $split['visible'])
+                ->with('similar_hidden', $split['hidden']);
+        }
+
+        $product = $this->writer()->create($user, collect($validated)->except('confirm_similar')->all());
 
         // Next step of setting up a Product: its Variants, in the Product Workspace (which keeps the
         // list context, so closing the workspace still lands on the list the user came from).
@@ -154,9 +171,26 @@ class ProductViewController extends Controller
         $user = $this->authorizeAccess();
         app(ProductAccessPolicy::class)->authorize($user, $product);
 
-        $validated = $request->validate(array_merge($this->writer()->generalRules($product), $this->writer()->outletRules()));
+        $validated = $request->validate(array_merge($this->writer()->generalRules($product), $this->writer()->outletRules(), $this->writer()->assignVariantsRules(), ['confirm_similar' => 'nullable|boolean']));
+        $attributes = collect($validated)->except('confirm_similar')->all();
 
-        $this->writer()->update($user, $product, $validated);
+        // Shared Product + limited user: refused (validation error) before any duplicate warning or write.
+        $this->writer()->assertCanChangeGeneral($user, $product, $attributes);
+
+        $similar = $this->writer()->similarAfterGeneralChange($product, $attributes);
+
+        if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
+            $guard = app(ProductDuplicateGuard::class);
+
+            $split = $guard->split($similar, $user);
+
+            return back()
+                ->withInput($request->except('confirm_similar'))
+                ->with('similar_products', $split['visible'])
+                ->with('similar_hidden', $split['hidden']);
+        }
+
+        $this->writer()->update($user, $product, $attributes);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
             ->with('success', 'Product berhasil diperbarui.');
@@ -167,7 +201,7 @@ class ProductViewController extends Controller
         $user = $this->authorizeAccess();
         app(ProductAccessPolicy::class)->authorize($user, $product);
 
-        $product->update(['is_active' => false]);
+        $this->writer()->deactivate($user, $product);
 
         // Inactivating keeps the row in the list, so it can stay the anchor.
         return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
@@ -259,6 +293,7 @@ class ProductViewController extends Controller
         $request->validate([
             'outlet_id' => 'required|integer',
             'file' => 'required|file|mimes:csv,txt',
+            'allow_similar' => 'nullable|boolean',
         ], [
             'outlet_id.required' => 'Pilih outlet tujuan terlebih dahulu. Import Product tidak boleh membuat availability global.',
             'file.required' => 'File CSV wajib dipilih.',
@@ -319,75 +354,120 @@ class ProductViewController extends Controller
                 ->with('error', 'Header CSV tidak sesuai template. Urutannya harus: brand_name,category_name,name,code,description,is_active');
         }
 
+        $allowSimilar = $request->boolean('allow_similar');
+        $guard = app(ProductDuplicateGuard::class);
+        $targetOutlet = Outlet::find($targetOutletId);
+
         $imported = 0;
-        $updated = 0;
+        $assigned = 0;
+        $unchanged = 0;
         $skipped = 0;
         $errors = [];
+        $warnings = [];
+        $touchedProducts = [];
 
-        foreach (array_slice($lines, 1) as $index => $line) {
-            $rowNumber = $index + 2;
+        // One transaction: an unexpected failure rolls the whole file back instead of leaving half of it behind.
+        DB::transaction(function () use ($lines, $delimiter, $user, $targetOutletId, $allowSimilar, $guard, &$imported, &$assigned, &$unchanged, &$skipped, &$errors, &$warnings, &$touchedProducts) {
+            foreach (array_slice($lines, 1) as $index => $line) {
+                $rowNumber = $index + 2;
 
-            if (trim($line) === '') {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: baris kosong.";
+                if (trim($line) === '') {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: baris kosong.";
 
-                continue;
-            }
+                    continue;
+                }
 
-            $row = str_getcsv($line, $delimiter);
+                $row = str_getcsv($line, $delimiter);
 
-            if (count($row) < 6) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 6.";
+                if (count($row) < 6) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 6.";
 
-                continue;
-            }
+                    continue;
+                }
 
-            $brandName = trim($row[0] ?? '');
-            $categoryName = trim($row[1] ?? '');
-            $name = trim($row[2] ?? '');
-            $code = trim($row[3] ?? '');
-            $description = trim($row[4] ?? '');
-            $isActiveRaw = trim($row[5] ?? '');
+                $brandName = trim($row[0] ?? '');
+                $categoryName = trim($row[1] ?? '');
+                $name = trim($row[2] ?? '');
+                $code = trim($row[3] ?? '');
+                $description = trim($row[4] ?? '');
+                $isActiveRaw = trim($row[5] ?? '');
 
-            if ($brandName === '' || $categoryName === '' || $name === '' || $code === '') {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: brand, category, name, dan code wajib diisi.";
+                if ($brandName === '' || $categoryName === '' || $name === '' || $code === '') {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: brand, category, name, dan code wajib diisi.";
 
-                continue;
-            }
+                    continue;
+                }
 
-            $brand = Brand::whereRaw('LOWER(name) = ?', [mb_strtolower($brandName)])->first();
-            if (! $brand) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: brand '{$brandName}' tidak ditemukan.";
+                $brand = Brand::whereRaw('LOWER(name) = ?', [mb_strtolower($brandName)])->first();
+                if (! $brand) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: brand '{$brandName}' tidak ditemukan.";
 
-                continue;
-            }
+                    continue;
+                }
 
-            $category = ProductCategory::whereRaw('LOWER(name) = ?', [mb_strtolower($categoryName)])->first();
-            if (! $category) {
-                $skipped++;
-                $errors[] = "Baris {$rowNumber}: category '{$categoryName}' tidak ditemukan.";
+                $category = ProductCategory::whereRaw('LOWER(name) = ?', [mb_strtolower($categoryName)])->first();
+                if (! $category) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: category '{$categoryName}' tidak ditemukan.";
 
-                continue;
-            }
+                    continue;
+                }
 
-            $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
+                $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
 
-            $product = Product::whereRaw('LOWER(code) = ?', [mb_strtolower($code)])->first();
+                $product = Product::whereRaw('LOWER(code) = ?', [mb_strtolower($code)])->first();
 
-            if ($product) {
-                $product->update([
-                    'brand_id' => $brand->id,
-                    'product_category_id' => $category->id,
-                    'name' => $name,
-                    'description' => $description !== '' ? $description : null,
-                    'is_active' => $isActive,
-                ]);
-                $product->outlets()->syncWithoutDetaching([$targetOutletId]);
-                $updated++;
-            } else {
+                if ($product) {
+                    // EXISTING Product: assignment only. Name, Brand, Category, description and status are shared by
+                    // every outlet that sells it, so an import for one outlet must not rewrite them.
+                    $mismatches = [];
+
+                    if (ProductDuplicateGuard::normalize($product->name) !== ProductDuplicateGuard::normalize($name)) {
+                        $mismatches[] = "nama (CSV \"{$name}\", sistem \"{$product->name}\")";
+                    }
+                    if ((int) $product->brand_id !== (int) $brand->id) {
+                        $mismatches[] = "brand (CSV \"{$brand->name}\", sistem \"".($product->brand?->name ?? '-').'")';
+                    }
+                    if ((int) $product->product_category_id !== (int) $category->id) {
+                        $mismatches[] = "kategori (CSV \"{$category->name}\", sistem \"".($product->category?->name ?? '-').'")';
+                    }
+                    if ($description !== '' && $description !== (string) $product->description) {
+                        $mismatches[] = 'deskripsi';
+                    }
+                    if ((bool) $isActive !== (bool) $product->is_active) {
+                        $mismatches[] = 'status (CSV '.($isActive ? 'aktif' : 'nonaktif').', sistem '.($product->is_active ? 'aktif' : 'nonaktif').')';
+                    }
+
+                    if ($product->outlets()->whereKey($targetOutletId)->exists()) {
+                        $unchanged++;
+                    } else {
+                        $product->outlets()->attach($targetOutletId);
+                        $assigned++;
+                    }
+
+                    $touchedProducts[$product->id] = $product;
+
+                    if ($mismatches !== []) {
+                        $warnings[] = ['text' => "Baris {$rowNumber}: Product {$product->code} sudah ada, jadi hanya outlet yang di-assign. Data global TIDAK diubah: ".implode(', ', $mismatches).'. Ubah lewat Product Workspace (Owner/Admin Pusat).', 'url' => null];
+                    }
+
+                    continue;
+                }
+
+                // NEW Product: same creation as before, unless it looks like a Product that already exists.
+                $similar = $guard->similar($name, (int) $brand->id, (int) $category->id);
+
+                if ($similar->isNotEmpty() && ! $allowSimilar) {
+                    $skipped++;
+                    $errors[] = "Baris {$rowNumber}: \"{$name}\" mirip dengan Product yang sudah ada. ".rtrim($guard->importLines($similar, $user), '.').'. Tidak dibuat. Untuk menyediakannya di outlet ini, import dengan kode Product yang sudah ada; atau centang "Buat meskipun mirip" jika memang Product berbeda.';
+
+                    continue;
+                }
+
                 $product = Product::create([
                     'brand_id' => $brand->id,
                     'product_category_id' => $category->id,
@@ -399,12 +479,32 @@ class ProductViewController extends Controller
                 $product->outlets()->sync([$targetOutletId]);
                 $imported++;
             }
+        });
+
+        // Making a Product available does not make its Variants available. Say so, per Product, with a link.
+        if ($touchedProducts !== []) {
+            $gaps = ProductVariant::query()
+                ->whereIn('product_id', array_keys($touchedProducts))
+                ->where('is_active', true)
+                ->whereDoesntHave('outlets', fn ($query) => $query->where('outlets.id', $targetOutletId))
+                ->orderBy('name')
+                ->get(['id', 'product_id', 'name'])
+                ->groupBy('product_id');
+
+            foreach ($gaps as $productId => $variants) {
+                $touched = $touchedProducts[$productId];
+                $warnings[] = [
+                    'text' => "Product {$touched->code}: {$variants->count()} Variant aktif belum tersedia di ".($targetOutlet?->name ?? 'outlet tujuan').' dan belum muncul di Cashier ('.$variants->pluck('name')->implode(', ').'). Assign Variant-nya lewat Product Workspace.',
+                    'url' => ProductWorkspace::url($touched, 'outlets', null),
+                ];
+            }
         }
 
         return redirect()
             ->route('backoffice.products.index')
-            ->with('success', "Import products selesai. Baru: {$imported}. Update: {$updated}. Dilewati: {$skipped}.")
-            ->with('import_errors', $errors);
+            ->with('success', "Import products selesai. Baru: {$imported}. Di-assign ke outlet: {$assigned}. Sudah tersedia (tidak berubah): {$unchanged}. Dilewati: {$skipped}.".($warnings !== [] ? ' Ada '.count($warnings).' peringatan.' : ''))
+            ->with('import_errors', $errors)
+            ->with('import_warnings', $warnings);
     }
 
 }

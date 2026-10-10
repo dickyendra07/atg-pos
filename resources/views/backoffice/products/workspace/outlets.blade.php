@@ -50,7 +50,36 @@
         </div>
     @endif
 
+    <label class="pw-outlet-card pw-mt" data-pw-assign-variants-option>
+        <input type="checkbox" name="assign_variants" value="1" data-pw-assign-variants @checked(old('assign_variants'))>
+        <span>
+            <span class="pw-outlet-name">Assign Variant aktif yang sudah ada ke outlet yang baru dipilih</span>
+            <span class="pw-outlet-desc">Opsional. Tidak membuat Variant baru, tidak mengubah harga atau Recipe, dan tidak mengaktifkan Variant nonaktif. Jika tidak dicentang, hanya Product yang ditambahkan; Variant harus di-assign juga agar muncul di Cashier.</span>
+        </span>
+    </label>
+
     <div class="pw-preview" data-pw-outlet-preview aria-live="polite"></div>
+
+    @php
+        $pwGaps = collect($pwOutlets['assigned'])->map(function ($pwOutlet) use ($pwOutlets) {
+            $missing = collect($pwOutlets['variant_matrix'])
+                ->filter(fn ($pwRow) => $pwRow['is_active'] && ! in_array($pwOutlet['id'], $pwRow['outlet_ids'], true))
+                ->pluck('name');
+
+            return ['name' => $pwOutlet['name'], 'missing' => $missing->all()];
+        })->filter(fn ($pwGap) => $pwGap['missing'] !== []);
+    @endphp
+    @if($pwGaps->isNotEmpty())
+        <div class="pw-alert pw-alert-warn pw-mt" data-pw-variant-gap>
+            <strong>Ada Variant aktif yang belum tersedia di outlet Product ini</strong> (tidak muncul di Cashier outlet tersebut):
+            <ul>
+                @foreach($pwGaps as $pwGap)
+                    <li>{{ $pwGap['name'] }}: {{ implode(', ', $pwGap['missing']) }}</li>
+                @endforeach
+            </ul>
+            Atur di Variants &amp; Pricing (edit Variant lalu centang outletnya). Opsi assign di atas hanya berlaku untuk outlet yang baru ditambahkan saat menyimpan. Kesiapan jual tetap bergantung pada Recipe dan Ingredient outlet.
+        </div>
+    @endif
 
     @include('backoffice.products.workspace._variant-outlet-matrix')
 </form>

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\CategoryWriter;
+use App\Services\ProductDuplicateGuard;
 use App\Services\ProductWorkspace;
 use App\Services\ProductWriter;
 use App\Support\BackofficeReturnUrl;
@@ -28,7 +29,28 @@ class ProductWorkspaceController extends Controller
     {
         $user = $this->authorizeProduct($request, $product);
 
-        $writer->updateGeneral($product, $request->validate($writer->generalRules($product)));
+        $validated = $request->validate($writer->generalRules($product) + ['confirm_similar' => 'nullable|boolean']);
+        $attributes = collect($validated)->except('confirm_similar')->all();
+
+        // Shared Product + limited user: refused here (422) before any duplicate warning or write.
+        $writer->assertCanChangeGeneral($user, $product, $attributes);
+
+        $similar = $writer->similarAfterGeneralChange($product, $attributes);
+
+        if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
+            // Only Products this user may open are described; the rest is a generic notice (ProductDuplicateGuard).
+            $guard = app(ProductDuplicateGuard::class);
+            $split = $guard->split($similar, $user);
+            $message = $guard->confirmationMessage($split);
+
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'needs_confirmation' => 'similar_product', 'message' => $message, 'similar_products' => $split['visible'], 'similar_hidden' => $split['hidden']], 409);
+            }
+
+            return back()->withInput()->with('similar_products', $split['visible'])->with('similar_hidden', $split['hidden']);
+        }
+
+        $writer->updateGeneral($user, $product, $attributes);
 
         return $this->saved($request, $product, $user, 'general', 'General Product berhasil disimpan.');
     }
@@ -37,12 +59,16 @@ class ProductWorkspaceController extends Controller
     {
         $user = $this->authorizeProduct($request, $product);
 
-        $validated = $request->validate($writer->outletRules());
-        $plan = $writer->updateOutlets($user, $product, $validated['outlet_ids']);
+        $validated = $request->validate($writer->outletRules() + $writer->assignVariantsRules());
+        $plan = $writer->updateOutlets($user, $product, $validated['outlet_ids'], (bool) ($validated['assign_variants'] ?? false));
 
         $deactivated = collect($plan['variants'])->where('will_deactivate', true)->where('was_active', true)->count();
         $message = 'Outlet Product berhasil disimpan.'
             .($deactivated ? ' '.$deactivated.' Variant dinonaktifkan karena tidak lagi memiliki outlet.' : '');
+
+        if ($plan['assignments'] !== []) {
+            $message .= ' '.count($plan['assignments']).' Variant aktif ikut di-assign ke outlet baru. Cek kesiapan jual (Recipe/Ingredient) di Stock & Readiness.';
+        }
 
         return $this->saved($request, $product, $user, 'outlets', $message);
     }
@@ -55,18 +81,21 @@ class ProductWorkspaceController extends Controller
         $validated = $request->validate([
             'outlet_ids' => 'nullable|array',
             'outlet_ids.*' => 'exists:outlets,id',
-        ]);
+        ] + $writer->assignVariantsRules());
 
         $outletIds = $validated['outlet_ids'] ?? [];
         $writer->assertAccessibleOutletIds($user, $outletIds);
-        $plan = $writer->planOutletChange($user, $product, $outletIds);
+        $plan = $writer->planOutletChange($user, $product, $outletIds, (bool) ($validated['assign_variants'] ?? false));
 
         return response()->json([
             'ok' => true,
             'has_consequences' => $plan['has_consequences'],
             'empty_selection' => $outletIds === [],
             'removed' => $plan['removed'],
-            'deactivated_variant_ids' => collect($plan['variants'])->where('will_deactivate', true)->pluck('id')->values()->all(),
+            // Only Variants that are active now: one that is already inactive stays inactive and is no deactivation.
+            'deactivated_variant_ids' => collect($plan['variants'])->where('will_deactivate', true)->where('was_active', true)->pluck('id')->values()->all(),
+            'assignable_variant_ids' => collect($plan['assignable'])->pluck('id')->values()->all(),
+            'assigned_variant_ids' => collect($plan['assignments'])->pluck('id')->values()->all(),
             'promo_ids' => collect($plan['promos'])->pluck('id')->values()->all(),
             'html' => view('backoffice.products.workspace._outlet-preview', [
                 'plan' => $plan,
