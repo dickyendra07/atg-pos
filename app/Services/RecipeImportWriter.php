@@ -35,6 +35,9 @@ use Illuminate\Support\Facades\DB;
  */
 class RecipeImportWriter
 {
+    /** Same minimum as RecipeWriter::qtyRule() ('numeric|min:0.01'); kept here because the rule is a validator string. */
+    private const MIN_QTY = 0.01;
+
     private int $imported = 0;
 
     private int $updated = 0;
@@ -96,8 +99,8 @@ class RecipeImportWriter
 
         if (! $ingredient) {
             $problem = "ingredient '{$ingredientName}' tidak ditemukan di master Ingredient.";
-        } elseif ($qty === null || $qty <= 0) {
-            $problem = "qty untuk ingredient '{$ingredientName}' tidak valid.";
+        } elseif ($qty === null || $qty < self::MIN_QTY) {
+            $problem = "qty untuk ingredient '{$ingredientName}' tidak valid (minimal ".self::MIN_QTY.', sama seperti Recipe Editor).';
         } elseif ($found = $this->writer->ingredientProblem($ingredient, $this->required($variant))) {
             $problem = $found;
         }
@@ -149,23 +152,21 @@ class RecipeImportWriter
         $variant = $group['variant'];
 
         try {
-            DB::transaction(function () use ($group, $variant) {
+            // Everything the Variant contributes to the report is collected here and only added to the
+            // totals AFTER the transaction has committed, so a rolled-back Variant counts as skipped only.
+            $result = DB::transaction(function () use ($group, $variant) {
                 ProductVariant::whereKey($variant->id)->lockForUpdate()->firstOrFail();
 
                 $recipes = Recipe::where('product_variant_id', $variant->id)->orderBy('id')->get();
 
                 if ($recipes->where('is_active', true)->count() > 1) {
-                    $this->abortGroup($group, RecipeWriter::AMBIGUOUS_MESSAGE.' Recipe Variant ini tidak diubah oleh import.');
-
-                    return;
+                    return ['abort' => RecipeWriter::AMBIGUOUS_MESSAGE.' Recipe Variant ini tidak diubah oleh import.'];
                 }
 
                 $recipe = $recipes->firstWhere('is_active', true) ?? $recipes->first();
 
                 if ($recipe && (int) $recipe->product_id !== (int) $variant->product_id) {
-                    $this->abortGroup($group, 'Recipe Variant ini tidak terhubung ke Product yang benar. Recipe tidak diubah oleh import.');
-
-                    return;
+                    return ['abort' => 'Recipe Variant ini tidak terhubung ke Product yang benar. Recipe tidak diubah oleh import.'];
                 }
 
                 $created = false;
@@ -195,19 +196,38 @@ class RecipeImportWriter
                     }
                 }
 
-                $this->imported += $imported;
-                $this->updated += $updated;
-                $this->settleActiveFlag($recipe, $variant, $group, $created);
+                return ['imported' => $imported, 'updated' => $updated] + $this->settleActiveFlag($recipe, $variant, $group, $created);
             });
         } catch (\Throwable $e) {
             report($e);
             $this->skipped += $group['rows'];
             $this->errors[] = "Variant '{$variant->code}' tidak diimport: terjadi kesalahan saat menyimpan. Recipe-nya tidak diubah.";
+
+            return;
+        }
+
+        if (isset($result['abort'])) {
+            $this->abortGroup($group, $result['abort']);
+
+            return;
+        }
+
+        $this->imported += $result['imported'];
+        $this->updated += $result['updated'];
+        $this->notActivated += $result['not_activated'];
+
+        if ($result['error'] !== null) {
+            $this->errors[] = $result['error'];
         }
     }
 
-    /** Active request is honoured only when the finished Recipe passes every activation rule. */
-    private function settleActiveFlag(Recipe $recipe, ProductVariant $variant, array $group, bool $created): void
+    /**
+     * Active request is honoured only when the finished Recipe passes every activation rule. Pure with
+     * respect to the report: returns what to count/say, the caller adds it once the transaction commits.
+     *
+     * @return array{not_activated: int, error: ?string}
+     */
+    private function settleActiveFlag(Recipe $recipe, ProductVariant $variant, array $group, bool $created): array
     {
         $votes = $group['active_votes'];
         $wantsActive = $votes !== [] && ! in_array(false, $votes, true) && in_array(true, $votes, true);
@@ -217,16 +237,18 @@ class RecipeImportWriter
             $problems = $this->writer->activationProblems($recipe->fresh(), $variant);
 
             if ($problems) {
-                $this->notActivated++;
-                $this->errors[] = "Variant '{$variant->code}': Recipe ".($created ? 'dibuat' : 'diperbarui').' tetapi TIDAK diaktifkan. '.implode(' ', $problems);
-
-                return;
+                return [
+                    'not_activated' => 1,
+                    'error' => "Variant '{$variant->code}': Recipe ".($created ? 'dibuat' : 'diperbarui').' tetapi TIDAK diaktifkan. '.implode(' ', $problems),
+                ];
             }
 
             $recipe->update(['is_active' => true]);
         } elseif ($explicitInactive && $recipe->is_active) {
             $recipe->update(['is_active' => false]);
         }
+
+        return ['not_activated' => 0, 'error' => null];
     }
 
     private function abortGroup(array $group, string $message): void

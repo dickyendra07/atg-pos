@@ -633,7 +633,18 @@ class RecipeViewController extends Controller
             $row = str_getcsv($line, $delimiter);
 
             if (count($row) < 4) {
-                $import->skipRow("Baris {$rowNumber}: jumlah kolom kurang dari 4.");
+                // A malformed row of a Variant we can still identify makes that Variant's Recipe incomplete,
+                // so the whole Variant is rejected (all-or-nothing). Only an unidentifiable row is just skipped.
+                $partialCode = trim($row[0] ?? '');
+                $partialVariant = $partialCode === '' ? null : ProductVariant::with('product')
+                    ->whereRaw('LOWER(code) = ?', [mb_strtolower($partialCode)])
+                    ->first();
+
+                if ($partialVariant) {
+                    $import->rejectRow($partialVariant, $rowNumber, 'jumlah kolom kurang dari 4.', "'{$partialCode}'");
+                } else {
+                    $import->skipRow("Baris {$rowNumber}: jumlah kolom kurang dari 4.");
+                }
 
                 continue;
             }

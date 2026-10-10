@@ -529,6 +529,150 @@ class RecipeIngredientAvailabilityTest extends TestCase
         $this->assertSame($before, $after);
     }
 
+    // ================================================================================================
+    // Import contract corrections: malformed rows, qty parity, atomic groups, honest counters
+    // ================================================================================================
+
+    public function test_csv_row_with_missing_columns_for_a_resolvable_variant_rejects_the_whole_variant(): void
+    {
+        $recipe = $this->recipe([$this->milk]);
+        $itemId = $recipe->items()->value('id');
+
+        // Third line has only 3 columns (is_active missing) but its Variant code is readable.
+        $errors = $this->importCsv("IS-R,Fresh Milk,150,1\nIS-R,Syrup Peach,30");
+
+        $this->assertStringContainsString('Baris 3: jumlah kolom kurang dari 4', implode("\n", $errors));
+        $this->assertStringContainsString("Variant 'IS-R' tidak diimport sama sekali", implode("\n", $errors));
+        $recipe->refresh();
+        $this->assertSame(1, Recipe::count());
+        $this->assertSame($recipe->id, (int) Recipe::value('id'));
+        $this->assertTrue($recipe->is_active);
+        $this->assertSame(1, $recipe->items()->count());
+        $this->assertSame($itemId, (int) $recipe->items()->value('id'));
+        $this->assertSame(100.0, (float) $recipe->items()->value('qty'), 'the valid first row was not applied either');
+    }
+
+    public function test_csv_malformed_row_for_an_unidentifiable_variant_is_only_reported_and_other_variants_still_import(): void
+    {
+        $large = $this->variant($this->product, 'Large', 'IS-L', [$this->tb, $this->bx, $this->ta]);
+        $recipe = $this->recipe([$this->milk]);
+
+        $errors = $this->importCsv("NOPE-CODE,Fresh Milk\n,,\nIS-R,Fresh Milk,150,1\nIS-L,Fresh Milk,90,1");
+
+        $report = implode("\n", $errors);
+        $this->assertStringContainsString('Baris 2: jumlah kolom kurang dari 4', $report);   // unresolved: just reported
+        $this->assertSame(150.0, (float) $recipe->items()->value('qty'), 'unrelated Variant IS-R still imported');
+        $this->assertSame(90.0, (float) Recipe::where('product_variant_id', $large->id)->firstOrFail()->items()->value('qty'), 'unrelated Variant IS-L still imported');
+    }
+
+    public function test_one_malformed_row_leaves_only_its_own_variant_untouched(): void
+    {
+        $large = $this->variant($this->product, 'Large', 'IS-L', [$this->tb, $this->bx, $this->ta]);
+        $recipe = $this->recipe([$this->milk]);
+
+        $this->importCsv("IS-R,Fresh Milk,150,1\nIS-L,Fresh Milk,90,1\nIS-R,Syrup Peach");
+
+        $this->assertSame(100.0, (float) $recipe->items()->value('qty'));
+        $this->assertSame(90.0, (float) Recipe::where('product_variant_id', $large->id)->firstOrFail()->items()->value('qty'));
+    }
+
+    public function test_csv_rejects_a_qty_below_the_editor_minimum_and_accepts_the_minimum(): void
+    {
+        $recipe = $this->recipe([$this->milk]);
+
+        $errors = $this->importCsv("IS-R,Fresh Milk,0.001,1");
+        $this->assertStringContainsString('qty untuk ingredient', implode("\n", $errors));
+        $this->assertStringContainsString('minimal 0.01', implode("\n", $errors));
+        $this->assertSame(100.0, (float) $recipe->items()->value('qty'), '0.001 is below RecipeWriter::qtyRule() and is rejected');
+
+        $this->importCsv("IS-R,Fresh Milk,0.01,1");
+        $this->assertSame(0.01, (float) $recipe->items()->value('qty'), '0.01 is exactly the editor minimum and is accepted');
+    }
+
+    public function test_excel_rejects_a_qty_below_the_editor_minimum_and_accepts_the_minimum(): void
+    {
+        $recipe = $this->recipe([$this->milk]);
+
+        $errors = $this->importExcel([['*Italian Soda', 'Regular', '', '', ''], ['', '', 'Fresh Milk', 0.001, 'ml']]);
+        $this->assertStringContainsString('minimal 0.01', implode("\n", $errors));
+        $this->assertSame(100.0, (float) $recipe->items()->value('qty'));
+
+        $this->importExcel([['*Italian Soda', 'Regular', '', '', ''], ['', '', 'Fresh Milk', 0.01, 'ml']]);
+        $this->assertSame(0.01, (float) $recipe->items()->value('qty'));
+    }
+
+    public function test_the_import_qty_minimum_matches_the_editor_rule(): void
+    {
+        $this->assertSame('required|numeric|min:0.01', RecipeWriter::qtyRule());   // the import mirrors this value (0.01)
+    }
+
+    public function test_interleaved_rows_of_one_variant_form_one_atomic_group(): void
+    {
+        $large = $this->variant($this->product, 'Large', 'IS-L', [$this->tb, $this->bx, $this->ta]);
+        $sugar = $this->ingredient('Sugar', [$this->tb, $this->bx, $this->ta]);
+        $recipe = $this->recipe([$this->milk]);
+
+        // IS-R rows are split around IS-L rows; the LAST IS-R row is invalid, so ALL IS-R rows are dropped.
+        $errors = $this->importCsv("IS-R,Fresh Milk,150,1\nIS-L,Fresh Milk,90,1\nIS-R,Sugar,5,1\nIS-L,Sugar,4,1\nIS-R,Syrup Peach,30,1");
+
+        $this->assertSame(100.0, (float) $recipe->items()->value('qty'));
+        $this->assertNull($recipe->items()->where('ingredient_id', $sugar->id)->first());
+        $this->assertStringContainsString("Variant 'IS-R' tidak diimport sama sekali (3 baris)", implode("\n", $errors));
+
+        $largeRecipe = Recipe::where('product_variant_id', $large->id)->firstOrFail();
+        $this->assertSame(2, $largeRecipe->items()->count(), 'IS-L (interleaved but valid) imported fully');
+    }
+
+    public function test_duplicate_ingredient_rows_for_one_variant_keep_the_last_qty_and_count_once(): void
+    {
+        $this->importCsv("IS-R,Fresh Milk,10,1\nIS-R,Fresh Milk,20,1");
+
+        $recipe = Recipe::sole();
+        $this->assertSame(1, $recipe->items()->count());
+        $this->assertSame(20.0, (float) $recipe->items()->value('qty'), 'documented behaviour: the last qty wins');
+        $this->assertStringContainsString('Data masuk: 1. Data update: 0.', session('success'));
+    }
+
+    public function test_a_rolled_back_variant_does_not_inflate_the_success_counters(): void
+    {
+        $large = $this->variant($this->product, 'Large', 'IS-L', [$this->tb, $this->bx, $this->ta]);
+
+        // Activation blows up AFTER the items were written inside IS-R's transaction.
+        $this->app->bind(RecipeWriter::class, fn () => new class extends RecipeWriter
+        {
+            public function activationProblems(Recipe $recipe, ProductVariant $variant): array
+            {
+                throw new \RuntimeException('forced failure after the items were written');
+            }
+        });
+
+        $errors = $this->importCsv("IS-R,Fresh Milk,150,1\nIS-L,Fresh Milk,90,0");
+
+        $this->assertSame(0, Recipe::where('product_variant_id', $this->variant->id)->count(), 'IS-R rolled back completely');
+        $this->assertSame(0, RecipeItem::whereHas('recipe', fn ($q) => $q->where('product_variant_id', $this->variant->id))->count());
+        $this->assertStringContainsString("Variant 'IS-R' tidak diimport: terjadi kesalahan", implode("\n", $errors));
+        // Only the committed Variant (IS-L, one new item) is counted; the rolled-back one is "dilewati".
+        $this->assertSame('Import recipes CSV selesai. Data masuk: 1. Data update: 0. Data dilewati: 1.', session('success'));
+        $this->assertSame(1, Recipe::where('product_variant_id', $large->id)->count());
+    }
+
+    public function test_existing_active_recipe_stays_intact_when_any_row_of_its_variant_is_bad(): void
+    {
+        $recipe = $this->recipe([$this->milk]);
+        $originalItemId = $recipe->items()->value('id');
+
+        foreach (["IS-R,Fresh Milk,150,1\nIS-R,Syrup Peach,30,1", "IS-R,Fresh Milk,150,1\nIS-R,Fresh Milk,0.001,1", "IS-R,Fresh Milk,150,1\nIS-R,Ghost,3,1", "IS-R,Fresh Milk,150,0\nIS-R,Fresh Milk"] as $csv) {
+            $this->importCsv($csv);
+
+            $fresh = Recipe::sole();
+            $this->assertSame($recipe->id, $fresh->id);
+            $this->assertTrue($fresh->is_active, 'a bad import never switches an active Recipe off');
+            $this->assertSame($originalItemId, (int) $fresh->items()->value('id'));
+            $this->assertSame(100.0, (float) $fresh->items()->value('qty'));
+            $this->assertSame(1, $fresh->items()->count());
+        }
+    }
+
     // ---- helpers ---------------------------------------------------------------------------------
 
     private function importCsv(string $rows, ?User $as = null): array
