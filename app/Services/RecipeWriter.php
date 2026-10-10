@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Ingredient;
+use App\Models\Outlet;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use App\Models\Recipe;
@@ -19,7 +20,8 @@ use Illuminate\Validation\ValidationException;
  *
  *  - a Recipe is GLOBAL per ProductVariant (no outlet of its own); a new one may only be created for a
  *    Variant without any Recipe (the classic unique rule), and product_id follows the Variant;
- *  - a Recipe item's Ingredient must be active and available in EVERY outlet of the Recipe's Variant,
+ *  - a Recipe item's Ingredient must be active and available in EVERY SELLABLE outlet of the Recipe's
+ *    Variant (active Variant outlets that are also active Product outlets, see requiredOutletIds()),
  *    may appear only once per Recipe (new rows), and qty is numeric >= 0.01; a new item copies the
  *    Ingredient's unit; existing items keep their stored qty/unit unless that value is edited;
  *  - FIX: setting a Recipe active is refused while ANOTHER Recipe of the same Variant is active, so no
@@ -46,6 +48,10 @@ class RecipeWriter
     public const INACTIVE_INGREDIENT_MESSAGE = 'Ingredient tidak aktif dan tidak bisa ditambahkan ke recipe.';
 
     public const MISSING_OUTLET_MESSAGE = 'Ingredient harus tersedia di seluruh outlet Variant recipe ini.';
+
+    public const FIX_GUIDANCE = 'Minta Owner/Admin Pusat menambahkan outlet tersebut di menu Ingredients; sistem tidak menambahkannya otomatis.';
+
+    public const NO_SELLABLE_OUTLET_MESSAGE = 'Variant ini belum tersedia di outlet aktif manapun (Product dan Variant harus sama-sama tersedia di outlet aktif), jadi Recipe belum bisa dinyatakan siap jual.';
 
     public const STALE_QTY_MESSAGE = 'Qty bahan ini sudah diubah di tempat lain sejak Recipe dibuka. Tutup lalu buka lagi Recipe ini.';
 
@@ -105,19 +111,98 @@ class RecipeWriter
 
     // ---- Shared rules ---------------------------------------------------------------------------------
 
-    /** Outlets a Recipe Ingredient must be available in: every outlet of the Recipe's Variant. */
+    /**
+     * Outlets a Recipe Ingredient must be available in: the SELLABLE outlets of the Recipe's Variant,
+     * i.e. ACTIVE Variant outlets INTERSECT ACTIVE Product outlets (the outlets SaleEligibilityService can
+     * actually sell the Variant at). A deactivated outlet, or a stale Variant row outside the Product's
+     * outlets, can no longer block the editor. Read-only: no assignment data is touched.
+     *
+     * An empty result means the Variant is sellable nowhere; callers must not read that as "ready".
+     */
     public function requiredOutletIds(?ProductVariant $variant): Collection
     {
         if (! $variant) {
             return collect();
         }
 
-        return $variant->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id)->values();
+        $variant->loadMissing('product');
+
+        $productOutletIds = $variant->product
+            ? $variant->product->outlets()->where('outlets.is_active', true)->pluck('outlets.id')
+            : collect();
+
+        if ($productOutletIds->isEmpty()) {
+            return collect();
+        }
+
+        return $variant->outlets()
+            ->where('outlets.is_active', true)
+            ->whereIn('outlets.id', $productOutletIds->all())
+            ->pluck('outlets.id')
+            ->map(fn ($id) => (int) $id)
+            ->values();
+    }
+
+    /** Same scope as requiredOutletIds(), from already loaded relations (no queries). */
+    public static function sellableOutletIds(ProductVariant $variant, Collection $productOutlets): Collection
+    {
+        $productIds = $productOutlets->where('is_active', true)->pluck('id')->map(fn ($id) => (int) $id);
+
+        return $variant->outlets->where('is_active', true)->pluck('id')->map(fn ($id) => (int) $id)
+            ->intersect($productIds)->values();
     }
 
     public function ingredientMissingOutletIds(Collection $requiredOutletIds, Ingredient $ingredient): Collection
     {
-        return $requiredOutletIds->diff($ingredient->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id))->values();
+        $assigned = $ingredient->relationLoaded('outlets')
+            ? $ingredient->outlets->pluck('id')
+            : $ingredient->outlets()->pluck('outlets.id');
+
+        return $requiredOutletIds->diff($assigned->map(fn ($id) => (int) $id))->values();
+    }
+
+    /** @return Collection<int, string> outlet names keyed by id */
+    public function outletNames(iterable $ids): Collection
+    {
+        $ids = collect($ids)->map(fn ($id) => (int) $id)->unique()->values();
+
+        return $ids->isEmpty() ? collect() : Outlet::whereIn('id', $ids->all())->orderBy('name')->pluck('name', 'id');
+    }
+
+    /**
+     * Why $ingredient cannot be added to a Recipe whose required outlets are $requiredOutletIds, as
+     * structured data (empty = allowed). Names come from $outletNames (id => name) when given.
+     * Required outlets are the Recipe's own usage outlets, which every user allowed to change the Recipe
+     * can access (RecipeAccessPolicy), so naming them never reaches beyond that user's access.
+     *
+     * @return array{inactive: bool, missing_ids: int[], missing_names: string[]}
+     */
+    public function ingredientAvailability(Ingredient $ingredient, Collection $requiredOutletIds, ?Collection $outletNames = null): array
+    {
+        $missing = $this->ingredientMissingOutletIds($requiredOutletIds, $ingredient);
+        $names = $outletNames ?? $this->outletNames($missing);
+
+        return [
+            'inactive' => ! $ingredient->is_active,
+            'missing_ids' => $missing->all(),
+            'missing_names' => $missing->map(fn ($id) => $names->get($id, 'Outlet #'.$id))->values()->all(),
+        ];
+    }
+
+    /** Short reason line for a disabled/unavailable choice or a warning, or null when it is available. */
+    public static function availabilityReason(array $availability): ?string
+    {
+        $parts = [];
+
+        if ($availability['inactive']) {
+            $parts[] = 'Ingredient nonaktif';
+        }
+
+        if ($availability['missing_names']) {
+            $parts[] = 'belum tersedia di '.implode(', ', $availability['missing_names']);
+        }
+
+        return $parts ? implode('; ', $parts) : null;
     }
 
     /** Why this Ingredient cannot be added to a Recipe of the Variant (null = allowed). */
@@ -127,41 +212,63 @@ class RecipeWriter
             return 'Ingredient tidak ditemukan.';
         }
 
-        if (! $ingredient->is_active) {
-            return self::INACTIVE_INGREDIENT_MESSAGE;
+        $availability = $this->ingredientAvailability($ingredient, $requiredOutletIds);
+
+        if ($availability['inactive']) {
+            return 'Ingredient "'.$ingredient->name.'" tidak aktif dan tidak bisa ditambahkan ke recipe. Aktifkan dulu di menu Ingredients (Owner/Admin Pusat).';
         }
 
-        if ($this->ingredientMissingOutletIds($requiredOutletIds, $ingredient)->isNotEmpty()) {
-            return self::MISSING_OUTLET_MESSAGE;
+        if ($availability['missing_ids']) {
+            return 'Ingredient "'.$ingredient->name.'" belum tersedia di '.implode(', ', $availability['missing_names'])
+                .'. Recipe ini dipakai di '.$this->outletNames($requiredOutletIds)->implode(', ')
+                .', jadi Ingredient harus tersedia di semua outlet tersebut. '.self::FIX_GUIDANCE;
         }
 
         return null;
     }
 
     /**
+     * Ingredients for a Recipe of $variant, split without hiding anything: `eligible` (same rule as addItem:
+     * active, available in every required outlet, not in $excludeIds) and `unavailable` (everything else
+     * that is not already in the Recipe) with the reason. One query for the Ingredients (outlets
+     * eager-loaded) and one for the outlet names, however many Ingredients there are.
+     *
+     * @return array{eligible: Collection<int, Ingredient>, unavailable: Collection<int, array{ingredient: Ingredient, reason: string}>, required_names: string[]}
+     */
+    public function ingredientChoices(?ProductVariant $variant, iterable $excludeIds = []): array
+    {
+        $required = $this->requiredOutletIds($variant);
+        $requiredNames = $this->outletNames($required);
+
+        $ingredients = Ingredient::with(['category', 'outlets:id'])
+            ->whereNotIn('id', collect($excludeIds)->map(fn ($id) => (int) $id)->all())
+            ->orderByRaw("CASE WHEN ingredient_type = 'semi_finished' THEN 0 ELSE 1 END")
+            ->orderBy('name')
+            ->get();
+
+        $eligible = collect();
+        $unavailable = collect();
+
+        foreach ($ingredients as $ingredient) {
+            $availability = $this->ingredientAvailability($ingredient, $required, $requiredNames);
+
+            if ($reason = self::availabilityReason($availability)) {
+                $unavailable->push(['ingredient' => $ingredient, 'reason' => $reason]);
+            } else {
+                $eligible->push($ingredient);
+            }
+        }
+
+        return ['eligible' => $eligible, 'unavailable' => $unavailable, 'required_names' => $requiredNames->values()->all()];
+    }
+
+    /**
      * Ingredients that can be added to a Recipe of $variant (same rule as addItem): active, available
-     * in every outlet of the Variant, and not in $excludeIds (the Recipe's current Ingredients).
+     * in every required outlet of the Variant, and not in $excludeIds (the Recipe's current Ingredients).
      */
     public function selectableIngredients(?ProductVariant $variant, iterable $excludeIds = []): Collection
     {
-        $requiredOutletIds = $this->requiredOutletIds($variant);
-
-        return Ingredient::with(['category'])
-            ->where('is_active', true)
-            ->whereNotIn('id', collect($excludeIds)->map(fn ($id) => (int) $id)->all())
-            ->where(function ($query) use ($requiredOutletIds) {
-                foreach ($requiredOutletIds as $outletId) {
-                    $query->whereHas('outlets', fn ($outletQuery) => $outletQuery->where('outlets.id', $outletId));
-                }
-            })
-            ->orderByRaw("
-                CASE
-                    WHEN ingredient_type = 'semi_finished' THEN 0
-                    ELSE 1
-                END
-            ")
-            ->orderBy('name')
-            ->get();
+        return $this->ingredientChoices($variant, $excludeIds)['eligible'];
     }
 
     public function containsIngredient(Recipe $recipe, int $ingredientId): bool
@@ -203,6 +310,12 @@ class RecipeWriter
 
         $required = $this->requiredOutletIds($variant);
 
+        if ($required->isEmpty()) {
+            $problems[] = self::NO_SELLABLE_OUTLET_MESSAGE;
+        }
+
+        $requiredNames = $this->outletNames($required);
+
         foreach ($items as $item) {
             $ingredient = $item->ingredient;
 
@@ -216,8 +329,8 @@ class RecipeWriter
                 $problems[] = 'Ingredient "'.$ingredient->name.'" tidak aktif.';
             }
 
-            if ($required->diff($ingredient->outlets->pluck('id')->map(fn ($id) => (int) $id))->isNotEmpty()) {
-                $problems[] = 'Ingredient "'.$ingredient->name.'" belum tersedia di seluruh outlet Variant ini.';
+            if ($missing = $this->ingredientAvailability($ingredient, $required, $requiredNames)['missing_names']) {
+                $problems[] = 'Ingredient "'.$ingredient->name.'" belum tersedia di seluruh outlet Variant ini (kurang: '.implode(', ', $missing).'). '.self::FIX_GUIDANCE;
             }
 
             if ((float) $item->qty <= 0) {

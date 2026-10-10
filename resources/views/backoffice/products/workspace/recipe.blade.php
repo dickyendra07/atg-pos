@@ -125,7 +125,7 @@
                                                     <span class="pw-chip {{ $pwItem['is_active'] ? '' : 'pw-chip-warn' }}">{{ $pwItem['name'] }}</span>
                                                 @endif
                                                 @unless($pwItem['is_active'])<div class="pw-cell-note pw-warn-text">Ingredient nonaktif.</div>@endunless
-                                                @if(count($pwItem['missing_outlets']))<div class="pw-cell-note pw-warn-text">Belum tersedia di: {{ implode(', ', $pwItem['missing_outlets']) }}.</div>@endif
+                                                @if(count($pwItem['missing_outlets']))<div class="pw-cell-note pw-warn-text">Belum tersedia di: {{ implode(', ', $pwItem['missing_outlets']) }}. {{ \App\Services\RecipeWriter::FIX_GUIDANCE }}</div>@endif
                                                 @if($pwItem['duplicate'])<div class="pw-cell-note pw-warn-text">Ingredient muncul lebih dari sekali (data lama, tidak digabung otomatis).</div>@endif
                                             </td>
                                             <td class="pw-num">{{ \App\Support\QuantityFormatter::twoDecimals($pwItem['qty']) }}</td>

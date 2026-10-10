@@ -56,9 +56,12 @@ class ProductWorkspaceRecipeController extends Controller
 
         $this->authorizeRecipeWork($request, $product, $variant, $recipe, $writer);
 
+        $choices = $writer->ingredientChoices($variant, $recipe ? $recipe->items()->pluck('ingredient_id') : []);
+
         return response()->json([
             'ok' => true,
-            'ingredients' => $this->ingredientOptionList($writer->selectableIngredients($variant, $recipe ? $recipe->items()->pluck('ingredient_id') : [])),
+            'ingredients' => $this->ingredientOptionList($choices['eligible']),
+            'unavailable' => $this->unavailableOptionList($choices['unavailable']),
         ]);
     }
 
@@ -126,7 +129,8 @@ class ProductWorkspaceRecipeController extends Controller
     private function form(Request $request, User $user, Product $product, ProductVariant $variant, ?Recipe $recipe, RecipeWriter $writer)
     {
         $variant->load(['outlets' => fn ($query) => $query->orderBy('name')]);
-        $required = $variant->outlets->pluck('id')->map(fn ($id) => (int) $id);
+        $required = $writer->requiredOutletIds($variant);
+        $choices = $writer->ingredientChoices($variant, $recipe ? $recipe->items()->pluck('ingredient_id') : []);
         $items = $recipe
             ? $recipe->items()->with(['ingredient.outlets:id', 'ingredient.category:id,name'])->orderBy('id')->get()
             : collect();
@@ -140,9 +144,10 @@ class ProductWorkspaceRecipeController extends Controller
                 'recipe' => $recipe,
                 'workspaceReturnTo' => BackofficeReturnUrl::fromRequest($request),
                 'defaultName' => RecipeWriter::defaultName($variant->setRelation('product', $product)),
-                'variantOutlets' => $variant->outlets->pluck('name')->all(),
+                'variantOutlets' => $choices['required_names'],
                 'items' => $items->map(fn (RecipeItem $item) => $this->itemRow($item, $required, $variant->outlets, $ingredientCounts))->all(),
-                'ingredientOptions' => $this->ingredientOptionList($writer->selectableIngredients($variant, $items->pluck('ingredient_id'))),
+                'ingredientOptions' => $this->ingredientOptionList($choices['eligible']),
+                'unavailableOptions' => $this->unavailableOptionList($choices['unavailable']),
                 'optionsUrl' => route('backoffice.products.workspace.recipes.ingredient-options', array_filter([$product, $variant, 'recipe' => $recipe?->id]), false),
                 'ingredientCreateUrl' => IngredientWriter::hasIngredientRole($user)
                     ? route('backoffice.products.workspace.ingredients.create-form', [$product, 'return_section' => 'recipe'], false)
@@ -168,7 +173,7 @@ class ProductWorkspaceRecipeController extends Controller
             'warnings' => array_values(array_filter([
                 ! $ingredient ? 'Ingredient tidak ditemukan.' : null,
                 $ingredient && ! $ingredient->is_active ? 'Ingredient nonaktif.' : null,
-                $missing->isNotEmpty() ? 'Belum tersedia di: '.$variantOutlets->whereIn('id', $missing->all())->pluck('name')->implode(', ').'.' : null,
+                $missing->isNotEmpty() ? 'Belum tersedia di: '.$variantOutlets->whereIn('id', $missing->all())->pluck('name')->implode(', ').'. '.RecipeWriter::FIX_GUIDANCE : null,
                 ($ingredientCounts[$item->ingredient_id] ?? 0) > 1 ? 'Ingredient ini muncul lebih dari sekali di Recipe (data lama, tidak digabung otomatis).' : null,
                 $ingredient && $item->unit !== null && $ingredient->unit !== null && $item->unit !== $ingredient->unit
                     ? 'Unit tersimpan "'.$item->unit.'" berbeda dengan unit Ingredient "'.$ingredient->unit.'" (tidak dikonversi).' : null,
@@ -183,6 +188,17 @@ class ProductWorkspaceRecipeController extends Controller
             'name' => $ingredient->name,
             'unit' => $ingredient->unit,
             'label' => $ingredient->name.' - '.$ingredient->unit.' - '.($ingredient->category->name ?? '-').' - ['.strtoupper($ingredient->ingredientTypeLabel()).']',
+        ])->values()->all();
+    }
+
+    /** Ingredients that fail the rule, shown disabled with the reason (never selectable, never hidden). */
+    private function unavailableOptionList(Collection $unavailable): array
+    {
+        return $unavailable->map(fn (array $row) => [
+            'id' => (int) $row['ingredient']->id,
+            'name' => $row['ingredient']->name,
+            'reason' => $row['reason'],
+            'label' => $row['ingredient']->name.' - '.$row['ingredient']->unit.' — '.$row['reason'],
         ])->values()->all();
     }
 }

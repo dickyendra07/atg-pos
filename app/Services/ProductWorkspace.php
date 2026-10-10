@@ -356,7 +356,9 @@ class ProductWorkspace
             // Inline changes need the Recipe policy AND a non-ambiguous Variant. Ambiguous stays read-only.
             $editable = $mutation['allowed'] && $status !== 'ambiguous';
             $variantOutlets = $variant->outlets;
-            $required = $variantOutlets->pluck('id')->map(fn ($id) => (int) $id);
+            // Sellable outlets only (active Variant AND active Product outlets): the same scope the Recipe
+            // Editor and activation rules use, so a closed outlet is never reported as a missing assignment.
+            $required = RecipeWriter::sellableOutletIds($variant, $product->outlets);
 
             return [
                 'variant_id' => (int) $variant->id,

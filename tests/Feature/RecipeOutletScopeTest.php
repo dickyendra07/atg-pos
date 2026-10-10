@@ -257,8 +257,15 @@ class RecipeOutletScopeTest extends TestCase
         $offered = $response->viewData('ingredients')->pluck('id')->all();
 
         $this->assertEqualsCanonicalizing([$both->id, $this->spare->id], $offered);
-        $response->assertSee('Shared Cream')->assertDontSee('BXC Only Powder')->assertDontSee('Retired Syrup');
-        $response->assertSee('Variant ini tersedia di: BXC, Bazaar TikTok');
+        // Not selectable, but no longer hidden: they are listed disabled WITH the reason.
+        $unavailableIds = $response->viewData('unavailableIngredients')->pluck('ingredient.id')->all();
+        $this->assertContains($bxcOnly->id, $unavailableIds);
+        $this->assertContains($inactive->id, $unavailableIds);
+        $this->assertNotContains($both->id, $unavailableIds);
+        $response->assertSee('Shared Cream');
+        $response->assertSeeInOrder(['Tidak tersedia (tidak bisa dipilih)', 'BXC Only Powder', 'belum tersedia di Bazaar TikTok']);
+        $response->assertSeeInOrder(['Retired Syrup', 'Ingredient nonaktif']);
+        $response->assertSee('Recipe ini dipakai di: BXC, Bazaar TikTok');
 
         // Everything not offered is rejected by the server ...
         $this->post(route('backoffice.recipes.items.store', $this->sharedRecipe), ['ingredient_id' => $bxcOnly->id, 'qty' => 1])

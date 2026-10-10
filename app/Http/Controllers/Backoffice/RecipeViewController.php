@@ -13,11 +13,11 @@ use App\Services\BackofficeOutletContext;
 use App\Services\ProductAccessPolicy;
 use App\Services\ProductWorkspace;
 use App\Services\RecipeAccessPolicy;
+use App\Services\RecipeImportWriter;
 use App\Services\RecipeWriter;
 use App\Support\BackofficeReturnUrl;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -295,6 +295,7 @@ class RecipeViewController extends Controller
 
         $recipe->load([
             'items.ingredient.category',
+            'items.ingredient.outlets:id',
             'variant.product.outlets',
             'variant.outlets',
         ]);
@@ -321,21 +322,33 @@ class RecipeViewController extends Controller
                 || $this->recipePolicy()->canMutateVariantRecipe($user, $variant))
             ->values();
 
-        // Same rule as storeItem(): active, not already in the Recipe, and available in every outlet
-        // of the Recipe's Variant.
+        // Same rule as storeItem(): active, not already in the Recipe, and available in every SELLABLE outlet
+        // of the Recipe's Variant. Ingredients that fail it stay visible (disabled) with the reason.
         $requiredOutletIds = $this->writer()->requiredOutletIds($recipe->variant);
-        $ingredients = $this->writer()->selectableIngredients($recipe->variant, $recipe->items->pluck('ingredient_id'));
+        $requiredNames = $this->writer()->outletNames($requiredOutletIds);
+        $choices = $this->writer()->ingredientChoices($recipe->variant, $recipe->items->pluck('ingredient_id'));
+
+        // Stored items are never changed here; invalid ones are only flagged (read-only).
+        $itemWarnings = $recipe->items->mapWithKeys(function (RecipeItem $item) use ($requiredOutletIds, $requiredNames) {
+            if (! $item->ingredient) {
+                return [$item->id => ['Ingredient tidak ditemukan.']];
+            }
+
+            $reason = RecipeWriter::availabilityReason($this->writer()->ingredientAvailability($item->ingredient, $requiredOutletIds, $requiredNames));
+
+            return [$item->id => $reason ? [ucfirst($reason).'. '.RecipeWriter::FIX_GUIDANCE] : []];
+        });
 
         return view('backoffice.recipes.edit', [
             'user' => $user,
             'recipe' => $recipe,
             'variants' => $variants,
-            'ingredients' => $ingredients,
+            'ingredients' => $choices['eligible'],
+            'unavailableIngredients' => $choices['unavailable'],
+            'itemWarnings' => $itemWarnings,
             'canMutate' => $canMutate,
             'mutationNotice' => $mutation['message'],
-            'variantOutlets' => $requiredOutletIds->isEmpty()
-                ? collect()
-                : Outlet::whereIn('id', $requiredOutletIds)->orderBy('name')->pluck('name'),
+            'variantOutlets' => $requiredNames->values(),
         ]);
     }
 
@@ -604,130 +617,68 @@ class RecipeViewController extends Controller
                 ->with('error', 'Header CSV tidak sesuai template. Pastikan urutannya: variant_code,ingredient_name,qty,is_active');
         }
 
-        $imported = 0;
-        $updated = 0;
-        $skipped = 0;
-        $errors = [];
+        // Staged import (see RecipeImportWriter): rows are validated against the Recipe Editor rules while
+        // reading, nothing is written until the end, and a Variant with ANY rejected row is not touched at all.
+        $import = new RecipeImportWriter($this->writer(), $this->recipePolicy(), $user);
 
-        DB::transaction(function () use ($lines, $delimiter, $user, &$imported, &$updated, &$skipped, &$errors) {
-            foreach (array_slice($lines, 1) as $index => $line) {
-                $rowNumber = $index + 2;
+        foreach (array_slice($lines, 1) as $index => $line) {
+            $rowNumber = $index + 2;
 
-                if (trim($line) === '') {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: baris kosong.";
+            if (trim($line) === '') {
+                $import->skipRow("Baris {$rowNumber}: baris kosong.");
 
-                    continue;
-                }
-
-                $row = str_getcsv($line, $delimiter);
-
-                if (count($row) < 4) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: jumlah kolom kurang dari 4.";
-
-                    continue;
-                }
-
-                $variantCode = trim($row[0] ?? '');
-                $ingredientName = trim($row[1] ?? '');
-                $qty = $this->parseRecipeQty($row[2] ?? null);
-                $isActiveRaw = trim($row[3] ?? '');
-
-                if ($variantCode === '') {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: variant_code kosong.";
-
-                    continue;
-                }
-
-                if ($ingredientName === '') {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: ingredient_name kosong.";
-
-                    continue;
-                }
-
-                if ($qty === null || $qty <= 0) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: qty tidak valid.";
-
-                    continue;
-                }
-
-                $variant = ProductVariant::with('product')
-                    ->whereRaw('LOWER(code) = ?', [mb_strtolower($variantCode)])
-                    ->first();
-
-                if (! $variant) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: variant code '{$variantCode}' tidak ditemukan.";
-
-                    continue;
-                }
-
-                if ($denied = $this->importVariantDenial($variant, $user)) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: variant '{$variantCode}' dilewati. {$denied}";
-
-                    continue;
-                }
-
-                $ingredient = $this->findIngredientByName($ingredientName);
-
-                if (! $ingredient) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: ingredient '{$ingredientName}' tidak ditemukan.";
-
-                    continue;
-                }
-
-                $isActive = in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true) ? 1 : 0;
-
-                $recipe = Recipe::firstOrCreate(
-                    ['product_variant_id' => $variant->id],
-                    [
-                        'product_id' => $variant->product_id,
-                        'name' => ($variant->product->name ?? 'Recipe').' - '.$variant->name,
-                        'is_active' => $isActive,
-                    ]
-                );
-
-                if (! $recipe->wasRecentlyCreated && $recipe->is_active !== (bool) $isActive) {
-                    $recipe->update([
-                        'is_active' => $isActive,
-                    ]);
-                }
-
-                $recipeItem = RecipeItem::where('recipe_id', $recipe->id)
-                    ->where('ingredient_id', $ingredient->id)
-                    ->first();
-
-                if ($recipeItem) {
-                    $recipeItem->update([
-                        'qty' => $qty,
-                        'unit' => $ingredient->unit,
-                    ]);
-                    $updated++;
-
-                    continue;
-                }
-
-                RecipeItem::create([
-                    'recipe_id' => $recipe->id,
-                    'ingredient_id' => $ingredient->id,
-                    'qty' => $qty,
-                    'unit' => $ingredient->unit,
-                ]);
-
-                $imported++;
+                continue;
             }
-        });
 
-        return redirect()
-            ->route('backoffice.recipes.index')
-            ->with('success', "Import recipes CSV selesai. Data masuk: {$imported}. Data update: {$updated}. Data dilewati: {$skipped}.")
-            ->with('import_errors', $errors);
+            $row = str_getcsv($line, $delimiter);
+
+            if (count($row) < 4) {
+                $import->skipRow("Baris {$rowNumber}: jumlah kolom kurang dari 4.");
+
+                continue;
+            }
+
+            $variantCode = trim($row[0] ?? '');
+            $ingredientName = trim($row[1] ?? '');
+            $qty = $this->parseRecipeQty($row[2] ?? null);
+            $isActiveRaw = trim($row[3] ?? '');
+
+            if ($variantCode === '') {
+                $import->skipRow("Baris {$rowNumber}: variant_code kosong.");
+
+                continue;
+            }
+
+            $variant = ProductVariant::with('product')
+                ->whereRaw('LOWER(code) = ?', [mb_strtolower($variantCode)])
+                ->first();
+
+            if (! $variant) {
+                $import->skipRow("Baris {$rowNumber}: variant code '{$variantCode}' tidak ditemukan.");
+
+                continue;
+            }
+
+            $label = "'{$variantCode}'";
+
+            if ($ingredientName === '') {
+                $import->rejectRow($variant, $rowNumber, 'ingredient_name kosong.', $label);
+
+                continue;
+            }
+
+            $import->stage(
+                $variant,
+                $rowNumber,
+                $label,
+                $this->findIngredientByName($ingredientName),
+                $ingredientName,
+                $qty,
+                in_array($isActiveRaw, ['1', 'true', 'TRUE', 'yes', 'YES'], true)
+            );
+        }
+
+        return $this->finishRecipeImport($import->apply(), 'CSV');
     }
 
     protected function importClientRecipeSpreadsheet(string $realPath, $user)
@@ -741,159 +692,97 @@ class RecipeViewController extends Controller
         $currentVariantName = null;
         $currentVariant = null;
 
-        $imported = 0;
-        $updated = 0;
-        $skipped = 0;
-        $errors = [];
+        $import = new RecipeImportWriter($this->writer(), $this->recipePolicy(), $user);
 
-        $outOfScopeVariants = [];
+        foreach ($rows as $rowNumber => $row) {
+            $productCell = $this->cleanRecipeCell($row['A'] ?? '');
+            $variantCell = $this->cleanRecipeCell($row['B'] ?? '');
+            $ingredientName = $this->cleanRecipeCell($row['C'] ?? '');
+            $qty = $this->parseRecipeQty($row['D'] ?? null);
+            $unitCell = $this->cleanRecipeCell($row['E'] ?? '');
 
-        DB::transaction(function () use ($rows, $user, &$outOfScopeVariants, &$currentProductName, &$currentProduct, &$currentVariantName, &$currentVariant, &$imported, &$updated, &$skipped, &$errors) {
-            foreach ($rows as $rowNumber => $row) {
-                $productCell = $this->cleanRecipeCell($row['A'] ?? '');
-                $variantCell = $this->cleanRecipeCell($row['B'] ?? '');
-                $ingredientName = $this->cleanRecipeCell($row['C'] ?? '');
-                $qty = $this->parseRecipeQty($row['D'] ?? null);
-                $unitCell = $this->cleanRecipeCell($row['E'] ?? '');
-
-                if ($rowNumber <= 1 && $this->looksLikeRecipeHeader($productCell, $variantCell, $ingredientName)) {
-                    continue;
-                }
-
-                if ($productCell !== '') {
-                    $currentProductName = ltrim($productCell, "* \t\n\r\0\x0B");
-                    $currentProduct = $this->findProductByName($currentProductName);
-                    $currentVariantName = null;
-                    $currentVariant = null;
-
-                    if (! $currentProduct) {
-                        $skipped++;
-                        $errors[] = "Baris {$rowNumber}: product/menu '{$currentProductName}' tidak ditemukan di master Product.";
-
-                        continue;
-                    }
-                }
-
-                if ($variantCell !== '') {
-                    $currentVariantName = $variantCell;
-
-                    if ($currentProduct) {
-                        $currentVariant = $this->findVariantForProduct($currentProduct->id, $currentVariantName);
-                    }
-
-                    if (! $currentVariant) {
-                        $skipped++;
-                        $errors[] = "Baris {$rowNumber}: variant '{$currentVariantName}' untuk product '{$currentProductName}' tidak ditemukan.";
-
-                        continue;
-                    }
-                }
-
-                if ($ingredientName !== '' && $currentProduct) {
-                    $possibleVariant = $this->findVariantForProduct($currentProduct->id, $ingredientName);
-
-                    if ($possibleVariant) {
-                        $currentVariantName = $ingredientName;
-                        $currentVariant = $possibleVariant;
-
-                        continue;
-                    }
-                }
-
-                if ($ingredientName === '' && ($qty === null || $qty <= 0)) {
-                    continue;
-                }
-
-                if (! $currentProduct || ! $currentVariant) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: product/variant belum terbaca. Pastikan kolom A berisi *Nama Menu dan kolom B berisi variant.";
-
-                    continue;
-                }
-
-                if ($ingredientName === '') {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: ingredient kosong.";
-
-                    continue;
-                }
-
-                if ($qty === null || $qty <= 0) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: qty untuk ingredient '{$ingredientName}' tidak valid.";
-
-                    continue;
-                }
-
-                if ($qty > 5000) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: qty '{$qty}' untuk '{$ingredientName}' terlalu besar. Cek kemungkinan cell Excel salah format.";
-
-                    continue;
-                }
-
-                if ($denied = $this->importVariantDenial($currentVariant, $user)) {
-                    $skipped++;
-
-                    if (! isset($outOfScopeVariants[$currentVariant->id])) {
-                        $outOfScopeVariants[$currentVariant->id] = true;
-                        $errors[] = "Baris {$rowNumber}: variant '{$currentVariant->name}' untuk product '{$currentProductName}' dilewati (semua baris variant ini). {$denied}";
-                    }
-
-                    continue;
-                }
-
-                $ingredient = $this->findIngredientByName($ingredientName);
-
-                if (! $ingredient) {
-                    $skipped++;
-                    $errors[] = "Baris {$rowNumber}: ingredient '{$ingredientName}' tidak ditemukan di master Ingredient.";
-
-                    continue;
-                }
-
-                $recipe = Recipe::firstOrCreate(
-                    ['product_variant_id' => $currentVariant->id],
-                    [
-                        'product_id' => $currentVariant->product_id,
-                        'name' => ($currentProduct->name ?? $currentProductName).' - '.$currentVariant->name,
-                        'is_active' => true,
-                    ]
-                );
-
-                if (! $recipe->is_active) {
-                    $recipe->update(['is_active' => true]);
-                }
-
-                $recipeItem = RecipeItem::where('recipe_id', $recipe->id)
-                    ->where('ingredient_id', $ingredient->id)
-                    ->first();
-
-                if ($recipeItem) {
-                    $recipeItem->update([
-                        'qty' => $qty,
-                        'unit' => $ingredient->unit ?: $unitCell,
-                    ]);
-                    $updated++;
-
-                    continue;
-                }
-
-                RecipeItem::create([
-                    'recipe_id' => $recipe->id,
-                    'ingredient_id' => $ingredient->id,
-                    'qty' => $qty,
-                    'unit' => $ingredient->unit ?: $unitCell,
-                ]);
-
-                $imported++;
+            if ($rowNumber <= 1 && $this->looksLikeRecipeHeader($productCell, $variantCell, $ingredientName)) {
+                continue;
             }
-        });
+
+            if ($productCell !== '') {
+                $currentProductName = ltrim($productCell, "* \t\n\r\0\x0B");
+                $currentProduct = $this->findProductByName($currentProductName);
+                $currentVariantName = null;
+                $currentVariant = null;
+
+                if (! $currentProduct) {
+                    $import->skipRow("Baris {$rowNumber}: product/menu '{$currentProductName}' tidak ditemukan di master Product.");
+
+                    continue;
+                }
+            }
+
+            if ($variantCell !== '') {
+                $currentVariantName = $variantCell;
+
+                if ($currentProduct) {
+                    $currentVariant = $this->findVariantForProduct($currentProduct->id, $currentVariantName);
+                }
+
+                if (! $currentVariant) {
+                    $import->skipRow("Baris {$rowNumber}: variant '{$currentVariantName}' untuk product '{$currentProductName}' tidak ditemukan.");
+
+                    continue;
+                }
+            }
+
+            if ($ingredientName !== '' && $currentProduct) {
+                $possibleVariant = $this->findVariantForProduct($currentProduct->id, $ingredientName);
+
+                if ($possibleVariant) {
+                    $currentVariantName = $ingredientName;
+                    $currentVariant = $possibleVariant;
+
+                    continue;
+                }
+            }
+
+            if ($ingredientName === '' && ($qty === null || $qty <= 0)) {
+                continue;
+            }
+
+            if (! $currentProduct || ! $currentVariant) {
+                $import->skipRow("Baris {$rowNumber}: product/variant belum terbaca. Pastikan kolom A berisi *Nama Menu dan kolom B berisi variant.");
+
+                continue;
+            }
+
+            $label = "'{$currentVariant->name}' untuk product '{$currentProductName}' (semua baris variant ini)";
+
+            if ($ingredientName === '') {
+                $import->rejectRow($currentVariant, $rowNumber, 'ingredient kosong.', $label);
+
+                continue;
+            }
+
+            if ($qty !== null && $qty > 5000) {
+                $import->rejectRow($currentVariant, $rowNumber, "qty '{$qty}' untuk '{$ingredientName}' terlalu besar. Cek kemungkinan cell Excel salah format.", $label);
+
+                continue;
+            }
+
+            // The sheet has no active column. Activation is only REQUESTED here and still has to pass
+            // RecipeWriter::activationProblems(); it is never forced.
+            $import->stage($currentVariant, $rowNumber, $label, $this->findIngredientByName($ingredientName), $ingredientName, $qty, true, $unitCell);
+        }
+
+        return $this->finishRecipeImport($import->apply(), 'Excel client');
+    }
+
+    protected function finishRecipeImport(array $result, string $kind)
+    {
+        $notActivated = $result['not_activated'] > 0 ? " Recipe tidak diaktifkan (belum memenuhi syarat): {$result['not_activated']}." : '';
 
         return redirect()
             ->route('backoffice.recipes.index')
-            ->with('success', "Import recipes Excel client selesai. Data masuk: {$imported}. Data update: {$updated}. Data dilewati: {$skipped}.")
-            ->with('import_errors', $errors);
+            ->with('success', "Import recipes {$kind} selesai. Data masuk: {$result['imported']}. Data update: {$result['updated']}. Data dilewati: {$result['skipped']}.{$notActivated}")
+            ->with('import_errors', $result['errors']);
     }
 
     protected function cleanRecipeCell($value): string
@@ -959,6 +848,7 @@ class RecipeViewController extends Controller
         $normalized = $this->normalizeRecipeName($name);
 
         return Ingredient::query()
+            ->with('outlets:id')
             ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
             ->first();
     }
