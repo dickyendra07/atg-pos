@@ -130,11 +130,13 @@ class ReceiptItemNamePrintTest extends TestCase
         $this->assertSame('Alamat BXC', $payload['address']);
     }
 
-    public function test_the_cashier_printer_reads_outlet_name_and_address_from_the_same_payload(): void
+    public function test_the_cashier_printer_reads_the_brand_and_address_from_the_same_payload(): void
     {
         $cashier = file_get_contents(resource_path('views/cashier/index.blade.php'));
 
-        $this->assertStringContainsString('receipt.outlet_name', $cashier);
+        // the outlet name stays in the payload but is not printed in the header
+        $this->assertStringNotContainsString('receipt.outlet_name', $cashier);
+        $this->assertStringContainsString('receipt.brand_name', $cashier);
         $this->assertStringContainsString('receipt.address', $cashier);
         $this->assertStringNotContainsString('Alamat outlet / cabang', $cashier);
     }

@@ -193,9 +193,10 @@
         }
     }
     $receiptBrandName = "Lee Ong's Tea x Waspffle";
-    // Outlet identity always comes from the transaction's own outlet (never the logged-in outlet), so a
-    // reprint of an old sale still shows the outlet that made it. The address is the saved outlet address,
-    // on one line; with none saved the line is left out (the printers skip a null address).
+    // Outlet data always comes from the transaction's own outlet (never the logged-in outlet), so a
+    // reprint of an old sale still shows the address of the outlet that made it. The printed header is the
+    // brand plus this address on one line; with none saved the line is left out (the printers skip a null
+    // address). The outlet name is not printed; it stays in the payload only for older clients.
     $receiptOutletName = trim((string) ($transaction->outlet->name ?? ''));
     $receiptAddress = trim((string) preg_replace('/\s+/', ' ', (string) ($transaction->outlet->address ?? '')));
     $cashierName = $transaction->user->name ?? '-';
@@ -251,6 +252,7 @@
 
     $receiptPayload = [
         'brand_name' => $receiptBrandName,
+        // Kept in the payload for older clients; the printed header shows only the brand and the address.
         'outlet_name' => $receiptOutletName !== '' ? $receiptOutletName : null,
         'address' => $receiptAddress !== '' ? $receiptAddress : null,
         'transaction_number' => $transactionNumber,
@@ -492,15 +494,6 @@
                 align: 'center',
                 gap: 4,
             });
-
-            if (receipt.outlet_name) {
-                pushWrapped(receipt.outlet_name, {
-                    size: 17,
-                    weight: '700',
-                    align: 'center',
-                    gap: 4,
-                });
-            }
 
             if (receipt.address) {
                 pushWrapped(receipt.address, {
@@ -894,10 +887,6 @@
             raw([ESC, 0x61, 0x01]); // center
 
             wrapBluetoothText(receipt.brand_name || "Lee Ong's Tea x Waspffle", widthChars).forEach(line);
-
-            if (receipt.outlet_name) {
-                wrapBluetoothText(receipt.outlet_name, widthChars).forEach(line);
-            }
 
             if (receipt.address) {
                 wrapBluetoothText(receipt.address, widthChars).forEach(line);
