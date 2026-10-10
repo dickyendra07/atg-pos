@@ -188,22 +188,25 @@
     @endif
 
 
-    @if(session('similar_products'))
+    @if(session()->has('similar_products'))
+        @php($similarVisible = session('similar_products', []))
+        @php($similarHidden = (int) session('similar_hidden', 0))
         <div class="alert" data-similar-products style="background:#fff7ed;color:#9a3412;">
-            <strong>Product serupa sudah ada.</strong> Sebaiknya tambahkan outlet ke Product yang sudah ada, bukan membuat Product baru:
-            <ul style="margin:8px 0 0;padding-left:18px;">
-                @foreach(session('similar_products') as $similarProduct)
-                    <li data-similar-product="{{ $similarProduct['id'] }}">
-                        <strong>{{ $similarProduct['name'] }}</strong> (kode {{ $similarProduct['code'] }}{{ $similarProduct['is_active'] ? '' : ', nonaktif' }}),
-                        outlet: {{ count($similarProduct['outlets']) ? implode(', ', $similarProduct['outlets']) : '-' }}.
-                        @if($similarProduct['url'])
+            <strong>Product serupa sudah ada.</strong> Sebaiknya tambahkan outlet ke Product yang sudah ada, bukan membuat Product baru.
+            @if(count($similarVisible))
+                <ul style="margin:8px 0 0;padding-left:18px;">
+                    @foreach($similarVisible as $similarProduct)
+                        <li data-similar-product="{{ $similarProduct['id'] }}">
+                            <strong>{{ $similarProduct['name'] }}</strong> (kode {{ $similarProduct['code'] }}{{ $similarProduct['is_active'] ? '' : ', nonaktif' }}),
+                            outlet: {{ count($similarProduct['outlets']) ? implode(', ', $similarProduct['outlets']) : '-' }}.
                             <a href="{{ $similarProduct['url'] }}">Buka Product &amp; atur outlet</a>
-                        @else
-                            Untuk outlet Anda, gunakan Import CSV dengan kode {{ $similarProduct['code'] }}.
-                        @endif
-                    </li>
-                @endforeach
-            </ul>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+            @if($similarHidden > 0)
+                <div data-similar-hidden style="margin-top:8px;">{{ \App\Services\ProductDuplicateGuard::hiddenNotice($similarHidden) }}</div>
+            @endif
             <label style="display:flex;gap:8px;align-items:flex-start;margin-top:10px;">
                 <input type="checkbox" name="confirm_similar" value="1" form="product-create-form" style="width:auto;margin-top:3px;">
                 <span>Ini memang Product yang berbeda. Tetap buat Product baru.</span>

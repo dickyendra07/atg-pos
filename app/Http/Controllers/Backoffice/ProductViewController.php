@@ -123,9 +123,12 @@ class ProductViewController extends Controller
         $similar = $guard->similar($validated['name'], (int) $validated['brand_id'], (int) $validated['product_category_id']);
 
         if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
+            $split = $guard->split($similar, $user);
+
             return back()
                 ->withInput($request->except('confirm_similar'))
-                ->with('similar_products', $similar->map(fn ($existing) => $guard->describe($existing, $user))->all());
+                ->with('similar_products', $split['visible'])
+                ->with('similar_hidden', $split['hidden']);
         }
 
         $product = $this->writer()->create($user, collect($validated)->except('confirm_similar')->all());
@@ -179,9 +182,12 @@ class ProductViewController extends Controller
         if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
             $guard = app(ProductDuplicateGuard::class);
 
+            $split = $guard->split($similar, $user);
+
             return back()
                 ->withInput($request->except('confirm_similar'))
-                ->with('similar_products', $similar->map(fn ($existing) => $guard->describe($existing, $user))->all());
+                ->with('similar_products', $split['visible'])
+                ->with('similar_hidden', $split['hidden']);
         }
 
         $this->writer()->update($user, $product, $attributes);
@@ -361,7 +367,7 @@ class ProductViewController extends Controller
         $touchedProducts = [];
 
         // One transaction: an unexpected failure rolls the whole file back instead of leaving half of it behind.
-        DB::transaction(function () use ($lines, $delimiter, $targetOutletId, $allowSimilar, $guard, &$imported, &$assigned, &$unchanged, &$skipped, &$errors, &$warnings, &$touchedProducts) {
+        DB::transaction(function () use ($lines, $delimiter, $user, $targetOutletId, $allowSimilar, $guard, &$imported, &$assigned, &$unchanged, &$skipped, &$errors, &$warnings, &$touchedProducts) {
             foreach (array_slice($lines, 1) as $index => $line) {
                 $rowNumber = $index + 2;
 
@@ -457,7 +463,7 @@ class ProductViewController extends Controller
 
                 if ($similar->isNotEmpty() && ! $allowSimilar) {
                     $skipped++;
-                    $errors[] = "Baris {$rowNumber}: \"{$name}\" mirip dengan Product yang sudah ada: ".$similar->map(fn ($existing) => $guard->line($existing))->implode('; ').'. Tidak dibuat. Untuk menyediakannya di outlet ini, import dengan kode Product yang sudah ada; atau centang "Buat meskipun mirip" jika memang Product berbeda.';
+                    $errors[] = "Baris {$rowNumber}: \"{$name}\" mirip dengan Product yang sudah ada. ".rtrim($guard->importLines($similar, $user), '.').'. Tidak dibuat. Untuk menyediakannya di outlet ini, import dengan kode Product yang sudah ada; atau centang "Buat meskipun mirip" jika memang Product berbeda.';
 
                     continue;
                 }

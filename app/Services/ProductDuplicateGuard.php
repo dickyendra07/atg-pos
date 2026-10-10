@@ -14,6 +14,12 @@ use Illuminate\Support\Collection;
  *
  * The safe way to make an existing Product available at another outlet is to assign it there (Product
  * Workspace > Outlets, or Import CSV with the existing Product code), not to create a second Product.
+ *
+ * A warning never exposes more than the user may see: a similar Product is described in full (id, name, code,
+ * status, outlets, link) only when ProductAccessPolicy lets the user open it (Owner / Admin Pusat: always). For
+ * a similar Product outside that access the user only learns that "N more look-alike Products exist outside
+ * your access" and is pointed to Owner / Admin Pusat - no id, code, name, outlet list or link. Every warning
+ * (Add Product, rename, CSV import) goes through split() / importLines() so they all follow the same rule.
  */
 class ProductDuplicateGuard
 {
@@ -50,13 +56,17 @@ class ProductDuplicateGuard
     }
 
     /**
-     * What a warning shows about one existing Product: identity, code, status, outlets, and a Workspace link
-     * only when the user may open it.
+     * Full identity of one existing Product for a warning, or null when $user may not open it (callers never
+     * show anything else about such a Product).
      *
-     * @return array{id: int, name: string, code: string, is_active: bool, outlets: string[], url: ?string}
+     * @return array{id: int, name: string, code: string, is_active: bool, outlets: string[], url: ?string}|null
      */
-    public function describe(Product $product, User $user): array
+    public function describe(Product $product, User $user): ?array
     {
+        if (! app(ProductAccessPolicy::class)->canAccess($user, $product)) {
+            return null;
+        }
+
         $product->loadMissing('outlets');
 
         return [
@@ -65,17 +75,60 @@ class ProductDuplicateGuard
             'code' => $product->code,
             'is_active' => (bool) $product->is_active,
             'outlets' => $product->outlets->pluck('name')->sort()->values()->all(),
-            'url' => app(ProductAccessPolicy::class)->canAccess($user, $product)
-                ? ProductWorkspace::url($product, 'outlets', BackofficeReturnUrl::fromRequest(request()))
-                : null,
+            'url' => ProductWorkspace::url($product, 'outlets', BackofficeReturnUrl::fromRequest(request())),
         ];
     }
 
-    /** One line for CSV import reports. */
-    public function line(Product $product): string
+    /**
+     * Splits look-alikes into what $user may see in full and how many are hidden from them.
+     *
+     * @param  Collection<int, Product>  $similar
+     * @return array{visible: array<int, array>, hidden: int}
+     */
+    public function split(Collection $similar, User $user): array
     {
-        $product->loadMissing('outlets');
+        $visible = $similar->map(fn (Product $product) => $this->describe($product, $user))->filter()->values();
 
-        return '"'.$product->name.'" (kode '.$product->code.', outlet: '.($product->outlets->pluck('name')->sort()->implode(', ') ?: '-').')';
+        return ['visible' => $visible->all(), 'hidden' => $similar->count() - $visible->count()];
+    }
+
+    /** Shown whenever look-alikes exist that the user may not see: no identity, only where to go. */
+    public static function hiddenNotice(int $hidden): string
+    {
+        return 'Ada '.$hidden.' Product serupa lain di luar akses akun ini (detailnya tidak ditampilkan). Hubungi Owner/Admin Pusat untuk menyelesaikan duplikasi katalog.';
+    }
+
+    /** One human sentence for a JSON / toast confirmation (rename). */
+    public function confirmationMessage(array $split): string
+    {
+        $parts = [];
+
+        if ($split['visible'] !== []) {
+            $parts[] = 'Product serupa sudah ada: '.collect($split['visible'])
+                ->map(fn ($row) => $row['name'].' (kode '.$row['code'].', outlet: '.(implode(', ', $row['outlets']) ?: '-').')')
+                ->implode('; ').'.';
+        }
+
+        if ($split['hidden'] > 0) {
+            $parts[] = self::hiddenNotice($split['hidden']);
+        }
+
+        return implode(' ', $parts).' Sebaiknya tambahkan outlet ke Product yang sudah ada, bukan membuat Product kembar. Tetap simpan perubahan ini?';
+    }
+
+    /** What a CSV import row reports about look-alikes, with the same visibility rule. */
+    public function importLines(Collection $similar, User $user): string
+    {
+        $split = $this->split($similar, $user);
+
+        $lines = collect($split['visible'])
+            ->map(fn ($row) => '"'.$row['name'].'" (kode '.$row['code'].', outlet: '.(implode(', ', $row['outlets']) ?: '-').')')
+            ->all();
+
+        if ($split['hidden'] > 0) {
+            $lines[] = self::hiddenNotice($split['hidden']);
+        }
+
+        return implode('; ', $lines);
     }
 }

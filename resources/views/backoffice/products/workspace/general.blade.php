@@ -18,16 +18,23 @@
         </div>
     </div>
 
-    @if(session('similar_products'))
+    @if(session()->has('similar_products'))
+        @php($pwSimilarVisible = session('similar_products', []))
+        @php($pwSimilarHidden = (int) session('similar_hidden', 0))
         <div class="pw-alert pw-alert-warn" data-pw-similar-products>
-            <strong>Product serupa sudah ada.</strong> Sebaiknya tambahkan outlet ke Product yang sudah ada, bukan membuat Product kembar:
-            <ul>
-                @foreach(session('similar_products') as $pwSimilar)
-                    <li data-pw-similar-product="{{ $pwSimilar['id'] }}">
-                        <strong>{{ $pwSimilar['name'] }}</strong> (kode {{ $pwSimilar['code'] }}{{ $pwSimilar['is_active'] ? '' : ', nonaktif' }}), outlet: {{ count($pwSimilar['outlets']) ? implode(', ', $pwSimilar['outlets']) : '-' }}
-                    </li>
-                @endforeach
-            </ul>
+            <strong>Product serupa sudah ada.</strong> Sebaiknya tambahkan outlet ke Product yang sudah ada, bukan membuat Product kembar.
+            @if(count($pwSimilarVisible))
+                <ul>
+                    @foreach($pwSimilarVisible as $pwSimilar)
+                        <li data-pw-similar-product="{{ $pwSimilar['id'] }}">
+                            <strong>{{ $pwSimilar['name'] }}</strong> (kode {{ $pwSimilar['code'] }}{{ $pwSimilar['is_active'] ? '' : ', nonaktif' }}), outlet: {{ count($pwSimilar['outlets']) ? implode(', ', $pwSimilar['outlets']) : '-' }}
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+            @if($pwSimilarHidden > 0)
+                <div data-pw-similar-hidden>{{ \App\Services\ProductDuplicateGuard::hiddenNotice($pwSimilarHidden) }}</div>
+            @endif
             <label class="pw-check">
                 <input type="checkbox" name="confirm_similar" value="1">
                 <span>Ini memang Product yang berbeda. Tetap simpan perubahan ini.</span>

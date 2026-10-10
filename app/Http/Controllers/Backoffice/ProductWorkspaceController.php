@@ -38,16 +38,16 @@ class ProductWorkspaceController extends Controller
         $similar = $writer->similarAfterGeneralChange($product, $attributes);
 
         if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
+            // Only Products this user may open are described; the rest is a generic notice (ProductDuplicateGuard).
             $guard = app(ProductDuplicateGuard::class);
-            $list = $similar->map(fn (Product $existing) => $guard->describe($existing, $user))->all();
-            $message = 'Product serupa sudah ada: '.collect($list)->map(fn ($row) => $row['name'].' (kode '.$row['code'].', outlet: '.(implode(', ', $row['outlets']) ?: '-').')')->implode('; ')
-                .'. Sebaiknya tambahkan outlet ke Product itu, bukan membuat Product kembar. Tetap simpan perubahan ini?';
+            $split = $guard->split($similar, $user);
+            $message = $guard->confirmationMessage($split);
 
             if ($request->expectsJson()) {
-                return response()->json(['ok' => false, 'needs_confirmation' => 'similar_product', 'message' => $message, 'similar_products' => $list], 409);
+                return response()->json(['ok' => false, 'needs_confirmation' => 'similar_product', 'message' => $message, 'similar_products' => $split['visible'], 'similar_hidden' => $split['hidden']], 409);
             }
 
-            return back()->withInput()->with('similar_products', $list);
+            return back()->withInput()->with('similar_products', $split['visible'])->with('similar_hidden', $split['hidden']);
         }
 
         $writer->updateGeneral($user, $product, $attributes);
