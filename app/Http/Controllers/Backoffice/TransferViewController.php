@@ -10,14 +10,25 @@ use App\Models\StockMovement;
 use App\Models\StockTransfer;
 use App\Models\Warehouse;
 use App\Services\BackofficeOutletContext;
+use Illuminate\Database\ConcurrencyErrorDetector;
+use Illuminate\Database\DeadlockException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class TransferViewController extends Controller
 {
+    /** Bounded attempts for a whole transition/posting transaction; only a deadlock/lock-timeout is ever retried. */
+    private const TRANSACTION_ATTEMPTS = 3;
+
+    private const LOCATION_TYPES = ['warehouse', 'outlet'];
+
+    private const BUSY_MESSAGE = 'Transfer sedang diproses oleh permintaan lain. Tidak ada stok yang berubah, silakan coba lagi.';
+
     protected function authorizeAccess()
     {
         $user = Auth::user()->load(['role', 'outlet']);
@@ -180,33 +191,150 @@ class TransferViewController extends Controller
         abort(403, 'Kamu tidak punya akses ke outlet yang terlibat dalam transfer ini.');
     }
 
+    /**
+     * Runs one status transition under a row lock on the REAL stock_transfers row.
+     *
+     * The lock is taken first in every transition; the stock balances come second (see lockStockBalances()). The
+     * status the transition decides on is the one read from the locked row, never the route-bound model: that one was
+     * loaded before the request had any lock and can be arbitrarily stale. A concurrent request for the same
+     * transfer waits here and then sees the committed result, so it can no longer post the same stock twice.
+     *
+     * The whole closure is atomic and may be run again after a deadlock, so it must stay free of side effects
+     * outside the database. Permission is checked again on the locked row.
+     */
+    protected function withLockedTransfer(StockTransfer $routeTransfer, $user, \Closure $transition): mixed
+    {
+        return DB::transaction(function () use ($routeTransfer, $user, $transition) {
+            $transfer = StockTransfer::whereKey($routeTransfer->getKey())->lockForUpdate()->firstOrFail();
+
+            $this->authorizeTransferAction($user, $transfer);
+
+            return $transition($transfer);
+        }, self::TRANSACTION_ATTEMPTS);
+    }
+
+    /** Redirect for a failed transition: HTTP/404 errors keep their meaning, a lock failure gets a safe message. */
+    protected function transitionFailure(\Throwable $e)
+    {
+        if ($e instanceof HttpExceptionInterface || $e instanceof ModelNotFoundException) {
+            throw $e;
+        }
+
+        return redirect()
+            ->route('backoffice.transfers.index')
+            ->with('error', $this->isConcurrencyFailure($e) ? self::BUSY_MESSAGE : $e->getMessage());
+    }
+
+    /** Deadlock / lock wait timeout that survived every attempt (the raw SQL text must never reach the screen). */
+    protected function isConcurrencyFailure(\Throwable $e): bool
+    {
+        return $e instanceof DeadlockException || (new ConcurrencyErrorDetector())->causedByConcurrencyError($e);
+    }
+
+    /** A transfer can only move stock when it knows both of its locations (legacy rows may not). */
+    protected function assertHasStockLocations(StockTransfer $transfer): void
+    {
+        foreach (['from', 'to'] as $side) {
+            if (
+                ! in_array($transfer->{$side.'_location_type'}, self::LOCATION_TYPES, true)
+                || (int) $transfer->{$side.'_location_id'} <= 0
+            ) {
+                throw new \RuntimeException('Transfer lama ini tidak punya data lokasi asal/tujuan, jadi stoknya tidak bisa dibatalkan atau diaktifkan lagi.');
+            }
+        }
+    }
+
+    protected function balanceKey(int $ingredientId, string $type, int $locationId): string
+    {
+        return $ingredientId.'|'.$type.'|'.$locationId;
+    }
+
+    /**
+     * Locks every stock balance an operation touches, in ONE global order, whatever the direction of the transfer:
+     * ingredient, then warehouse before outlet, then location id. Two transfers in opposite directions (or bulk
+     * transfers listing their items differently) therefore always queue behind each other and can never wait in a
+     * circle. Warehouse comes before outlet because the older warehouse-to-outlet screen locks in that order.
+     *
+     * A row that may not exist yet ($create) and really is missing is created with a single INSERT ... ON
+     * DUPLICATE KEY UPDATE: race-free against the unique balance identity (two requests creating the same row end
+     * up with one row). It is deliberately NOT "select for update, then insert": two requests would each take a
+     * gap lock on the missing key and then deadlock on the insert. The row is created inside the caller's
+     * transaction, so a rollback removes it again. A row that must exist is only locked; when it is absent the
+     * given message is thrown. Every row is finally read with lockForUpdate(), which returns the latest committed
+     * values and keeps the row locked until the transaction ends.
+     *
+     * @param  array<int, array{ingredient_id: int, type: string, id: int, create: bool, missing: string}>  $specs
+     * @return array<string, StockBalance> the locked balances, by balanceKey()
+     */
+    protected function lockStockBalances(array $specs): array
+    {
+        $unique = [];
+
+        foreach ($specs as $spec) {
+            $key = $this->balanceKey($spec['ingredient_id'], $spec['type'], $spec['id']);
+
+            if (isset($unique[$key])) {
+                $unique[$key]['create'] = $unique[$key]['create'] || $spec['create'];
+
+                continue;
+            }
+
+            $unique[$key] = $spec;
+        }
+
+        uasort($unique, fn (array $a, array $b) => [$a['ingredient_id'], $a['type'] === 'warehouse' ? 0 : 1, $a['id']]
+            <=> [$b['ingredient_id'], $b['type'] === 'warehouse' ? 0 : 1, $b['id']]);
+
+        $locked = [];
+
+        foreach ($unique as $key => $spec) {
+            $identity = [
+                'ingredient_id' => $spec['ingredient_id'],
+                'location_type' => $spec['type'],
+                'location_id' => $spec['id'],
+            ];
+
+            // Only a genuinely missing row is created. The usual case (the row exists) takes the plain read and
+            // never reaches the insert, which would otherwise queue behind unrelated locks on the end of the table
+            // and burn an auto-increment id on every call. A stale "missing" answer is harmless: the upsert simply
+            // finds the row.
+            if ($spec['create'] && ! StockBalance::where($identity)->exists()) {
+                StockBalance::upsert([$identity + ['qty_on_hand' => 0]], array_keys($identity), ['ingredient_id']);
+            }
+
+            $balance = StockBalance::where($identity)->lockForUpdate()->first();
+
+            if (! $balance) {
+                throw new \RuntimeException($spec['missing']);
+            }
+
+            $locked[$key] = $balance;
+        }
+
+        return $locked;
+    }
+
+    protected function balanceSpec(int $ingredientId, string $type, int $locationId, bool $create, string $missing = ''): array
+    {
+        return ['ingredient_id' => $ingredientId, 'type' => $type, 'id' => $locationId, 'create' => $create, 'missing' => $missing];
+    }
+
     protected function rollbackTransferStock(StockTransfer $transfer): void
     {
+        $this->assertHasStockLocations($transfer);
+
         $transferQty = (float) $transfer->qty;
+        $ingredientId = (int) $transfer->ingredient_id;
+        $fromId = (int) $transfer->from_location_id;
+        $toId = (int) $transfer->to_location_id;
 
-        $sourceStock = StockBalance::firstOrCreate(
-            [
-                'ingredient_id' => $transfer->ingredient_id,
-                'location_type' => $transfer->from_location_type,
-                'location_id' => $transfer->from_location_id,
-            ],
-            [
-                'qty_on_hand' => 0,
-            ]
-        );
+        $locked = $this->lockStockBalances([
+            $this->balanceSpec($ingredientId, $transfer->from_location_type, $fromId, true),
+            $this->balanceSpec($ingredientId, $transfer->to_location_type, $toId, false, 'Stock lokasi tujuan tidak ditemukan untuk rollback transfer.'),
+        ]);
 
-        // The source is credited from this read, so it is read under a row lock too.
-        $sourceStock = StockBalance::whereKey($sourceStock->id)->lockForUpdate()->firstOrFail();
-
-        $destinationStock = StockBalance::where('ingredient_id', $transfer->ingredient_id)
-            ->where('location_type', $transfer->to_location_type)
-            ->where('location_id', $transfer->to_location_id)
-            ->lockForUpdate()
-            ->first();
-
-        if (! $destinationStock) {
-            throw new \RuntimeException('Stock lokasi tujuan tidak ditemukan untuk rollback transfer.');
-        }
+        $sourceStock = $locked[$this->balanceKey($ingredientId, $transfer->from_location_type, $fromId)];
+        $destinationStock = $locked[$this->balanceKey($ingredientId, $transfer->to_location_type, $toId)];
 
         $currentDestinationQty = (float) $destinationStock->qty_on_hand;
 
@@ -254,17 +382,20 @@ class TransferViewController extends Controller
 
     protected function applyTransferStockAgain(StockTransfer $transfer): void
     {
+        $this->assertHasStockLocations($transfer);
+
         $transferQty = (float) $transfer->qty;
+        $ingredientId = (int) $transfer->ingredient_id;
+        $fromId = (int) $transfer->from_location_id;
+        $toId = (int) $transfer->to_location_id;
 
-        $sourceStock = StockBalance::where('ingredient_id', $transfer->ingredient_id)
-            ->where('location_type', $transfer->from_location_type)
-            ->where('location_id', $transfer->from_location_id)
-            ->lockForUpdate()
-            ->first();
+        $locked = $this->lockStockBalances([
+            $this->balanceSpec($ingredientId, $transfer->from_location_type, $fromId, false, 'Stock lokasi asal tidak ditemukan untuk mengaktifkan ulang transfer.'),
+            $this->balanceSpec($ingredientId, $transfer->to_location_type, $toId, true),
+        ]);
 
-        if (! $sourceStock) {
-            throw new \RuntimeException('Stock lokasi asal tidak ditemukan untuk mengaktifkan ulang transfer.');
-        }
+        $sourceStock = $locked[$this->balanceKey($ingredientId, $transfer->from_location_type, $fromId)];
+        $destinationStock = $locked[$this->balanceKey($ingredientId, $transfer->to_location_type, $toId)];
 
         $currentSourceQty = (float) $sourceStock->qty_on_hand;
 
@@ -273,20 +404,6 @@ class TransferViewController extends Controller
                 'Transfer item ini tidak bisa diaktifkan lagi karena stock asal sekarang tidak cukup.'
             );
         }
-
-        $destinationStock = StockBalance::firstOrCreate(
-            [
-                'ingredient_id' => $transfer->ingredient_id,
-                'location_type' => $transfer->to_location_type,
-                'location_id' => $transfer->to_location_id,
-            ],
-            [
-                'qty_on_hand' => 0,
-            ]
-        );
-
-        // The destination is credited from this read, so it is read under a row lock too.
-        $destinationStock = StockBalance::whereKey($destinationStock->id)->lockForUpdate()->firstOrFail();
 
         $sourceStock->update([
             'qty_on_hand' => $currentSourceQty - $transferQty,
@@ -670,99 +787,97 @@ class TransferViewController extends Controller
             }
         }
 
-        DB::transaction(function () use ($validated, $from, $to, $user, $items, $fromName, $toName) {
-            $globalNote = trim((string) ($validated['note'] ?? ''));
-            $sentAt = now();
+        try {
+            DB::transaction(function () use ($validated, $from, $to, $user, $items, $fromName, $toName) {
+                $globalNote = trim((string) ($validated['note'] ?? ''));
+                $sentAt = now();
 
-            foreach ($items as $item) {
-                $lockedSourceStock = StockBalance::where('location_type', $from['type'])
-                    ->where('location_id', $from['id'])
-                    ->where('ingredient_id', $item['ingredient_id'])
-                    ->lockForUpdate()
-                    ->first();
-
-                if (! $lockedSourceStock) {
-                    throw new \RuntimeException('Stock asal tidak ditemukan saat proses transfer.');
+                // Every balance of the whole bulk transfer is locked up front in the one global order (see
+                // lockStockBalances()): bulk transfers listing the same items differently, and transfers in
+                // opposite directions, can no longer wait on each other in a circle. The source must exist; a
+                // missing destination is created here, inside this transaction.
+                $specs = [];
+                foreach ($items as $item) {
+                    $specs[] = $this->balanceSpec((int) $item['ingredient_id'], $from['type'], $from['id'], false, 'Stock asal tidak ditemukan saat proses transfer.');
+                    $specs[] = $this->balanceSpec((int) $item['ingredient_id'], $to['type'], $to['id'], true);
                 }
+                $locked = $this->lockStockBalances($specs);
 
-                $transferQty = (float) $item['qty'];
-                $freshSourceQty = (float) $lockedSourceStock->qty_on_hand;
+                foreach ($items as $item) {
+                    $lockedSourceStock = $locked[$this->balanceKey((int) $item['ingredient_id'], $from['type'], $from['id'])];
+                    $destinationStock = $locked[$this->balanceKey((int) $item['ingredient_id'], $to['type'], $to['id'])];
 
-                if ($transferQty > $freshSourceQty) {
-                    throw new \RuntimeException('Stock asal berubah saat proses transfer. Silakan ulangi lagi.');
-                }
+                    $transferQty = (float) $item['qty'];
+                    $freshSourceQty = (float) $lockedSourceStock->qty_on_hand;
 
-                $lockedSourceStock->update([
-                    'qty_on_hand' => $freshSourceQty - $transferQty,
-                ]);
+                    if ($transferQty > $freshSourceQty) {
+                        throw new \RuntimeException('Stock asal berubah saat proses transfer. Silakan ulangi lagi.');
+                    }
 
-                $destinationStock = StockBalance::firstOrCreate(
-                    [
+                    $lockedSourceStock->update([
+                        'qty_on_hand' => $freshSourceQty - $transferQty,
+                    ]);
+
+                    $destinationStock->update([
+                        'qty_on_hand' => (float) $destinationStock->qty_on_hand + $transferQty,
+                    ]);
+
+                    $transfer = StockTransfer::create([
+                        'warehouse_id' => $from['type'] === 'warehouse' ? $from['id'] : null,
+                        'outlet_id' => $to['type'] === 'outlet' ? $to['id'] : null,
+                        'ingredient_id' => $item['ingredient_id'],
+                        'qty' => $transferQty,
+                        'transferred_by_user_id' => $user->id,
+                        'status' => 'in_transit',
+                        'note' => $globalNote !== '' ? $globalNote : null,
+                        'from_location_type' => $from['type'],
+                        'from_location_id' => $from['id'],
+                        'to_location_type' => $to['type'],
+                        'to_location_id' => $to['id'],
+                        'sender_name' => $validated['sender_name'],
+                        'receiver_name' => $validated['receiver_name'] ?: null,
+                        'sent_at' => $sentAt,
+                        'received_at' => null,
+                    ]);
+
+                    $movementExtra = ' | sender: ' . $validated['sender_name'];
+
+                    if (! empty($validated['receiver_name'])) {
+                        $movementExtra .= ' | receiver: ' . $validated['receiver_name'];
+                    }
+
+                    StockMovement::create([
+                        'ingredient_id' => $item['ingredient_id'],
+                        'location_type' => $from['type'],
+                        'location_id' => $from['id'],
+                        'movement_type' => 'transfer_out',
+                        'qty_in' => 0,
+                        'qty_out' => $transferQty,
+                        'reference_type' => 'general_transfer',
+                        'reference_id' => $transfer->id,
+                        'note' => 'Transfer #' . $transfer->transfer_number . ' keluar dari ' . $fromName . ' ke ' . $toName . $movementExtra . ($globalNote !== '' ? ' | ' . $globalNote : ''),
+                    ]);
+
+                    StockMovement::create([
                         'ingredient_id' => $item['ingredient_id'],
                         'location_type' => $to['type'],
                         'location_id' => $to['id'],
-                    ],
-                    [
-                        'qty_on_hand' => 0,
-                    ]
-                );
-
-                // The destination is credited from this read, so it is read under a row lock too.
-                $destinationStock = StockBalance::whereKey($destinationStock->id)->lockForUpdate()->firstOrFail();
-
-                $destinationStock->update([
-                    'qty_on_hand' => (float) $destinationStock->qty_on_hand + $transferQty,
-                ]);
-
-                $transfer = StockTransfer::create([
-                    'warehouse_id' => $from['type'] === 'warehouse' ? $from['id'] : null,
-                    'outlet_id' => $to['type'] === 'outlet' ? $to['id'] : null,
-                    'ingredient_id' => $item['ingredient_id'],
-                    'qty' => $transferQty,
-                    'transferred_by_user_id' => $user->id,
-                    'status' => 'in_transit',
-                    'note' => $globalNote !== '' ? $globalNote : null,
-                    'from_location_type' => $from['type'],
-                    'from_location_id' => $from['id'],
-                    'to_location_type' => $to['type'],
-                    'to_location_id' => $to['id'],
-                    'sender_name' => $validated['sender_name'],
-                    'receiver_name' => $validated['receiver_name'] ?: null,
-                    'sent_at' => $sentAt,
-                    'received_at' => null,
-                ]);
-
-                $movementExtra = ' | sender: ' . $validated['sender_name'];
-
-                if (! empty($validated['receiver_name'])) {
-                    $movementExtra .= ' | receiver: ' . $validated['receiver_name'];
+                        'movement_type' => 'transfer_in',
+                        'qty_in' => $transferQty,
+                        'qty_out' => 0,
+                        'reference_type' => 'general_transfer',
+                        'reference_id' => $transfer->id,
+                        'note' => 'Transfer #' . $transfer->transfer_number . ' masuk ke ' . $toName . ' dari ' . $fromName . $movementExtra . ($globalNote !== '' ? ' | ' . $globalNote : ''),
+                    ]);
                 }
-
-                StockMovement::create([
-                    'ingredient_id' => $item['ingredient_id'],
-                    'location_type' => $from['type'],
-                    'location_id' => $from['id'],
-                    'movement_type' => 'transfer_out',
-                    'qty_in' => 0,
-                    'qty_out' => $transferQty,
-                    'reference_type' => 'general_transfer',
-                    'reference_id' => $transfer->id,
-                    'note' => 'Transfer #' . $transfer->transfer_number . ' keluar dari ' . $fromName . ' ke ' . $toName . $movementExtra . ($globalNote !== '' ? ' | ' . $globalNote : ''),
-                ]);
-
-                StockMovement::create([
-                    'ingredient_id' => $item['ingredient_id'],
-                    'location_type' => $to['type'],
-                    'location_id' => $to['id'],
-                    'movement_type' => 'transfer_in',
-                    'qty_in' => $transferQty,
-                    'qty_out' => 0,
-                    'reference_type' => 'general_transfer',
-                    'reference_id' => $transfer->id,
-                    'note' => 'Transfer #' . $transfer->transfer_number . ' masuk ke ' . $toName . ' dari ' . $fromName . $movementExtra . ($globalNote !== '' ? ' | ' . $globalNote : ''),
-                ]);
+            }, self::TRANSACTION_ATTEMPTS);
+        } catch (\Throwable $e) {
+            if ($this->isConcurrencyFailure($e)) {
+                return back()->withErrors(['items' => self::BUSY_MESSAGE])->withInput();
             }
-        });
+
+            throw $e;
+        }
 
         return redirect()
             ->route('backoffice.transfers.index')
@@ -774,20 +889,33 @@ class TransferViewController extends Controller
         $user = $this->authorizeAccess();
         $this->authorizeTransferAction($user, $transfer);
 
-        if ($transfer->status === 'cancelled') {
-            return redirect()
-                ->route('backoffice.transfers.index')
-                ->with('success', 'Transfer item yang sudah dibatalkan tidak bisa langsung ditandai diterima.');
+        try {
+            $outcome = $this->withLockedTransfer($transfer, $user, function (StockTransfer $locked) {
+                if ($locked->status === 'in_transit') {
+                    $locked->update([
+                        'status' => 'received',
+                        'received_at' => now(),
+                    ]);
+
+                    return 'received_now';
+                }
+
+                // received -> received is a no-op (received_at keeps the first receipt); cancelled and any
+                // other status is refused without touching anything.
+                return in_array($locked->status, ['received', 'cancelled'], true) ? $locked->status : 'unsupported';
+            });
+        } catch (\Throwable $e) {
+            return $this->transitionFailure($e);
         }
 
-        $transfer->update([
-            'status' => 'received',
-            'received_at' => now(),
-        ]);
+        $redirect = redirect()->route('backoffice.transfers.index');
 
-        return redirect()
-            ->route('backoffice.transfers.index')
-            ->with('success', 'Transfer item berhasil ditandai sebagai diterima.');
+        return match ($outcome) {
+            'received_now' => $redirect->with('success', 'Transfer item berhasil ditandai sebagai diterima.'),
+            'received' => $redirect->with('success', 'Transfer item ini sudah berstatus diterima.'),
+            'cancelled' => $redirect->with('success', 'Transfer item yang sudah dibatalkan tidak bisa langsung ditandai diterima.'),
+            default => $redirect->with('error', 'Status transfer item ini tidak bisa ditandai diterima.'),
+        };
     }
 
     public function markCancelled(StockTransfer $transfer)
@@ -795,46 +923,33 @@ class TransferViewController extends Controller
         $user = $this->authorizeAccess();
         $this->authorizeTransferAction($user, $transfer);
 
-        if ($transfer->status === 'received') {
-            return redirect()
-                ->route('backoffice.transfers.index')
-                ->with('success', 'Transfer item yang sudah diterima tidak bisa dibatalkan.');
-        }
-
-        if ($transfer->status === 'cancelled') {
-            return redirect()
-                ->route('backoffice.transfers.index')
-                ->with('success', 'Transfer item ini sudah berstatus cancelled.');
-        }
-
         try {
-            DB::transaction(function () use ($transfer) {
-                $transfer->refresh();
-
-                if ($transfer->status === 'cancelled') {
-                    throw new \RuntimeException('Transfer item ini sudah dibatalkan.');
+            $outcome = $this->withLockedTransfer($transfer, $user, function (StockTransfer $locked) {
+                if ($locked->status !== 'in_transit') {
+                    return $locked->status;
                 }
 
-                if ($transfer->status === 'received') {
-                    throw new \RuntimeException('Transfer item yang sudah diterima tidak bisa dibatalkan.');
-                }
+                $this->rollbackTransferStock($locked);
 
-                $this->rollbackTransferStock($transfer);
-
-                $transfer->update([
+                $locked->update([
                     'status' => 'cancelled',
                     'received_at' => null,
                 ]);
+
+                return 'cancelled_now';
             });
         } catch (\Throwable $e) {
-            return redirect()
-                ->route('backoffice.transfers.index')
-                ->with('error', $e->getMessage());
+            return $this->transitionFailure($e);
         }
 
-        return redirect()
-            ->route('backoffice.transfers.index')
-            ->with('success', 'Transfer item berhasil dibatalkan dan stok sudah di-rollback.');
+        $redirect = redirect()->route('backoffice.transfers.index');
+
+        return match ($outcome) {
+            'cancelled_now' => $redirect->with('success', 'Transfer item berhasil dibatalkan dan stok sudah di-rollback.'),
+            'received' => $redirect->with('success', 'Transfer item yang sudah diterima tidak bisa dibatalkan.'),
+            'cancelled' => $redirect->with('success', 'Transfer item ini sudah berstatus cancelled.'),
+            default => $redirect->with('error', 'Status transfer item ini tidak bisa dibatalkan.'),
+        };
     }
 
     public function markInTransit(StockTransfer $transfer)
@@ -843,26 +958,34 @@ class TransferViewController extends Controller
         $this->authorizeTransferAction($user, $transfer);
 
         try {
-            DB::transaction(function () use ($transfer) {
-                $transfer->refresh();
-
-                if ($transfer->status === 'cancelled') {
-                    $this->applyTransferStockAgain($transfer);
+            $outcome = $this->withLockedTransfer($transfer, $user, function (StockTransfer $locked) {
+                if ($locked->status === 'in_transit') {
+                    return 'in_transit';
                 }
 
-                $transfer->update([
+                if ($locked->status === 'cancelled') {
+                    // The stock was rolled back by the cancellation; this posts it again, exactly once.
+                    $this->applyTransferStockAgain($locked);
+                } elseif ($locked->status !== 'received') {
+                    return 'unsupported';
+                }
+
+                // received -> in_transit is status only: the receipt never moved stock.
+                $locked->update([
                     'status' => 'in_transit',
                     'received_at' => null,
                 ]);
+
+                return 'in_transit';
             });
         } catch (\Throwable $e) {
-            return redirect()
-                ->route('backoffice.transfers.index')
-                ->with('error', $e->getMessage());
+            return $this->transitionFailure($e);
         }
 
-        return redirect()
-            ->route('backoffice.transfers.index')
-            ->with('success', 'Transfer item berhasil dikembalikan ke status in transit.');
+        $redirect = redirect()->route('backoffice.transfers.index');
+
+        return $outcome === 'in_transit'
+            ? $redirect->with('success', 'Transfer item berhasil dikembalikan ke status in transit.')
+            : $redirect->with('error', 'Status transfer item ini tidak bisa diubah ke in transit.');
     }
 }

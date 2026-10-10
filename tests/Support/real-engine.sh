@@ -2,7 +2,7 @@
 #
 # Runs the real-engine tests (separate PHP processes, real row locks) against a BRAND-NEW disposable MySQL database.
 #
-#   tests/Support/real-engine.sh                       # the three real-engine test files
+#   tests/Support/real-engine.sh                       # the four real-engine test files
 #   tests/Support/real-engine.sh --filter scenario_a   # any phpunit arguments
 #
 # What it does: creates atg_void_test_<random> on a LOCAL server, runs phpunit against only that database with the two
@@ -40,7 +40,7 @@ trap '"${MYSQL[@]}" -e "DROP DATABASE IF EXISTS \`$DB\`"' EXIT
 echo "Disposable database: $DB on $HOST:$PORT"
 
 if [ "$#" -eq 0 ]; then
-    set -- tests/Feature/RealEngineWriterLockTest.php tests/Feature/StockAdjustmentVoidRealEngineTest.php tests/Feature/StockAdjustmentVoidDecimalRealEngineTest.php
+    set -- tests/Feature/RealEngineWriterLockTest.php tests/Feature/StockAdjustmentVoidRealEngineTest.php tests/Feature/StockAdjustmentVoidDecimalRealEngineTest.php tests/Feature/RealEngineTransferConcurrencyTest.php
 fi
 
 APP_ENV=testing \
