@@ -12,21 +12,9 @@
         .is-embedded .wrap { margin: 16px auto; }
         .is-embedded body { background: #fff; }
 
-        /* In the drawer the long item list must not push "Tambah Bahan Recipe" out of sight: header and add-form stack
-           on the left, the item list is the tall column on the right (phone: header, add-form, then the list). */
-        .is-embedded .right-stack { display: contents; }
-        .is-embedded .grid-2 {
-            grid-template-columns: minmax(0, 1fr) minmax(0, 1.35fr);
-            grid-template-areas: "head items" "add items";
-            grid-template-rows: auto 1fr;
-        }
-        .is-embedded .recipe-header-card { grid-area: head; }
-        .is-embedded .recipe-header-card > .info { display: none; }   /* who / which outlet: already known from the page behind the panel */
-        .is-embedded #recipe-add-item { grid-area: add; }
-        .is-embedded #recipe-items { grid-area: items; }
-        @media (max-width: 980px) {
-            .is-embedded .grid-2 { grid-template-columns: minmax(0, 1fr); grid-template-areas: "head" "add" "items"; grid-template-rows: auto; }
-        }
+        /* Standalone and drawer share one layout (see .grid-2 below). Only the page header and the "who / which
+           outlet" box are dropped in the drawer: both are already known from the page behind the panel. */
+        .is-embedded .recipe-header-card > .info { display: none; }
     </style>
     <style>
         body {
@@ -164,7 +152,6 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            min-width: 760px;
         }
 
         th, td {
@@ -189,23 +176,29 @@
             font-weight: bold;
         }
 
+        /* Header and add-form stack in a narrow left column; the item list gets the rest of the width, so its
+           Qty and Action controls are on screen without horizontal scrolling. The long list never pushes
+           "Tambah Bahan Recipe" out of sight. Narrower than 1140px: header, add-form, then the list, full width. */
         .grid-2 {
             display: grid;
-            grid-template-columns: 1.05fr 1fr;
+            grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+            grid-template-areas: "head items" "add items";
+            grid-template-rows: auto 1fr;
             gap: 20px;
             align-items: start;
         }
 
         .right-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
+            display: contents;
         }
 
-        /* Grid / flex children may shrink below their content: otherwise the items table (min-width 760px) widens
-           the whole page on a phone instead of scrolling inside .table-wrap. */
+        .recipe-header-card { grid-area: head; }
+        #recipe-add-item { grid-area: add; }
+        #recipe-items { grid-area: items; }
+
+        /* Grid children may shrink below their content, so the page itself never grows sideways. */
         .grid-2 > *,
-        .right-stack > * {
+        .grid-2 .card {
             min-width: 0;
         }
 
@@ -239,9 +232,11 @@
             font-weight: bold;
         }
 
-        @media (max-width: 980px) {
+        @media (max-width: 1139px) {
             .grid-2 {
-                grid-template-columns: 1fr;
+                grid-template-columns: minmax(0, 1fr);
+                grid-template-areas: "head" "add" "items";
+                grid-template-rows: auto;
             }
         }
 
@@ -464,6 +459,7 @@
                     @include('backoffice.partials.return-to-field')
 
                     <fieldset @disabled(! $canMutate) style="border:0;padding:0;margin:0;min-width:0;">
+                    <div class="recipe-fields">
                     <div class="field">
                         <label>Product Variant</label>
                         <select name="product_variant_id" required>
@@ -494,6 +490,7 @@
                             <button type="submit" class="btn btn-primary">Update Header</button>
                         </div>
                     @endif
+                    </div>
                     </fieldset>
                 </form>
             </div>
@@ -504,15 +501,13 @@
 
                     @if($recipe->items->count())
                         <div class="table-wrap">
-                            <table>
+                            <table class="items-table">
                                 <thead>
                                     <tr>
-                                        <th>Ingredient</th>
-                                        <th>Category</th>
-                                        <th>Type</th>
-                                        <th>Unit</th>
-                                        <th>Qty</th>
-                                        <th>Action</th>
+                                        <th class="c-ing">Ingredient</th>
+                                        <th class="c-unit">Unit</th>
+                                        <th class="c-qty">Qty</th>
+                                        <th class="c-act">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -524,28 +519,28 @@
 
                                         <tr id="recipe-item-{{ $item->id }}">
 
-                                            <td>{{ $item->ingredient->name ?? '-' }}</td>
-
-                                            <td>{{ $item->ingredient->category->name ?? '-' }}</td>
-
-                                            <td>
-                                                @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
-                                                    <span class="badge badge-semi">
-                                                        {{ $ingredientTypeLabel }}
-                                                    </span>
-                                                @else
-                                                    <span class="badge badge-raw">
-                                                        {{ $ingredientTypeLabel }}
-                                                    </span>
-                                                @endif
+                                            <td class="c-ing">
+                                                <div class="ing-name">{{ $item->ingredient->name ?? '-' }}</div>
+                                                <div class="ing-meta">
+                                                    <span class="ing-cat">{{ $item->ingredient->category->name ?? '-' }}</span>
+                                                    @if($ingredientType === \App\Models\Ingredient::TYPE_SEMI_FINISHED)
+                                                        <span class="badge badge-semi">
+                                                            {{ $ingredientTypeLabel }}
+                                                        </span>
+                                                    @else
+                                                        <span class="badge badge-raw">
+                                                            {{ $ingredientTypeLabel }}
+                                                        </span>
+                                                    @endif
+                                                </div>
                                             </td>
 
-                                            <td>
+                                            <td class="c-unit" data-label="Unit">
                                                 {{ $item->unit ?? $item->ingredient->unit ?? '-' }}
                                             </td>
 
 
-                                            <td>
+                                            <td class="c-qty" data-label="Qty">
 
                                                 <div class="qty-container">
 
@@ -590,13 +585,13 @@
                                             </td>
 
 
-                                            <td>
+                                            <td class="c-act" data-label="Action">
 
                                                 <div class="action-buttons">
                                                     @if($canMutate)
 
                                                     <button type="button"
-                                                            class="btn btn-secondary btn-sm"
+                                                            class="btn btn-secondary btn-sm btn-edit-trigger"
                                                             onclick="openQty(this)">
                                                         ✏ Edit
                                                     </button>
@@ -669,13 +664,15 @@
                             </div>
                         </div>
 
-                        <div class="field">
-                            <label>Qty</label>
-                            <input type="number" name="qty" min="0.01" step="0.01" required>
-                        </div>
+                        <div class="add-row">
+                            <div class="field">
+                                <label>Qty</label>
+                                <input type="number" name="qty" min="0.01" step="0.01" required>
+                            </div>
 
-                        <div class="actions">
-                            <button type="submit" class="btn btn-primary">Tambah Recipe Item</button>
+                            <div class="actions">
+                                <button type="submit" class="btn btn-primary">Tambah Recipe Item</button>
+                            </div>
                         </div>
                     </form>
                     @endunless
@@ -784,6 +781,220 @@ function cancelQty(button){
 
 }
 
+/* RECIPE_EDITOR_COMPACT: item list (.items-table) and the header / add forms. Presentation only. */
+.recipe-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    column-gap: 16px;
+}
+
+.recipe-fields > .actions {
+    grid-column: 1 / -1;
+}
+
+.add-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 0 12px;
+}
+
+.add-row .field {
+    flex: 1 1 110px;
+}
+
+.add-row .actions {
+    margin: 0 0 16px;
+}
+
+#recipe-items {
+    padding: 18px;
+}
+
+.items-table {
+    width: 100%;
+    min-width: 0;
+    table-layout: fixed;
+}
+
+.items-table th,
+.items-table td {
+    padding: 12px 10px;
+    vertical-align: middle;
+}
+
+.items-table th {
+    box-sizing: border-box;
+}
+
+.items-table th.c-unit { width: 64px; }
+.items-table th.c-qty { width: 292px; }
+.items-table th.c-act { width: 166px; }
+
+.items-table .ing-name {
+    font-weight: 700;
+    color: #111827;
+    overflow-wrap: anywhere;
+}
+
+.items-table .ing-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #64748b;
+}
+
+.items-table .ing-meta .badge {
+    padding: 2px 8px;
+    font-size: 11px;
+}
+
+.items-table .qty-container {
+    display: flex;
+    align-items: center;
+    min-height: 40px;
+}
+
+.items-table .qty-text {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.items-table .qty-form {
+    flex-wrap: wrap;
+    row-gap: 6px;
+}
+
+.items-table .qty-input {
+    box-sizing: border-box;
+    width: 92px;
+    min-width: 0;
+}
+
+.items-table .action-buttons .btn,
+.items-table .action-buttons form {
+    margin: 0;
+}
+
+/* While a quantity is being edited the Edit button has nothing left to do; Hapus stays visible. */
+.items-table tr.is-editing .btn-edit-trigger {
+    display: none;
+}
+
+/* Phone: every item becomes a card (name, unit + qty, actions), no sideways scrolling. */
+@media (max-width: 720px) {
+    #recipe-items {
+        padding: 14px;
+    }
+
+    .items-table,
+    .items-table tbody {
+        display: block;
+    }
+
+    .items-table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+    }
+
+    .items-table tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        grid-template-areas: "ing ing" "unit qty" "act act";
+        gap: 8px 12px;
+        padding: 14px 0;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+    .items-table tr.is-editing {
+        grid-template-areas: "ing ing" "unit unit" "qty qty" "act act";
+    }
+
+    .items-table td {
+        display: block;
+        padding: 0;
+        border: 0;
+        min-width: 0;
+    }
+
+    .items-table .c-ing { grid-area: ing; }
+    .items-table .c-unit { grid-area: unit; }
+    .items-table .c-qty { grid-area: qty; }
+    .items-table .c-act { grid-area: act; }
+
+    .items-table td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        margin-bottom: 2px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+
+    .items-table td.c-ing::before,
+    .items-table td.c-act::before {
+        display: none;
+    }
+
+    .items-table td[data-label]::before {
+        line-height: 16px;
+    }
+
+    .items-table .c-unit,
+    .items-table .qty-text {
+        font-size: 15px;
+        line-height: 24px;
+    }
+
+    .items-table .c-unit {
+        font-weight: 600;
+    }
+
+    .items-table .qty-container {
+        min-height: 24px;
+    }
+
+    .items-table tr.is-editing .qty-container {
+        min-height: 0;
+    }
+
+    .items-table .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .items-table .action-buttons > .btn,
+    .items-table .action-buttons > form {
+        flex: 1 1 0;
+    }
+
+    .items-table .action-buttons .btn {
+        width: 100%;
+    }
+
+    .items-table .qty-form {
+        width: 100%;
+    }
+
+    .items-table .qty-input {
+        flex: 1 1 100%;
+    }
+
+    .items-table .qty-form .btn {
+        flex: 1 1 0;
+    }
+}
+
 </style>
 
 
@@ -791,17 +1002,31 @@ function cancelQty(button){
 
 function openQty(button){
 
-    button.closest('tr')
-        .querySelector('.qty-container')
-        .classList.add('editing');
+    const row = button.closest('tr');
+    const container = row.querySelector('.qty-container');
+
+    container.classList.add('editing');
+    row.classList.add('is-editing');
+
+    const input = container.querySelector('.qty-input');
+    if (input) {
+        input.focus();
+        input.select();
+    }
 
 }
 
 
 function closeQty(button){
 
-    button.closest('.qty-container')
-        .classList.remove('editing');
+    const container = button.closest('.qty-container');
+
+    container.classList.remove('editing');
+
+    const row = container.closest('tr');
+    if (row) {
+        row.classList.remove('is-editing');
+    }
 
 }
 
