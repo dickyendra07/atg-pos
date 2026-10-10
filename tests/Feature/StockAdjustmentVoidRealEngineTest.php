@@ -19,10 +19,19 @@ class StockAdjustmentVoidRealEngineTest extends TestCase
 
     private const ROUNDS = 4;
 
+    /** Each ordering scenario is repeated, and every repeat must show the same outcome. */
+    private const ORDERING_REPEATS = 3;
+
     protected function setUp(): void
     {
         parent::setUp();
         $this->bootRealEngine();
+    }
+
+    protected function tearDown(): void
+    {
+        $this->cleanupRealEngine();
+        parent::tearDown();
     }
 
     public function test_many_simultaneous_voids_of_one_adjustment_create_exactly_one_reversal(): void
@@ -67,41 +76,131 @@ class StockAdjustmentVoidRealEngineTest extends TestCase
         }
     }
 
-    public function test_a_void_racing_a_new_adjustment_can_never_both_win_in_the_wrong_order(): void
+    /**
+     * SCENARIO A, deterministic: the VOID is pinned half-way through its transaction (balance locked, everything
+     * validated, the reversal about to be written) and only THEN does the newer adjustment start; it queues behind the
+     * VOID's balance lock. Releasing the pin lets the VOID commit first and the newer adjustment continue.
+     *
+     * How the pin works, with no change to production code: a separate session holds an exclusive lock on the
+     * ingredient row. Writing the first stock_movements row needs a shared lock on that row (foreign key check), so the
+     * writer stops exactly there. The server itself (performance_schema) tells the test who waits on what.
+     */
+    public function test_scenario_a_void_commits_first_then_the_newer_adjustment_follows_current_stock(): void
     {
-        $voidFirst = $blockedByNewer = 0;
+        $this->requireLockObservation();
 
-        // The VOID is started 0..~150 ms after the new adjustment, so both orders of the race actually happen.
-        foreach (range(1, 12) as $round) {
+        foreach (range(1, self::ORDERING_REPEATS) as $round) {
             $this->seedBalance($this->ingredient, 'warehouse', $this->warehouse->id, 100);
-            $old = $this->adjustWarehouse([$this->ingredient->id => 110]);
+            $old = $this->adjustWarehouse([$this->ingredient->id => 110]); // +10 -> 110
             $before = $this->balance($this->ingredient, 'warehouse', $this->warehouse->id);
             $after = $this->lastMovementId();
+            $adjustmentsBefore = StockAdjustment::count();
 
-            [$void, $new] = $this->fireTogether([
-                $this->voidRequest($old) + ['delay_ms' => ($round - 1) * 14],
-                [
-                    'uri' => '/backoffice/stock-balances/adjustment',
-                    'data' => ['location_type' => 'warehouse', 'location_id' => $this->warehouse->id, 'note' => 'new count', 'items' => [['ingredient_id' => $this->ingredient->id, 'actual_qty' => 120]]],
-                ],
-            ]);
+            $this->holdRowLock('ingredients', $this->ingredient->id);
 
+            $void = $this->spawn($this->voidRequest($old));
+            $this->release($void);
+            $this->waitUntilBlockedOn('ingredients'); // the VOID is mid-transaction, holding the balance lock
+
+            $newer = $this->spawn($this->newAdjustmentRequest(120));
+            $this->release($newer);
+            $this->waitUntilBlockedOn('stock_balances'); // the newer adjustment is queued behind the VOID
+
+            // The ordering is a fact, not a hope: both blockers are observed at the same moment, nothing committed yet.
+            $this->assertGreaterThanOrEqual(1, $this->waitersBlockedOn('ingredients'), "round {$round}: VOID still pinned");
+            $this->assertGreaterThanOrEqual(1, $this->waitersBlockedOn('stock_balances'), "round {$round}: newer adjustment queued behind it");
+            $this->assertSame('completed', $old->fresh()->status, "round {$round}: the VOID has not committed yet");
+            $this->assertSame($adjustmentsBefore, StockAdjustment::count(), "round {$round}: the newer adjustment has not committed yet");
+
+            $this->releaseRowLock();
+            $voidResult = $this->collect($void);
+            $newResult = $this->collect($newer);
+
+            $this->assertTrue($voidResult['ok'], "round {$round}: ".json_encode($voidResult));
+            $this->assertTrue($newResult['ok'], "round {$round}: ".json_encode($newResult));
+
+            // 1-2. The old adjustment is VOID, with exactly one reversal.
+            $this->assertSame('void', $old->fresh()->status);
+            $reversals = DB::table('stock_movements')->where('reference_type', 'manual_adjustment_void')->where('reference_id', $old->id)->get();
+            $this->assertCount(1, $reversals, "round {$round}: exactly one reversal");
+
+            // 3. The newer adjustment worked from the stock as it is AFTER the VOID (110 - 10 = 100), not from 110.
+            $newAdjustment = StockAdjustment::where('id', '>', $old->id)->orderBy('id')->firstOrFail();
+            $item = $newAdjustment->items()->sole();
+            $this->assertSame(['completed', '100.00', '120.00', '20.00'], [
+                $newAdjustment->status, $this->fixed2($item->getRawOriginal('system_qty')), $this->fixed2($item->getRawOriginal('actual_qty')), $this->fixed2($item->getRawOriginal('difference')),
+            ], "round {$round}: the newer adjustment saw the post-VOID balance");
+
+            // 4. Balance and ledger agree; 5. nothing duplicated; the order in the ledger is VOID first.
+            $this->assertSame('120.00', $this->balance($this->ingredient, 'warehouse', $this->warehouse->id));
             $this->assertReconciled($this->ingredient, 'warehouse', $this->warehouse->id, $before, $after, "round {$round}");
-            $reversal = DB::table('stock_movements')->where('reference_type', 'manual_adjustment_void')->where('reference_id', $old->id)->value('id');
-            $newMovement = DB::table('stock_movements')->where('reference_type', 'manual_adjustment')->where('id', '>', $after)->value('id');
-
-            if ($void['ok'] && $new['ok']) {
-                // Both committed: the VOID must have been serialised BEFORE the new count, never after it.
-                $this->assertLessThan($newMovement, $reversal, "round {$round}: a VOID may not slip in after a newer adjustment");
-                $voidFirst++;
-            } elseif (! $void['ok'] && $new['ok']) {
-                $this->assertNull($reversal, "round {$round}: blocked VOID wrote nothing");
-                $blockedByNewer++;
-            }
-            $this->assertSame($void['ok'], $reversal !== null, "round {$round}: status and reversal agree");
+            $newMovement = DB::table('stock_movements')->where('reference_type', 'manual_adjustment')->where('reference_id', $newAdjustment->id)->get();
+            $this->assertCount(1, $newMovement);
+            $this->assertLessThan($newMovement->first()->id, $reversals->first()->id, "round {$round}: the reversal was recorded before the newer movement");
+            $this->assertSame(2, DB::table('stock_movements')->where('id', '>', $after)->count(), "round {$round}: exactly two new movements, no duplicates");
         }
+    }
 
-        $this->addToAssertionCount($voidFirst + $blockedByNewer);
+    /**
+     * SCENARIO B, deterministic: this time the NEWER adjustment is pinned half-way through its transaction (it holds the
+     * balance lock), and the VOID of the older one starts afterwards and queues behind it. Releasing the pin lets the
+     * newer adjustment commit first; the VOID then gets the lock, sees it, and is refused without changing anything.
+     */
+    public function test_scenario_b_a_newer_adjustment_commits_first_and_the_void_is_refused(): void
+    {
+        $this->requireLockObservation();
+
+        foreach (range(1, self::ORDERING_REPEATS) as $round) {
+            $this->seedBalance($this->ingredient, 'warehouse', $this->warehouse->id, 100);
+            $old = $this->adjustWarehouse([$this->ingredient->id => 110]); // +10 -> 110
+            $after = $this->lastMovementId();
+            $adjustmentsBefore = StockAdjustment::count();
+
+            $this->holdRowLock('ingredients', $this->ingredient->id);
+
+            $newer = $this->spawn($this->newAdjustmentRequest(120));
+            $this->release($newer);
+            $this->waitUntilBlockedOn('ingredients'); // the newer adjustment holds the balance lock, not yet committed
+
+            $void = $this->spawn($this->voidRequest($old));
+            $this->release($void);
+            $this->waitUntilBlockedOn('stock_balances'); // the VOID is queued behind it
+
+            $this->assertGreaterThanOrEqual(1, $this->waitersBlockedOn('ingredients'), "round {$round}: newer adjustment still pinned");
+            $this->assertGreaterThanOrEqual(1, $this->waitersBlockedOn('stock_balances'), "round {$round}: VOID queued behind it");
+            $this->assertSame($adjustmentsBefore, StockAdjustment::count(), "round {$round}: the newer adjustment has not committed yet");
+
+            $this->releaseRowLock();
+            $newResult = $this->collect($newer);
+            $voidResult = $this->collect($void);
+
+            // 1. The newer adjustment committed.
+            $this->assertTrue($newResult['ok'], "round {$round}: ".json_encode($newResult));
+            $newAdjustment = StockAdjustment::where('id', '>', $old->id)->orderBy('id')->firstOrFail();
+            $newItem = $newAdjustment->items()->sole();
+            $this->assertSame('completed', $newAdjustment->status);
+            $this->assertSame(['110.00', '120.00'], [$this->fixed2($newItem->getRawOriginal('system_qty')), $this->fixed2($newItem->getRawOriginal('actual_qty'))]);
+
+            // 2-3. The VOID of the older one is refused, and says why; the older one stays completed.
+            $this->assertFalse($voidResult['ok'], "round {$round}: ".json_encode($voidResult));
+            $this->assertStringContainsString($newAdjustment->reference, (string) $voidResult['flash_error'], "round {$round}: refused because of the newer adjustment");
+            $oldFresh = $old->fresh();
+            $this->assertSame('completed', $oldFresh->status);
+            $this->assertNull($oldFresh->void_at);
+            $this->assertNull($oldFresh->void_reason);
+            $this->assertNull($oldFresh->void_by_user_id);
+
+            // 4-5. No reversal, and the rejected VOID changed no stock: only the newer adjustment moved it (110 -> 120).
+            $this->assertSame(0, DB::table('stock_movements')->where('reference_type', 'manual_adjustment_void')->count(), "round {$round}: no reversal movement");
+            $this->assertNull($old->items()->sole()->void_stock_movement_id);
+            $this->assertSame('120.00', $this->balance($this->ingredient, 'warehouse', $this->warehouse->id));
+            $this->assertSame(1, DB::table('stock_movements')->where('id', '>', $after)->count(), "round {$round}: only the newer adjustment's own movement");
+
+            // 6. Every movement still points at a real adjustment.
+            $this->assertSame(0, DB::table('stock_movements')->where('reference_type', 'manual_adjustment')
+                ->whereNotIn('reference_id', DB::table('stock_adjustments')->select('id'))->count(), "round {$round}: no dangling movement reference");
+            $this->assertReconciled($this->ingredient, 'warehouse', $this->warehouse->id, '110.00', $after, "round {$round}");
+        }
     }
 
     public function test_two_voids_of_old_and_new_adjustments_never_leave_the_old_one_voided_alone(): void
@@ -158,6 +257,22 @@ class StockAdjustmentVoidRealEngineTest extends TestCase
                 DB::table('stock_movements')->where('reference_type', 'manual_adjustment_void')->where('reference_id', $old->id)->count(),
                 "round {$round}: a VOID is all or nothing"
             );
+        }
+    }
+
+    private function newAdjustmentRequest(int $actual): array
+    {
+        return [
+            'uri' => '/backoffice/stock-balances/adjustment',
+            'data' => ['location_type' => 'warehouse', 'location_id' => $this->warehouse->id, 'note' => 'new count', 'items' => [['ingredient_id' => $this->ingredient->id, 'actual_qty' => $actual]]],
+        ];
+    }
+
+    /** The ordering tests read who-waits-on-whom from MySQL 8's performance_schema; they cannot run elsewhere. */
+    private function requireLockObservation(): void
+    {
+        if (! $this->canObserveLockWaits()) {
+            $this->markTestSkipped('Deterministic ordering needs MySQL 8 performance_schema.data_lock_waits (not available on this server).');
         }
     }
 

@@ -27,6 +27,12 @@ class RealEngineWriterLockTest extends TestCase
         $this->bootRealEngine();
     }
 
+    protected function tearDown(): void
+    {
+        $this->cleanupRealEngine();
+        parent::tearDown();
+    }
+
     public function test_warehouse_stock_in_does_not_lose_concurrent_updates(): void
     {
         $this->seedBalance($this->ingredient, 'warehouse', $this->warehouse->id, 100);
