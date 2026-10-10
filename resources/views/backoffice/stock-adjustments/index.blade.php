@@ -9,6 +9,7 @@
     .filters{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:12px}.field{display:grid;gap:6px}.field label{font-size:12px;font-weight:800;color:#64748b}.field input,.field select{border:1px solid #cbd5e1;border-radius:10px;padding:10px;background:#fff}
     .btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:12px;padding:10px 16px;background:#ea580c;color:#fff;font-weight:800;text-decoration:none;cursor:pointer}
     .table-wrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{padding:13px;border-bottom:1px solid #e2e8f0;text-align:left}a{color:#ea580c}
+    .badge{display:inline-block;border-radius:999px;padding:3px 10px;font-size:11px;font-weight:800;letter-spacing:.04em}.badge-completed{background:#dcfce7;color:#166534}.badge-void{background:#fee2e2;color:#991b1b}tr.is-void td{color:#64748b}
     @media(max-width:900px){.filters{grid-template-columns:1fr 1fr}}@media(max-width:560px){.filters{grid-template-columns:1fr}}
 </style>
 <div class="adj-page">
@@ -29,19 +30,20 @@
 
     <div class="adj-card table-wrap">
         <table>
-            <thead><tr><th>Reference</th><th>Date</th><th>Outlet / Location</th><th>User</th><th>Total Items</th><th>Note</th></tr></thead>
+            <thead><tr><th>Reference</th><th>Date</th><th>Outlet / Location</th><th>User</th><th>Total Items</th><th>Status</th><th>Note</th></tr></thead>
             <tbody>
             @forelse($adjustments as $adjustment)
-                <tr>
+                <tr class="{{ $adjustment->isVoid() ? 'is-void' : '' }}">
                     <td><a href="{{ route('backoffice.stock-adjustments.show', $adjustment) }}">{{ $adjustment->reference }}</a></td>
                     <td>{{ $adjustment->created_at->format('Y-m-d H:i') }}</td>
                     <td>{{ $adjustment->locationName() }}</td>
                     <td>{{ $adjustment->user?->name ?? '-' }}</td>
                     <td>{{ $adjustment->items->count() }}</td>
+                    <td><span class="badge {{ $adjustment->isVoid() ? 'badge-void' : 'badge-completed' }}">{{ $adjustment->isVoid() ? 'VOID' : 'COMPLETED' }}</span></td>
                     <td>{{ $adjustment->note ?: '-' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6" style="text-align:center;color:#64748b;padding:32px">Belum ada adjustment untuk filter ini.</td></tr>
+                <tr><td colspan="7" style="text-align:center;color:#64748b;padding:32px">Belum ada adjustment untuk filter ini.</td></tr>
             @endforelse
             </tbody>
         </table>

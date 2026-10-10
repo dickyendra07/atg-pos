@@ -26,6 +26,11 @@ while (! file_exists($barrier) && microtime(true) < $deadline) {
     usleep(200);
 }
 
+// Optional head start for the other requests, so a test can sweep the interleaving of two operations.
+if (! empty($request['delay_ms'])) {
+    usleep((int) $request['delay_ms'] * 1000);
+}
+
 $out = ['ok' => false];
 
 try {

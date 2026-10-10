@@ -37,4 +37,10 @@ class StockAdjustmentItem extends Model
     {
         return $this->belongsTo(StockMovement::class, 'stock_movement_id');
     }
+
+    /** The compensating movement written by VOID (void_stock_movement_id is set only by StockAdjustmentVoidService). */
+    public function voidMovement(): BelongsTo
+    {
+        return $this->belongsTo(StockMovement::class, 'void_stock_movement_id');
+    }
 }

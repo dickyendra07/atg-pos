@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers\Backoffice;
 
+use App\Exceptions\StockAdjustmentVoidException;
 use App\Http\Controllers\Controller;
 use App\Models\StockAdjustment;
 use App\Models\User;
 use App\Services\BackofficeOutletContext;
+use App\Services\StockAdjustmentVoidService;
 use Illuminate\Http\Request;
 
 class StockAdjustmentController extends Controller
@@ -57,7 +59,7 @@ class StockAdjustmentController extends Controller
         ]);
     }
 
-    public function show(Request $request, StockAdjustment $stockAdjustment, BackofficeOutletContext $context)
+    public function show(Request $request, StockAdjustment $stockAdjustment, BackofficeOutletContext $context, StockAdjustmentVoidService $voidService)
     {
         $user = $this->authorizeAccess($request);
 
@@ -65,8 +67,44 @@ class StockAdjustmentController extends Controller
             abort_unless($context->canAccess($user, (int) $stockAdjustment->location_id), 403);
         }
 
-        $stockAdjustment->load(['items.ingredient.category', 'items.movement', 'user', 'outlet', 'warehouse']);
+        $stockAdjustment->load(['items.ingredient.category', 'items.movement', 'items.voidMovement', 'user', 'voidedBy', 'outlet', 'warehouse']);
 
-        return view('backoffice.stock-adjustments.show', ['user' => $user, 'adjustment' => $stockAdjustment]);
+        // Only Owner / Admin Pusat see the action. It is a dry run (reads only); the POST recomputes everything.
+        $canVoid = ! $stockAdjustment->isVoid() && $voidService->userMayVoid($user);
+
+        return view('backoffice.stock-adjustments.show', [
+            'user' => $user,
+            'adjustment' => $stockAdjustment,
+            'canVoid' => $canVoid,
+            'voidPreview' => $canVoid ? $voidService->preview($stockAdjustment) : null,
+        ]);
+    }
+
+    public function void(Request $request, StockAdjustment $stockAdjustment, StockAdjustmentVoidService $voidService)
+    {
+        $user = $this->authorizeAccess($request);
+
+        // Role and outlet scope first: a forbidden request is a 403 before anything else is looked at.
+        $voidService->authorize($user, $stockAdjustment);
+
+        $validated = $request->validate([
+            'void_reason' => 'required|string|max:1000',
+            'confirm' => 'accepted',
+        ], [
+            'void_reason.required' => 'Alasan VOID wajib diisi.',
+            'confirm.accepted' => 'Centang konfirmasi untuk melanjutkan VOID.',
+        ]);
+
+        try {
+            $voided = $voidService->void($stockAdjustment, $user, $validated['void_reason']);
+        } catch (StockAdjustmentVoidException $e) {
+            return redirect()
+                ->route('backoffice.stock-adjustments.show', $stockAdjustment)
+                ->with('error', $e->alreadyVoid ? $e->getMessage() : 'VOID ditolak dan stok tidak diubah. '.$e->getMessage());
+        }
+
+        return redirect()
+            ->route('backoffice.stock-adjustments.show', $voided)
+            ->with('success', 'Adjustment '.$voided->reference.' berhasil di-VOID. Dampak stoknya sudah dibalik lewat movement pembalik.');
     }
 }
