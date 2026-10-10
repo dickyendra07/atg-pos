@@ -168,9 +168,23 @@ class ProductViewController extends Controller
         $user = $this->authorizeAccess();
         app(ProductAccessPolicy::class)->authorize($user, $product);
 
-        $validated = $request->validate(array_merge($this->writer()->generalRules($product), $this->writer()->outletRules(), $this->writer()->assignVariantsRules()));
+        $validated = $request->validate(array_merge($this->writer()->generalRules($product), $this->writer()->outletRules(), $this->writer()->assignVariantsRules(), ['confirm_similar' => 'nullable|boolean']));
+        $attributes = collect($validated)->except('confirm_similar')->all();
 
-        $this->writer()->update($user, $product, $validated);
+        // Shared Product + limited user: refused (validation error) before any duplicate warning or write.
+        $this->writer()->assertCanChangeGeneral($user, $product, $attributes);
+
+        $similar = $this->writer()->similarAfterGeneralChange($product, $attributes);
+
+        if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
+            $guard = app(ProductDuplicateGuard::class);
+
+            return back()
+                ->withInput($request->except('confirm_similar'))
+                ->with('similar_products', $similar->map(fn ($existing) => $guard->describe($existing, $user))->all());
+        }
+
+        $this->writer()->update($user, $product, $attributes);
 
         return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)
             ->with('success', 'Product berhasil diperbarui.');
@@ -181,7 +195,7 @@ class ProductViewController extends Controller
         $user = $this->authorizeAccess();
         app(ProductAccessPolicy::class)->authorize($user, $product);
 
-        $product->update(['is_active' => false]);
+        $this->writer()->deactivate($user, $product);
 
         // Inactivating keeps the row in the list, so it can stay the anchor.
         return BackofficeReturnUrl::redirect($request, 'backoffice.products.index', [], 'product-'.$product->id)

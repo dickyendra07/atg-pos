@@ -60,7 +60,7 @@ class ProductWorkspaceVariantController extends Controller
         $user = $this->authorizeProduct($request, $product);
         $this->assertOwnership($product, $variant);
 
-        $writer->deactivate($variant);
+        $writer->deactivate($user, $variant);
 
         return $this->saved($request, $product, $user, 'variants', 'Variant "'.$variant->name.'" berhasil dinonaktifkan. Outlet, Recipe, dan riwayat transaksi tetap tersimpan.');
     }

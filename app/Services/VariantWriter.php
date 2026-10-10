@@ -26,6 +26,10 @@ use Illuminate\Validation\ValidationException;
  *    is only the product_variant_outlet pivot (inside the Product's outlets). A new Variant leaves the column
  *    empty, an existing one keeps whatever it stores, in the classic editor and the Workspace alike, and a
  *    submitted `outlet_id` is ignored (it can neither widen nor bypass the outlet checks);
+ *  - SHARED VARIANTS: name, code, prices, status and Product of a Variant that is also assigned to an outlet the
+ *    user cannot access may only be changed by Owner / Admin Pusat (SharedCatalogPolicy). A limited user may still
+ *    manage Variants whose outlets are all within their access, and still change outlet assignment inside it. The
+ *    check is here, on every write path and before anything is written; an unchanged value never counts;
  *  - FIX: saving a Variant KEEPS its outlets that the user cannot access (a limited user only changes
  *    the outlets they can see; outlets outside their access stay assigned, as long as the Product is
  *    still available there). Previously the outlet list was replaced, silently dropping them.
@@ -39,7 +43,10 @@ class VariantWriter
 {
     public const REMOVAL_MESSAGE = 'Variant yang sudah tersimpan tidak bisa dihapus lewat editor ini. Biarkan Variant tetap ada di daftar, atau gunakan aksi "Hapus dari Sistem" di Product Workspace (Variants & Pricing) untuk menghapusnya.';
 
-    public function __construct(private readonly BackofficeOutletContext $context) {}
+    public function __construct(
+        private readonly BackofficeOutletContext $context,
+        private readonly SharedCatalogPolicy $shared,
+    ) {}
 
     /**
      * Server-side twin of cleanCurrencyNumber() in the Variant editor: "Rp. 12.000" -> "12000",
@@ -196,6 +203,7 @@ class VariantWriter
         $row = $this->singleRow($input);
         [$row] = $this->resolveCodes($product, [['id' => $variant->id] + $row], collect([$variant->id => $variant]));
 
+        $this->shared->assertVariantChange($user, $variant, $this->globalFields($product, $row));
         $this->assertOutletScope($user, $product, [$row], fn () => 'outlet_ids');
         $this->assertCodesFree($product, [$row], [$variant->id], 'code', 'Kode variant sudah dipakai pada product ini: ');
 
@@ -207,9 +215,11 @@ class VariantWriter
         });
     }
 
-    /** "Nonaktifkan": history, outlets and Recipe stay. */
-    public function deactivate(ProductVariant $variant): void
+    /** "Nonaktifkan": history, outlets and Recipe stay. A status change is a global change, so a shared Variant needs Owner / Admin Pusat. */
+    public function deactivate(User $user, ProductVariant $variant): void
     {
+        $this->shared->assertVariantChange($user, $variant, ['is_active' => false]);
+
         $variant->update(['is_active' => false]);
     }
 
@@ -257,6 +267,13 @@ class VariantWriter
         $submittedIds = collect($rows)->pluck('id')->filter()->values();
 
         $rows = $this->resolveCodes($product, $rows, $existingGroup);
+
+        // Every row is checked before any is written: one refused row leaves the whole group untouched.
+        foreach ($rows as $index => $row) {
+            if (! empty($row['id']) && $existingGroup->has($row['id'])) {
+                $this->shared->assertVariantChange($user, $existingGroup[$row['id']], $this->globalFields($product, $row), fn (string $field) => 'variants.'.$index.'.'.$field);
+            }
+        }
 
         $this->assertNoDuplicateCodesInPayload($rows);
         $this->assertCodesFree($product, $rows, $submittedIds->all(), 'variants', 'Kode variant sudah dipakai pada product tujuan: ');
@@ -358,6 +375,19 @@ class VariantWriter
         }
 
         return $code;
+    }
+
+    /** The Variant's own (global) attributes of one normalized row, as the policy compares them. */
+    private function globalFields(Product $product, array $row): array
+    {
+        return [
+            'product_id' => $product->id,
+            'name' => $row['name'],
+            'code' => $row['code'],
+            'price_dine_in' => $row['price_dine_in'],
+            'price_delivery' => $row['price_delivery'],
+            'is_active' => $row['is_active'],
+        ];
     }
 
     private function singleRow(array $input): array

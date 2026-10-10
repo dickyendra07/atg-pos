@@ -24,6 +24,11 @@ use Illuminate\Validation\ValidationException;
  *
  * planOutletChange() computes those effects without writing, so a preview always matches the save.
  *
+ * Global attributes (brand, category, name, code, description, status) of a Product that is also assigned to an outlet
+ * the user cannot access may only be changed by Owner / Admin Pusat (SharedCatalogPolicy); outlet assignment stays
+ * allowed inside the user's own access. The check runs here, before anything is written, so every route (classic
+ * update, Workspace General, deactivate) and any forged request gets the same answer.
+ *
  * Gaining an outlet never touches the Product's Variants on its own. The caller may opt in
  * ($assignVariants) to also assign the Product's ACTIVE Variants to the newly added outlets; inactive
  * Variants are never activated or assigned, nothing is created, and Variant outlets stay a subset of
@@ -31,7 +36,11 @@ use Illuminate\Validation\ValidationException;
  */
 class ProductWriter
 {
-    public function __construct(private readonly BackofficeOutletContext $context) {}
+    public function __construct(
+        private readonly BackofficeOutletContext $context,
+        private readonly SharedCatalogPolicy $shared,
+        private readonly ProductDuplicateGuard $duplicates,
+    ) {}
 
     /** Brand, Category, name, code, description, status. $product = null for create. */
     public function generalRules(?Product $product = null): array
@@ -93,18 +102,60 @@ class ProductWriter
     public function update(User $user, Product $product, array $validated): void
     {
         $this->assertAccessibleOutletIds($user, $validated['outlet_ids']);
+        $this->assertCanChangeGeneral($user, $product, $validated);
         $plan = $this->planOutletChange($user, $product, $validated['outlet_ids'], (bool) ($validated['assign_variants'] ?? false));
 
         DB::transaction(function () use ($product, $validated, $plan) {
-            $product->update(collect($validated)->except(['outlet_ids', 'assign_variants'])->toArray());
+            $product->update(collect($validated)->only(SharedCatalogPolicy::PRODUCT_FIELDS)->toArray());
             $this->applyOutletPlan($product, $plan);
         });
     }
 
-    /** Workspace "General": the Product's own fields only. Outlets and Variants are not touched. */
-    public function updateGeneral(Product $product, array $attributes): void
+    /**
+     * Workspace "General": the Product's own fields only. Outlets and Variants are not touched.
+     *
+     * @throws \Illuminate\Validation\ValidationException when a shared Product's global field would change for a limited user
+     */
+    public function updateGeneral(User $user, Product $product, array $attributes): void
     {
-        $product->update(collect($attributes)->only(array_keys($this->generalRules($product)))->toArray());
+        $attributes = collect($attributes)->only(array_keys($this->generalRules($product)))->toArray();
+        $this->assertCanChangeGeneral($user, $product, $attributes);
+
+        $product->update($attributes);
+    }
+
+    /** "Nonaktifkan": history, outlets, Variants and Recipes stay. A status change is a global change too. */
+    public function deactivate(User $user, Product $product): void
+    {
+        $this->assertCanChangeGeneral($user, $product, ['is_active' => false]);
+
+        $product->update(['is_active' => false]);
+    }
+
+    /** Refuses (validation error, nothing written) a change of global fields that would reach an outlet outside $user's access. */
+    public function assertCanChangeGeneral(User $user, Product $product, array $attributes): void
+    {
+        $this->shared->assertProductChange($user, $product, $attributes);
+    }
+
+    /**
+     * Other Products with the same normalized name, Brand and Category that this edit would create: only when
+     * name / Brand / Category actually changes to that combination (an untouched Product is never warned about
+     * its existing twin). The Product itself is never a match. Warn only; the caller asks for confirmation.
+     *
+     * @return \Illuminate\Support\Collection<int, Product>
+     */
+    public function similarAfterGeneralChange(Product $product, array $attributes): Collection
+    {
+        $name = (string) ($attributes['name'] ?? $product->name);
+        $brandId = (int) ($attributes['brand_id'] ?? $product->brand_id);
+        $categoryId = (int) ($attributes['product_category_id'] ?? $product->product_category_id);
+
+        $unchanged = ProductDuplicateGuard::normalize($name) === ProductDuplicateGuard::normalize($product->name)
+            && $brandId === (int) $product->brand_id
+            && $categoryId === (int) $product->product_category_id;
+
+        return $unchanged ? collect() : $this->duplicates->similar($name, $brandId, $categoryId, (int) $product->id);
     }
 
     /** Workspace "Outlets": returns the plan that was applied. */

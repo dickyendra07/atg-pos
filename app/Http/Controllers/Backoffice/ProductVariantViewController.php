@@ -189,7 +189,7 @@ class ProductVariantViewController extends Controller
         $this->authorizeVariantProduct($user, $variant);
 
         $variantName = $variant->name;
-        $this->writer()->deactivate($variant);
+        $this->writer()->deactivate($user, $variant);
 
         // Inactivating keeps the variant listed under its product group, so the group stays the anchor.
         return BackofficeReturnUrl::redirect($request, 'backoffice.variants.index', [], 'variant-group-'.$variant->product_id)

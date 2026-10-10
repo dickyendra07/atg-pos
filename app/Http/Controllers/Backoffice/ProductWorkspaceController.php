@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\ProductCategory;
 use App\Services\CategoryWriter;
+use App\Services\ProductDuplicateGuard;
 use App\Services\ProductWorkspace;
 use App\Services\ProductWriter;
 use App\Support\BackofficeReturnUrl;
@@ -28,7 +29,28 @@ class ProductWorkspaceController extends Controller
     {
         $user = $this->authorizeProduct($request, $product);
 
-        $writer->updateGeneral($product, $request->validate($writer->generalRules($product)));
+        $validated = $request->validate($writer->generalRules($product) + ['confirm_similar' => 'nullable|boolean']);
+        $attributes = collect($validated)->except('confirm_similar')->all();
+
+        // Shared Product + limited user: refused here (422) before any duplicate warning or write.
+        $writer->assertCanChangeGeneral($user, $product, $attributes);
+
+        $similar = $writer->similarAfterGeneralChange($product, $attributes);
+
+        if ($similar->isNotEmpty() && ! $request->boolean('confirm_similar')) {
+            $guard = app(ProductDuplicateGuard::class);
+            $list = $similar->map(fn (Product $existing) => $guard->describe($existing, $user))->all();
+            $message = 'Product serupa sudah ada: '.collect($list)->map(fn ($row) => $row['name'].' (kode '.$row['code'].', outlet: '.(implode(', ', $row['outlets']) ?: '-').')')->implode('; ')
+                .'. Sebaiknya tambahkan outlet ke Product itu, bukan membuat Product kembar. Tetap simpan perubahan ini?';
+
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'needs_confirmation' => 'similar_product', 'message' => $message, 'similar_products' => $list], 409);
+            }
+
+            return back()->withInput()->with('similar_products', $list);
+        }
+
+        $writer->updateGeneral($user, $product, $attributes);
 
         return $this->saved($request, $product, $user, 'general', 'General Product berhasil disimpan.');
     }

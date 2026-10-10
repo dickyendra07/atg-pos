@@ -258,19 +258,32 @@
             syncHeaderHeight();
         }
 
-        function save(form, key) {
+        function save(form, key, confirmSimilar) {
             var button = form.querySelector('[data-pw-save]');
+            var body = new FormData(form);
+
+            if (confirmSimilar) { body.set('confirm_similar', '1'); }
 
             clearErrors(form, 'data-pw-error');
             saving = true;
             if (button) { button.disabled = true; }
             refreshState();
 
-            return send(form.action, new FormData(form)).then(function (result) {
+            return send(form.action, body).then(function (result) {
                 if (result.ok && result.data.ok) {
                     applySaved(result.data, key);
                     toast('success', result.data.message);
                     return;
+                }
+                // A look-alike Product exists: nothing was saved. Ask, and only an explicit yes saves it.
+                if (result.status === 409 && result.data.needs_confirmation === 'similar_product') {
+                    return confirmAsk({
+                        title: 'Product serupa sudah ada',
+                        body: result.data.message,
+                        note: '',
+                        label: 'Tetap simpan',
+                        tone: 'warning'
+                    }).then(function (ok) { if (ok) { return save(form, key, true); } });
                 }
                 if (result.status === 422) { showErrors(form, 'data-pw-error', result.data.errors); }
                 failureToast(result);
