@@ -92,7 +92,8 @@ class ProductWorkspaceController extends Controller
             'has_consequences' => $plan['has_consequences'],
             'empty_selection' => $outletIds === [],
             'removed' => $plan['removed'],
-            'deactivated_variant_ids' => collect($plan['variants'])->where('will_deactivate', true)->pluck('id')->values()->all(),
+            // Only Variants that are active now: one that is already inactive stays inactive and is no deactivation.
+            'deactivated_variant_ids' => collect($plan['variants'])->where('will_deactivate', true)->where('was_active', true)->pluck('id')->values()->all(),
             'assignable_variant_ids' => collect($plan['assignable'])->pluck('id')->values()->all(),
             'assigned_variant_ids' => collect($plan['assignments'])->pluck('id')->values()->all(),
             'promo_ids' => collect($plan['promos'])->pluck('id')->values()->all(),

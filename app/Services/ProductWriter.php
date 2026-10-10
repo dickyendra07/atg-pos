@@ -33,6 +33,15 @@ use Illuminate\Validation\ValidationException;
  * ($assignVariants) to also assign the Product's ACTIVE Variants to the newly added outlets; inactive
  * Variants are never activated or assigned, nothing is created, and Variant outlets stay a subset of
  * the Product's outlets.
+ *
+ * Every Variant is resolved ONCE, from the whole change (see resolveVariants()):
+ *
+ *   FINAL Variant outlets = (its outlets that stay in the Product) + (newly added Product outlets, only for an
+ *                            ACTIVE Variant and only with the opt-in)
+ *
+ * and a Variant is deactivated only when that FINAL set is empty. So moving a Product A -> B with the opt-in
+ * keeps an A-only Variant active at B instead of deactivating it on the way. Preview and save use the same
+ * plan, and the save applies it in one transaction.
  */
 class ProductWriter
 {
@@ -192,30 +201,28 @@ class ProductWriter
 
         $removed = $current->diff($final)->values();
 
-        $variants = $product->variants()->with('outlets:id')->orderBy('name')->get()
-            ->map(function (ProductVariant $variant) use ($final) {
-                $variantOutletIds = $variant->outlets->pluck('id')->map(fn ($id) => (int) $id);
-
-                if ($variantOutletIds->isEmpty()) {
-                    return null;   // untouched by the current rule
-                }
-
-                $remaining = $variantOutletIds->intersect($final)->values();
-
-                return [
-                    'id' => (int) $variant->id,
-                    'name' => $variant->name,
-                    'was_active' => (bool) $variant->is_active,
-                    'removed_outlet_ids' => $variantOutletIds->diff($final)->values()->all(),
-                    'remaining_outlet_ids' => $remaining->all(),
-                    'will_deactivate' => $remaining->isEmpty(),
-                ];
-            })
-            ->filter(fn ($row) => $row !== null && $row['removed_outlet_ids'] !== [])
-            ->values();
-
         $added = $final->diff($current)->values();
         [$assignable, $skippedInactive] = $this->assignableVariants($product, $added);
+
+        // One resolved row per Variant: preview and save both read this, nothing is recomputed in between.
+        $resolved = $this->resolveVariants($product, $final, $added, $assignVariants);
+
+        // Variants that lose an outlet (what the preview lists, and what Promo warnings key on).
+        $variants = $resolved->filter(fn (array $row) => $row['removed_outlet_ids'] !== [])
+            ->map(fn (array $row) => [
+                'id' => $row['id'],
+                'name' => $row['name'],
+                'was_active' => $row['was_active'],
+                'removed_outlet_ids' => $row['removed_outlet_ids'],
+                'remaining_outlet_ids' => $row['final_outlet_ids'],   // the FINAL set, newly assigned outlets included
+                'will_deactivate' => $row['will_deactivate'],
+            ])
+            ->values();
+
+        // What the opt-in really assigns, read from the same resolved rows.
+        $assignments = $resolved->filter(fn (array $row) => $row['added_outlet_ids'] !== [])
+            ->map(fn (array $row) => ['id' => $row['id'], 'name' => $row['name'], 'add_outlet_ids' => $row['added_outlet_ids']])
+            ->values();
 
         $promos = $this->affectedPromos($product, $variants, $removed);
 
@@ -228,37 +235,74 @@ class ProductWriter
             'locked' => $locked->all(),
             'variants' => $variants->all(),
             'assignable' => $assignable->all(),
-            'assignments' => $assignVariants ? $assignable->all() : [],
+            'assignments' => $assignments->all(),
+            'variant_writes' => $resolved->filter(fn (array $row) => $row['changes'])->values()->all(),
             'assign_variants' => $assignVariants,
             'skipped_inactive' => $skippedInactive,
             'promos' => $promos->all(),
             'outlet_names' => Outlet::whereIn('id', $outletIds)->pluck('name', 'id')->all(),
-            'has_consequences' => $variants->isNotEmpty() || $promos->isNotEmpty() || ($assignVariants && $assignable->isNotEmpty()),
+            'has_consequences' => $variants->isNotEmpty() || $promos->isNotEmpty() || $assignments->isNotEmpty(),
         ];
     }
 
+    /** Applies the plan exactly as resolved: Product outlets, then each Variant's FINAL outlets and (only) its deactivation. */
     private function applyOutletPlan(Product $product, array $plan): void
     {
         $product->outlets()->sync($plan['final_outlet_ids']);
 
-        foreach ($plan['variants'] as $row) {
-            $variant = ProductVariant::find($row['id']);
-            $variant->outlets()->sync($row['remaining_outlet_ids']);
+        foreach ($plan['variant_writes'] as $row) {
+            $variant = ProductVariant::query()->where('product_id', $product->id)->whereKey($row['id'])->first();
+
+            if ($variant === null) {
+                continue;
+            }
+
+            $variant->outlets()->sync($row['final_outlet_ids']);
 
             if ($row['will_deactivate']) {
                 $variant->update(['is_active' => false]);
             }
         }
+    }
 
-        // Opt-in only: ADD the new Product outlets to existing active Variants (never removes, never creates).
-        foreach ($plan['assignments'] as $row) {
-            ProductVariant::query()
-                ->where('product_id', $product->id)
-                ->where('is_active', true)
-                ->whereKey($row['id'])
-                ->first()
-                ?->outlets()->syncWithoutDetaching($row['add_outlet_ids']);
-        }
+    /**
+     * Resolves what happens to EVERY Variant of the Product from the whole outlet change at once.
+     *
+     *  - kept     = the Variant's outlets that stay in the Product (the subset rule);
+     *  - added    = the newly added Product outlets the Variant does not have yet, only for an ACTIVE Variant and
+     *               only when $assignVariants (an inactive Variant never gains an outlet and is never activated);
+     *  - final    = kept + added;
+     *  - will_deactivate = the Variant loses an outlet and its FINAL set is empty (decided from the final state,
+     *               never from an intermediate one). A Variant without any outlet row is not touched by removal.
+     *
+     * @param  Collection<int, int>  $final  the Product's final outlet ids
+     * @param  Collection<int, int>  $added  the Product's newly added outlet ids
+     * @return Collection<int, array{id: int, name: string, was_active: bool, current_outlet_ids: int[], removed_outlet_ids: int[], added_outlet_ids: int[], final_outlet_ids: int[], will_deactivate: bool, changes: bool}>
+     */
+    private function resolveVariants(Product $product, Collection $final, Collection $added, bool $assignVariants): Collection
+    {
+        return $product->variants()->with('outlets:id')->orderBy('name')->get()
+            ->map(function (ProductVariant $variant) use ($final, $added, $assignVariants) {
+                $current = $variant->outlets->pluck('id')->map(fn ($id) => (int) $id)->sort()->values();
+                $kept = $current->intersect($final);
+                $removed = $current->diff($final)->values();
+                $new = $assignVariants && $variant->is_active ? $added->diff($current)->values() : collect();
+                $finalOutlets = $kept->merge($new)->unique()->sort()->values();
+                $willDeactivate = $removed->isNotEmpty() && $finalOutlets->isEmpty();
+
+                return [
+                    'id' => (int) $variant->id,
+                    'name' => $variant->name,
+                    'was_active' => (bool) $variant->is_active,
+                    'current_outlet_ids' => $current->all(),
+                    'removed_outlet_ids' => $removed->all(),
+                    'added_outlet_ids' => $new->all(),
+                    'final_outlet_ids' => $finalOutlets->all(),
+                    'will_deactivate' => $willDeactivate,
+                    'changes' => $removed->isNotEmpty() || $new->isNotEmpty(),
+                ];
+            })
+            ->values();
     }
 
     /**

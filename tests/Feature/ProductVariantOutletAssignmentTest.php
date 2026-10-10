@@ -200,7 +200,23 @@ class ProductVariantOutletAssignmentTest extends TestCase
         $this->assertEqualsCanonicalizing([$this->a->id, $this->b->id, $this->c->id], $this->variant->outlets()->pluck('outlets.id')->all());
     }
 
-    public function test_product_losing_an_outlet_still_trims_its_variants_and_the_subset_rule_holds(): void
+    public function test_product_losing_an_outlet_without_the_option_still_trims_and_deactivates_as_before(): void
+    {
+        $this->product->outlets()->sync([$this->a->id, $this->b->id]);
+        $this->variant->outlets()->sync([$this->a->id, $this->b->id]);
+        $onlyB = $this->makeVariant($this->product, 'Large', 'UBE-L', 25000, 27000, [$this->b]);
+
+        $this->saveOutlets($this->owner, [$this->a, $this->c], false)->assertOk();
+
+        $this->assertEqualsCanonicalizing([$this->a->id, $this->c->id], $this->product->outlets()->pluck('outlets.id')->all());
+        $this->assertSame([$this->a->id], $this->variant->outlets()->pluck('outlets.id')->all(), 'trimmed to the Product outlets, Charlie is NOT silently assigned');
+        $this->assertSame([], $onlyB->outlets()->pluck('outlets.id')->all());
+        $this->assertFalse((bool) $onlyB->fresh()->is_active, 'a Variant left with no outlet is deactivated, as before');
+
+        $this->assertVariantsInsideProductOutlets();
+    }
+
+    public function test_product_losing_an_outlet_with_the_option_moves_the_variant_instead_of_deactivating_it(): void
     {
         $this->product->outlets()->sync([$this->a->id, $this->b->id]);
         $this->variant->outlets()->sync([$this->a->id, $this->b->id]);
@@ -210,9 +226,16 @@ class ProductVariantOutletAssignmentTest extends TestCase
 
         $this->assertEqualsCanonicalizing([$this->a->id, $this->c->id], $this->product->outlets()->pluck('outlets.id')->all());
         $this->assertEqualsCanonicalizing([$this->a->id, $this->c->id], $this->variant->outlets()->pluck('outlets.id')->all());
-        $this->assertFalse((bool) $onlyB->fresh()->is_active, 'a Variant left with no outlet is deactivated, as before');
+        $this->assertSame([$this->c->id], $onlyB->outlets()->pluck('outlets.id')->all(), 'it lived only at Bravo; with the option it moves to Charlie');
+        $this->assertTrue((bool) $onlyB->fresh()->is_active, 'decided from the FINAL outlets, so it stays active');
 
+        $this->assertVariantsInsideProductOutlets();
+    }
+
+    private function assertVariantsInsideProductOutlets(): void
+    {
         $productOutlets = $this->product->outlets()->pluck('outlets.id');
+
         foreach (ProductVariant::with('outlets:id')->get() as $variant) {
             $this->assertEmpty($variant->outlets->pluck('id')->diff($productOutlets)->all(), 'variant '.$variant->name.' stays inside its Product outlets');
         }
