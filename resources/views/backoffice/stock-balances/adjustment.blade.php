@@ -385,6 +385,12 @@
             font-weight: 800;
         }
 
+        /* "Tambah Baris" sits under the last row, so a long list never sends the user back to the top. */
+        .items-add {
+            display: flex;
+            margin-top: 4px;
+        }
+
         .actions {
             display: flex;
             gap: 12px;
@@ -430,6 +436,10 @@
             .top-fields-grid,
             .item-grid {
                 grid-template-columns: 1fr;
+            }
+
+            .items-add .btn {
+                width: 100%;
             }
 
             .hero-wrap {
@@ -540,10 +550,13 @@
                                 <div class="items-title">Daftar Item Adjustment</div>
 
                             </div>
-                            <button type="button" class="btn btn-secondary" id="add-item-btn">Tambah Baris</button>
                         </div>
 
                         <div id="items-wrapper"></div>
+
+                        <div class="items-add">
+                            <button type="button" class="btn btn-secondary" id="add-item-btn">Tambah Baris</button>
+                        </div>
 
                         <div class="actions">
                             <button type="submit" class="btn btn-primary">Simpan Adjustment</button>
@@ -758,6 +771,8 @@
                 itemsWrapper.appendChild(row);
                 refreshRowNames();
                 updateRowComputed(row);
+
+                return row;
             }
 
             function ensureAtLeastOneRow() {
@@ -767,7 +782,13 @@
             }
 
             addItemBtn.addEventListener('click', function () {
-                addRow();
+                // Only a row the user asked for takes focus (not the first row on page load or after a removal).
+                const newRow = addRow();
+                const newSelect = newRow.querySelector('.ingredient-select');
+
+                if (newSelect) {
+                    newSelect.focus();
+                }
             });
 
             typeSelect.addEventListener('change', function () {

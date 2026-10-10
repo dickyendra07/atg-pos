@@ -452,16 +452,48 @@
             box-shadow: 0 12px 24px rgba(15, 23, 42, 0.04);
         }
 
+        .product-category-heading {
+            margin: 0;
+            font: inherit;
+        }
+
         .product-category-head {
-            cursor: pointer;
-            user-select: none;
+            appearance: none;
+            width: 100%;
+            margin: 0;
+            border: 0;
+            border-bottom: 1px solid #f1e3da;
+            font: inherit;
+            text-align: left;
+            color: inherit;
+            cursor: default;
             padding: 18px 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
             gap: 12px;
             background: linear-gradient(135deg, #ffffff 0%, #fff8f4 100%);
-            border-bottom: 1px solid #f1e3da;
+            transition: border-color 0.2s ease, box-shadow 0.18s ease;
+        }
+
+        .bo-js .product-category-section:not(.is-open) .product-category-head {
+            border-bottom-color: transparent;
+        }
+
+        .bo-js .product-category-head {
+            cursor: pointer;
+        }
+
+        .bo-js .product-category-head:hover {
+            background: linear-gradient(135deg, #ffffff 0%, #fff1ea 100%);
+        }
+
+        .product-category-head:focus {
+            outline: none;
+        }
+
+        .product-category-head:focus-visible {
+            box-shadow: inset 0 0 0 3px rgba(232, 106, 58, 0.45);
         }
 
         .product-category-title {
@@ -502,14 +534,68 @@
             font-size: 16px;
             font-weight: 900;
             line-height: 1;
+            transition: transform 0.2s ease;
         }
 
-        .product-category-section.collapsed .table-wrap {
-            display: none;
-        }
-
-        .product-category-section.collapsed .product-category-toggle {
+        /* Pointing right only means "closed" when JS can open it again; without JS the panel is open. */
+        .bo-js .product-category-section:not(.is-open) .product-category-toggle {
             transform: rotate(-90deg);
+        }
+
+        /* Accordion panel: same grid-rows technique as the sidebar groups. It only collapses once JS is
+           known to be running (.bo-js), so without JS every category stays open and reachable. Closed
+           content is also made invisible (after the animation) so its links and buttons leave the tab order. */
+        .product-category-panel {
+            display: grid;
+            grid-template-rows: 1fr;
+        }
+
+        .product-category-panel-inner {
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .bo-js .product-category-panel {
+            grid-template-rows: 0fr;
+            transition: grid-template-rows 0.22s ease;
+        }
+
+        .bo-js .product-category-section.is-open .product-category-panel {
+            grid-template-rows: 1fr;
+        }
+
+        .bo-js .product-category-section:not(.is-open) .product-category-panel-inner {
+            visibility: hidden;
+            transition: visibility 0s linear 0.22s;
+        }
+
+        /* A record revealed by navigation (bo:reveal) opens at once so the scroll position stays right. */
+        .product-category-section.is-instant .product-category-panel,
+        .product-category-section.is-instant .product-category-panel-inner,
+        .product-category-section.is-instant .product-category-toggle,
+        .product-category-section.is-instant .product-category-head {
+            transition: none;
+        }
+
+        .product-category-tools {
+            display: none;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 8px;
+            margin: 24px 24px -8px;
+        }
+
+        .bo-js .product-category-tools {
+            display: flex;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .product-category-head,
+            .product-category-toggle,
+            .bo-js .product-category-panel,
+            .bo-js .product-category-section:not(.is-open) .product-category-panel-inner {
+                transition: none;
+            }
         }
 
         @media (max-width: 900px) {
@@ -518,7 +604,8 @@
             }
 
             .product-filter-card,
-            .product-category-section {
+            .product-category-section,
+            .product-category-tools {
                 margin-left: 18px;
                 margin-right: 18px;
             }
@@ -649,16 +736,43 @@
             </div>
 
             @if($products->count())
-                @foreach(($productGroups ?? collect()) as $categoryName => $categoryProducts)
-                    <div class="product-category-section {{ $loop->first ? '' : 'collapsed' }}" data-product-category-section>
-                        <div class="product-category-head" data-product-category-toggle>
-                            <div class="product-category-title">{{ $categoryName }}</div>
-                            <div class="product-category-meta">
-                                <div class="product-category-count">{{ $categoryProducts->count() }} product</div>
-                                <div class="product-category-toggle">⌄</div>
-                            </div>
-                        </div>
+                {{-- Every category starts closed. With a search or a category filter active the page only lists
+                     categories that hold a match, so those start open and the results stay visible.
+                     Closing is done by CSS + JS only (.bo-js). Without JS every panel is visible, so the markup
+                     says aria-expanded="true"; the script below sets the real state as soon as it runs. --}}
+                @php
+                    $categoriesStartOpen = filled($filters['search'] ?? null) || filled($filters['category_id'] ?? null);
+                @endphp
 
+                @if(($productGroups ?? collect())->count() > 1)
+                    <div class="product-category-tools">
+                        <button type="button" class="btn btn-secondary btn-sm" data-product-category-expand-all>Expand All</button>
+                        <button type="button" class="btn btn-secondary btn-sm" data-product-category-collapse-all>Collapse All</button>
+                    </div>
+                @endif
+
+                @foreach(($productGroups ?? collect()) as $categoryName => $categoryProducts)
+                    <div class="product-category-section {{ $categoriesStartOpen ? 'is-open' : '' }}" data-product-category-section>
+                        <h2 class="product-category-heading">
+                            <button type="button"
+                                    class="product-category-head"
+                                    id="product-category-head-{{ $loop->index }}"
+                                    aria-expanded="true"
+                                    aria-controls="product-category-panel-{{ $loop->index }}"
+                                    data-product-category-toggle>
+                                <span class="product-category-title">{{ $categoryName }}</span>
+                                <span class="product-category-meta">
+                                    <span class="product-category-count">{{ $categoryProducts->count() }} {{ $categoryProducts->count() === 1 ? 'Product' : 'Products' }}</span>
+                                    <span class="product-category-toggle" aria-hidden="true">⌄</span>
+                                </span>
+                            </button>
+                        </h2>
+
+                        <div class="product-category-panel"
+                             id="product-category-panel-{{ $loop->index }}"
+                             role="region"
+                             aria-labelledby="product-category-head-{{ $loop->index }}">
+                        <div class="product-category-panel-inner">
                         <div class="table-wrap">
                             <table class="products-clean-table table-center">
                                 <thead>
@@ -720,6 +834,8 @@
                                 </tbody>
                             </table>
                         </div>
+                        </div>
+                        </div>
                     </div>
                 @endforeach
             @else
@@ -731,26 +847,76 @@
     </div>
 
     <script>
-        // A record brought back into view after save may sit in a collapsed category.
-        document.addEventListener('bo:reveal', function (event) {
-            const section = event.target.closest('[data-product-category-section]');
+        (function () {
+            var sections = Array.prototype.slice.call(document.querySelectorAll('[data-product-category-section]'));
+            var motionTimer = null;
 
-            if (section) {
-                section.classList.remove('collapsed');
+            function setOpen(section, open, instant) {
+                var button = section.querySelector('[data-product-category-toggle]');
+
+                if (instant) {
+                    // No animation, so a reveal followed by a scroll measures the final layout.
+                    section.classList.add('is-instant');
+                    window.clearTimeout(motionTimer);
+                    motionTimer = window.setTimeout(function () {
+                        sections.forEach(function (item) { item.classList.remove('is-instant'); });
+                    }, 60);
+                }
+
+                section.classList.toggle('is-open', open);
+
+                if (button) {
+                    button.setAttribute('aria-expanded', open ? 'true' : 'false');
+                }
             }
-        });
 
-        document.querySelectorAll('[data-product-category-toggle]').forEach(function (header) {
-            header.addEventListener('click', function () {
-                const section = header.closest('[data-product-category-section]');
+            // The markup describes the no-JS page (everything visible). Now that JS runs, make aria-expanded
+            // match what the CSS actually shows: collapsed unless the server marked the category open.
+            sections.forEach(function (section) {
+                var button = section.querySelector('[data-product-category-toggle]');
 
-                if (!section) {
+                if (button) {
+                    button.setAttribute('aria-expanded', section.classList.contains('is-open') ? 'true' : 'false');
+                }
+            });
+
+            // A record brought back into view after save may sit in a collapsed category.
+            document.addEventListener('bo:reveal', function (event) {
+                var section = event.target.closest('[data-product-category-section]');
+
+                if (section) {
+                    setOpen(section, true, true);
+                }
+            });
+
+            sections.forEach(function (section) {
+                var button = section.querySelector('[data-product-category-toggle]');
+
+                if (!button) {
                     return;
                 }
 
-                section.classList.toggle('collapsed');
+                // A real <button>: Enter and Space already activate it.
+                button.addEventListener('click', function () {
+                    setOpen(section, !section.classList.contains('is-open'), false);
+                });
             });
-        });
+
+            var expandAll = document.querySelector('[data-product-category-expand-all]');
+            var collapseAll = document.querySelector('[data-product-category-collapse-all]');
+
+            if (expandAll) {
+                expandAll.addEventListener('click', function () {
+                    sections.forEach(function (section) { setOpen(section, true, false); });
+                });
+            }
+
+            if (collapseAll) {
+                collapseAll.addEventListener('click', function () {
+                    sections.forEach(function (section) { setOpen(section, false, false); });
+                });
+            }
+        })();
     </script>
 
 @endsection
