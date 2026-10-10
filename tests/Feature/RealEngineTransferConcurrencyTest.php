@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\StockTransfer;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\RealEngineHarness;
 use Tests\TestCase;
 
@@ -243,7 +244,7 @@ class RealEngineTransferConcurrencyTest extends TestCase
         $this->assertSame(0, DB::table('stock_balances')->where(['ingredient_id' => $this->ingredient->id, 'location_type' => 'outlet', 'location_id' => $this->outlet2->id])->count());
         $after = $this->lastMovementId();
 
-        $this->assertAllOk($this->fireTogether(array_fill(0, 6, ['uri' => '/backoffice/transfers', 'data' => $this->storeData("warehouse:{$this->warehouse->id}", "outlet:{$this->outlet2->id}", 1)])));
+        $this->assertAllOk($this->fireTogether(array_map(fn () => ['uri' => '/backoffice/transfers', 'data' => $this->storeData("warehouse:{$this->warehouse->id}", "outlet:{$this->outlet2->id}", 1)], range(1, 6))));
 
         $this->assertSame(1, DB::table('stock_balances')->where(['ingredient_id' => $this->ingredient->id, 'location_type' => 'outlet', 'location_id' => $this->outlet2->id])->count(), 'one row for the identity');
         $this->assertSame('6.00', $this->balance($this->ingredient, 'outlet', $this->outlet2->id));
@@ -382,6 +383,7 @@ class RealEngineTransferConcurrencyTest extends TestCase
     private function storeData(string $from, string $to, int|float $qty = 1, ?array $items = null): array
     {
         return [
+            'operation_key' => (string) Str::uuid(),
             'from_location' => $from, 'to_location' => $to, 'sender_name' => 'Sender', 'receiver_name' => '',
             'items' => array_map(fn ($ingredient) => ['ingredient_id' => $ingredient->id, 'qty' => $qty], $items ?? [$this->ingredient]),
         ];

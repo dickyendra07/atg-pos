@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Backoffice;
 
+use App\Exceptions\TransferOperationBusy;
+use App\Exceptions\TransferOperationConflict;
 use App\Http\Controllers\Controller;
 use App\Models\Ingredient;
 use App\Models\Outlet;
 use App\Models\StockBalance;
 use App\Models\StockMovement;
 use App\Models\StockTransfer;
+use App\Models\TransferOperation;
 use App\Models\Warehouse;
 use App\Services\BackofficeOutletContext;
+use App\Services\TransferOperationService;
 use Illuminate\Database\ConcurrencyErrorDetector;
 use Illuminate\Database\DeadlockException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -17,6 +21,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -26,6 +32,8 @@ class TransferViewController extends Controller
     private const TRANSACTION_ATTEMPTS = 3;
 
     private const LOCATION_TYPES = ['warehouse', 'outlet'];
+
+    private const OPERATION_KEY_MESSAGE = 'Halaman form transfer sudah kedaluwarsa. Muat ulang halaman lalu isi dan simpan lagi.';
 
     private const BUSY_MESSAGE = 'Transfer sedang diproses oleh permintaan lain. Tidak ada stok yang berubah, silakan coba lagi.';
 
@@ -263,7 +271,10 @@ class TransferViewController extends Controller
      * given message is thrown. Every row is finally read with lockForUpdate(), which returns the latest committed
      * values and keeps the row locked until the transaction ends.
      *
-     * @param  array<int, array{ingredient_id: int, type: string, id: int, create: bool, missing: string}>  $specs
+     * 'missing' is the message of the RuntimeException thrown for an absent row, or a Closure returning the exception
+     * to throw (store() uses it for a friendly validation error).
+     *
+     * @param  array<int, array{ingredient_id: int, type: string, id: int, create: bool, missing: string|\Closure}>  $specs
      * @return array<string, StockBalance> the locked balances, by balanceKey()
      */
     protected function lockStockBalances(array $specs): array
@@ -305,7 +316,7 @@ class TransferViewController extends Controller
             $balance = StockBalance::where($identity)->lockForUpdate()->first();
 
             if (! $balance) {
-                throw new \RuntimeException($spec['missing']);
+                throw $spec['missing'] instanceof \Closure ? ($spec['missing'])() : new \RuntimeException($spec['missing']);
             }
 
             $locked[$key] = $balance;
@@ -314,7 +325,7 @@ class TransferViewController extends Controller
         return $locked;
     }
 
-    protected function balanceSpec(int $ingredientId, string $type, int $locationId, bool $create, string $missing = ''): array
+    protected function balanceSpec(int $ingredientId, string $type, int $locationId, bool $create, string|\Closure $missing = ''): array
     {
         return ['ingredient_id' => $ingredientId, 'type' => $type, 'id' => $locationId, 'create' => $create, 'missing' => $missing];
     }
@@ -607,6 +618,7 @@ class TransferViewController extends Controller
             'prefillFromLocation' => $prefillFromLocation,
             'defaultSenderName' => $user->name,
             'oldItems' => old('items', []),
+            'operationKey' => $this->operationKeyForForm(old('operation_key')),
         ]);
     }
 
@@ -663,25 +675,42 @@ class TransferViewController extends Controller
         ]);
     }
 
+    /**
+     * One create-form render = one operation key. A key that came back through old() (validation failure, Back
+     * button) is kept so the SAME operation can be retried safely; anything that is not a UUID is replaced.
+     */
+    protected function operationKeyForForm(mixed $old): string
+    {
+        return is_string($old) && Str::isUuid($old) ? strtolower($old) : (string) Str::uuid();
+    }
+
     public function store(Request $request)
     {
         $user = $this->authorizeAccess();
 
+        // 1-2. Structure only: shape and format. Nothing here depends on mutable stock or master data, so a replay of
+        // an operation that already committed is never rejected by it.
         $validated = $request->validate([
+            'operation_key' => ['required', 'uuid'],
             'from_location' => 'required|string',
             'to_location' => 'required|string',
             'sender_name' => 'required|string|max:100',
             'receiver_name' => 'nullable|string|max:100',
             'note' => 'nullable|string|max:255',
             'items' => 'required|array|min:1',
-            'items.*.ingredient_id' => 'required|exists:ingredients,id,deleted_at,NULL',
-            'items.*.qty' => 'required|numeric|min:0.01',
+            'items.*.ingredient_id' => 'required|integer|min:1',
+            'items.*.qty' => ['required', 'numeric', 'min:0.01', 'decimal:0,2'],
         ], [
+            'operation_key.required' => self::OPERATION_KEY_MESSAGE,
+            'operation_key.uuid' => self::OPERATION_KEY_MESSAGE,
             'items.required' => 'Minimal harus ada 1 item transfer.',
             'items.*.ingredient_id.required' => 'Ingredient wajib dipilih di setiap baris.',
             'items.*.qty.required' => 'Qty transfer wajib diisi di setiap baris.',
+            'items.*.qty.decimal' => 'Qty transfer maksimal 2 angka di belakang koma.',
         ]);
 
+        // 3. Current authorization. This runs for a replay exactly as for a new request: a key never lets anyone
+        // past the role or outlet scope they have right now.
         $from = $this->parseLocation($validated['from_location']);
         $to = $this->parseLocation($validated['to_location']);
         $context = app(BackofficeOutletContext::class);
@@ -705,117 +734,108 @@ class TransferViewController extends Controller
                 ->withInput();
         }
 
-        if ($from['type'] === 'warehouse' && ! Warehouse::find($from['id'])) {
-            return back()
-                ->withErrors([
-                    'from_location' => 'Warehouse asal tidak ditemukan.',
-                ])
-                ->withInput();
+        // 4. Normalize the business payload exactly as it will be stored (quantities as 2-decimal strings, in the
+        // submitted order, a repeated ingredient kept as its own line).
+        try {
+            $items = collect($validated['items'])
+                ->values()
+                ->map(fn ($item) => [
+                    'ingredient_id' => (int) $item['ingredient_id'],
+                    'qty' => TransferOperationService::canonicalQty($item['qty']),
+                ]);
+        } catch (\InvalidArgumentException) {
+            // Cannot happen after the rules above; never round an odd quantity into a valid one if it ever does.
+            return back()->withErrors(['items' => 'Qty transfer tidak valid.'])->withInput();
         }
 
-        if ($from['type'] === 'outlet' && ! Outlet::find($from['id'])) {
-            return back()
-                ->withErrors([
-                    'from_location' => 'Outlet asal tidak ditemukan.',
-                ])
-                ->withInput();
-        }
+        $globalNote = trim((string) ($validated['note'] ?? ''));
+        $receiverName = $validated['receiver_name'] ?: null;
 
-        if ($to['type'] === 'warehouse' && ! Warehouse::find($to['id'])) {
-            return back()
-                ->withErrors([
-                    'to_location' => 'Warehouse tujuan tidak ditemukan.',
-                ])
-                ->withInput();
-        }
-
-        if ($to['type'] === 'outlet' && ! Outlet::find($to['id'])) {
-            return back()
-                ->withErrors([
-                    'to_location' => 'Outlet tujuan tidak ditemukan.',
-                ])
-                ->withInput();
-        }
-
-        $items = collect($validated['items'])
-            ->filter(function ($item) {
-                return ! empty($item['ingredient_id']) && (float) ($item['qty'] ?? 0) > 0;
-            })
-            ->values();
-
-        if ($items->isEmpty()) {
-            return back()
-                ->withErrors([
-                    'items' => 'Tidak ada item transfer valid untuk disimpan.',
-                ])
-                ->withInput();
-        }
-
-        $fromName = $this->getLocationName($from['type'], $from['id']);
-        $toName = $this->getLocationName($to['type'], $to['id']);
-
-        $ingredientIds = $items->pluck('ingredient_id')->unique()->values();
-
-        $sourceStocks = StockBalance::where('location_type', $from['type'])
-            ->where('location_id', $from['id'])
-            ->whereIn('ingredient_id', $ingredientIds)
-            ->get()
-            ->keyBy('ingredient_id');
-
-        foreach ($items as $index => $item) {
-            $ingredient = Ingredient::find($item['ingredient_id']);
-            $ingredientName = $ingredient?->name ?? 'Ingredient';
-            $sourceStock = $sourceStocks->get($item['ingredient_id']);
-
-            if (! $sourceStock) {
-                return back()
-                    ->withErrors([
-                        "items.{$index}.ingredient_id" => 'Stock ' . $ingredientName . ' di ' . $fromName . ' belum tersedia. Lakukan stock in dulu sebelum transfer.',
-                    ])
-                    ->withInput();
-            }
-
-            $currentSourceQty = (float) $sourceStock->qty_on_hand;
-            $transferQty = (float) $item['qty'];
-
-            if ($transferQty > $currentSourceQty) {
-                return back()
-                    ->withErrors([
-                        "items.{$index}.qty" => 'Stock ' . $ingredientName . ' di ' . $fromName . ' hanya ' . number_format($currentSourceQty, 0, ',', '.') . '. Tidak cukup untuk transfer qty ' . number_format($transferQty, 0, ',', '.') . '.',
-                    ])
-                    ->withInput();
-            }
-        }
+        // 5. Fingerprint of that payload (never of the operation key).
+        $operationKey = strtolower($validated['operation_key']);
+        $fingerprint = TransferOperationService::fingerprint(
+            $from,
+            $to,
+            $validated['sender_name'],
+            $receiverName,
+            $globalNote !== '' ? $globalNote : null,
+            $items->all()
+        );
 
         try {
-            DB::transaction(function () use ($validated, $from, $to, $user, $items, $fromName, $toName) {
-                $globalNote = trim((string) ($validated['note'] ?? ''));
-                $sentAt = now();
+            // 6. The protected transaction: claim, validate against FRESH data, lock, post, record, commit - or
+            // roll all of it back, claim included.
+            $replay = DB::transaction(function () use ($operationKey, $fingerprint, $validated, $from, $to, $user, $items, $globalNote, $receiverName) {
+                // 7-8. The claim is the first statement. A replay of a committed operation returns here, before any
+                // check that depends on mutable stock, so it can never be refused for "insufficient stock".
+                [$operation, $isNew] = app(TransferOperationService::class)->claim(
+                    $operationKey,
+                    $user->id,
+                    TransferOperation::KIND_GENERAL_TRANSFER,
+                    $fingerprint
+                );
 
-                // Every balance of the whole bulk transfer is locked up front in the one global order (see
-                // lockStockBalances()): bulk transfers listing the same items differently, and transfers in
-                // opposite directions, can no longer wait on each other in a circle. The source must exist; a
-                // missing destination is created here, inside this transaction.
+                if (! $isNew) {
+                    return true;
+                }
+
+                // 9. A new operation: business validation on current data. A failure throws a ValidationException,
+                // which rolls the claim back so the same key can be retried after the form is fixed.
+                $fromName = $this->getLocationName($from['type'], $from['id']);
+                $toName = $this->getLocationName($to['type'], $to['id']);
+                $this->assertLocationsExist($from, $to);
+
+                $ingredients = Ingredient::whereIn('id', $items->pluck('ingredient_id')->unique()->all())->get()->keyBy('id');
+                foreach ($items as $index => $item) {
+                    if (! $ingredients->has($item['ingredient_id'])) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.ingredient_id" => __('validation.exists', ['attribute' => "items.{$index}.ingredient_id"]),
+                        ]);
+                    }
+                }
+
+                // 10. Balances in the one global order of PR #34 (the source must exist, a missing destination is
+                // created in this transaction), then the stock check on the locked, current quantities.
                 $specs = [];
-                foreach ($items as $item) {
-                    $specs[] = $this->balanceSpec((int) $item['ingredient_id'], $from['type'], $from['id'], false, 'Stock asal tidak ditemukan saat proses transfer.');
-                    $specs[] = $this->balanceSpec((int) $item['ingredient_id'], $to['type'], $to['id'], true);
+                foreach ($items as $index => $item) {
+                    $name = $ingredients[$item['ingredient_id']]->name ?? 'Ingredient';
+                    $specs[] = $this->balanceSpec(
+                        $item['ingredient_id'], $from['type'], $from['id'], false,
+                        fn () => ValidationException::withMessages([
+                            "items.{$index}.ingredient_id" => 'Stock ' . $name . ' di ' . $fromName . ' belum tersedia. Lakukan stock in dulu sebelum transfer.',
+                        ])
+                    );
+                    $specs[] = $this->balanceSpec($item['ingredient_id'], $to['type'], $to['id'], true);
                 }
                 $locked = $this->lockStockBalances($specs);
 
-                foreach ($items as $item) {
-                    $lockedSourceStock = $locked[$this->balanceKey((int) $item['ingredient_id'], $from['type'], $from['id'])];
-                    $destinationStock = $locked[$this->balanceKey((int) $item['ingredient_id'], $to['type'], $to['id'])];
-
+                $remaining = [];
+                foreach ($items as $index => $item) {
+                    $key = $this->balanceKey($item['ingredient_id'], $from['type'], $from['id']);
+                    $available = $remaining[$key] ?? (float) $locked[$key]->qty_on_hand;
                     $transferQty = (float) $item['qty'];
-                    $freshSourceQty = (float) $lockedSourceStock->qty_on_hand;
 
-                    if ($transferQty > $freshSourceQty) {
-                        throw new \RuntimeException('Stock asal berubah saat proses transfer. Silakan ulangi lagi.');
+                    if ($transferQty > $available) {
+                        throw ValidationException::withMessages([
+                            "items.{$index}.qty" => 'Stock ' . ($ingredients[$item['ingredient_id']]->name ?? 'Ingredient') . ' di ' . $fromName . ' hanya ' . number_format($available, 0, ',', '.') . '. Tidak cukup untuk transfer qty ' . number_format($transferQty, 0, ',', '.') . '.',
+                        ]);
                     }
 
+                    $remaining[$key] = $available - $transferQty;
+                }
+
+                // 11-13. Post every item, and record every created transfer id on the operation.
+                $sentAt = now();
+                $createdIds = [];
+
+                foreach ($items as $item) {
+                    $lockedSourceStock = $locked[$this->balanceKey($item['ingredient_id'], $from['type'], $from['id'])];
+                    $destinationStock = $locked[$this->balanceKey($item['ingredient_id'], $to['type'], $to['id'])];
+
+                    $transferQty = (float) $item['qty'];
+
                     $lockedSourceStock->update([
-                        'qty_on_hand' => $freshSourceQty - $transferQty,
+                        'qty_on_hand' => (float) $lockedSourceStock->qty_on_hand - $transferQty,
                     ]);
 
                     $destinationStock->update([
@@ -835,10 +855,12 @@ class TransferViewController extends Controller
                         'to_location_type' => $to['type'],
                         'to_location_id' => $to['id'],
                         'sender_name' => $validated['sender_name'],
-                        'receiver_name' => $validated['receiver_name'] ?: null,
+                        'receiver_name' => $receiverName,
                         'sent_at' => $sentAt,
                         'received_at' => null,
                     ]);
+
+                    $createdIds[] = $transfer->id;
 
                     $movementExtra = ' | sender: ' . $validated['sender_name'];
 
@@ -870,7 +892,17 @@ class TransferViewController extends Controller
                         'note' => 'Transfer #' . $transfer->transfer_number . ' masuk ke ' . $toName . ' dari ' . $fromName . $movementExtra . ($globalNote !== '' ? ' | ' . $globalNote : ''),
                     ]);
                 }
-            }, self::TRANSACTION_ATTEMPTS);
+
+                $operation->update(['transfer_ids' => $createdIds]);
+
+                return false;
+            }, self::TRANSACTION_ATTEMPTS);   // 14. commit (re-run from a clean rollback only on a deadlock)
+        } catch (TransferOperationConflict $e) {
+            // Another user's key or another payload: refused generically. The key is dropped from the old input so
+            // the re-rendered form gets a fresh one.
+            return back()->withErrors(['operation_key' => $e->getMessage()])->withInput($request->except('operation_key'));
+        } catch (TransferOperationBusy $e) {
+            return back()->withErrors(['operation_key' => $e->getMessage()])->withInput();
         } catch (\Throwable $e) {
             if ($this->isConcurrencyFailure($e)) {
                 return back()->withErrors(['items' => self::BUSY_MESSAGE])->withInput();
@@ -879,9 +911,26 @@ class TransferViewController extends Controller
             throw $e;
         }
 
+        // 15.
         return redirect()
             ->route('backoffice.transfers.index')
-            ->with('success', 'Transfer bulk berhasil disimpan.');
+            ->with('success', $replay ? 'Transfer ini sudah berhasil disimpan sebelumnya.' : 'Transfer bulk berhasil disimpan.');
+    }
+
+    /** Source and destination must still exist (checked on current data, after the claim). */
+    protected function assertLocationsExist(array $from, array $to): void
+    {
+        $exists = fn (array $location): bool => $location['type'] === 'warehouse'
+            ? (bool) Warehouse::find($location['id'])
+            : (bool) Outlet::find($location['id']);
+
+        if (! $exists($from)) {
+            throw ValidationException::withMessages(['from_location' => $from['type'] === 'warehouse' ? 'Warehouse asal tidak ditemukan.' : 'Outlet asal tidak ditemukan.']);
+        }
+
+        if (! $exists($to)) {
+            throw ValidationException::withMessages(['to_location' => $to['type'] === 'warehouse' ? 'Warehouse tujuan tidak ditemukan.' : 'Outlet tujuan tidak ditemukan.']);
+        }
     }
 
     public function markReceived(StockTransfer $transfer)

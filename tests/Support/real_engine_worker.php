@@ -57,7 +57,10 @@ try {
     if (isset($response->exception)) {
         $out['error'] = get_class($response->exception).': '.substr($response->exception->getMessage(), 0, 240);
     }
-    $out['validation_failed'] = $errors && $errors->any();
+    // Laravel stores the flashed errors as a ViewErrorBag, or as a plain array of bags/messages: accept both.
+    $out['validation_failed'] = is_object($errors)
+        ? $errors->any()
+        : (is_array($errors) && count(array_filter($errors)) > 0);
     $out['flash_error'] = $session->get('error');
     $out['ok'] = $response->getStatusCode() < 400 && ! $out['validation_failed'] && ! $out['flash_error'];
 } catch (HttpResponseException|HttpException $e) {
