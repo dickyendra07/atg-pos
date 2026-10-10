@@ -136,6 +136,9 @@ class WarehouseTransferViewController extends Controller
                 ]
             );
 
+            // Destination is read under a row lock so a concurrent writer cannot be overwritten.
+            $outletStock = StockBalance::whereKey($outletStock->id)->lockForUpdate()->firstOrFail();
+
             $currentOutletQty = (float) $outletStock->qty_on_hand;
 
             $outletStock->update([

@@ -195,6 +195,9 @@ class TransferViewController extends Controller
             ]
         );
 
+        // The source is credited from this read, so it is read under a row lock too.
+        $sourceStock = StockBalance::whereKey($sourceStock->id)->lockForUpdate()->firstOrFail();
+
         $destinationStock = StockBalance::where('ingredient_id', $transfer->ingredient_id)
             ->where('location_type', $transfer->to_location_type)
             ->where('location_id', $transfer->to_location_id)
@@ -281,6 +284,9 @@ class TransferViewController extends Controller
                 'qty_on_hand' => 0,
             ]
         );
+
+        // The destination is credited from this read, so it is read under a row lock too.
+        $destinationStock = StockBalance::whereKey($destinationStock->id)->lockForUpdate()->firstOrFail();
 
         $sourceStock->update([
             'qty_on_hand' => $currentSourceQty - $transferQty,
@@ -700,6 +706,9 @@ class TransferViewController extends Controller
                         'qty_on_hand' => 0,
                     ]
                 );
+
+                // The destination is credited from this read, so it is read under a row lock too.
+                $destinationStock = StockBalance::whereKey($destinationStock->id)->lockForUpdate()->firstOrFail();
 
                 $destinationStock->update([
                     'qty_on_hand' => (float) $destinationStock->qty_on_hand + $transferQty,
