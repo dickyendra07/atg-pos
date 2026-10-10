@@ -749,6 +749,19 @@
                             option.setAttribute('data-unit', item.unit || '');
                             select.appendChild(option);
                         });
+                        if (data.unavailable && data.unavailable.length) {
+                            var group = document.createElement('optgroup');
+                            group.label = 'Tidak tersedia (tidak bisa dipilih)';
+                            group.setAttribute('data-pw-recipe-unavailable', '');
+                            data.unavailable.forEach(function (item) {
+                                var option = document.createElement('option');
+                                option.value = String(item.id);
+                                option.textContent = item.label;
+                                option.disabled = true;
+                                group.appendChild(option);
+                            });
+                            select.appendChild(group);
+                        }
                         if (chosen && !select.querySelector('option[value="' + chosen + '"]') && kept) { select.appendChild(kept); }
                         select.value = chosen;
                     }

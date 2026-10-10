@@ -8,6 +8,13 @@
                 @foreach($ingredientOptions as $pwOption)
                     <option value="{{ $pwOption['id'] }}" data-unit="{{ $pwOption['unit'] }}">{{ $pwOption['label'] }}</option>
                 @endforeach
+                @if(! empty($unavailableOptions))
+                    <optgroup label="Tidak tersedia (tidak bisa dipilih)" data-pw-recipe-unavailable>
+                        @foreach($unavailableOptions as $pwUnavailable)
+                            <option value="{{ $pwUnavailable['id'] }}" disabled>{{ $pwUnavailable['label'] }}</option>
+                        @endforeach
+                    </optgroup>
+                @endif
             </select>
         </div>
         <div class="pw-recipe-qty">

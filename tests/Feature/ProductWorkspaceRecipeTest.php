@@ -171,8 +171,10 @@ class ProductWorkspaceRecipeTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors(['new_items.0.ingredient_id', 'new_items.1.ingredient_id', 'new_items.5.ingredient_id'])
             ->assertJsonPath('errors', fn ($errors) => ! isset($errors['new_items.2.ingredient_id'])
-                && $errors['new_items.0.ingredient_id'][0] === RecipeWriter::INACTIVE_INGREDIENT_MESSAGE
-                && $errors['new_items.1.ingredient_id'][0] === RecipeWriter::MISSING_OUTLET_MESSAGE
+                && str_contains($errors['new_items.0.ingredient_id'][0], '"'.$inactive->name.'" tidak aktif dan tidak bisa ditambahkan')
+                && str_contains($errors['new_items.1.ingredient_id'][0], '"Alpha Only" belum tersedia di Bravo')
+                && str_contains($errors['new_items.1.ingredient_id'][0], 'Alpha, Bravo')
+                && str_contains($errors['new_items.1.ingredient_id'][0], 'Owner/Admin Pusat')
                 && $errors['new_items.5.ingredient_id'][0] === RecipeWriter::DUPLICATE_ITEM_MESSAGE);
 
         $this->assertSame(0, Recipe::count());

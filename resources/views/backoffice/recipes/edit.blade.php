@@ -533,6 +533,9 @@
                                                         </span>
                                                     @endif
                                                 </div>
+                                                @foreach($itemWarnings[$item->id] ?? [] as $itemWarning)
+                                                    <div class="info" style="margin-top:6px;" data-recipe-item-warning>⚠ {{ $itemWarning }}</div>
+                                                @endforeach
                                             </td>
 
                                             <td class="c-unit" data-label="Unit">
@@ -654,12 +657,21 @@
                                         - [{{ strtoupper($ingredient->ingredientTypeLabel()) }}]
                                     </option>
                                 @endforeach
+                                @if($unavailableIngredients->isNotEmpty())
+                                    <optgroup label="Tidak tersedia (tidak bisa dipilih)">
+                                        @foreach($unavailableIngredients as $unavailable)
+                                            <option value="{{ $unavailable['ingredient']->id }}" disabled>
+                                                {{ $unavailable['ingredient']->name }} - {{ $unavailable['ingredient']->unit }} — {{ $unavailable['reason'] }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
+                                @endif
                             </select>
                             <div class="info" style="margin-top:8px;">
                                 @if($variantOutlets->isNotEmpty())
-                                    Variant ini tersedia di: {{ $variantOutlets->implode(', ') }}. Hanya ingredient aktif yang tersedia di semua outlet tersebut yang ditampilkan.
+                                    Recipe ini dipakai di: {{ $variantOutlets->implode(', ') }}. Ingredient harus aktif dan tersedia di semua outlet tersebut. Ingredient yang belum memenuhi syarat tetap terlihat (abu-abu) dengan alasannya; Owner/Admin Pusat dapat memperbaikinya di menu Ingredients.
                                 @else
-                                    Hanya ingredient aktif yang belum ada di recipe ini yang ditampilkan.
+                                    <strong>Variant ini belum tersedia di outlet aktif manapun</strong> (Product dan Variant harus sama-sama tersedia di outlet aktif), jadi Recipe belum bisa dinyatakan siap jual.
                                 @endif
                             </div>
                         </div>

@@ -94,11 +94,11 @@
             <div class="pw-subtitle pw-mt-0">Tambah bahan</div>
             <div class="pw-recipe-rows" data-pw-recipe-new-rows data-pw-next-index="{{ $recipe ? 0 : 1 }}">
                 @unless($recipe)
-                    @include('backoffice.products.workspace._recipe-new-row', ['index' => 0, 'ingredientOptions' => $ingredientOptions])
+                    @include('backoffice.products.workspace._recipe-new-row', ['index' => 0, 'ingredientOptions' => $ingredientOptions, 'unavailableOptions' => $unavailableOptions ?? []])
                 @endunless
             </div>
             <template data-pw-recipe-row-template>
-                @include('backoffice.products.workspace._recipe-new-row', ['index' => '__INDEX__', 'ingredientOptions' => $ingredientOptions])
+                @include('backoffice.products.workspace._recipe-new-row', ['index' => '__INDEX__', 'ingredientOptions' => $ingredientOptions, 'unavailableOptions' => $unavailableOptions ?? []])
             </template>
 
             <div class="pw-row-actions">
@@ -108,7 +108,11 @@
                 @endif
             </div>
             <p class="pw-note">
-                Pilihan: Ingredient aktif yang tersedia di semua outlet Variant ini{{ count($variantOutlets) ? ' ('.implode(', ', $variantOutlets).')' : '' }} dan belum ada di Recipe. Unit bahan baru mengikuti unit Ingredient.
+                @if(count($variantOutlets))
+                    Recipe ini dipakai di {{ implode(', ', $variantOutlets) }}. Ingredient harus aktif dan tersedia di semua outlet tersebut. Ingredient yang belum memenuhi syarat tetap terlihat (abu-abu) dengan alasannya; Owner/Admin Pusat dapat memperbaikinya di menu Ingredients. Unit bahan baru mengikuti unit Ingredient.
+                @else
+                    <strong>Variant ini belum tersedia di outlet aktif manapun</strong> (Product dan Variant harus sama-sama tersedia di outlet aktif), jadi Recipe belum bisa dinyatakan siap jual.
+                @endif
                 <span data-pw-recipe-no-options @if(count($ingredientOptions)) hidden @endif>Belum ada Ingredient yang memenuhi syarat.</span>
             </p>
         </div>
