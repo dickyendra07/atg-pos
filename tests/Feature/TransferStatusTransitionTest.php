@@ -14,6 +14,7 @@ use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 /**
@@ -395,20 +396,17 @@ class TransferStatusTransitionTest extends TestCase
 
     public function test_bulk_transfer_is_all_or_nothing(): void
     {
-        // Two lines of the same ingredient pass the per-line check (60 <= 100) but together exceed the stock;
-        // the locked re-check catches it, and nothing - transfers, movements, balances - survives.
+        // Two lines of the same ingredient pass individually (60 <= 100) but together exceed the stock; the check
+        // on the locked quantities refuses the whole request with a validation error, and nothing - transfers,
+        // movements, balances, the operation record - survives.
         $before = $this->snapshot();
 
-        $this->withoutExceptionHandling();
-        try {
-            $this->actingAs($this->owner)->post(route('backoffice.transfers.store'), $this->payload('warehouse:'.$this->warehouse->id, 'outlet:'.$this->outlet->id, [[$this->milk, 60], [$this->milk, 60]]));
-            $this->fail('the second line must be refused');
-        } catch (\RuntimeException $e) {
-            $this->assertSame('Stock asal berubah saat proses transfer. Silakan ulangi lagi.', $e->getMessage());
-        }
+        $this->actingAs($this->owner)->post(route('backoffice.transfers.store'), $this->payload('warehouse:'.$this->warehouse->id, 'outlet:'.$this->outlet->id, [[$this->milk, 60], [$this->milk, 60]]))
+            ->assertSessionHasErrors('items.1.qty');
 
         $this->assertSame($before, $this->snapshot());
         $this->assertSame(0, StockTransfer::count());
+        $this->assertSame(0, DB::table('transfer_operations')->count());
     }
 
     // ---- 14, 15: the deterministic balance lock order -----------------------------------------------------
@@ -519,6 +517,7 @@ class TransferStatusTransitionTest extends TestCase
     private function payload(string $from, string $to, array $lines): array
     {
         return [
+            'operation_key' => (string) Str::uuid(),
             'from_location' => $from, 'to_location' => $to, 'sender_name' => 'Owner', 'receiver_name' => '',
             'items' => array_map(fn ($line) => ['ingredient_id' => $line[0]->id, 'qty' => $line[1]], $lines),
         ];

@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\StockTransfer;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Tests\Support\RealEngineHarness;
 use Tests\TestCase;
 
@@ -137,7 +138,7 @@ class RealEngineWriterLockTest extends TestCase
         $this->seedBalance($this->ingredient, 'outlet', $this->outlet->id, 10);
         $after = $this->lastMovementId();
 
-        $results = $this->fireTogether(array_fill(0, self::WORKERS, $this->generalTransferRequest()));
+        $results = $this->fireTogether(array_map(fn () => $this->generalTransferRequest(), range(1, self::WORKERS)));
 
         $this->assertSame(self::WORKERS, collect($results)->where('ok', true)->count(), json_encode($results));
         $this->assertSame('16.00', $this->balance($this->ingredient, 'outlet', $this->outlet->id));
@@ -182,6 +183,7 @@ class RealEngineWriterLockTest extends TestCase
         return [
             'uri' => '/backoffice/transfers',
             'data' => [
+                'operation_key' => (string) Str::uuid(),
                 'from_location' => "warehouse:{$this->warehouse->id}", 'to_location' => "outlet:{$this->outlet->id}", 'sender_name' => 'Sender', 'receiver_name' => '',
                 'items' => [['ingredient_id' => $this->ingredient->id, 'qty' => 1]],
             ],

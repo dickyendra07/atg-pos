@@ -12,6 +12,7 @@ use App\Models\StockTransfer;
 use App\Models\User;
 use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class TransferAndInventoryLocationTest extends TestCase
@@ -382,6 +383,7 @@ class TransferAndInventoryLocationTest extends TestCase
         $ingredient = $this->transferIngredient();
 
         $this->actingAs($this->owner)->post(route('backoffice.transfers.store'), [
+            'operation_key' => (string) Str::uuid(),
             'from_location' => $from,
             'to_location' => $to,
             'sender_name' => 'Owner',

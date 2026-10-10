@@ -229,8 +229,11 @@
         @endif
 
         <div class="card">
-            <form method="POST" action="{{ route('backoffice.transfers.store') }}">
+            <form method="POST" action="{{ route('backoffice.transfers.store') }}" id="transfer-form">
                 @csrf
+                {{-- One key per rendered form: submitting the same form twice (double click, retry, Back button) is ONE
+                     transfer. The server enforces it with a unique database key; no JavaScript is needed for that. --}}
+                <input type="hidden" name="operation_key" value="{{ $operationKey }}">
 
                 <div class="field">
                     <label>Dari Lokasi</label>
@@ -498,6 +501,34 @@
                 resetTransferHint('');
             }
         });
+
+        // Supplementary only: the database already guarantees one transfer per operation key. This just stops the
+        // second click from sending a pointless request, and gives the button back when the browser restores the
+        // page from its back/forward cache.
+        (function () {
+            const form = document.getElementById('transfer-form');
+            const button = form ? form.querySelector('button[type="submit"]') : null;
+            if (!form || !button) return;
+            const label = button.textContent;
+
+            form.addEventListener('submit', function (event) {
+                if (form.dataset.submitting === '1') {
+                    event.preventDefault();
+                    return;
+                }
+                form.dataset.submitting = '1';
+                button.disabled = true;
+                button.textContent = 'Menyimpan...';
+            });
+
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) {
+                    form.dataset.submitting = '0';
+                    button.disabled = false;
+                    button.textContent = label;
+                }
+            });
+        })();
 
         window.addEventListener('DOMContentLoaded', function () {
             if (oldItems && oldItems.length) {
