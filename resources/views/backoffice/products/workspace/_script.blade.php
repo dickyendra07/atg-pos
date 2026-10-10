@@ -133,7 +133,7 @@
                 if (!target.closest || !target.closest('[data-pw-form], [data-pw-drawer-form]')) { return; }
                 if (type === 'input' && target.classList.contains('pw-rupiah')) { formatRupiahInput(target); }
                 refreshState();
-                if (type === 'change' && target.hasAttribute('data-pw-outlet-checkbox')) { schedulePreview(); }
+                if (type === 'change' && (target.hasAttribute('data-pw-outlet-checkbox') || target.hasAttribute('data-pw-assign-variants'))) { schedulePreview(); }
             });
         });
 
@@ -310,7 +310,9 @@
                     title: 'Simpan perubahan outlet?',
                     body: preview.deactivated_variant_ids.length
                         ? preview.deactivated_variant_ids.length + ' Variant akan dinonaktifkan karena tidak lagi memiliki outlet. Detailnya ada di ringkasan di atas tombol ini.'
-                        : 'Outlet beberapa Variant atau Promo ikut terdampak. Periksa ringkasan perubahan sebelum menyimpan.',
+                        : preview.assigned_variant_ids.length
+                            ? preview.assigned_variant_ids.length + ' Variant aktif akan di-assign ke outlet baru. Kesiapan jual tetap bergantung pada Recipe dan Ingredient outlet tersebut.'
+                            : 'Outlet beberapa Variant atau Promo ikut terdampak. Periksa ringkasan perubahan sebelum menyimpan.',
                     note: preview.promo_ids.length ? 'Promo tidak diubah otomatis.' : '',
                     label: 'Simpan Outlets',
                     tone: 'warning'
@@ -353,6 +355,8 @@
 
             body.append('_token', csrf);
             form.querySelectorAll('[data-pw-outlet-checkbox]:checked').forEach(function (box) { body.append('outlet_ids[]', box.value); });
+            var assign = form.querySelector('[data-pw-assign-variants]');
+            if (assign && assign.checked) { body.append('assign_variants', '1'); }
 
             return send(form.getAttribute('data-pw-preview-url'), body).then(function (result) {
                 if (seq !== previewSeq) { return null; }

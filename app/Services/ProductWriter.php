@@ -23,6 +23,11 @@ use Illuminate\Validation\ValidationException;
  *    outlet is deactivated (Variants without any outlet row are left alone, as before).
  *
  * planOutletChange() computes those effects without writing, so a preview always matches the save.
+ *
+ * Gaining an outlet never touches the Product's Variants on its own. The caller may opt in
+ * ($assignVariants) to also assign the Product's ACTIVE Variants to the newly added outlets; inactive
+ * Variants are never activated or assigned, nothing is created, and Variant outlets stay a subset of
+ * the Product's outlets.
  */
 class ProductWriter
 {
@@ -51,6 +56,12 @@ class ProductWriter
             'outlet_ids' => 'required|array|min:1',
             'outlet_ids.*' => 'exists:outlets,id',
         ];
+    }
+
+    /** Optional opt-in: also assign the Product's active Variants to the outlets being added. */
+    public function assignVariantsRules(): array
+    {
+        return ['assign_variants' => 'nullable|boolean'];
     }
 
     public function assertAccessibleOutletIds(User $user, array $outletIds): void
@@ -82,10 +93,10 @@ class ProductWriter
     public function update(User $user, Product $product, array $validated): void
     {
         $this->assertAccessibleOutletIds($user, $validated['outlet_ids']);
-        $plan = $this->planOutletChange($user, $product, $validated['outlet_ids']);
+        $plan = $this->planOutletChange($user, $product, $validated['outlet_ids'], (bool) ($validated['assign_variants'] ?? false));
 
         DB::transaction(function () use ($product, $validated, $plan) {
-            $product->update(collect($validated)->except('outlet_ids')->toArray());
+            $product->update(collect($validated)->except(['outlet_ids', 'assign_variants'])->toArray());
             $this->applyOutletPlan($product, $plan);
         });
     }
@@ -97,10 +108,10 @@ class ProductWriter
     }
 
     /** Workspace "Outlets": returns the plan that was applied. */
-    public function updateOutlets(User $user, Product $product, array $outletIds): array
+    public function updateOutlets(User $user, Product $product, array $outletIds, bool $assignVariants = false): array
     {
         $this->assertAccessibleOutletIds($user, $outletIds);
-        $plan = $this->planOutletChange($user, $product, $outletIds);
+        $plan = $this->planOutletChange($user, $product, $outletIds, $assignVariants);
 
         DB::transaction(fn () => $this->applyOutletPlan($product, $plan));
 
@@ -110,9 +121,13 @@ class ProductWriter
     /**
      * What saving these (accessible) outlet ids would do, without writing anything.
      *
-     * @return array{final_outlet_ids: int[], added: int[], removed: int[], locked: int[], variants: array, promos: array, outlet_names: array<int, string>, has_consequences: bool}
+     * `assignable` lists the ACTIVE Variants that do not yet have a newly added outlet (what the opt-in would
+     * assign); `skipped_inactive` counts the inactive ones, which are never touched. `assignments` is what the
+     * save really assigns: `assignable` when $assignVariants is true, otherwise empty.
+     *
+     * @return array{final_outlet_ids: int[], added: int[], removed: int[], locked: int[], variants: array, assignable: array, assignments: array, assign_variants: bool, skipped_inactive: int, promos: array, outlet_names: array<int, string>, has_consequences: bool}
      */
-    public function planOutletChange(User $user, Product $product, array $outletIds): array
+    public function planOutletChange(User $user, Product $product, array $outletIds, bool $assignVariants = false): array
     {
         $editable = $this->editableOutletIds($user);
         $current = $product->outlets()->pluck('outlets.id')->map(fn ($id) => (int) $id);
@@ -148,19 +163,26 @@ class ProductWriter
             ->filter(fn ($row) => $row !== null && $row['removed_outlet_ids'] !== [])
             ->values();
 
+        $added = $final->diff($current)->values();
+        [$assignable, $skippedInactive] = $this->assignableVariants($product, $added);
+
         $promos = $this->affectedPromos($product, $variants, $removed);
 
         $outletIds = $current->merge($final)->merge($promos->flatMap(fn ($promo) => $promo['conflict_outlet_ids']))->unique()->all();
 
         return [
             'final_outlet_ids' => $final->all(),
-            'added' => $final->diff($current)->values()->all(),
+            'added' => $added->all(),
             'removed' => $removed->all(),
             'locked' => $locked->all(),
             'variants' => $variants->all(),
+            'assignable' => $assignable->all(),
+            'assignments' => $assignVariants ? $assignable->all() : [],
+            'assign_variants' => $assignVariants,
+            'skipped_inactive' => $skippedInactive,
             'promos' => $promos->all(),
             'outlet_names' => Outlet::whereIn('id', $outletIds)->pluck('name', 'id')->all(),
-            'has_consequences' => $variants->isNotEmpty() || $promos->isNotEmpty(),
+            'has_consequences' => $variants->isNotEmpty() || $promos->isNotEmpty() || ($assignVariants && $assignable->isNotEmpty()),
         ];
     }
 
@@ -176,6 +198,42 @@ class ProductWriter
                 $variant->update(['is_active' => false]);
             }
         }
+
+        // Opt-in only: ADD the new Product outlets to existing active Variants (never removes, never creates).
+        foreach ($plan['assignments'] as $row) {
+            ProductVariant::query()
+                ->where('product_id', $product->id)
+                ->where('is_active', true)
+                ->whereKey($row['id'])
+                ->first()
+                ?->outlets()->syncWithoutDetaching($row['add_outlet_ids']);
+        }
+    }
+
+    /**
+     * Active Variants of the Product that lack some of the newly added outlets.
+     *
+     * @return array{0: Collection<int, array{id: int, name: string, add_outlet_ids: int[]}>, 1: int} [rows, inactive Variants left alone]
+     */
+    private function assignableVariants(Product $product, Collection $added): array
+    {
+        if ($added->isEmpty()) {
+            return [collect(), 0];
+        }
+
+        $variants = $product->variants()->with('outlets:id')->orderBy('name')->get();
+
+        $rows = $variants
+            ->filter(fn (ProductVariant $variant) => $variant->is_active)
+            ->map(fn (ProductVariant $variant) => [
+                'id' => (int) $variant->id,
+                'name' => $variant->name,
+                'add_outlet_ids' => $added->diff($variant->outlets->pluck('id')->map(fn ($id) => (int) $id))->values()->all(),
+            ])
+            ->filter(fn (array $row) => $row['add_outlet_ids'] !== [])
+            ->values();
+
+        return [$rows, $variants->reject(fn (ProductVariant $variant) => $variant->is_active)->count()];
     }
 
     /**

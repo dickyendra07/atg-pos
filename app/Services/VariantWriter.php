@@ -22,6 +22,10 @@ use Illuminate\Validation\ValidationException;
  *    longer show it. A new Variant gets one generated from its Product code + name, an existing Variant
  *    keeps the code it has, and an explicitly submitted code (CSV import, API, tests) is still honoured;
  *  - the legacy `price` column follows the dine-in price;
+ *  - the legacy `outlet_id` column is NOT part of availability and is never written from input: availability
+ *    is only the product_variant_outlet pivot (inside the Product's outlets). A new Variant leaves the column
+ *    empty, an existing one keeps whatever it stores, in the classic editor and the Workspace alike, and a
+ *    submitted `outlet_id` is ignored (it can neither widen nor bypass the outlet checks);
  *  - FIX: saving a Variant KEEPS its outlets that the user cannot access (a limited user only changes
  *    the outlets they can see; outlets outside their access stay assigned, as long as the Product is
  *    still available there). Previously the outlet list was replaced, silently dropping them.
@@ -92,7 +96,6 @@ class VariantWriter
 
             $normalized[] = [
                 'id' => ! empty($row['id']) ? (int) $row['id'] : null,
-                'outlet_id' => ! empty($row['outlet_id']) ? (int) $row['outlet_id'] : null,
                 'name' => $name,
                 'code' => $code,
                 'outlet_ids' => $outletIds,
@@ -122,7 +125,6 @@ class VariantWriter
 
         foreach ($rows as $index => $row) {
             $requestedOutletIds = collect($row['outlet_ids'] ?? [])
-                ->when(! empty($row['outlet_id']), fn ($ids) => $ids->push((int) $row['outlet_id']))
                 ->map(fn ($id) => (int) $id)
                 ->unique();
 
@@ -200,7 +202,7 @@ class VariantWriter
         $outletIds = $this->withPreserved($row['outlet_ids'], $this->preservedOutletIds($user, $product, $variant));
 
         DB::transaction(function () use ($product, $variant, $row, $outletIds) {
-            $variant->update(['outlet_id' => $variant->outlet_id] + $this->attributes($product, $row));
+            $variant->update($this->attributes($product, $row));
             $variant->outlets()->sync($outletIds);
         });
     }
@@ -366,14 +368,13 @@ class VariantWriter
             throw ValidationException::withMessages(['name' => 'Nama variant wajib diisi.']);
         }
 
-        return ['outlet_id' => null] + $row;
+        return $row;
     }
 
     private function attributes(Product $product, array $row): array
     {
         return [
             'product_id' => $product->id,
-            'outlet_id' => $row['outlet_id'],
             'name' => $row['name'],
             'code' => $row['code'],
             'price' => $row['price_dine_in'],
@@ -391,10 +392,9 @@ class VariantWriter
     private function assertNoDuplicateCodesInPayload(array $rows): void
     {
         $duplicateCodes = collect($rows)
-            ->map(fn ($row) => ($row['outlet_id'] ?: 'ALL').'|'.strtoupper(trim((string) $row['code'])))
+            ->map(fn ($row) => strtoupper(trim((string) $row['code'])))
             ->duplicates()
             ->unique()
-            ->map(fn ($key) => explode('|', $key)[1] ?? $key)
             ->values();
 
         if ($duplicateCodes->isNotEmpty()) {

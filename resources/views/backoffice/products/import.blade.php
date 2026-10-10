@@ -154,6 +154,13 @@
                     <input type="file" name="file" accept=".csv,.txt" required>
                 </div>
 
+                <div class="field">
+                    <label style="display:flex; gap:8px; align-items:flex-start; font-weight:normal;">
+                        <input type="checkbox" name="allow_similar" value="1" style="width:auto; margin-top:3px;" @checked(old('allow_similar'))>
+                        <span>Buat meskipun mirip dengan Product yang sudah ada (nama, brand, dan kategori sama tetapi kode berbeda). Biarkan kosong jika ragu: baris yang mirip akan dilewati dan dilaporkan.</span>
+                    </label>
+                </div>
+
                 <div class="actions">
                     <a href="{{ route('backoffice.products.import.template') }}" class="btn btn-secondary">Download Template</a>
                     <button type="submit" class="btn btn-primary">Import Products</button>
@@ -162,7 +169,7 @@
 
             <div class="note">
                 Format template: <strong>brand_name, category_name, name, code, description, is_active</strong>.
-                Kalau code product sudah ada, data akan di-update. Kalau belum ada, data baru akan dibuat.
+                Kalau code product sudah ada, Product itu hanya di-assign ke outlet tujuan; nama, brand, kategori, deskripsi, dan status tidak diubah oleh import (perbedaannya dilaporkan). Kalau belum ada, data baru akan dibuat. Variant tidak ikut di-assign otomatis.
             </div>
         </div>
     </div>

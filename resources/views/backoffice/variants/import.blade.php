@@ -150,7 +150,7 @@
 
             <div class="note">
                 Format template: <strong>product_code, name, code, price_dine_in, price_delivery, is_active</strong>.
-                Kalau code variant sudah ada, data akan di-update. Kalau belum ada, data baru akan dibuat.
+                Kalau code variant sudah ada, Variant itu hanya di-assign ke outlet pada baris tersebut; nama, harga, dan status tidak diubah. Baris dengan harga yang berbeda dari harga Variant saat ini ditolak, karena harga dipakai bersama semua outlet (ubah lewat Product Workspace &gt; Variants &amp; Pricing). Kalau belum ada, data baru akan dibuat.
             </div>
         </div>
     </div>

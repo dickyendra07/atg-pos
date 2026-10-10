@@ -37,12 +37,16 @@ class ProductWorkspaceController extends Controller
     {
         $user = $this->authorizeProduct($request, $product);
 
-        $validated = $request->validate($writer->outletRules());
-        $plan = $writer->updateOutlets($user, $product, $validated['outlet_ids']);
+        $validated = $request->validate($writer->outletRules() + $writer->assignVariantsRules());
+        $plan = $writer->updateOutlets($user, $product, $validated['outlet_ids'], (bool) ($validated['assign_variants'] ?? false));
 
         $deactivated = collect($plan['variants'])->where('will_deactivate', true)->where('was_active', true)->count();
         $message = 'Outlet Product berhasil disimpan.'
             .($deactivated ? ' '.$deactivated.' Variant dinonaktifkan karena tidak lagi memiliki outlet.' : '');
+
+        if ($plan['assignments'] !== []) {
+            $message .= ' '.count($plan['assignments']).' Variant aktif ikut di-assign ke outlet baru. Cek kesiapan jual (Recipe/Ingredient) di Stock & Readiness.';
+        }
 
         return $this->saved($request, $product, $user, 'outlets', $message);
     }
@@ -55,11 +59,11 @@ class ProductWorkspaceController extends Controller
         $validated = $request->validate([
             'outlet_ids' => 'nullable|array',
             'outlet_ids.*' => 'exists:outlets,id',
-        ]);
+        ] + $writer->assignVariantsRules());
 
         $outletIds = $validated['outlet_ids'] ?? [];
         $writer->assertAccessibleOutletIds($user, $outletIds);
-        $plan = $writer->planOutletChange($user, $product, $outletIds);
+        $plan = $writer->planOutletChange($user, $product, $outletIds, (bool) ($validated['assign_variants'] ?? false));
 
         return response()->json([
             'ok' => true,
@@ -67,6 +71,8 @@ class ProductWorkspaceController extends Controller
             'empty_selection' => $outletIds === [],
             'removed' => $plan['removed'],
             'deactivated_variant_ids' => collect($plan['variants'])->where('will_deactivate', true)->pluck('id')->values()->all(),
+            'assignable_variant_ids' => collect($plan['assignable'])->pluck('id')->values()->all(),
+            'assigned_variant_ids' => collect($plan['assignments'])->pluck('id')->values()->all(),
             'promo_ids' => collect($plan['promos'])->pluck('id')->values()->all(),
             'html' => view('backoffice.products.workspace._outlet-preview', [
                 'plan' => $plan,

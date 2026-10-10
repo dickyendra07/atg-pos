@@ -133,6 +133,11 @@
             border: 1px solid #ccefd8;
         }
 
+        .alert-warning {
+            background: #fff7ed;
+            color: #9a3412;
+        }
+
         .alert-error {
             background: #fff1f1;
             color: #b42318;
@@ -514,6 +519,17 @@
         </div>
 
 
+
+        @if(session('import_warnings') && count(session('import_warnings')) > 0)
+            <div class="alert alert-warning" data-import-warnings>
+                Perlu perhatian:
+                <div style="margin-top:10px; font-weight:600;">
+                    @foreach(session('import_warnings') as $importWarning)
+                        <div style="margin-bottom:6px;">• {{ $importWarning['text'] }}@if(! empty($importWarning['url'])) <a href="{{ $importWarning['url'] }}" style="color:inherit; text-decoration:underline;">Buka Product Workspace</a>@endif</div>
+                    @endforeach
+                </div>
+            </div>
+        @endif
 
         @if(session('import_errors') && count(session('import_errors')) > 0)
             <div class="alert alert-error">
