@@ -416,6 +416,67 @@ class RealEngineTransferIdempotencyTest extends TestCase
         $this->assertOutcome($base, ops: 1, transfers: 1, warehouse: '95.00', outlet: '15.00', label: 'after the original gave up');
     }
 
+    // ---- which constraint was violated, on the real MySQL driver ---------------------------------------------------------------------------
+
+    public function test_p_a_genuine_mysql_duplicate_of_the_operation_key_is_a_replay_and_stays_bound_to_user_kind_and_payload(): void
+    {
+        $service = app(\App\Services\TransferOperationService::class);
+        $key = (string) Str::uuid();
+        $fingerprint = str_repeat('a', 64);
+
+        [$first, $isNew] = $service->claim($key, $this->owner->id, 'general_transfer', $fingerprint);
+        $this->assertTrue($isNew);
+
+        // The second INSERT is a REAL MySQL error 1062 on the named unique index; the driver names it with its table.
+        [$second, $isNew] = $service->claim($key, $this->owner->id, 'general_transfer', $fingerprint);
+        $this->assertFalse($isNew);
+        $this->assertSame($first->id, $second->id);
+
+        $other = User::create(['name' => 'staff2', 'username' => 'staff2', 'email' => 's2@example.test', 'password' => 'password', 'role_id' => $this->owner->role_id, 'outlet_id' => $this->outlet->id, 'is_active' => true]);
+        foreach ([
+            'another payload' => [$this->owner->id, 'general_transfer', str_repeat('b', 64)],
+            'another user' => [$other->id, 'general_transfer', $fingerprint],
+            'another kind' => [$this->owner->id, 'warehouse_transfer', $fingerprint],
+        ] as $label => [$user, $kind, $print]) {
+            try {
+                $service->claim($key, $user, $kind, $print);
+                $this->fail("{$label}: must be refused");
+            } catch (\App\Exceptions\TransferOperationConflict) {
+                $this->assertTrue(true);
+            }
+        }
+
+        $this->assertSame(1, DB::table('transfer_operations')->count(), 'one record, however often it was presented');
+    }
+
+    public function test_p2_a_genuine_mysql_violation_of_another_unique_index_is_a_database_error_not_a_replay(): void
+    {
+        // A second unique index, so that a REAL MySQL 1062 can name something other than operation_key (the disposable
+        // database is rebuilt for every test).
+        DB::statement('alter table transfer_operations add unique transfer_operations_fingerprint_probe (fingerprint)');
+        $service = app(\App\Services\TransferOperationService::class);
+        $fingerprint = str_repeat('c', 64);
+        $firstKey = (string) Str::uuid();
+        $service->claim($firstKey, $this->owner->id, 'general_transfer', $fingerprint);
+
+        // A new key whose fingerprint is already taken: the INSERT names operation_key in its SQL, but the database
+        // says the violated constraint is the OTHER index.
+        $secondKey = (string) Str::uuid();
+        try {
+            $service->claim($secondKey, $this->owner->id, 'general_transfer', $fingerprint);
+            $this->fail('this is a genuine database error, not a replay');
+        } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
+            $this->assertStringContainsString('operation_key', $e->getMessage(), 'the SQL in the message names the column ...');
+            $this->assertSame('transfer_operations_fingerprint_probe', $e->index, '... but MySQL says which constraint was violated');
+            $this->assertStringEndsWith("for key 'transfer_operations.transfer_operations_fingerprint_probe'", (string) $e->errorInfo[2]);
+        }
+
+        $this->assertSame(0, DB::table('transfer_operations')->where('operation_key', $secondKey)->count(), 'nothing was claimed under the second key');
+        // The real operation-key replay is still recognized with the extra index in place.
+        [, $isNew] = $service->claim($firstKey, $this->owner->id, 'general_transfer', $fingerprint);
+        $this->assertFalse($isNew);
+    }
+
     // ---- helpers ------------------------------------------------------------------------------------------------------------------------------
 
     /** Balances back to a known state; returns the baselines every later assertion is measured from. */

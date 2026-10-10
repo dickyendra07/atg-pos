@@ -13,12 +13,14 @@ use App\Models\TransferOperation;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Exceptions\TransferOperationBusy;
+use App\Exceptions\TransferOperationConflict;
 use App\Services\TransferOperationService;
 use Illuminate\Database\QueryException;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -264,6 +266,147 @@ class TransferIdempotencyTest extends TestCase
         } finally {
             TransferOperation::flushEventListeners();
         }
+    }
+
+    // ---- which constraint was violated: the driver's answer, never the SQL text --------------------------------------
+
+    /** A violation exactly as Laravel reports it: the driver message + the whole INSERT statement (which names operation_key). */
+    private function uniqueViolation(string $driverMessage, int $code = 1062, string $sqlState = '23000', ?array $errorInfo = ['default']): UniqueConstraintViolationException
+    {
+        $driver = new \PDOException("SQLSTATE[{$sqlState}]: Integrity constraint violation: {$code} {$driverMessage}");
+        $driver->errorInfo = $errorInfo === ['default'] ? [$sqlState, $code, $driverMessage] : $errorInfo;
+
+        return new UniqueConstraintViolationException(
+            'mysql',
+            'insert into `transfer_operations` (`operation_key`, `user_id`, `kind`, `fingerprint`, `transfer_ids`, `updated_at`, `created_at`) values (?, ?, ?, ?, ?, ?, ?)',
+            ['0a1b2c3d-0000-4000-8000-000000000009', 1, 'general_transfer', str_repeat('a', 64), '[]', '2026-10-10 20:00:00', '2026-10-10 20:00:00'],
+            $driver,
+            ['driver' => 'mysql', 'host' => '127.0.0.1', 'port' => 3306, 'database' => 'atg_pos']
+        );
+    }
+
+    /** Pretends the INSERT of the claim hits the given violation, while a committed operation with this key really exists. */
+    private function existingOperationWhoseInsertViolates(UniqueConstraintViolationException $violation, ?string $fingerprint = null, ?int $userId = null, string $kind = 'general_transfer'): array
+    {
+        $key = (string) Str::uuid();
+        $fingerprint ??= str_repeat('a', 64);
+        TransferOperation::create(['operation_key' => $key, 'user_id' => $userId ?? $this->owner->id, 'kind' => 'general_transfer', 'fingerprint' => str_repeat('a', 64), 'transfer_ids' => [7]]);
+        TransferOperation::creating(function () use ($violation) {
+            throw $violation;
+        });
+
+        return [$key, $fingerprint, $userId ?? $this->owner->id, $kind];
+    }
+
+    public static function operationKeyViolations(): array
+    {
+        return [
+            'MySQL 8 qualifies the index with its table' => [1062, "Duplicate entry '0a1b2c3d-0000-4000-8000-000000000009' for key 'transfer_operations.transfer_operations_operation_key_unique'"],
+            'MariaDB / older MySQL name the index alone' => [1062, "Duplicate entry '0a1b2c3d-0000-4000-8000-000000000009' for key 'transfer_operations_operation_key_unique'"],
+            'SQLite names the column' => [19, 'UNIQUE constraint failed: transfer_operations.operation_key'],
+        ];
+    }
+
+    #[DataProvider('operationKeyViolations')]
+    public function test_a_violation_of_the_operation_key_index_is_recognized_as_a_replay(int $code, string $driverMessage): void
+    {
+        [$key, $fingerprint, $userId, $kind] = $this->existingOperationWhoseInsertViolates($this->uniqueViolation($driverMessage, $code));
+
+        try {
+            [$operation, $isNew] = app(TransferOperationService::class)->claim($key, $userId, $kind, $fingerprint);
+        } finally {
+            TransferOperation::flushEventListeners();
+        }
+
+        $this->assertFalse($isNew, 'a replay, not new work');
+        $this->assertSame($key, $operation->operation_key);
+        $this->assertSame([7], $operation->transfer_ids, 'the committed record is what comes back');
+    }
+
+    public static function otherConstraintViolations(): array
+    {
+        $key = "'0a1b2c3d-0000-4000-8000-000000000009'";
+
+        return [
+            'another index of the same table (MySQL 8)' => [1062, "Duplicate entry 'abc' for key 'transfer_operations.transfer_operations_fingerprint_unique'", '23000', ['default']],
+            'another index of the same table (MariaDB)' => [1062, "Duplicate entry 'abc' for key 'transfer_operations_fingerprint_unique'", '23000', ['default']],
+            'the primary key' => [1062, "Duplicate entry '7' for key 'transfer_operations.PRIMARY'", '23000', ['default']],
+            'an index of ANOTHER table with a similar name' => [1062, "Duplicate entry 'TRF-1' for key 'stock_transfers.stock_transfers_transfer_number_unique'", '23000', ['default']],
+            'the duplicate VALUE spells the operation-key index name' => [1062, "Duplicate entry 'transfer_operations_operation_key_unique' for key 'transfer_operations.transfer_operations_other_unique'", '23000', ['default']],
+            'SQLite: another column' => [19, 'UNIQUE constraint failed: transfer_operations.fingerprint', '23000', ['default']],
+            'SQLite: a composite that merely includes operation_key' => [19, 'UNIQUE constraint failed: transfer_operations.operation_key, transfer_operations.kind', '23000', ['default']],
+            'a right-looking message with another SQLSTATE' => [1062, "Duplicate entry 'x' for key 'transfer_operations.transfer_operations_operation_key_unique'", 'HY000', ['default']],
+            'no driver error information at all' => [1062, "Duplicate entry 'x' for key 'transfer_operations.transfer_operations_operation_key_unique'", '23000', null],
+            'a driver this code does not know (PostgreSQL)' => [7, 'duplicate key value violates unique constraint "transfer_operations_operation_key_unique"', '23505', ['default']],
+        ];
+    }
+
+    #[DataProvider('otherConstraintViolations')]
+    public function test_a_violation_of_any_other_constraint_is_not_a_replay_even_though_the_formatted_sql_names_operation_key(int $code, string $driverMessage, string $sqlState, ?array $errorInfo): void
+    {
+        $violation = $this->uniqueViolation($driverMessage, $code, $sqlState, $errorInfo);
+        $this->assertStringContainsString('operation_key', $violation->getMessage(), 'precondition: the formatted message DOES name the column (this is what fooled the first version)');
+
+        // A committed operation with this very key, user, kind and fingerprint exists: a wrong classification would
+        // look like a perfectly good replay. It must surface as the genuine database error instead.
+        [$key, $fingerprint, $userId, $kind] = $this->existingOperationWhoseInsertViolates($violation);
+
+        $thrown = null;
+        try {
+            app(TransferOperationService::class)->claim($key, $userId, $kind, $fingerprint);
+        } catch (\Throwable $e) {
+            $thrown = $e;
+        } finally {
+            TransferOperation::flushEventListeners();
+        }
+
+        $this->assertSame($violation, $thrown, 'the original database exception, untouched');
+    }
+
+    #[DataProvider('operationKeyViolations')]
+    public function test_a_recognized_replay_with_another_payload_user_or_kind_is_still_refused(int $code, string $driverMessage): void
+    {
+        $other = $this->makeUser('someone-else', Role::firstOrCreate(['code' => 'owner'], ['name' => 'Owner']), [$this->outlet]);
+
+        foreach ([
+            'another payload' => ['fingerprint' => str_repeat('b', 64), 'user' => $this->owner->id, 'kind' => 'general_transfer'],
+            'another user' => ['fingerprint' => str_repeat('a', 64), 'user' => $other->id, 'kind' => 'general_transfer'],
+            'another kind' => ['fingerprint' => str_repeat('a', 64), 'user' => $this->owner->id, 'kind' => 'warehouse_transfer'],
+        ] as $label => $claim) {
+            [$key] = $this->existingOperationWhoseInsertViolates($this->uniqueViolation($driverMessage, $code));
+
+            try {
+                app(TransferOperationService::class)->claim($key, $claim['user'], $claim['kind'], $claim['fingerprint']);
+                $this->fail("{$label}: must be refused");
+            } catch (TransferOperationConflict) {
+                $this->assertTrue(true);
+            } finally {
+                TransferOperation::flushEventListeners();
+            }
+        }
+    }
+
+    public function test_an_unrelated_unique_violation_stays_a_genuine_database_error_through_the_whole_request(): void
+    {
+        $violation = $this->uniqueViolation("Duplicate entry 'abc' for key 'transfer_operations.transfer_operations_fingerprint_unique'");
+        TransferOperation::creating(function () use ($violation) {
+            throw $violation;
+        });
+        $before = $this->snapshot();
+
+        try {
+            $this->withoutExceptionHandling();
+            try {
+                $this->submit($this->payload((string) Str::uuid(), [[$this->milk, 5]]));
+                $this->fail('the database error must surface, not be turned into a replay or a friendly message');
+            } catch (UniqueConstraintViolationException $e) {
+                $this->assertSame($violation, $e);
+            }
+        } finally {
+            TransferOperation::flushEventListeners();
+        }
+
+        $this->assertSame($before, $this->snapshot(), 'nothing was posted');
     }
 
     public function test_a_lock_wait_timeout_on_the_claim_becomes_a_controlled_retry_message(): void

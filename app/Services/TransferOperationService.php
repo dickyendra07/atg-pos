@@ -23,6 +23,9 @@ class TransferOperationService
     /** Bumped only if the canonical form below ever changes; keeps old and new fingerprints from colliding. */
     private const FINGERPRINT_VERSION = 1;
 
+    /** The UNIQUE index on transfer_operations.operation_key (see the create_transfer_operations_table migration). */
+    private const OPERATION_KEY_INDEX = 'transfer_operations_operation_key_unique';
+
     /**
      * Claims the key, or recognises an operation that already committed.
      *
@@ -43,7 +46,7 @@ class TransferOperationService
             ]), true];
         } catch (UniqueConstraintViolationException $e) {
             // Only a clash on the operation-key index is a replay. Any other unique violation keeps its meaning.
-            if (! str_contains($e->getMessage(), 'operation_key')) {
+            if (! $this->violatesOperationKeyIndex($e)) {
                 throw $e;
             }
 
@@ -72,6 +75,46 @@ class TransferOperationService
         }
 
         return [$existing, false];
+    }
+
+    /**
+     * True only when the DATABASE itself says that the violated constraint is the UNIQUE index on
+     * transfer_operations.operation_key.
+     *
+     * It reads the driver's own error (SQLSTATE 23000, the driver error code and the driver message, which Laravel
+     * copies to $errorInfo) and never the QueryException message: that one ends with the whole SQL statement, which
+     * names the operation_key column whatever constraint was actually violated.
+     *
+     *  - MySQL / MariaDB: code 1062, "Duplicate entry '...' for key '<index>'". MySQL 8 qualifies the index with its
+     *    table ('transfer_operations.transfer_operations_operation_key_unique'), MariaDB and older MySQL do not; both
+     *    are accepted. The key name is read from the END of the driver message, where the server puts it.
+     *  - SQLite (the test database): code 19, "UNIQUE constraint failed: transfer_operations.operation_key", i.e. a
+     *    violation of exactly that one column and nothing else.
+     *
+     * Anything else - another index, another table, a missing error code, a driver this does not know - is NOT a
+     * replay and surfaces as the genuine database error (fail closed: never guess that an operation already exists).
+     */
+    private function violatesOperationKeyIndex(UniqueConstraintViolationException $e): bool
+    {
+        $info = $e->errorInfo ?? [];
+        $sqlState = $info[0] ?? null;
+        $driverCode = (int) ($info[1] ?? 0);
+        $driverMessage = (string) ($info[2] ?? '');
+
+        if ($sqlState !== '23000') {
+            return false;
+        }
+
+        if ($driverCode === 1062) {
+            return preg_match("/ for key '([^']+)'$/", $driverMessage, $m) === 1
+                && in_array($m[1], [self::OPERATION_KEY_INDEX, 'transfer_operations.'.self::OPERATION_KEY_INDEX], true);
+        }
+
+        if ($driverCode === 19) {
+            return $driverMessage === 'UNIQUE constraint failed: transfer_operations.operation_key';
+        }
+
+        return false;
     }
 
     /**
