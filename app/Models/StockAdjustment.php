@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StockAdjustment extends Model
 {
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_VOID = 'void';
+
     protected $fillable = [
         'reference',
         'location_type',
@@ -16,9 +20,24 @@ class StockAdjustment extends Model
         'note',
     ];
 
+    // status / void_* are deliberately NOT mass assignable: they only change through StockAdjustmentVoidService.
+    protected $casts = [
+        'void_at' => 'datetime',
+    ];
+
+    public function isVoid(): bool
+    {
+        return $this->status === self::STATUS_VOID;
+    }
+
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'void_by_user_id');
     }
 
     public function items(): HasMany

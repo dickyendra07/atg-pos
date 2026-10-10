@@ -711,6 +711,9 @@ class StockBalanceViewController extends Controller
                     ]
                 );
 
+                // Read the quantity under a row lock so a concurrent writer cannot be overwritten.
+                $stockBalance = StockBalance::whereKey($stockBalance->id)->lockForUpdate()->firstOrFail();
+
                 $currentQty = (float) $stockBalance->qty_on_hand;
                 $newQty = $currentQty + (float) $qtyIn;
 
@@ -905,6 +908,10 @@ class StockBalanceViewController extends Controller
                     ]
                 );
 
+                // System quantity is read under a row lock: this writer stores an absolute quantity, so a
+                // stale read would overwrite a concurrent sale, transfer or VOID.
+                $stockBalance = StockBalance::whereKey($stockBalance->id)->lockForUpdate()->firstOrFail();
+
                 $systemQty = (float) $stockBalance->qty_on_hand;
                 $actualQty = (float) $item['actual_qty'];
                 $diff = $actualQty - $systemQty;
@@ -999,7 +1006,8 @@ class StockBalanceViewController extends Controller
         ]);
 
         DB::transaction(function () use ($validated) {
-            $stockBalance = StockBalance::withLiveIngredient()->with('ingredient')->findOrFail($validated['stock_balance_id']);
+            // Locked: opname stores an absolute quantity, so it must not read a stale balance.
+            $stockBalance = StockBalance::withLiveIngredient()->with('ingredient')->lockForUpdate()->findOrFail($validated['stock_balance_id']);
 
             if (
                 $stockBalance->location_type !== 'warehouse' ||

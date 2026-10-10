@@ -188,6 +188,7 @@ Route::prefix('backoffice')->name('backoffice.')->middleware(ResolveBackofficeOu
 
     Route::get('/stock-adjustments', [StockAdjustmentController::class, 'index'])->name('stock-adjustments.index');
     Route::get('/stock-adjustments/{stockAdjustment}', [StockAdjustmentController::class, 'show'])->name('stock-adjustments.show');
+    Route::post('/stock-adjustments/{stockAdjustment}/void', [StockAdjustmentController::class, 'void'])->name('stock-adjustments.void');
 
     Route::get('/purchase-history', [PurchaseReceiptController::class, 'index'])->name('purchase-history.index');
     Route::get('/purchase-history/{purchaseReceipt}', [PurchaseReceiptController::class, 'show'])->name('purchase-history.show');

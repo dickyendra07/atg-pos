@@ -152,6 +152,9 @@ class WarehouseViewController extends Controller
                 ]
             );
 
+            // Read the quantity under a row lock so a concurrent writer cannot be overwritten.
+            $stockBalance = StockBalance::whereKey($stockBalance->id)->lockForUpdate()->firstOrFail();
+
             $currentQty = (float) $stockBalance->qty_on_hand;
             $newQty = $currentQty + (float) $validated['qty_in'];
 
