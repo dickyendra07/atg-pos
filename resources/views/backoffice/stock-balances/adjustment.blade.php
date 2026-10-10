@@ -265,6 +265,25 @@
             margin-bottom: 18px;
         }
 
+        /* ADJUSTMENT_LOCATION_COMBINED: the single "Lokasi Adjustment" select only shows once its script has wired
+           it up (.is-location-enhanced is added last). Until then, and whenever JS is off or fails, the original
+           Tipe Lokasi + Lokasi selects are the visible, working form fields. */
+        .loc-combined {
+            display: none;
+        }
+
+        .top-fields-grid.is-location-enhanced {
+            grid-template-columns: minmax(0, 560px);
+        }
+
+        .top-fields-grid.is-location-enhanced .loc-legacy {
+            display: none;
+        }
+
+        .top-fields-grid.is-location-enhanced .loc-combined {
+            display: block;
+        }
+
         .field {
             margin-bottom: 0;
         }
@@ -498,7 +517,45 @@
                         @csrf
 
                         <div class="top-fields-grid">
-                            <div class="field">
+                            {{-- One visible select. It has NO name, so it is never submitted: the request still carries exactly one
+                                 location_type and one location_id, taken from the two original selects below, which stay the
+                                 working fallback without JavaScript. Values are "type:id" so a warehouse and an outlet that
+                                 share an id can never be confused. Same warehouses / outlets as the original select. --}}
+                            <div class="field loc-combined">
+                                <label for="location_combined">Lokasi Adjustment</label>
+                                <select id="location_combined" autocomplete="off">
+                                    <option value="">Pilih lokasi</option>
+
+                                    @if($warehouses->isNotEmpty())
+                                        <optgroup label="Gudang">
+                                            @foreach($warehouses as $warehouse)
+                                                <option
+                                                    value="warehouse:{{ $warehouse->id }}"
+                                                    {{ old('location_type') === 'warehouse' && (string) old('location_id') === (string) $warehouse->id ? 'selected' : '' }}
+                                                >
+                                                    Gudang – {{ $warehouse->name }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endif
+
+                                    @if($outlets->isNotEmpty())
+                                        <optgroup label="Outlet">
+                                            @foreach($outlets as $outlet)
+                                                <option
+                                                    value="outlet:{{ $outlet->id }}"
+                                                    {{ old('location_type') === 'outlet' && (string) old('location_id') === (string) $outlet->id ? 'selected' : '' }}
+                                                >
+                                                    Outlet – {{ $outlet->name }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
+                                    @endif
+                                </select>
+                                <div class="muted">Pilih gudang atau outlet yang stoknya ingin disesuaikan.</div>
+                            </div>
+
+                            <div class="field loc-legacy">
                                 <label for="location_type">Tipe Lokasi</label>
                                 <select name="location_type" id="location_type" required>
                                     <option value="">Pilih tipe lokasi</option>
@@ -507,7 +564,7 @@
                                 </select>
                             </div>
 
-                            <div class="field">
+                            <div class="field loc-legacy">
                                 <label for="location_id">Lokasi</label>
                                 <select name="location_id" id="location_id" required>
                                     <option value="">Pilih lokasi</option>
@@ -617,6 +674,13 @@
             const oldItems = @json(old('items', []));
             const locationOptions = Array.from(locationSelect.querySelectorAll('option'));
 
+            // The single "Lokasi Adjustment" select (see ADJUSTMENT_LOCATION_COMBINED). It is only ever a view onto the
+            // two real fields, location_type and location_id, which are the only location values the form submits.
+            const form = typeSelect.closest('form');
+            const combinedSelect = document.getElementById('location_combined');
+            const topFields = document.querySelector('.top-fields-grid');
+            let combinedActive = false;
+
             const ingredientOptions = [
                 { value: '', label: 'Pilih ingredient', name: '', unit: '' },
                 @foreach($ingredients as $ingredient)
@@ -658,10 +722,79 @@
                 }
             }
 
+            // "warehouse:12" / "outlet:12" -> { type, id }; anything else (empty, malformed, unknown type) -> null.
+            // The id is never read without its type, and the label is never parsed.
+            function parseLocation(value) {
+                const match = /^(warehouse|outlet):([0-9]+)$/.exec(String(value || ''));
+                return match ? { type: match[1], id: match[2] } : null;
+            }
+
+            // The original Lokasi option for exactly this type AND id (warehouse 1 and outlet 1 both have value "1").
+            function legacyOptionFor(location) {
+                return locationOptions.find(function (option) {
+                    return option.value === location.id && option.getAttribute('data-type') === location.type;
+                }) || null;
+            }
+
+            function clearLegacyLocation() {
+                typeSelect.value = '';
+                locationSelect.selectedIndex = 0;
+            }
+
+            // Copies the combined choice onto location_type / location_id and checks the result; true only when
+            // both fields now hold exactly the chosen location, otherwise both are cleared.
+            function syncLegacyFromCombined() {
+                const location = parseLocation(combinedSelect.value);
+                const option = location ? legacyOptionFor(location) : null;
+
+                if (!location || !option) {
+                    clearLegacyLocation();
+                    return false;
+                }
+
+                typeSelect.value = location.type;
+                locationSelect.selectedIndex = locationOptions.indexOf(option);
+
+                const selected = locationSelect.options[locationSelect.selectedIndex];
+                const agrees = typeSelect.value === location.type
+                    && selected
+                    && selected.value === location.id
+                    && selected.getAttribute('data-type') === location.type;
+
+                if (!agrees) {
+                    clearLegacyLocation();
+                    return false;
+                }
+
+                return true;
+            }
+
+            // Starting point: whatever the original fields hold (server-restored after a validation error).
+            function showLegacyLocationInCombined() {
+                const selected = locationSelect.options[locationSelect.selectedIndex];
+                const candidate = selected && selected.value && selected.getAttribute('data-type') === typeSelect.value
+                    ? typeSelect.value + ':' + selected.value
+                    : '';
+
+                combinedSelect.value = candidate;
+
+                if (combinedSelect.value !== candidate) {
+                    combinedSelect.value = '';
+                }
+            }
+
             function getLocationStockMap() {
-                const locationType = typeSelect.value;
-                const locationId = locationSelect.value;
-                const mapKey = locationType && locationId ? locationType + ':' + locationId : null;
+                let mapKey = null;
+
+                if (combinedActive) {
+                    const location = parseLocation(combinedSelect.value);
+                    mapKey = location ? location.type + ':' + location.id : null;
+                } else {
+                    const locationType = typeSelect.value;
+                    const locationId = locationSelect.value;
+                    mapKey = locationType && locationId ? locationType + ':' + locationId : null;
+                }
+
                 return mapKey && stockMap[mapKey] ? stockMap[mapKey] : {};
             }
 
@@ -802,6 +935,56 @@
             });
 
             filterLocationOptions();
+
+            // Switch to the single select last, and only if everything above worked. Any failure puts the original
+            // two selects (still required, still the submitted fields) back, so nothing is ever left half-wired.
+            function enableCombinedLocation() {
+                if (!combinedSelect || !form || !topFields) {
+                    return;
+                }
+
+                try {
+                    showLegacyLocationInCombined();
+
+                    combinedSelect.addEventListener('change', function () {
+                        combinedSelect.setCustomValidity('');
+                        syncLegacyFromCombined();
+                        refreshAllIngredientLabels();
+                    });
+
+                    // Whatever happens before submit, location_type / location_id are set from the visible choice one
+                    // last time; with no valid choice the form does not go out at all (no default location).
+                    form.addEventListener('submit', function (event) {
+                        if (!combinedActive) {
+                            return;
+                        }
+
+                        if (!syncLegacyFromCombined()) {
+                            event.preventDefault();
+                            combinedSelect.setCustomValidity('Pilih lokasi adjustment.');
+                            combinedSelect.reportValidity();
+                        }
+                    });
+
+                    typeSelect.required = false;
+                    locationSelect.required = false;
+                    combinedSelect.required = true;
+                    topFields.classList.add('is-location-enhanced');
+                    combinedActive = true;
+                } catch (error) {
+                    combinedActive = false;
+                    typeSelect.required = true;
+                    locationSelect.required = true;
+                    combinedSelect.required = false;
+                    topFields.classList.remove('is-location-enhanced');
+
+                    if (window.console && console.error) {
+                        console.error('Combined location select disabled, using the original selects.', error);
+                    }
+                }
+            }
+
+            enableCombinedLocation();
 
             if (oldItems && oldItems.length) {
                 oldItems.forEach(function (item) {
